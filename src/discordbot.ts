@@ -27,6 +27,7 @@ export class DiscordBot {
     this.bot.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
     this.bot.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
     this.bot.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
+    this.bot.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
     this.bot.on("message", this.OnMessage.bind(this));
     this.bot.login(this.config.auth.botToken);
   }
@@ -184,6 +185,23 @@ export class DiscordBot {
       }
       return true;
     });
+  }
+
+  private UpdatePresence(guildMember: Discord.GuildMember) {
+    log.info("DiscordBot", `Updating presence for ${guildMember.user.username}#${guildMember.user.discriminator}`);
+    const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
+    try {
+      let presence = guildMember.presence.status;
+      if (presence === "idle" || presence === "dnd") {
+        presence = "unavailable";
+      }
+      intent.getClient().setPresence({
+        presence,
+      });
+    } catch (err) {
+      log.info("DiscordBot", "Couldn't set presence ", err);
+    }
+    // TODO: Set nicknames inside the scope of guild chats.
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
