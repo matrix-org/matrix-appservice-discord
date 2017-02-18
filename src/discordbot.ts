@@ -25,6 +25,8 @@ export class DiscordBot {
 
     this.bot.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
     this.bot.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
+    this.bot.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
+    this.bot.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
     this.bot.on("message", this.OnMessage.bind(this));
     this.bot.login(this.config.auth.botToken);
   }
@@ -108,6 +110,36 @@ export class DiscordBot {
         return Promise.reject("Room not found.");
       }
       return rooms[0].matrix.getId();
+    });
+  }
+
+  private UpdateRoom(discordChannel: Discord.TextChannel): Promise<null> {
+    const intent = this.bridge.getIntent();
+    const roomStore = this.bridge.getRoomStore();
+    let roomId = null;
+    return this.GetRoomIdFromChannel(discordChannel).then((r) => {
+      roomId = r;
+      return roomStore.getEntriesByMatrixId(roomId);
+    }).then((entries) => {
+      if (entries.length === 0) {
+        return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
+      }
+      return entries[0];
+    }).then((entry) => {
+      const name = `[Discord] ${discordChannel.guild.name}#${discordChannel.name}`;
+      if (entry.remote.get("discord_name") !== name) {
+        return intent.setRoomName(roomId).then(() => {
+          entry.remote.set("discord_name", name);
+          return roomStore.upsurtEntry(entry);
+        });
+      }
+    }).then((entry) => {
+      if (entry.remote.get("discord_topic") !== discordChannel.topic) {
+        return intent.setRoomTopic(roomId).then(() => {
+          entry.remote.set("discord_topic", discordChannel.topic);
+          return roomStore.upsurtEntry(entry);
+        });
+      }
     });
   }
 
@@ -201,7 +233,7 @@ export class DiscordBot {
             msgtype: "m.text",
             formatted_body: markdown,
             format: "org.matrix.custom.html",
-          })
+          });
         } else {
           // Plain text
           intent.sendText(room, msg.content);
