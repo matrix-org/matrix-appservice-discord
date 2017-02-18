@@ -6,11 +6,43 @@ import * as log from "npmlog";
 import * as mime from "mime";
 
 export class Util {
+
+  /**
+   * downloadFile - This function will take a URL and store the resulting data into
+   * a buffer.
+   */
+  public static DownloadFile (url: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      let ht;
+      if (url.startsWith("https")) {
+        ht = https;
+      } else {
+        ht = http;
+      }
+      const req = ht.get((url), (res) => {
+        let buffer = Buffer.alloc(0);
+        if (res.statusCode !== 200) {
+          reject(`Non 200 status code (${res.statusCode})`);
+        }
+
+        res.on("data", (d) => {
+          buffer = Buffer.concat([buffer, d]);
+        });
+
+        res.on("end", () => {
+          resolve(buffer);
+        });
+      });
+      req.on("error", (err) => {
+        reject(`Failed to download. ${err.code}`);
+      });
+    });
+  }
   /**
    * uploadContentFromUrl - Upload content from a given URL to the homeserver
    * and return a MXC URL.
    */
-  public static uploadContentFromUrl(bridge: Bridge, url: string, id: string | Intent, name: string): Promise<any> {
+  public static UploadContentFromUrl(bridge: Bridge, url: string, id: string | Intent, name: string): Promise<any> {
     let contenttype;
     let size;
     id = id || null;
