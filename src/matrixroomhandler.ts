@@ -37,8 +37,8 @@ export class MatrixRoomHandler {
   }
 
   public OnEvent (request, context) {
-    console.log(context);
     const event = request.getData();
+    console.log("New Event:", event);
     if (event.type === "m.room.message" && context.rooms.remote) {
       let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
       this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
@@ -46,7 +46,7 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
-    let srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", 2);
+    let srvChanPair = aliasLocalpart.substr("_discord_".length).split("#", 2);
     if (srvChanPair.length < 2 || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
@@ -74,10 +74,10 @@ export class MatrixRoomHandler {
     const cname = channel.name.replace(" ", "-");
 
     this.alias_list[alias] = [
-      `#_discord_${channel.guild.id}_${channel.id}:${this.config.bridge.domain}`,
-      `#_discord_${channel.guild.id}_${cname}:${this.config.bridge.domain}`,
-      `#_discord_${gname}_${channel.id}:${this.config.bridge.domain}`,
-      `#_discord_${gname}_${cname}:${this.config.bridge.domain}`,
+      `#_discord_${channel.guild.id}#${channel.id}:${this.config.bridge.domain}`,
+      `#_discord_${channel.guild.id}#${cname}:${this.config.bridge.domain}`,
+      `#_discord_${gname}#${channel.id}:${this.config.bridge.domain}`,
+      `#_discord_${gname}#${cname}:${this.config.bridge.domain}`,
     ];
 
     const creationOpts = {
