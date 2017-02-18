@@ -1,0 +1,9 @@
+{
+  "extends": "tslint:recommended",
+  "rules": {
+    "ordered-imports": "off",
+    "no-trailing-whitespace": "off",
+    "max-classes-per-file": "off",
+    "object-literal-sort-keys": "off"
+  }
+}

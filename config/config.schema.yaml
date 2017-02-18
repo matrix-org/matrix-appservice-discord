@@ -1,0 +1,22 @@
+"$schema": "http://json-schema.org/draft-04/schema#"
+type: "object"
+required: ["bridge", "auth"]
+properties:
+    bridge:
+        type: "object"
+        required: ["domain", "homeserverUrl"]
+        properties:
+          domain:
+            type: "string"
+          homeserverUrl:
+            type: "string"
+    auth:
+        type: "object"
+        required: ["botToken"]
+        properties:
+          clientID:
+            type: "string"
+          secret:
+            type: "string"
+          botToken:
+            type: "string"

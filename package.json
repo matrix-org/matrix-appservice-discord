@@ -1,0 +1,47 @@
+{
+  "name": "matrix-appservice-discord",
+  "version": "0.0.1",
+  "description": "A bridge between Matrix and Discord",
+  "main": "discordas.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "tslint --project ./tsconfig.json",
+    "coverage": "istanbul --include-all-sources cover -x /src/discordas.js _mocha -- test/ -R spec",
+    "build": "tsc",
+    "start": "tsc && node ./build/discordas.js -p 9005 -c config.yaml",
+    "getbotlink": "node ./tools/addbot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Half-Shot/matrix-appservice-discord.git"
+  },
+  "keywords": [
+    "matrix",
+    "discord",
+    "bridge",
+    "application-service",
+    "as"
+  ],
+  "author": "Half-Shot",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Half-Shot/matrix-appservice-discord/issues"
+  },
+  "homepage": "https://github.com/Half-Shot/matrix-appservice-discord#readme",
+  "dependencies": {
+    "@types/node": "^7.0.5",
+    "bluebird": "^3.4.7",
+    "discord.js": "^11.0.0",
+    "js-yaml": "^3.8.1",
+    "npmlog": "^4.0.2",
+    "tslint": "^4.4.2",
+    "typescript": "^2.1.6"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "chai-as-promised": "^6.0.0",
+    "eslint": "^3.8.1",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.1.2"
+  }
+}
