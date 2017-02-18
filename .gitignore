@@ -35,3 +35,11 @@ jspm_packages
 
 # Optional REPL history
 .node_repl_history
+
+config.yaml
+discord-registration.yaml
+
+# Ignore TS output
+build
+
+*.db
