@@ -52,13 +52,10 @@ export class DiscordBot {
   }
 
   public ProcessMatrixMsgEvent(event, guild_id: string, channel_id: string): Promise<any> {
-    if (["m.text", "m.image"].indexOf(event.content.msgtype) === -1) {
-      return Promise.reject("The AS doesn't support non m.text messages");
-    }
     let chan;
     let embed;
     const mxClient = this.bridge.getClientFactory().getClientAs();
-    this.LookupRoom(guild_id, channel_id).then((channel) => {
+    return this.LookupRoom(guild_id, channel_id).then((channel) => {
       chan = channel;
       return mxClient.getProfileInfo(event.sender);
     }).then((profile) => {
@@ -77,7 +74,7 @@ export class DiscordBot {
         },
         description: event.content.body,
       });
-      if (event.content.msgtype === "m.image") {
+      if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
         return Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       }
       else {
@@ -95,7 +92,6 @@ export class DiscordBot {
       return {}
     }).then((opts) => {
       chan.sendEmbed(embed, opts);
-      log.info("DiscordBot", "Outgoing Message ", embed);
     }).catch((err) => {
       log.error("DiscordBot", "Couldn't send message. ", err);
     });

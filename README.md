@@ -9,16 +9,16 @@ A very WIP bridge between Matrix and Discord in node.
   - [ ] Initiating
  - Matrix -> Discord
    - [x] Text content
-   - [ ] Image content
-   - [ ] Audio/Video content
-   - [ ] Typing notifs
+   - [x] Image content
+   - [x] Audio/Video content
+   - [ ] Typing notifs (**Not supported, requires syncing**)
    - [x] User Profiles
  - Discord -> Matrix
    - [x] Text content
-   - [ ] Image content
-   - [ ] Audio/Video content
+   - [x] Image content
+   - [x] Audio/Video content
    - [x] Typing notifs
-   - [ ] User Profiles
+   - [x] User Profiles
    - [ ] Presence
  - [ ] Webhooks (allows for prettier messages to discord)
  - [ ] Rooms react to Discord updates
