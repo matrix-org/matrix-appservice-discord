@@ -9,23 +9,23 @@ export class MatrixRoomHandler {
   private config: DiscordBridgeConfig;
   private bridge: Bridge;
   private discord: DiscordBot;
-  private alias_list: any;
+  private aliasList: any;
   constructor (bridge: Bridge, discord: DiscordBot, config: DiscordBridgeConfig) {
     this.bridge = bridge;
     this.discord = discord;
     this.config = config;
-    this.alias_list = {};
+    this.aliasList = {};
   }
 
   public OnAliasQueried (alias: string, roomId: string) {
     const aliasLocalpart = alias.substr(1, alias.length - `:${this.config.bridge.domain}`.length - 1);
     log.info("MatrixRoomHandler", `Room created ${aliasLocalpart} => ${roomId}`);
-    if (this.alias_list[aliasLocalpart] == null) {
+    if (this.aliasList[aliasLocalpart] == null) {
       log.warn("MatrixRoomHandler", "Room was created but we couldn't assign additonal aliases");
       return;
     }
     const mxClient = this.bridge.getClientFactory().getClientAs();
-    this.alias_list[aliasLocalpart].forEach((item) => {
+    this.aliasList[aliasLocalpart].forEach((item) => {
       if (item === "#" + aliasLocalpart) {
         return;
       }
@@ -33,12 +33,11 @@ export class MatrixRoomHandler {
         log.warn("MatrixRoomHandler", `Failed to create alias '${aliasLocalpart} for ${roomId}'`, err);
       });
     });
-    delete this.alias_list[aliasLocalpart];
+    delete this.aliasList[aliasLocalpart];
   }
 
   public OnEvent (request, context) {
     const event = request.getData();
-    console.log("New Event:", event);
     if (event.type === "m.room.message" && context.rooms.remote) {
       let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
       this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
@@ -73,7 +72,7 @@ export class MatrixRoomHandler {
     const gname = channel.guild.name.replace(" ", "-");
     const cname = channel.name.replace(" ", "-");
 
-    this.alias_list[alias] = [
+    this.aliasList[alias] = [
       `#_discord_${channel.guild.id}#${channel.id}:${this.config.bridge.domain}`,
       `#_discord_${channel.guild.id}#${cname}:${this.config.bridge.domain}`,
       `#_discord_${gname}#${channel.id}:${this.config.bridge.domain}`,
@@ -94,7 +93,7 @@ export class MatrixRoomHandler {
             join_rule: "public",
           },
           state_key: "",
-        }
+        },
         // }, {
         //   type: "org.matrix.twitter.data",
         //   content: user,

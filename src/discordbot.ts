@@ -8,7 +8,7 @@ import * as mime from "mime";
 export class DiscordBot {
   private config: DiscordBridgeConfig;
   private bot: Discord.Client;
-  private discord_user: Discord.ClientUser;
+  private discordUser: Discord.ClientUser;
   private bridge;
   constructor(config: DiscordBridgeConfig, bridge) {
     this.config = config;
@@ -32,30 +32,29 @@ export class DiscordBot {
     return this.bot;
   }
 
-
   public LookupRoom (server: string, room: string): Promise<Discord.TextChannel> {
     const guild = this.bot.guilds.find((g) => {
-      return (g.id === server || g.name.toLowerCase().replace(/ /g, '-') === server.toLowerCase());
+      return (g.id === server || g.name.toLowerCase().replace(/ /g, "-") === server.toLowerCase());
     });
     if (guild === null) {
-      return Promise.reject(`Guild '${server}' not found`);
+      return Promise.reject(`Guild "${server}" not found`);
     }
 
     const channel = guild.channels.find((c) => {
-      return ((c.id === room  || c.name.toLowerCase().replace(/ /g, '-') === room.toLowerCase() ) && c.type === "text");
+      return ((c.id === room  || c.name.toLowerCase().replace(/ /g, "-") === room.toLowerCase() ) && c.type === "text");
     });
     if (channel === null) {
-      return Promise.reject(`Channel '${room}' not found`);
+      return Promise.reject(`Channel "${room}" not found`);
     }
     return Promise.resolve(channel);
 
   }
 
-  public ProcessMatrixMsgEvent(event, guild_id: string, channel_id: string): Promise<any> {
+  public ProcessMatrixMsgEvent(event, guildId: string, channelId: string): Promise<any> {
     let chan;
     let embed;
     const mxClient = this.bridge.getClientFactory().getClientAs();
-    return this.LookupRoom(guild_id, channel_id).then((channel) => {
+    return this.LookupRoom(guildId, channelId).then((channel) => {
       chan = channel;
       return mxClient.getProfileInfo(event.sender);
     }).then((profile) => {
@@ -77,19 +76,17 @@ export class DiscordBot {
       if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
         return Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       }
-      else {
-        return Promise.resolve(null);
-      }
-    }).then(img_buffer => {
-      if(img_buffer !== null) {
+      return Promise.resolve(null);
+    }).then((attachment) => {
+      if (attachment !== null) {
         return {
           file : {
             name: event.content.body,
-            attachment: img_buffer,
-          }
+            attachment,
+          },
         };
       }
-      return {}
+      return {};
     }).then((opts) => {
       chan.sendEmbed(embed, opts);
     }).catch((err) => {
@@ -106,7 +103,7 @@ export class DiscordBot {
       discord_channel: channel.id,
     }).then((rooms) => {
       if (rooms.length === 0) {
-        log.warn("DiscordBot", `Got message but couldn't find room chan id:${channel.id} for it.`);
+        log.warn("DiscordBot", `Got message but couldn"t find room chan id:${channel.id} for it.`);
         return Promise.reject("Room not found.");
       }
       return rooms[0].matrix.getId();
@@ -117,22 +114,20 @@ export class DiscordBot {
     let remoteUser: RemoteUser;
     const displayName = discordUser.username + "#" + discordUser.discriminator;
     const id = `_discord_${discordUser.id}:${this.config.bridge.domain}`;
-    const intent = this.bridge.getIntent("@"+id);
+    const intent = this.bridge.getIntent("@" + id);
     const userStore = this.bridge.getUserStore();
 
     return userStore.getRemoteUser(discordUser.id).then((u) => {
       remoteUser = u;
-      console.log(remoteUser);
       if (remoteUser === null) {
         remoteUser = new RemoteUser(discordUser.id);
         return userStore.linkUsers(
           new MatrixUser(id),
-          remoteUser
+          remoteUser,
         );
       }
       return Promise.resolve();
     }).then(() => {
-      console.log(remoteUser.get("displayname"), "!==", displayName);
       if (remoteUser.get("displayname") !== displayName) {
         return intent.setDisplayName(displayName).then(() => {
           remoteUser.set("displayname", displayName);
@@ -141,9 +136,13 @@ export class DiscordBot {
       }
       return true;
     }).then(() => {
-      console.log(remoteUser.get("avatarurl"), "!==", discordUser.avatarURL);
       if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
-        return Util.UploadContentFromUrl(this.bridge, discordUser.avatarURL, intent, discordUser.avatar).then((avatar) => {
+        return Util.UploadContentFromUrl(
+          this.bridge,
+          discordUser.avatarURL,
+          intent,
+          discordUser.avatar,
+        ).then((avatar) => {
           intent.setAvatarUrl(avatar.mxc_url).then(() => {
             remoteUser.set("avatarurl", discordUser.avatarURL);
             return userStore.setRemoteUser(remoteUser);
@@ -170,17 +169,17 @@ export class DiscordBot {
     }).then((room) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${msg.author.id}`);
       // Check Attachements
-      msg.attachments.forEach(attachment => {
-        Util.UploadContentFromUrl(this.bridge, attachment.url, intent, attachment.filename).then(content => {
-          const file_mime = mime.lookup(attachment.filename);
+      msg.attachments.forEach((attachment) => {
+        Util.UploadContentFromUrl(this.bridge, attachment.url, intent, attachment.filename).then((content) => {
+          const fileMime = mime.lookup(attachment.filename);
           const msgtype = attachment.height ? "m.image" : "m.file";
           const info = {
-            mimetype: file_mime,
+            mimetype: fileMime,
             size: attachment.filesize,
             w: null,
             h: null,
           };
-          if (msgtype == "m.image") {
+          if (msgtype === "m.image") {
             info.w = attachment.width;
             info.h = attachment.height;
           }
@@ -188,11 +187,11 @@ export class DiscordBot {
             body: attachment.filename,
             info,
             msgtype,
-            "url": content.mxc_url,
+            url: content.mxc_url,
           });
         });
       });
-      if(msg.content !== null && msg.content !== "") {
+      if (msg.content !== null && msg.content !== "") {
         intent.sendText(room, msg.content);
       }
     });
