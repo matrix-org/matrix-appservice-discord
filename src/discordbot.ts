@@ -4,6 +4,7 @@ import * as log from "npmlog";
 import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as mime from "mime";
+import * as marked from "marked";
 
 export class DiscordBot {
   private config: DiscordBridgeConfig;
@@ -192,7 +193,19 @@ export class DiscordBot {
         });
       });
       if (msg.content !== null && msg.content !== "") {
-        intent.sendText(room, msg.content);
+        const markdown = marked(msg.content);
+        if (markdown !== msg.content) {
+          // Markdown message
+          intent.sendMessage(room, {
+            body: msg.content,
+            msgtype: "m.text",
+            formatted_body: markdown,
+            format: "org.matrix.custom.html",
+          })
+        } else {
+          // Plain text
+          intent.sendText(room, msg.content);
+        }
       }
     });
   }
