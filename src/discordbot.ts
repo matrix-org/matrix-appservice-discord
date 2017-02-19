@@ -45,7 +45,7 @@ export class DiscordBot {
     }
 
     const channel = guild.channels.find((c) => {
-      return ((c.id === room  || c.name.toLowerCase().replace(/ /g, "-") === room.toLowerCase() ) && c.type === "text");
+      return ((c.id === room  || c.name.toLowerCase() === room.toLowerCase() ) && c.type === "text");
     });
     if (channel === null) {
       return Promise.reject(`Channel "${room}" not found`);
