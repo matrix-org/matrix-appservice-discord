@@ -5,10 +5,12 @@
         "target": "ES6",
         "noImplicitAny": false,
         "sourceMap": false,
-        "outDir": "./build"
+        "outDir": "./build",
+        "types": ["mocha", "node"]
     },
     "compileOnSave": true,
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "test/**/*"
     ]
 }

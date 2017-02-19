@@ -3,6 +3,7 @@ import * as Discord from "discord.js";
 import * as log from "npmlog";
 import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
 import { Util } from "./util";
+import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import * as marked from "marked";
 
@@ -16,20 +17,18 @@ export class DiscordBot {
     this.bridge = bridge;
   }
 
-  public run () {
-    this.bot = new Discord.Client();
-
-    this.bot.on("ready", () => {
-      log.info("DiscordBot", "I am ready!");
-    });
-
+  public run (): Promise<null> {
+    this.bot = Bluebird.promisifyAll(new Discord.Client());
     this.bot.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
     this.bot.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
     this.bot.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
     this.bot.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
     this.bot.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
     this.bot.on("message", this.OnMessage.bind(this));
+    const promise = (this.bot as any).onAsync("ready");
     this.bot.login(this.config.auth.botToken);
+
+    return promise;
   }
 
   public GetBot (): Discord.Client {
@@ -40,14 +39,15 @@ export class DiscordBot {
     const guild = this.bot.guilds.find((g) => {
       return (g.id === server || g.name.toLowerCase().replace(/ /g, "-") === server.toLowerCase());
     });
-    if (guild === null) {
+    if (!guild) {
       return Promise.reject(`Guild "${server}" not found`);
     }
 
     const channel = guild.channels.find((c) => {
       return ((c.id === room  || c.name.toLowerCase() === room.toLowerCase() ) && c.type === "text");
     });
-    if (channel === null) {
+
+    if (!channel) {
       return Promise.reject(`Channel "${room}" not found`);
     }
     return Promise.resolve(channel);
@@ -205,7 +205,7 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    this.GetRoomIdFromChannel(channel).then((room) => {
+    return this.GetRoomIdFromChannel(channel).then((room) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
       intent.sendTyping(room, isTyping);
     });
