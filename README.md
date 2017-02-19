@@ -7,7 +7,7 @@ Currently the bridge is alpha quality, but is usable.
 
 ## Helping out
 
-[![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=master)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
+[![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=develop)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
 
 ### PRs
 PRs are graciously accepted, so please come talk to us in [#discord-bridge:matrix.org](https://matrix.to/#/#discord-bridge:matrix.org)
