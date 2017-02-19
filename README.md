@@ -1,9 +1,21 @@
-# matrix-appservice-discord
+# Matrix Discord Bridge
 
 A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
 Currently the bridge is alpha quality, but is usable.
 
 ![Screenshot of Riot and Discord working together](screenshot.png)
+
+## Helping out
+
+[![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=master)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
+
+### PRs
+PRs are graciously accepted, so please come talk to us in [#discord-bridge:matrix.org](https://matrix.to/#/#discord-bridge:matrix.org)
+about any neat ideas you might have. If you are going to make a change, please merge it with the `develop` branch :).
+
+### Issues
+You can also file bug reports/ feature requests on Github Issues which also helps a ton. Please remember to include logs.
+Please also be aware that this is an unoffical project worked on in my (Half-Shot) spare time.
 
 ## Setting up
 
@@ -27,6 +39,7 @@ Currently the bridge is alpha quality, but is usable.
   * Where the guild name has the spaces replaced with ``-``.  
 
 ## Features and Roadmap
+In a vague order of what is coming up next
 
  - [x] Group messages
  - [ ] Direct messages
@@ -45,10 +58,17 @@ Currently the bridge is alpha quality, but is usable.
    - [x] Typing notifs
    - [x] User Profiles
    - [x] Presence (Synapse currently squashes presence, waiting on future spec)
- - [ ] Webhooks (allows for prettier messages to discord)
+ - [ ] Puppet a user's real Discord account.
  - [ ] Rooms react to Discord updates
+ - [ ] Integrate Discord into existing rooms.
  - [ ] Manage channel from Matrix
+  - [ ] Authorise admin rights from Discord to Matrix users
+  - [ ] Topic
+  - [ ] Room Name (possibly)
+ - [ ] Provisioning API
+ - [ ] Webhooks (allows for prettier messages to discord)
  - [ ] VOIP (**Hard** | Unlikely to be finished anytime soon)
+
 
 ## Contact
 
