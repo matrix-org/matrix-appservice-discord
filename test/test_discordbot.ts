@@ -175,10 +175,10 @@ describe("DiscordBot", () => {
     );
     discordBot.run();
     it("should reject an unknown room.", () => {
-      return assert.isRejected(discordBot.OnTyping( {id: "512"} {id: "12345"}, true));
+      return assert.isRejected(discordBot.OnTyping( {id: "512"}, {id: "12345"}, true));
     });
     it("should resolve a known room.", () => {
-      return assert.isFulfilled(discordBot.OnTyping( {id: "321"} {id: "12345"}, true));
+      return assert.isFulfilled(discordBot.OnTyping( {id: "321"}, {id: "12345"}, true));
     });
   });
   describe("OnMessage()", () => {
