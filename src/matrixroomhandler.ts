@@ -12,15 +12,17 @@ import { DiscordBridgeConfig } from "./config";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 
+const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
+
 export class MatrixRoomHandler {
   private config: DiscordBridgeConfig;
   private bridge: Bridge;
   private discord: DiscordBot;
-  private aliasList: any;
-  constructor (discord: DiscordBot, config: DiscordBridgeConfig) {
+  private botUserId: string;
+  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string) {
     this.discord = discord;
     this.config = config;
-    this.aliasList = {};
+    this.botUserId = botUserId;
   }
 
   public get ThirdPartyLookup(): thirdPartyLookup {
@@ -39,22 +41,7 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQueried (alias: string, roomId: string) {
-    const aliasLocalpart = alias.substr(1, alias.length - `:${this.config.bridge.domain}`.length - 1);
-    log.info("MatrixRoomHandler", `Room created ${aliasLocalpart} => ${roomId}`);
-    if (this.aliasList[aliasLocalpart] == null) {
-      log.warn("MatrixRoomHandler", "Room was created but we couldn't assign additonal aliases");
-      return;
-    }
-    const mxClient = this.bridge.getClientFactory().getClientAs();
-    this.aliasList[aliasLocalpart].forEach((item) => {
-      if (item === "#" + aliasLocalpart) {
-        return;
-      }
-      mxClient.createAlias(item, roomId).catch( (err) => {
-        log.warn("MatrixRoomHandler", `Failed to create alias '${aliasLocalpart} for ${roomId}'`, err);
-      });
-    });
-    delete this.aliasList[aliasLocalpart];
+    return; // We don't use this.
   }
 
   public OnEvent (request, context) {
@@ -66,7 +53,7 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
-    let srvChanPair = aliasLocalpart.substr("_discord_".length).split("#", 2);
+    let srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", 2);
     if (srvChanPair.length < 2 || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
@@ -79,22 +66,66 @@ export class MatrixRoomHandler {
   }
 
   public tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
+    return Promise.resolve({
+      user_fields: ["username", "discriminator"],
+      location_fields: ["guild_id", "channel_name"],
+      field_types: {
+        // guild_name: {
+        //   regexp: "\S.{0,98}\S",
+        //   placeholder: "Guild",
+        // },
+        guild_id: {
+          regexp: "[0-9]*",
+          placeholder: "",
+        },
+        channel_id: {
+          regexp: "[0-9]*",
+          placeholder: "",
+        },
+        channel_name: {
+           regexp: "[A-Za-z0-9_\-]{2,100}",
+           placeholder: "#Channel",
+        },
+        username: {
+          regexp: "[A-Za-z0-9_\-]{2,100}",
+          placeholder: "Username",
+        },
+        discriminator: {
+          regexp: "[0-9]{4}",
+          placeholder: "1234",
+        },
+      },
+      instances: this.discord.GetGuilds().map((guild) => {
+        return {
+          network_id: guild.id,
+          bot_user_id: this.botUserId,
+          desc: guild.name,
+          icon: guild.iconURL || ICON_URL, // TODO: Use icons from our content repo. Potential security risk.
+          fields: {
+            guild_id: guild.id,
+          },
+        };
+      }),
+    });
+  }
+
+  public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
+    log.info("MatrixRoomHandler", "Got location request ", protocol, fields);
+    const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
+    console.log(chans);
+    return Promise.resolve(chans);
+  }
+
+  public tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
     return Promise.reject({err: "Unsupported", code: 501});
   }
 
-  public tpGetLocation(protocol: string, fields: any): Promise<[thirdPartyLocationResult]> {
+  public tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
+    log.info("MatrixRoomHandler", "Got user request ", protocol, fields);
     return Promise.reject({err: "Unsupported", code: 501});
   }
 
-  public tpParseLocation(alias: string): Promise<[thirdPartyLocationResult]>  {
-    return Promise.reject({err: "Unsupported", code: 501});
-  }
-
-  public tpGetUser(protocol: string, fields: any): Promise<[thirdPartyUserResult]> {
-    return Promise.reject({err: "Unsupported", code: 501});
-  }
-
-  public tpParseUser(userid: string): Promise<[thirdPartyUserResult]> {
+  public tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
     return Promise.reject({err: "Unsupported", code: 501});
   }
 
@@ -113,17 +144,10 @@ export class MatrixRoomHandler {
     const gname = channel.guild.name.replace(" ", "-");
     const cname = channel.name.replace(" ", "-");
 
-    this.aliasList[alias] = [
-      `#_discord_${channel.guild.id}#${channel.id}:${this.config.bridge.domain}`,
-      `#_discord_${channel.guild.id}#${cname}:${this.config.bridge.domain}`,
-      `#_discord_${gname}#${channel.id}:${this.config.bridge.domain}`,
-      `#_discord_${gname}#${cname}:${this.config.bridge.domain}`,
-    ];
-
     const creationOpts = {
       visibility: "public",
       room_alias_name: alias,
-      name: `[Discord] ${channel.guild.name}#${channel.name}`,
+      name: `[Discord] ${channel.guild.name} #${channel.name}`,
       topic: channel.topic ? channel.topic : "",
       // invite: [roomOwner],
       initial_state: [

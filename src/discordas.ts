@@ -40,14 +40,14 @@ function run (port: number, config: DiscordBridgeConfig) {
   if (registration === null) {
     throw new Error("Failed to parse registration file");
   }
-
+  const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
   const clientFactory = new ClientFactory({
-    appServiceUserId: "@" + registration.sender_localpart + ":" + config.bridge.domain,
+    appServiceUserId: botUserId,
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
   const discordbot = new DiscordBot(config);
-  const roomhandler = new MatrixRoomHandler(discordbot, config);
+  const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
 
   const bridge = new Bridge({
     clientFactory,
