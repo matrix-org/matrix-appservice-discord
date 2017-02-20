@@ -276,19 +276,22 @@ export class DiscordBot {
         });
       });
       if (msg.content !== null && msg.content !== "") {
-        const markdown = marked(msg.content);
-        if (markdown !== msg.content) {
-          // Markdown message
-          intent.sendMessage(room, {
-            body: msg.content,
-            msgtype: "m.text",
-            formatted_body: markdown,
-            format: "org.matrix.custom.html",
-          });
-        } else {
-          // Plain text
-          intent.sendText(room, msg.content);
-        }
+        // Replace mentions.
+        const content = msg.content.replace(/<@[0-9]*>/g, (item) => {
+          const id = item.substr(2, item.length - 3);
+          const member = msg.guild.members.get(id);
+          if (member) {
+            return member.user.username;
+          } else {
+            return `@_discord_${id}:${this.config.bridge.domain}`;
+          }
+        });
+        intent.sendMessage(room, {
+          body: content,
+          msgtype: "m.text",
+          formatted_body: marked(content),
+          format: "org.matrix.custom.html",
+        });
       }
     });
   }
