@@ -1,7 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
-import { MatrixUser, RemoteUser, Bridge } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, RemoteRoom } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
@@ -38,23 +38,51 @@ export class DiscordBot {
     return this.bot;
   }
 
+  public GetGuilds(): Discord.Guild[] {
+    return this.bot.guilds.array();
+  }
+
+  public ThirdpartySearchForChannels(guildId: string, channelName: string): any[] {
+    if (channelName.startsWith("#")) {
+      channelName = channelName.substr(1);
+    }
+    if (this.bot.guilds.has(guildId) ) {
+      const guild = this.bot.guilds.get(guildId);
+      return guild.channels.filter((channel) => {
+        return channel.name === channelName; // Implement searching in the future.
+      }).map((channel) => {
+        return {
+          alias: `#_discord_${guild.id}_${channel.id}:${this.config.bridge.domain}`,
+          protocol: "discord",
+          fields: {
+            guild_id: guild.id,
+            channel_name: channel.name,
+            channel_id: channel.id,
+          },
+        };
+      });
+    } else {
+      log.warn("DiscordBot", "Tried to do a third party lookup for a channel, but the guild did not exist");
+      return [];
+    }
+  }
+
   public LookupRoom (server: string, room: string): Promise<Discord.TextChannel> {
     const guild = this.bot.guilds.find((g) => {
-      return (g.id === server || g.name.toLowerCase().replace(/ /g, "-") === server.toLowerCase());
+      return (g.id === server);
     });
     if (!guild) {
       return Promise.reject(`Guild "${server}" not found`);
     }
 
     const channel = guild.channels.find((c) => {
-      return ((c.id === room  || c.name.toLowerCase() === room.toLowerCase() ) && c.type === "text");
+      return (c.id === room);
     });
 
     if (!channel) {
       return Promise.reject(`Channel "${room}" not found`);
     }
     return Promise.resolve(channel);
-
   }
 
   public ProcessMatrixMsgEvent(event, guildId: string, channelId: string): Promise<any> {
@@ -120,6 +148,7 @@ export class DiscordBot {
   private UpdateRoom(discordChannel: Discord.TextChannel): Promise<null> {
     const intent = this.bridge.getIntent();
     const roomStore = this.bridge.getRoomStore();
+    let entry: RemoteRoom;
     let roomId = null;
     return this.GetRoomIdFromChannel(discordChannel).then((r) => {
       roomId = r;
@@ -128,20 +157,21 @@ export class DiscordBot {
       if (entries.length === 0) {
         return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
       }
-      return entries[0];
-    }).then((entry) => {
-      const name = `[Discord] ${discordChannel.guild.name}#${discordChannel.name}`;
+      entry = entries[0];
+      return;
+    }).then(() => {
+      const name = `[Discord] ${discordChannel.guild.name} #${discordChannel.name}`;
       if (entry.remote.get("discord_name") !== name) {
-        return intent.setRoomName(roomId).then(() => {
+        return intent.setRoomName(roomId, name).then(() => {
           entry.remote.set("discord_name", name);
-          return roomStore.upsurtEntry(entry);
+          return roomStore.upsertEntry(entry);
         });
       }
-    }).then((entry) => {
+    }).then(() => {
       if (entry.remote.get("discord_topic") !== discordChannel.topic) {
-        return intent.setRoomTopic(roomId).then(() => {
+        return intent.setRoomTopic(roomId, discordChannel.topic).then(() => {
           entry.remote.set("discord_topic", discordChannel.topic);
-          return roomStore.upsurtEntry(entry);
+          return roomStore.upsertEntry(entry);
         });
       }
     });
