@@ -156,18 +156,18 @@ describe("DiscordBot", () => {
       return assert.isFulfilled(discordBot.LookupRoom("MyGuild", "321"));
     });
   });
-  describe("ProcessMatrixMsgEvent()", () => {
-
-  });
-  describe("UpdateRoom()", () => {
-
-  });
-  describe("UpdateUser()", () => {
-
-  });
-  describe("UpdatePresence()", () => {
-
-  });
+  // describe("ProcessMatrixMsgEvent()", () => {
+  //
+  // });
+  // describe("UpdateRoom()", () => {
+  //
+  // });
+  // describe("UpdateUser()", () => {
+  //
+  // });
+  // describe("UpdatePresence()", () => {
+  //
+  // });
   describe("OnTyping()", () => {
     const discordBot = new modDiscordBot.DiscordBot(
       config,
@@ -181,7 +181,7 @@ describe("DiscordBot", () => {
       return assert.isFulfilled(discordBot.OnTyping( {id: "321"}, {id: "12345"}, true));
     });
   });
-  describe("OnMessage()", () => {
-
-  });
+  // describe("OnMessage()", () => {
+  //
+  // });
 });
