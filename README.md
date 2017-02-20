@@ -58,7 +58,9 @@ In a vague order of what is coming up next
    - [x] Typing notifs
    - [x] User Profiles
    - [x] Presence (Synapse currently squashes presence, waiting on future spec)
- - [ ] Third Party Lookup in for rooms.
+ - [ ] Third Party Lookup
+  - [x] Rooms
+  - [ ] Users
  - [ ] Puppet a user's real Discord account.
  - [ ] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms.
