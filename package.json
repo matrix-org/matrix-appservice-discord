@@ -8,7 +8,7 @@
     "lint": "tslint --project ./tsconfig.json",
     "coverage": "istanbul --include-all-sources cover -x build/src/discordas.js _mocha -- build/test/ -R spec",
     "build": "tsc",
-    "start": "build && node ./build/discordas.js -p 9005 -c config.yaml",
+    "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
     "getbotlink": "node ./tools/addbot.js"
   },
   "repository": {
