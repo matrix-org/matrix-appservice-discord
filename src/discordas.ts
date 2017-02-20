@@ -46,6 +46,8 @@ function run (port: number, config: DiscordBridgeConfig) {
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
+  const discordbot = new DiscordBot(config);
+  const roomhandler = new MatrixRoomHandler(discordbot, config);
 
   const bridge = new Bridge({
     clientFactory,
@@ -54,8 +56,9 @@ function run (port: number, config: DiscordBridgeConfig) {
       onAliasQuery: (alias, aliasLocalpart) => {
         return roomhandler.OnAliasQuery(alias, aliasLocalpart);
       },
-      onEvent: (request, context) => { roomhandler.OnEvent(request, context); },
-      onAliasQueried: (alias, roomId) => { return roomhandler.OnAliasQueried(alias, roomId); },
+      onEvent: roomhandler.OnEvent.bind(roomhandler),
+      onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
+      thirdPartyLookup: roomhandler.ThirdPartyLookup,
       // onLog: function (line, isError) {
       //   if(isError) {
       //     if(line.indexOf("M_USER_IN_USE") === -1) {//QUIET!
@@ -68,9 +71,8 @@ function run (port: number, config: DiscordBridgeConfig) {
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
   });
-
-  const discordbot = new DiscordBot(config, bridge);
-  const roomhandler = new MatrixRoomHandler(bridge, discordbot, config);
+  roomhandler.setBridge(bridge);
+  discordbot.setBridge(bridge);
 
   log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
   bridge.run(port, config);

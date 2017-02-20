@@ -1,5 +1,12 @@
 import { DiscordBot } from "./discordbot";
-import { Bridge, RemoteRoom } from "matrix-appservice-bridge";
+import {
+  Bridge,
+  RemoteRoom,
+  thirdPartyLookup,
+  thirdPartyProtocolResult,
+  thirdPartyUserResult,
+  thirdPartyLocationResult,
+ } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
@@ -10,11 +17,25 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private aliasList: any;
-  constructor (bridge: Bridge, discord: DiscordBot, config: DiscordBridgeConfig) {
-    this.bridge = bridge;
+  constructor (discord: DiscordBot, config: DiscordBridgeConfig) {
     this.discord = discord;
     this.config = config;
     this.aliasList = {};
+  }
+
+  public get ThirdPartyLookup(): thirdPartyLookup {
+    return {
+      protocols: ["discord"],
+      getProtocol: this.tpGetProtocol.bind(this),
+      getLocation: this.tpGetLocation.bind(this),
+      parseLocation: this.tpParseLocation.bind(this),
+      getUser: this.tpGetUser.bind(this),
+      parseUser: this.tpParseUser.bind(this),
+    };
+  }
+
+  public setBridge(bridge: Bridge) {
+    this.bridge = bridge;
   }
 
   public OnAliasQueried (alias: string, roomId: string) {
@@ -55,6 +76,26 @@ export class MatrixRoomHandler {
     }).catch((err) => {
       log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
     });
+  }
+
+  public tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
+    return Promise.reject({err: "Unsupported", code: 501});
+  }
+
+  public tpGetLocation(protocol: string, fields: any): Promise<[thirdPartyLocationResult]> {
+    return Promise.reject({err: "Unsupported", code: 501});
+  }
+
+  public tpParseLocation(alias: string): Promise<[thirdPartyLocationResult]>  {
+    return Promise.reject({err: "Unsupported", code: 501});
+  }
+
+  public tpGetUser(protocol: string, fields: any): Promise<[thirdPartyUserResult]> {
+    return Promise.reject({err: "Unsupported", code: 501});
+  }
+
+  public tpParseUser(userid: string): Promise<[thirdPartyUserResult]> {
+    return Promise.reject({err: "Unsupported", code: 501});
   }
 
   private createMatrixRoom (channel: Discord.TextChannel, alias: string) {

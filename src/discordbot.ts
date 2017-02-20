@@ -1,7 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
-import { MatrixUser, RemoteUser } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
@@ -11,9 +11,12 @@ export class DiscordBot {
   private config: DiscordBridgeConfig;
   private bot: Discord.Client;
   private discordUser: Discord.ClientUser;
-  private bridge;
-  constructor(config: DiscordBridgeConfig, bridge) {
+  private bridge: Bridge;
+  constructor(config: DiscordBridgeConfig) {
     this.config = config;
+  }
+
+  public setBridge(bridge: Bridge) {
     this.bridge = bridge;
   }
 
