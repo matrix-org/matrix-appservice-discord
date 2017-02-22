@@ -53,12 +53,14 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
+    log.info("MatrixRoomHandler", "Got request for #", aliasLocalpart);
     let srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", 2);
     if (srvChanPair.length < 2 || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
     return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((channel) => {
+      log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
       return this.createMatrixRoom(channel, aliasLocalpart);
     }).catch((err) => {
       log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
