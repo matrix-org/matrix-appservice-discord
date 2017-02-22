@@ -37,19 +37,22 @@ export class DiscordClientFactory {
         return Promise.resolve(this.clients.get(userId));
       }
       return this.store.get_user_token(userId).then((token) => {
+        if (token === null) {
+          Promise.resolve(this.botClient);
+        }
         client = Bluebird.promisifyAll(new Client({
           fetchAllMembers: true,
           sync: true,
         }));
         log.verbose("ClientFactory", "Got user token. Logging in...");
-        return client.login(token);
-      }).then(() => {
-        log.verbose("ClientFactory", "Logged in. Storing ", userId);
-        this.clients.set(userId, client);
-        return Promise.resolve(client);
-      }).catch((err) => {
-        log.warn("ClientFactory", `Could not log ${userId} in.`, err);
-      })
+        return client.login(token).then(() => {
+          log.verbose("ClientFactory", "Logged in. Storing ", userId);
+          this.clients.set(userId, client);
+          return Promise.resolve(client);
+        }).catch((err) => {
+          log.warn("ClientFactory", `Could not log ${userId} in.`, err);
+        })
+      });
       // Get from cache
     }
     return Promise.resolve(this.botClient);
