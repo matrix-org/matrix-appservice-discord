@@ -114,7 +114,6 @@ export class MatrixRoomHandler {
   public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
     log.info("MatrixRoomHandler", "Got location request ", protocol, fields);
     const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
-    console.log(chans);
     return Promise.resolve(chans);
   }
 
