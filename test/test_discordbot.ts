@@ -121,39 +121,15 @@ describe("DiscordBot", () => {
     );
     discordBot.run();
     it("should reject a missing guild.", () => {
-      return assert.isRejected(discordBot.LookupRoom("MyMissingGuild", "achannel"));
-    });
-
-    it("should resolve a guild.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("MyGuild", "achannel"));
-    });
-
-    it("should resolve a guild with an id.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("123", "achannel"));
-    });
-
-    it("should resolve a guild with spaces.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("My-Spaces-Guild", "achannel"));
-    });
-
-    it("should resolve a guild with dashes.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("My-Dash-Guild", "achannel"));
+      return assert.isRejected(discordBot.LookupRoom("541", "321"));
     });
 
     it("should reject a missing channel.", () => {
-      return assert.isRejected(discordBot.LookupRoom("MyGuild", "amissingchannel"));
+      return assert.isRejected(discordBot.LookupRoom("123", "666"));
     });
 
-    it("should resolve a channel with spaces.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("MyGuild", "a channel"));
-    });
-
-    it("should resolve a channel with dashes.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("MyGuild", "a-channel"));
-    });
-
-    it("should resolve a channel with an id.", () => {
-      return assert.isFulfilled(discordBot.LookupRoom("MyGuild", "321"));
+    it("should resolve a guild and channel id.", () => {
+      return assert.isFulfilled(discordBot.LookupRoom("123", "321"));
     });
   });
   // describe("ProcessMatrixMsgEvent()", () => {
@@ -171,8 +147,8 @@ describe("DiscordBot", () => {
   describe("OnTyping()", () => {
     const discordBot = new modDiscordBot.DiscordBot(
       config,
-      mockBridge,
     );
+    discordBot.setBridge(mockBridge);
     discordBot.run();
     it("should reject an unknown room.", () => {
       return assert.isRejected(discordBot.OnTyping( {id: "512"}, {id: "12345"}, true));
