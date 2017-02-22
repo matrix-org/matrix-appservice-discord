@@ -43,9 +43,6 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 In a vague order of what is coming up next
 
  - [x] Group messages
- - [ ] Direct messages
-  - [ ] Recieving
-  - [ ] Initiating
  - Matrix -> Discord
    - [x] Text content
    - [x] Image content
@@ -63,6 +60,8 @@ In a vague order of what is coming up next
   - [x] Rooms
   - [ ] Users
  - [ ] Puppet a user's real Discord account.
+  - [x] Sending messages
+  - [ ] Direct messages
  - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms.
  - [ ] Manage channel from Matrix
