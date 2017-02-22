@@ -38,7 +38,7 @@ export class DiscordClientFactory {
       }
       return this.store.get_user_token(userId).then((token) => {
         if (token === null) {
-          Promise.resolve(this.botClient);
+          return Promise.resolve(this.botClient);
         }
         client = Bluebird.promisifyAll(new Client({
           fetchAllMembers: true,
