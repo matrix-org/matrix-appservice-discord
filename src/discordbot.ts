@@ -95,7 +95,7 @@ export class DiscordBot {
       if (channel) {
         const lookupResult = new ChannelLookupResult();
         lookupResult.channel = channel;
-        lookupResult.botUser = !hasSender;
+        lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
       return Promise.reject(`Channel "${room}" not found`);
@@ -119,6 +119,7 @@ export class DiscordBot {
       log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
       chan = result.channel;
       botUser = result.botUser;
+      log.verbose("DiscordBot", botUser);
       if (result.botUser) {
         return mxClient.getProfileInfo(event.sender);
       }
