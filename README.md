@@ -63,7 +63,7 @@ In a vague order of what is coming up next
   - [x] Rooms
   - [ ] Users
  - [ ] Puppet a user's real Discord account.
- - [ ] Rooms react to Discord updates
+ - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms.
  - [ ] Manage channel from Matrix
   - [ ] Authorise admin rights from Discord to Matrix users

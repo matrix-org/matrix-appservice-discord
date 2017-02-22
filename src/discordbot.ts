@@ -1,19 +1,36 @@
 import { DiscordBridgeConfig } from "./config";
-import * as Discord from "discord.js";
-import * as log from "npmlog";
+import { DiscordClientFactory } from "./discordclientfactory";
+import { DiscordStore } from "./discordstore";
 import { MatrixUser, RemoteUser, Bridge, RemoteRoom } from "matrix-appservice-bridge";
 import { Util } from "./util";
+import * as Discord from "discord.js";
+import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import * as marked from "marked";
 
+// Due to messages often arriving before we get a response from the send call,
+// messages get delayed from discord.
+const MSG_PROCESS_DELAY = 750;
+
+class ChannelLookupResult {
+  public channel: Discord.TextChannel;
+  public botUser: boolean;
+}
+
 export class DiscordBot {
   private config: DiscordBridgeConfig;
+  private clientFactory: DiscordClientFactory;
+  private store: DiscordStore;
   private bot: Discord.Client;
   private discordUser: Discord.ClientUser;
   private bridge: Bridge;
-  constructor(config: DiscordBridgeConfig) {
+  private sentMessages: string[];
+  constructor(config: DiscordBridgeConfig, store: DiscordStore) {
     this.config = config;
+    this.store = store;
+    this.sentMessages = [];
+    this.clientFactory = new DiscordClientFactory(config.auth, store);
   }
 
   public setBridge(bridge: Bridge) {
@@ -21,21 +38,21 @@ export class DiscordBot {
   }
 
   public run (): Promise<null> {
-    this.bot = Bluebird.promisifyAll(new Discord.Client());
-    this.bot.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
-    this.bot.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
-    this.bot.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
-    this.bot.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
-    this.bot.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
-    this.bot.on("message", this.OnMessage.bind(this));
-    const promise = (this.bot as any).onAsync("ready");
-    this.bot.login(this.config.auth.botToken);
-
-    return promise;
-  }
-
-  public GetBot (): Discord.Client {
-    return this.bot;
+    return this.clientFactory.init().then(() => {
+      return this.clientFactory.getClient();
+    }).then((client: any) => {
+      client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
+      client.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
+      client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
+      client.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
+      client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
+      client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
+          this.OnMessage(msg);
+        });
+      });
+      this.bot = client;
+      return null;
+    });
   }
 
   public GetGuilds(): Discord.Guild[] {
@@ -67,47 +84,63 @@ export class DiscordBot {
     }
   }
 
-  public LookupRoom (server: string, room: string): Promise<Discord.TextChannel> {
-    const guild = this.bot.guilds.find((g) => {
-      return (g.id === server);
-    });
-    if (!guild) {
-      return Promise.reject(`Guild "${server}" not found`);
-    }
-
-    const channel = guild.channels.find((c) => {
-      return (c.id === room);
-    });
-
-    if (!channel) {
+  public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
+    let hasSender = sender !== null;
+    return this.clientFactory.getClient(sender).then((client) => {
+      const guild = client.guilds.get(server);
+      if (!guild) {
+        return Promise.reject(`Guild "${server}" not found`);
+      }
+      const channel = guild.channels.get(room);
+      if (channel) {
+        const lookupResult = new ChannelLookupResult();
+        lookupResult.channel = channel;
+        lookupResult.botUser = !hasSender;
+        return lookupResult;
+      }
       return Promise.reject(`Channel "${room}" not found`);
-    }
-    return Promise.resolve(channel);
+    }).catch((err) => {
+      log.verbose("DiscordBot", "LookupRoom => ", err);
+      if (hasSender) {
+        log.verbose("DiscordBot", `Couldn't find guild/channel under user account. Falling back.`);
+        return this.LookupRoom(server, room, null);
+      }
+      throw err;
+    });
   }
 
   public ProcessMatrixMsgEvent(event, guildId: string, channelId: string): Promise<any> {
     let chan;
     let embed;
+    let botUser;
     const mxClient = this.bridge.getClientFactory().getClientAs();
-    return this.LookupRoom(guildId, channelId).then((channel) => {
-      chan = channel;
-      return mxClient.getProfileInfo(event.sender);
+    log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
+    return this.LookupRoom(guildId, channelId, event.sender).then((result) => {
+      log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
+      chan = result.channel;
+      botUser = result.botUser;
+      if (result.botUser) {
+        return mxClient.getProfileInfo(event.sender);
+      }
+      return null;
     }).then((profile) => {
-      if (!profile.displayname) {
-        profile.displayname = event.sender;
+      if (botUser === true) {
+        if (!profile.displayname) {
+          profile.displayname = event.sender;
+        }
+        if (profile.avatar_url) {
+          profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+        }
+        embed = new Discord.RichEmbed({
+          author: {
+            name: profile.displayname,
+            icon_url: profile.avatar_url,
+            url: `https://matrix.to/#/${event.sender}`,
+            // TODO: Avatar
+          },
+          description: event.content.body,
+        });
       }
-      if (profile.avatar_url) {
-        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
-      }
-      embed = new Discord.RichEmbed({
-        author: {
-          name: profile.displayname,
-          icon_url: profile.avatar_url,
-          url: `https://matrix.to/#/${event.sender}`,
-          // TODO: Avatar
-        },
-        description: event.content.body,
-      });
       if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
         return Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       }
@@ -123,7 +156,12 @@ export class DiscordBot {
       }
       return {};
     }).then((opts) => {
-      chan.sendEmbed(embed, opts);
+      if (botUser) {
+        return chan.sendEmbed(embed, opts);
+      }
+      return chan.sendMessage(event.content.body, opts);
+    }).then((msg) => {
+      this.sentMessages.push(msg.id);
     }).catch((err) => {
       log.error("DiscordBot", "Couldn't send message. ", err);
     });
@@ -138,7 +176,7 @@ export class DiscordBot {
       discord_channel: channel.id,
     }).then((rooms) => {
       if (rooms.length === 0) {
-        log.warn("DiscordBot", `Got message but couldn"t find room chan id:${channel.id} for it.`);
+        log.verbose("DiscordBot", `Got message but couldn"t find room chan id:${channel.id} for it.`);
         return Promise.reject("Room not found.");
       }
       return rooms[0].matrix.getId();
@@ -240,12 +278,17 @@ export class DiscordBot {
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
     return this.GetRoomIdFromChannel(channel).then((room) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
-      intent.sendTyping(room, isTyping);
+      return intent.sendTyping(room, isTyping);
+    }).catch((err) => {
+      log.verbose("DiscordBot", "Failed to send typing indicator.", err);
     });
   }
 
   private OnMessage(msg: Discord.Message) {
-    if (msg.author.id === this.bot.user.id) {
+    const indexOfMsg = this.sentMessages.indexOf(msg.id);
+    if (indexOfMsg !== -1) {
+      log.verbose("DiscordBot", "Got repeated message, ignoring.");
+      delete this.sentMessages[indexOfMsg];
       return; // Skip *our* messages
     }
     this.UpdateUser(msg.author).then(() => {
@@ -293,6 +336,8 @@ export class DiscordBot {
           format: "org.matrix.custom.html",
         });
       }
+    }).catch((err) => {
+      log.warn("DiscordBot", "Failed to send message into room.", err);
     });
   }
 }

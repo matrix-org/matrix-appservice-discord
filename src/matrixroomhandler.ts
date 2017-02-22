@@ -8,6 +8,7 @@ import {
   thirdPartyLocationResult,
  } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
+import { DiscordClientFactory } from "./discordclientfactory";
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -47,8 +48,11 @@ export class MatrixRoomHandler {
   public OnEvent (request, context) {
     const event = request.getData();
     if (event.type === "m.room.message" && context.rooms.remote) {
+      log.verbose("MatrixRoomHandler", "Got m.room.message event");
       let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
       this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+    } else {
+      log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
   }
 
@@ -59,9 +63,9 @@ export class MatrixRoomHandler {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
-    return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((channel) => {
+    return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
       log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
-      return this.createMatrixRoom(channel, aliasLocalpart);
+      return this.createMatrixRoom(result.channel, aliasLocalpart);
     }).catch((err) => {
       log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
     });
