@@ -35,8 +35,9 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 * Make sure to create a bot user. Fill in ``config.yaml``
 * Run ``npm run-script getbotlink`` to get a authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
-* Finally, you can join a room with ``#_discord_GuildName#channelname``
-  * Where the guild name has the spaces replaced with ``-``.  
+* Finally, you can join a room with ``#_discord_guildid_channelid``
+  * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.  
+  * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
 
 ## Features and Roadmap
 In a vague order of what is coming up next
