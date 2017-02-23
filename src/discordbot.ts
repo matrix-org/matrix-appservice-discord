@@ -12,6 +12,7 @@ import * as marked from "marked";
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
+const MATRIX_TO_LINK = "https://matrix.to/#/";
 
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
@@ -285,6 +286,33 @@ export class DiscordBot {
     });
   }
 
+  private FormatDiscordMessage(msg: Discord.Message): string {
+    // Replace Users
+    let content = msg.content;
+    const userRegex = /<@!?([0-9]*)>/g;
+    let results = userRegex.exec(content);
+    while (results !== null) {
+      const id = results[1];
+      const member = msg.guild.members.get(id);
+      let memberId = `@_discord_${id}:${this.config.bridge.domain}`;
+      let memberStr = member ? member.user.username : memberId;
+      content = content.replace(results[0], `[${memberStr}](${MATRIX_TO_LINK}${memberId})`);
+      results = userRegex.exec(content);
+    }
+    // Replace channels
+    const channelRegex = /<#?([0-9]*)>/g;
+    results = channelRegex.exec(content);
+    while (results !== null) {
+      const id = results[1];
+      const channel = msg.guild.channels.get(id);
+      let roomId = `#_discord_${msg.guild.id}_${id}:${this.config.bridge.domain}`;
+      let channelStr = channel ? "#" + channel.name : "#" + id;
+      content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
+      results = channelRegex.exec(content);
+    }
+    return content;
+  }
+
   private OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
     if (indexOfMsg !== -1) {
@@ -321,15 +349,7 @@ export class DiscordBot {
       });
       if (msg.content !== null && msg.content !== "") {
         // Replace mentions.
-        const content = msg.content.replace(/<@[0-9]*>/g, (item) => {
-          const id = item.substr(2, item.length - 3);
-          const member = msg.guild.members.get(id);
-          if (member) {
-            return member.user.username;
-          } else {
-            return `@_discord_${id}:${this.config.bridge.domain}`;
-          }
-        });
+        let content = this.FormatDiscordMessage(msg);
         intent.sendMessage(room, {
           body: content,
           msgtype: "m.text",
