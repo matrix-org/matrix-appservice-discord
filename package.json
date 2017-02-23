@@ -9,7 +9,8 @@
     "coverage": "istanbul --include-all-sources cover -x build/src/discordas.js _mocha -- build/test/ -R spec",
     "build": "tsc",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
-    "getbotlink": "node ./tools/addbot.js"
+    "getbotlink": "node ./build/tools/addbot.js",
+    "adminme": "node ./build/tools/adminme.js"
   },
   "repository": {
     "type": "git",
@@ -33,6 +34,8 @@
     "@types/node": "^7.0.5",
     "@types/sqlite3": "^2.2.32",
     "bluebird": "^3.4.7",
+    "command-line-args": "^4.0.1",
+    "command-line-usage": "^4.0.0",
     "discord.js": "^11.0.0",
     "js-yaml": "^3.8.1",
     "marked": "^0.3.6",
