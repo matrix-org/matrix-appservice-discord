@@ -26,7 +26,7 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 * Run ``npm install`` to grab the dependencies.
 * Run ``npm build`` to build the typescript.
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
-* Run ``node build/discordas.js -r -u "http://localhost:9005/" -c config.yaml``
+* Run ``node build/discordas.js -r -u "http://localhost:9005" -c config.yaml``
 * Modify your HSs appservices config so that it includes the generated file.
 
 ### Setting up Discord
