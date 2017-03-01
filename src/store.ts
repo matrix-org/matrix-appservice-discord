@@ -74,8 +74,8 @@ export class DiscordStore {
       `REPLACE INTO user_tokens (userId,token) VALUES ($id,$token);`
     , {
       $id: userId,
-      $token: token
-    }).catch(err => {
+      $token: token,
+    }).catch( (err) => {
       log.error("TwitDB", "Error storing user token %s", err);
       throw err;
     });
@@ -90,10 +90,25 @@ export class DiscordStore {
       WHERE user_tokens.userId = $id;
       `
     , {
-      $id: userId
-    }).then(row => {
+      $id: userId,
+    }).then( (row) => {
       return row !== undefined ? row.token : null;
-    }).catch( err => {
+    }).catch( (err) => {
+      log.error("TwitDB", "Error getting user token  %s", err.Error);
+      throw err;
+    });
+  }
+
+  public get_users_tokens(): Promise<any> {
+    log.silly("SQL", "get_users_tokens");
+    return this.db.allAsync(
+      `
+      SELECT *
+      FROM user_tokens
+      `,
+    ).then( (rows) => {
+      return rows;
+    }).catch( (err) => {
       log.error("TwitDB", "Error getting user token  %s", err.Error);
       throw err;
     });

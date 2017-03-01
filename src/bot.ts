@@ -1,6 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
-import { DiscordClientFactory } from "./discordclientfactory";
-import { DiscordStore } from "./discordstore";
+import { DiscordClientFactory } from "./clientfactory";
+import { DiscordStore } from "./store";
+import { DiscordDMHandler } from "./dmhandler";
 import { MatrixUser, RemoteUser, Bridge, RemoteRoom } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as Discord from "discord.js";
@@ -8,6 +9,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import * as marked from "marked";
+import * as path from "path";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -149,9 +151,10 @@ export class DiscordBot {
       return Promise.resolve(null);
     }).then((attachment) => {
       if (attachment !== null) {
+        let name = this.GetFilenameForMediaEvent(event.content);
         return {
           file : {
-            name: event.content.body,
+            name,
             attachment,
           },
         };
@@ -171,6 +174,16 @@ export class DiscordBot {
 
   public OnUserQuery (userId: string): any {
     return false;
+  }
+
+  private GetFilenameForMediaEvent(content) {
+    if (content.body) {
+      if (path.extname(content.body) !== "") {
+        return content.body;
+      }
+      return path.basename(content.body) + "." + mime.extension(content.mimetype);
+    }
+    return "matrix-media." + mime.extension(content.mimetype);
   }
 
   private GetRoomIdFromChannel(channel: Discord.Channel): Promise<string> {

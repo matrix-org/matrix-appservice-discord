@@ -1,4 +1,4 @@
-import { DiscordBot } from "./discordbot";
+import { DiscordBot } from "./bot";
 import {
   Bridge,
   RemoteRoom,
@@ -8,7 +8,7 @@ import {
   thirdPartyLocationResult,
  } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
-import { DiscordClientFactory } from "./discordclientfactory";
+import { DiscordClientFactory } from "./clientfactory";
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";

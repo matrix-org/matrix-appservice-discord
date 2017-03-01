@@ -1,5 +1,5 @@
 import { DiscordBridgeConfigAuth } from "./config";
-import { DiscordStore } from "./discordstore";
+import { DiscordStore } from "./store";
 import { Client } from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
@@ -8,7 +8,7 @@ export class DiscordClientFactory {
   private config: DiscordBridgeConfigAuth;
   private store: DiscordStore;
   private botClient: any;
-  private clients: Map<string,any>;
+  private clients: Map<string, any>;
   constructor(config: DiscordBridgeConfigAuth, store: DiscordStore) {
     this.config = config;
     this.clients = new Map();
@@ -21,12 +21,13 @@ export class DiscordClientFactory {
     this.botClient = Bluebird.promisifyAll(new Client({
       fetchAllMembers: true,
       sync: true,
+      messageCacheLifetime: 5,
     }));
     return this.botClient.login(this.config.botToken).then(() => {
       return null; // Strip token from promise.
     }).catch((err) => {
       log.error("ClientFactory", "Could not login as the bot user. This is bad!");
-    })
+    });
   }
 
   public getClient(userId?: string): Promise<any> {
@@ -43,6 +44,7 @@ export class DiscordClientFactory {
         client = Bluebird.promisifyAll(new Client({
           fetchAllMembers: true,
           sync: true,
+          messageCacheLifetime: 5,
         }));
         log.verbose("ClientFactory", "Got user token. Logging in...");
         return client.login(token).then(() => {
@@ -51,7 +53,7 @@ export class DiscordClientFactory {
           return Promise.resolve(client);
         }).catch((err) => {
           log.warn("ClientFactory", `Could not log ${userId} in.`, err);
-        })
+        });
       });
       // Get from cache
     }

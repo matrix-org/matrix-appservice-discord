@@ -3,9 +3,9 @@ import * as log from "npmlog";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
-import { DiscordBot } from "./discordbot";
+import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
-import { DiscordStore } from "./discordstore";
+import { DiscordStore } from "./store";
 
 const cli = new Cli({
   bridgeConfig: {
@@ -62,7 +62,7 @@ function run (port: number, config: DiscordBridgeConfig) {
       thirdPartyLookup: roomhandler.ThirdPartyLookup,
       onLog: (line, isError) => {
         log.verbose("matrix-appservice-bridge", line);
-      }
+      },
     },
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
