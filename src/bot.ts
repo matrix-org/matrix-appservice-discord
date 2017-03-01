@@ -152,6 +152,7 @@ export class DiscordBot {
     }).then((attachment) => {
       if (attachment !== null) {
         let name = this.GetFilenameForMediaEvent(event.content);
+        console.log(name);
         return {
           file : {
             name,
@@ -181,9 +182,9 @@ export class DiscordBot {
       if (path.extname(content.body) !== "") {
         return content.body;
       }
-      return path.basename(content.body) + "." + mime.extension(content.mimetype);
+      return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
     }
-    return "matrix-media." + mime.extension(content.mimetype);
+    return "matrix-media." + mime.extension(content.info.mimetype);
   }
 
   private GetRoomIdFromChannel(channel: Discord.Channel): Promise<string> {
