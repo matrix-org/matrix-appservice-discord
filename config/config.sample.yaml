@@ -1,7 +1,7 @@
 bridge:
-  domain: localhost
-  homeserverUrl: http://localhost:8008
+  domain: "localhost"
+  homeserverUrl: "http://localhost:8008"
 auth:
-  clientID: 12345 # Get from discord
-  secret: blah
-  botToken: foobar
+  clientID: "12345" # Get from discord
+  secret: "blah"
+  botToken: "foobar"
