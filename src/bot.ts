@@ -310,7 +310,7 @@ export class DiscordBot {
       const member = msg.guild.members.get(id);
       let memberId = `@_discord_${id}:${this.config.bridge.domain}`;
       let memberStr = member ? member.user.username : memberId;
-      content = content.replace(results[0], `[${memberStr}](${MATRIX_TO_LINK}${memberId})`);
+      content = content.replace(results[0], memberStr);
       results = userRegex.exec(content);
     }
     // Replace channels
