@@ -145,6 +145,8 @@ export class MatrixRoomHandler {
     remote.set("discord_type", "text");
     remote.set("discord_guild", channel.guild.id);
     remote.set("discord_channel", channel.id);
+    remote.set("update_name", true);
+    remote.set("update_topic", true);
 
     const gname = channel.guild.name.replace(" ", "-");
     const cname = channel.name.replace(" ", "-");

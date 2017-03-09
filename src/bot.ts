@@ -2,7 +2,7 @@ import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DiscordDMHandler } from "./dmhandler";
-import { MatrixUser, RemoteUser, Bridge, RemoteRoom } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, RemoteRoom, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -47,7 +47,7 @@ export class DiscordBot {
       client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
       client.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
-      client.on("channelUpdate", (_, newChannel) => { this.UpdateRoom(<Discord.TextChannel> newChannel); });
+      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(<Discord.TextChannel> newChannel); });
       client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
@@ -152,7 +152,6 @@ export class DiscordBot {
     }).then((attachment) => {
       if (attachment !== null) {
         let name = this.GetFilenameForMediaEvent(event.content);
-        console.log(name);
         return {
           file : {
             name,
@@ -187,7 +186,7 @@ export class DiscordBot {
     return "matrix-media." + mime.extension(content.info.mimetype);
   }
 
-  private GetRoomIdFromChannel(channel: Discord.Channel): Promise<string> {
+  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
       discord_channel: channel.id,
     }).then((rooms) => {
@@ -195,36 +194,45 @@ export class DiscordBot {
         log.verbose("DiscordBot", `Got message but couldn"t find room chan id:${channel.id} for it.`);
         return Promise.reject("Room not found.");
       }
-      return rooms[0].matrix.getId();
+      return rooms.map((room) => {return room.matrix.getId(); });
     });
   }
 
-  private UpdateRoom(discordChannel: Discord.TextChannel): Promise<null> {
+  private UpdateRooms(discordChannel: Discord.TextChannel): Promise<null> {
     const intent = this.bridge.getIntent();
     const roomStore = this.bridge.getRoomStore();
-    let entry: RemoteRoom;
-    let roomId = null;
-    return this.GetRoomIdFromChannel(discordChannel).then((r) => {
-      roomId = r;
-      return roomStore.getEntriesByMatrixId(roomId);
-    }).then((entries) => {
-      if (entries.length === 0) {
-        return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
-      }
-      entry = entries[0];
-      return;
-    }).then(() => {
+    return this.GetRoomIdsFromChannel(discordChannel).then((rooms) => {
+      return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
+        return Object.keys(entries).map((key) => entries[key]);
+      });
+    }).then((entries: any) => {
+      return Promise.all(entries.map((entry) => {
+        if (entry.length === 0) {
+          return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
+        }
+        return this.UpdateRoomEntry(entry[0], discordChannel);
+      }));
+    });
+  }
+
+  private UpdateRoomEntry(entry: Entry, discordChannel: Discord.TextChannel): Promise<null> {
+    const intent = this.bridge.getIntent();
+    const roomStore = this.bridge.getRoomStore();
+    const roomId = entry.matrix.getId();
+    return new Promise(() => {
       const name = `[Discord] ${discordChannel.guild.name} #${discordChannel.name}`;
-      if (entry.remote.get("discord_name") !== name) {
+      if (entry.remote.get("update_name") && entry.remote.get("discord_name") !== name) {
         return intent.setRoomName(roomId, name).then(() => {
+          log.info("DiscordBot", `Updated name for ${roomId}`);
           entry.remote.set("discord_name", name);
           return roomStore.upsertEntry(entry);
         });
       }
     }).then(() => {
-      if (entry.remote.get("discord_topic") !== discordChannel.topic) {
+      if ( entry.remote.get("update_topic") && entry.remote.get("discord_topic") !== discordChannel.topic) {
         return intent.setRoomTopic(roomId, discordChannel.topic).then(() => {
           entry.remote.set("discord_topic", discordChannel.topic);
+          log.info("DiscordBot", `Updated topic for ${roomId}`);
           return roomStore.upsertEntry(entry);
         });
       }
@@ -292,9 +300,11 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    return this.GetRoomIdFromChannel(channel).then((room) => {
+    return this.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
-      return intent.sendTyping(room, isTyping);
+      return Promise.all(rooms.map((room) => {
+        return intent.sendTyping(room, isTyping);
+      }));
     }).catch((err) => {
       log.verbose("DiscordBot", "Failed to send typing indicator.", err);
     });
@@ -335,8 +345,8 @@ export class DiscordBot {
       return; // Skip *our* messages
     }
     this.UpdateUser(msg.author).then(() => {
-      return this.GetRoomIdFromChannel(msg.channel);
-    }).then((room) => {
+      return this.GetRoomIdsFromChannel(msg.channel);
+    }).then((rooms) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${msg.author.id}`);
       // Check Attachements
       msg.attachments.forEach((attachment) => {
@@ -353,22 +363,27 @@ export class DiscordBot {
             info.w = attachment.width;
             info.h = attachment.height;
           }
-          intent.sendMessage(room, {
-            body: attachment.filename,
-            info,
-            msgtype,
-            url: content.mxc_url,
+          rooms.forEach((room) => {
+            intent.sendMessage(room, {
+              body: attachment.filename,
+              info,
+              msgtype,
+              url: content.mxc_url,
+            });
           });
         });
       });
       if (msg.content !== null && msg.content !== "") {
         // Replace mentions.
         let content = this.FormatDiscordMessage(msg);
-        intent.sendMessage(room, {
-          body: content,
-          msgtype: "m.text",
-          formatted_body: marked(content),
-          format: "org.matrix.custom.html",
+        const fBody = marked(content);
+        rooms.forEach((room) => {
+          intent.sendMessage(room, {
+            body: content,
+            msgtype: "m.text",
+            formatted_body: fBody,
+            format: "org.matrix.custom.html",
+          });
         });
       }
     }).catch((err) => {
