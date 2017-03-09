@@ -29,6 +29,13 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 * Run ``node build/discordas.js -r -u "http://localhost:9005" -c config.yaml``
 * Modify your HSs appservices config so that it includes the generated file.
 
+#### 3PID Protocol Support
+
+This bridge support searching for rooms within networks via the 3pid system
+used in clients like [Riot](https://riot.im). However, it requires a small manual change
+to your registration file. Add ``protocols: ["discord"]`` to the end and restart both your bridge
+and synapse. Any new servers/guilds you bridge should show up in the network list on Riot and other clients.
+
 ### Setting up Discord
 
 * Create a new application via https://discordapp.com/developers/applications/me/create
