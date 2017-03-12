@@ -5,3 +5,5 @@ auth:
   clientID: "12345" # Get from discord
   secret: "blah"
   botToken: "foobar"
+logging:
+  level: "warn" #silly, verbose, info, http, warn, error

@@ -3,7 +3,7 @@
 export class DiscordBridgeConfig {
   public bridge: DiscordBridgeConfigBridge;
   public auth: DiscordBridgeConfigAuth;
-  public guilds: DiscordBridgeConfigGuilds[];
+  public logging: DiscordBridgeConfigLogging;
 }
 
 class DiscordBridgeConfigBridge {
@@ -11,13 +11,11 @@ class DiscordBridgeConfigBridge {
   public homeserverUrl: string;
 }
 
-class DiscordBridgeConfigAuth {
+export class DiscordBridgeConfigAuth {
   public clientID: string;
   public secret: string;
   public botToken: string;
 }
-
-class DiscordBridgeConfigGuilds {
-  public id: string;
-  public aliasName: string;
+class DiscordBridgeConfigLogging {
+  public level: string;
 }

@@ -29,6 +29,13 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 * Run ``node build/src/discordas.js -r -u "http://localhost:9005/" -c config.yaml``
 * Modify your HSs appservices config so that it includes the generated file.
 
+#### 3PID Protocol Support
+
+This bridge support searching for rooms within networks via the 3pid system
+used in clients like [Riot](https://riot.im). However, it requires a small manual change
+to your registration file. Add ``protocols: ["discord"]`` to the end and restart both your bridge
+and synapse. Any new servers/guilds you bridge should show up in the network list on Riot and other clients.
+
 ### Setting up Discord
 
 * Create a new application via https://discordapp.com/developers/applications/me/create
@@ -43,9 +50,6 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 In a vague order of what is coming up next
 
  - [x] Group messages
- - [ ] Direct messages
-  - [ ] Recieving
-  - [ ] Initiating
  - Matrix -> Discord
    - [x] Text content
    - [x] Image content
@@ -63,7 +67,9 @@ In a vague order of what is coming up next
   - [x] Rooms
   - [ ] Users
  - [ ] Puppet a user's real Discord account.
- - [ ] Rooms react to Discord updates
+  - [x] Sending messages
+  - [ ] Direct messages
+ - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms.
  - [ ] Manage channel from Matrix
   - [ ] Authorise admin rights from Discord to Matrix users

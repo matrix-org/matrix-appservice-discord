@@ -3,8 +3,9 @@ import * as log from "npmlog";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
-import { DiscordBot } from "./discordbot";
+import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
+import { DiscordStore } from "./store";
 
 const cli = new Cli({
   bridgeConfig: {
@@ -34,6 +35,7 @@ function generateRegistration(reg, callback)  {
 }
 
 function run (port: number, config: DiscordBridgeConfig) {
+  log.level = config.logging ? (config.logging.level || "warn") : "warn";
   log.info("discordas", "Starting Discord AS");
   const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
   const registration = AppServiceRegistration.fromObject(yamlConfig);
@@ -46,26 +48,21 @@ function run (port: number, config: DiscordBridgeConfig) {
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
-  const discordbot = new DiscordBot(config);
+  const discordstore = new DiscordStore("discord.db");
+  const discordbot = new DiscordBot(config, discordstore);
   const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
 
   const bridge = new Bridge({
     clientFactory,
     controller: {
       // onUserQuery: userQuery,
-      onAliasQuery: (alias, aliasLocalpart) => {
-        return roomhandler.OnAliasQuery(alias, aliasLocalpart);
-      },
+      onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
       onEvent: roomhandler.OnEvent.bind(roomhandler),
       onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
       thirdPartyLookup: roomhandler.ThirdPartyLookup,
-      // onLog: function (line, isError) {
-      //   if(isError) {
-      //     if(line.indexOf("M_USER_IN_USE") === -1) {//QUIET!
-      //       log.warn("matrix-appservice-bridge", line);
-      //     }
-      //   }
-      // }
+      onLog: (line, isError) => {
+        log.verbose("matrix-appservice-bridge", line);
+      },
     },
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
@@ -73,9 +70,12 @@ function run (port: number, config: DiscordBridgeConfig) {
   });
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
-
+  log.info("discordas", "Initing bridge.");
   log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
   bridge.run(port, config);
-  discordbot.run();
-
+  log.info("discordas", "Initing store.");
+  discordstore.init().then(() => {
+    log.info("discordas", "Initing bot.");
+    return discordbot.run();
+  });
 }

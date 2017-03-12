@@ -1,4 +1,4 @@
-import { DiscordBot } from "./discordbot";
+import { DiscordBot } from "./bot";
 import {
   Bridge,
   RemoteRoom,
@@ -8,6 +8,7 @@ import {
   thirdPartyLocationResult,
  } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
+import { DiscordClientFactory } from "./clientfactory";
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -47,19 +48,24 @@ export class MatrixRoomHandler {
   public OnEvent (request, context) {
     const event = request.getData();
     if (event.type === "m.room.message" && context.rooms.remote) {
+      log.verbose("MatrixRoomHandler", "Got m.room.message event");
       let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
       this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+    } else {
+      log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
+    log.info("MatrixRoomHandler", "Got request for #", aliasLocalpart);
     let srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", 2);
     if (srvChanPair.length < 2 || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
-    return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((channel) => {
-      return this.createMatrixRoom(channel, aliasLocalpart);
+    return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
+      log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
+      return this.createMatrixRoom(result.channel, aliasLocalpart);
     }).catch((err) => {
       log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
     });
@@ -112,7 +118,6 @@ export class MatrixRoomHandler {
   public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
     log.info("MatrixRoomHandler", "Got location request ", protocol, fields);
     const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
-    console.log(chans);
     return Promise.resolve(chans);
   }
 
@@ -140,6 +145,8 @@ export class MatrixRoomHandler {
     remote.set("discord_type", "text");
     remote.set("discord_guild", channel.guild.id);
     remote.set("discord_channel", channel.id);
+    remote.set("update_name", true);
+    remote.set("update_topic", true);
 
     const gname = channel.guild.name.replace(" ", "-");
     const cname = channel.name.replace(" ", "-");

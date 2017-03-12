@@ -20,3 +20,9 @@ properties:
             type: "string"
           botToken:
             type: "string"
+    logging:
+        type: "object"
+        required: ["level"]
+        properties:
+          level:
+            type: "string"
