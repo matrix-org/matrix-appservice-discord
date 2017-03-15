@@ -49,7 +49,6 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
 ## Features and Roadmap
 In a vague order of what is coming up next
 
- - [x] Group messages
  - Matrix -> Discord
    - [x] Text content
    - [x] Image content
@@ -62,15 +61,19 @@ In a vague order of what is coming up next
    - [x] Audio/Video content
    - [x] Typing notifs
    - [x] User Profiles
-   - [x] Presence (Synapse currently squashes presence, waiting on future spec)
+   - [x] Presence
+ - [x] Group messages
  - [ ] Third Party Lookup
   - [x] Rooms
   - [ ] Users
  - [ ] Puppet a user's real Discord account.
   - [x] Sending messages
   - [ ] Direct messages
+  - [ ] UI for setup
  - [x] Rooms react to Discord updates
- - [ ] Integrate Discord into existing rooms.
+ - [ ] Integrate Discord into existing rooms
+  - [x] Feature
+  - [ ] UI
  - [ ] Manage channel from Matrix (possibly)
   - [ ] Authorise admin rights from Discord to Matrix users
   - [ ] Topic
