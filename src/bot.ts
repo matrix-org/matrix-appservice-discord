@@ -320,7 +320,7 @@ export class DiscordBot {
       presence.presence = guildMember.presence.status === "idle" ||
       guildMember.presence.status === "dnd" ? "unavailable" : guildMember.presence.status;
       if (guildMember.presence.game) {
-        presence.status_msg = "Playing " + guildMember.presence.game;
+        presence.status_msg = "Playing " + guildMember.presence.game.name;
       }
       intent.getClient().setPresence(presence);
     } catch (err) {
