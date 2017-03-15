@@ -315,13 +315,14 @@ export class DiscordBot {
   private UpdatePresence(guildMember: Discord.GuildMember) {
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
-      let presence = guildMember.presence.status;
+      let presence: any = {};
       const msg = guildMember.presence.game ? "In Game: " + guildMember.presence.game : null;
-      presence = presence === "idle" || presence === "dnd" ? "unavailable" : presence;
-      intent.getClient().setPresence({
-        presence,
-        status_msg: msg,
-      });
+      presence.presence = guildMember.presence.status === "idle" ||
+      guildMember.presence.status === "dnd" ? "unavailable" : guildMember.presence.status;
+      if (guildMember.presence.game) {
+        presence.status_msg = "Playing " + guildMember.presence.game;
+      }
+      intent.getClient().setPresence(presence);
     } catch (err) {
       log.info("DiscordBot", "Couldn't set presence ", err);
     }
