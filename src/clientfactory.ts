@@ -4,6 +4,8 @@ import { Client } from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 
+const READY_TIMEOUT = 5000;
+
 export class DiscordClientFactory {
   private config: DiscordBridgeConfigAuth;
   private store: DiscordStore;
@@ -23,10 +25,11 @@ export class DiscordClientFactory {
       sync: true,
       messageCacheLifetime: 5,
     }));
-    return this.botClient.login(this.config.botToken).then(() => {
-      return null; // Strip token from promise.
-    }).catch((err) => {
-      log.error("ClientFactory", "Could not login as the bot user. This is bad!");
+    this.botClient.login(this.config.botToken);
+    return this.botClient.onAsync("ready")
+    .timeout(READY_TIMEOUT, "Bot timed out waiting for ready.")
+    .catch((err) => {
+      log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
     });
   }
 

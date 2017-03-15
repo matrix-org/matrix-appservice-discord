@@ -71,10 +71,10 @@ In a vague order of what is coming up next
   - [ ] Direct messages
  - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms.
- - [ ] Manage channel from Matrix
+ - [ ] Manage channel from Matrix (possibly)
   - [ ] Authorise admin rights from Discord to Matrix users
   - [ ] Topic
-  - [ ] Room Name (possibly)
+  - [ ] Room Name
  - [ ] Provisioning API
  - [ ] Webhooks (allows for prettier messages to discord)
  - [ ] VOIP (**Hard** | Unlikely to be finished anytime soon)

@@ -15,7 +15,7 @@ import * as path from "path";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-
+const PRESENCE_UPDATE_DELAY = 60000; // Synapse updates in 30 intervals.
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
@@ -28,6 +28,7 @@ export class DiscordBot {
   private bot: Discord.Client;
   private discordUser: Discord.ClientUser;
   private bridge: Bridge;
+  private presenceInterval: any;
   private sentMessages: string[];
   constructor(config: DiscordBridgeConfig, store: DiscordStore) {
     this.config = config;
@@ -47,13 +48,21 @@ export class DiscordBot {
       client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
       client.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
-      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(<Discord.TextChannel> newChannel); });
+      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
       });
+      log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
+      /* Currently synapse sadly times out presence after a minute.
+       * This will set the presence for each user who is not offline */
+      this.presenceInterval = setInterval(
+        this.BulkPresenceUpdate.bind(this),
+        PRESENCE_UPDATE_DELAY,
+      );
+      this.BulkPresenceUpdate();
       return null;
     });
   }
@@ -82,7 +91,7 @@ export class DiscordBot {
         };
       });
     } else {
-      log.warn("DiscordBot", "Tried to do a third party lookup for a channel, but the guild did not exist");
+      log.info("DiscordBot", "Tried to do a third party lookup for a channel, but the guild did not exist");
       return [];
     }
   }
@@ -198,10 +207,15 @@ export class DiscordBot {
     });
   }
 
-  private UpdateRooms(discordChannel: Discord.TextChannel): Promise<null> {
+  private UpdateRooms(discordChannel: Discord.Channel): Promise<null> {
+    if (discordChannel.type !== "text") {
+      return; // Not supported for now.
+    }
+    log.info("DiscordBot", `Updating ${discordChannel.id}`);
+    const textChan = <Discord.TextChannel> discordChannel;
     const intent = this.bridge.getIntent();
     const roomStore = this.bridge.getRoomStore();
-    return this.GetRoomIdsFromChannel(discordChannel).then((rooms) => {
+    return this.GetRoomIdsFromChannel(textChan).then((rooms) => {
       return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
         return Object.keys(entries).map((key) => entries[key]);
       });
@@ -210,7 +224,7 @@ export class DiscordBot {
         if (entry.length === 0) {
           return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
         }
-        return this.UpdateRoomEntry(entry[0], discordChannel);
+        return this.UpdateRoomEntry(entry[0], textChan);
       }));
     });
   }
@@ -282,16 +296,31 @@ export class DiscordBot {
     });
   }
 
+  private BulkPresenceUpdate() {
+    log.info("DiscordBot", "Bulk presence update");
+    let members = [];
+    for (const guild of this.bot.guilds.values()) {
+      for (const member of guild.members.array().filter((m) => { return members.indexOf(m.id) === -1; })) {
+        /* We ignore offline because they are likely to have been set
+         * by a 'presenceUpdate' event or will timeout. This saves
+         * some work on the HS */
+        if (member.presence.status !== "offline") {
+          this.UpdatePresence(member);
+        }
+        members.push(member.id);
+      }
+    }
+}
+
   private UpdatePresence(guildMember: Discord.GuildMember) {
-    log.info("DiscordBot", `Updating presence for ${guildMember.user.username}#${guildMember.user.discriminator}`);
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
       let presence = guildMember.presence.status;
-      if (presence === "idle" || presence === "dnd") {
-        presence = "unavailable";
-      }
+      const msg = guildMember.presence.game ? "In Game: " + guildMember.presence.game : null;
+      presence = presence === "idle" || presence === "dnd" ? "unavailable" : presence;
       intent.getClient().setPresence({
         presence,
+        status_msg: msg,
       });
     } catch (err) {
       log.info("DiscordBot", "Couldn't set presence ", err);
@@ -344,8 +373,17 @@ export class DiscordBot {
       delete this.sentMessages[indexOfMsg];
       return; // Skip *our* messages
     }
+    if (msg.author.id === this.bot.user.id) {
+      // We don't support double bridging.
+      return;
+    }
+    // Update presence because sometimes discord misses people.
+    this.UpdatePresence(msg.member);
     this.UpdateUser(msg.author).then(() => {
-      return this.GetRoomIdsFromChannel(msg.channel);
+      return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
+        log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
+        throw err;
+      });
     }).then((rooms) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${msg.author.id}`);
       // Check Attachements
@@ -387,7 +425,8 @@ export class DiscordBot {
         });
       }
     }).catch((err) => {
-      log.warn("DiscordBot", "Failed to send message into room.", err);
+      // 99% of the time, this is because we haven't made the room yet.
+      log.verbose("DiscordBot", "Failed to send message into room.", err);
     });
   }
 }
