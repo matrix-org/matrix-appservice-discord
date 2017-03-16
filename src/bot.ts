@@ -15,7 +15,7 @@ import * as path from "path";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-const PRESENCE_UPDATE_DELAY = 60000; // Synapse updates in 30 intervals.
+const PRESENCE_UPDATE_DELAY = 60000 - 5000; // Synapse updates in 55 second intervals.
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
