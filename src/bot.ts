@@ -50,6 +50,7 @@ export class DiscordBot {
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
+      client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
@@ -200,8 +201,20 @@ export class DiscordBot {
       discord_channel: channel.id,
     }).then((rooms) => {
       if (rooms.length === 0) {
-        log.verbose("DiscordBot", `Got message but couldn"t find room chan id:${channel.id} for it.`);
-        return Promise.reject("Room not found.");
+        log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
+        return Promise.reject("Room(s) not found.");
+      }
+      return rooms.map((room) => {return room.matrix.getId(); });
+    });
+  }
+
+  private GetRoomIdsFromGuild(guild: String): Promise<string[]> {
+    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+      discord_guild: guild,
+    }).then((rooms) => {
+      if (rooms.length === 0) {
+        log.verbose("DiscordBot", `Couldn"t find room(s) for guild id:${guild}.`);
+        return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => {return room.matrix.getId(); });
     });
@@ -326,7 +339,24 @@ export class DiscordBot {
     } catch (err) {
       log.info("DiscordBot", "Couldn't set presence ", err);
     }
-    // TODO: Set nicknames inside the scope of guild chats.
+  }
+
+  private UpdateGuildMember(guildMember: Discord.GuildMember) {
+    const client = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`).getClient();
+    const userId = client.credentials.userId;
+    let avatar = null;
+    log.info(`Updating nick for ${guildMember.user.username}`);
+    return Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
+      avatar = avatarUrl.avatar_url;
+      return this.GetRoomIdsFromGuild(guildMember.guild.id);
+    }), (room) => {
+      log.verbose(`Updating ${room}`);
+      client.sendStateEvent(room, "m.room.member", {
+        membership: "join",
+        avatar_url: avatar,
+        displayname: guildMember.displayName,
+      }, userId);
+    });
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
