@@ -123,7 +123,7 @@ export class DiscordBot {
   }
 
   public ProcessMatrixMsgEvent(event, guildId: string, channelId: string): Promise<any> {
-    let chan;
+    let chan: Discord.TextChannel;
     let embed;
     let botUser;
     const mxClient = this.bridge.getClientFactory().getClientAs();
@@ -174,6 +174,7 @@ export class DiscordBot {
       if (botUser) {
         return chan.sendEmbed(embed, opts);
       }
+      const body = this.HandleMentions(event.content.body, chan.members.array());
       return chan.sendMessage(event.content.body, opts);
     }).then((msg) => {
       this.sentMessages.push(msg.id);
@@ -194,6 +195,13 @@ export class DiscordBot {
       return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
     }
     return "matrix-media." + mime.extension(content.info.mimetype);
+  }
+
+  private HandleMentions(body: string, members: Discord.GuildMember[]): string {
+    for (const member of members) {
+      body = body.replace(new RegExp(member.displayName, "g"), `<@!${member.id}>`);
+    }
+    return body;
   }
 
   private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
