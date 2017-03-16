@@ -152,7 +152,7 @@ export class DiscordBot {
             url: `https://matrix.to/#/${event.sender}`,
             // TODO: Avatar
           },
-          description: event.content.body,
+          description: this.HandleMentions(event.content.body, chan.members.array()),
         });
       }
       if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
