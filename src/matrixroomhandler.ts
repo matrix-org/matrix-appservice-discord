@@ -12,8 +12,10 @@ import { DiscordClientFactory } from "./clientfactory";
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";
+import * as Bluebird from "bluebird";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
+const JOIN_DELAY = 6000;
 
 export class MatrixRoomHandler {
   private config: DiscordBridgeConfig;
@@ -42,11 +44,29 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQueried (alias: string, roomId: string) {
-    return; // We don't use this.
+    // Join a whole bunch of users.
+    let promiseChain: any = Bluebird.resolve();
+    let delay = JOIN_DELAY; /* We delay the joins to give some implmentations a chance to breathe */
+    this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
+      for (const member of (<Discord.TextChannel> channel).guild.members.array()) {
+        if (member.id === this.discord.GetBotId()) {
+          continue;
+        }
+        const intent = this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
+        promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+          return intent.join(roomId);
+        }));
+        delay += JOIN_DELAY;
+      }
+    });
+    return promiseChain;
   }
 
   public OnEvent (request, context) {
     const event = request.getData();
+    if (event.type === "m.room.member" && event.content.membership === "invite") {
+      this.HandleInvite(event);
+    }
     if (event.type === "m.room.message" && context.rooms.remote) {
       log.verbose("MatrixRoomHandler", "Got m.room.message event");
       let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
@@ -54,6 +74,10 @@ export class MatrixRoomHandler {
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
+  }
+
+  public HandleInvite(event: any) {
+    // Do nothing yet.
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {

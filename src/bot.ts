@@ -68,6 +68,10 @@ export class DiscordBot {
     });
   }
 
+  public GetBotId(): string {
+    return this.bot.user.id;
+  }
+
   public GetGuilds(): Discord.Guild[] {
     return this.bot.guilds.array();
   }
@@ -185,6 +189,27 @@ export class DiscordBot {
 
   public OnUserQuery (userId: string): any {
     return false;
+  }
+
+  public GetChannelFromRoomId(roomId: string): Promise<Discord.Channel|string> {
+    return this.bridge.getRoomStore().getEntriesByMatrixId(
+      roomId,
+    ).then((entries) => {
+      if (entries.length === 0) {
+        log.verbose("DiscordBot", `Couldn"t find channel for roomId ${roomId}.`);
+        return Promise.reject("Room(s) not found.");
+      }
+      const entry = entries[0];
+      const guild = this.bot.guilds.get(entry.remote.get("discord_guild"));
+      if (guild) {
+        const channel = this.bot.channels.get(entry.remote.get("discord_channel"));
+        if (channel) {
+          return channel;
+        }
+        throw "Channel given in room entry not found";
+      }
+      throw "Guild given in room entry not found";
+    });
   }
 
   private GetFilenameForMediaEvent(content) {

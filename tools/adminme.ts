@@ -106,7 +106,7 @@ client.on("sync", (state, prevState, data) => {
       }).catch((err) => {
         console.error("Could not apply power levels: ", err);
         process.exit(1);
-      })
+      });
       break;
     default:
       break;
