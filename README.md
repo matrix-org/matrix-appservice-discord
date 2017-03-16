@@ -62,6 +62,7 @@ In a vague order of what is coming up next
    - [x] Typing notifs
    - [x] User Profiles
    - [x] Presence
+   - [x] Per-guild display names.
  - [x] Group messages
  - [ ] Third Party Lookup
   - [x] Rooms
