@@ -14,6 +14,12 @@ export class Schema implements IDbSchema {
         userId TEXT UNIQUE NOT NULL,
         token TEXT UNIQUE NOT NULL
       );`, "user_tokens");
-    })
+    });
+  }
+  public rollBack(store: DiscordStore): Promise<null> {
+    return store.db.execAsync(
+      `DROP TABLE IF EXISTS schema;
+      DROP TABLE IF EXISTS user_tokens`,
+    );
   }
 }

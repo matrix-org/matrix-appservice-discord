@@ -1,9 +1,10 @@
 import * as SQLite3 from "sqlite3";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
+import * as fs from "fs";
 import { IDbSchema } from "./dbschema/dbschema";
 
-const CURRENT_SCHEMA = 1;
+const CURRENT_SCHEMA = 3;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -13,47 +14,70 @@ export class DiscordStore {
    */
   public db: any;
   private version: number;
+  private filepath: string;
   constructor (filepath) {
-    this.db = new SQLite3.Database(filepath, (err) => {
-      if (err) {
-        log.error("DiscordStore", "Error opening database, %s");
-        throw new Error("Couldn't open database. The appservice won't be able to continue.");
-      }
-    });
-    this.db = Bluebird.promisifyAll(this.db);
     this.version = null;
+    this.filepath = filepath;
+  }
+
+  public init () {
+    return Bluebird.coroutine(this.co_init.bind(this))();
+  }
+
+  public open_database(): Promise<null|Error> {
+    log.info("DiscordStore", "Opening SQLITE database %s", this.filepath);
+    return new Promise((resolve, reject) => {
+      this.db = new SQLite3.Database(this.filepath, (err) => {
+        if (err) {
+          log.error("DiscordStore", "Error opening database, %s");
+          reject(new Error("Couldn't open database. The appservice won't be able to continue."));
+          return;
+        }
+        this.db = Bluebird.promisifyAll(this.db);
+        resolve();
+      });
+    });
+  }
+
+  public backup_database(): Promise<null|Error> {
+    return new Promise((resolve, reject) => {
+      const rd = fs.createReadStream(this.filepath);
+      rd.on("error", reject);
+      const wr = fs.createWriteStream(this.filepath + ".backup");
+      wr.on("error", reject);
+      wr.on("close", resolve);
+      rd.pipe(wr);
+    });
   }
 
   /**
    * Checks the database has all the tables needed.
    */
-  public init () {
+  public * co_init () {
     log.info("DiscordStore", "Starting DB Init");
-    let oldVersion;
-    let version;
-    return this.getSchemaVersion().then( (v) => {
-      oldVersion = v;
-      version = v;
-      let promises = [];
-      while (version < CURRENT_SCHEMA) {
-        version++;
-        const schemaClass = require(`./dbschema/v${version}.js`).Schema;
-        const schema = (new schemaClass() as IDbSchema);
-        log.info("DiscordStore", `Updating database to v${version}, ${schema.description}`);
-        promises.push(schema.run(this).then(() => {
-          log.info("DiscordStore", "Updated database v%s", version);
-        }));
-        this.version = version;
+    yield this.open_database();
+    let oldVersion = yield this.getSchemaVersion();
+    let version = oldVersion;
+    let promises = [];
+    while (version < CURRENT_SCHEMA) {
+      version++;
+      const schemaClass = require(`./dbschema/v${version}.js`).Schema;
+      const schema = (new schemaClass() as IDbSchema);
+      log.info("DiscordStore", `Updating database to v${version}, "${schema.description}"`);
+      try {
+        yield schema.run(this);
+        log.info("DiscordStore", "Updated database to version %s", version);
+      } catch (ex) {
+        log.error("DiscordStore", "Couldn't update database to schema %s", version);
+        log.error("DiscordStore", ex);
+        log.error("DiscordStore", "Rolling back to version %s", version - 1);
+        yield schema.rollBack(this);
+        throw Error("Failure to update to latest schema.");
       }
-      return Promise.all(promises);
-    }).then( () => {
-      return this.setSchemaVersion(oldVersion, version).then( () => {
-        log.info("DiscordStore", "Updated database to the latest schema");
-      });
-    }).catch( (err) => {
-      log.error("DiscordStore", "Couldn't update database to the latest version! Bailing");
-      throw err;
-    });
+      this.version = version;
+      yield this.setSchemaVersion(oldVersion, version);
+    }
+    log.info("DiscordStore", "Updated database to the latest schema");
   }
 
   public create_table (statement, tablename) {
@@ -81,6 +105,18 @@ export class DiscordStore {
     });
   }
 
+  public delete_user_token(userId: string) {
+    log.silly("SQL", "delete_user_token => %s", userId);
+    return this.db.runAsync(
+      `DELETE FROM user_tokens WHERE userId = $id;`
+    , {
+      $id: userId,
+    }).catch( (err) => {
+      log.error("TwitDB", "Error deleting user token %s", err);
+      throw err;
+    });
+  }
+
   public get_user_token(userId: string): Promise<string> {
     log.silly("SQL", "get_user_token => %s", userId);
     return this.db.getAsync(
@@ -95,6 +131,45 @@ export class DiscordStore {
       return row !== undefined ? row.token : null;
     }).catch( (err) => {
       log.error("TwitDB", "Error getting user token  %s", err.Error);
+      throw err;
+    });
+  }
+
+  public get_dm_room(discordId, discordChannel): Promise<string> {
+    log.silly("SQL", "get_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
+    return this.db.getAsync(
+      `
+      SELECT room_id
+      FROM dm_rooms
+      WHERE dm_rooms.discord_id = $discordId
+      AND dm_rooms.discord_channel = $discordChannel;
+      `
+    , {
+      $discordId: discordId,
+      $discordChannel: discordChannel,
+    }).then( (row) => {
+      return row !== undefined ? row.room_id : null;
+    }).catch( (err) => {
+      log.error("TwitDB", "Error getting room_id  %s", err.Error);
+      throw err;
+    });
+  }
+
+  public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
+    log.silly("SQL", "set_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
+    return this.db.runAsync(
+      `
+      REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
+      VALUES ($discordId,$discordChannel,$roomId);
+      `
+    , {
+      $discordId: discordId,
+      $discordChannel: discordChannel,
+      $roomId: roomId,
+    }).then( () => {
+      return
+    }).catch( (err) => {
+      log.error("TwitDB", "Error executing set_dm_room query  %s", err.Error);
       throw err;
     });
   }
