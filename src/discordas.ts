@@ -48,7 +48,7 @@ function run (port: number, config: DiscordBridgeConfig) {
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
-  const discordstore = new DiscordStore("discord.db");
+  const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
   const discordbot = new DiscordBot(config, discordstore);
   const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
 
@@ -77,5 +77,8 @@ function run (port: number, config: DiscordBridgeConfig) {
   discordstore.init().then(() => {
     log.info("discordas", "Initing bot.");
     return discordbot.run();
+  }).catch((err) => {
+    log.info("discordas", "Failure during startup. Exiting.");
+    process.exit(1);
   });
 }

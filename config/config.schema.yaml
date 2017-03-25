@@ -26,3 +26,9 @@ properties:
         properties:
           level:
             type: "string"
+    database:
+        type: "object"
+        required: ["filename"]
+        properties:
+          filename:
+            type: "string"
