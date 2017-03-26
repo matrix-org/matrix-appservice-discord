@@ -11,13 +11,16 @@ export class DiscordClientFactory {
   private store: DiscordStore;
   private botClient: any;
   private clients: Map<string, any>;
-  constructor(config: DiscordBridgeConfigAuth, store: DiscordStore) {
+  constructor(store: DiscordStore, config?: DiscordBridgeConfigAuth) {
     this.config = config;
     this.clients = new Map();
     this.store = store;
   }
 
   public init(): Promise<null> {
+    if (this.config === undefined) {
+      return Promise.reject("Client config not supplied.");
+    }
     // We just need to make sure we have a bearer token.
     // Create a new Bot client.
     this.botClient = Bluebird.promisifyAll(new Client({
@@ -30,6 +33,25 @@ export class DiscordClientFactory {
     .timeout(READY_TIMEOUT, "Bot timed out waiting for ready.")
     .catch((err) => {
       log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
+    });
+  }
+
+  public getDiscordId(token: String): any {
+    const client: any = new Client({
+      fetchAllMembers: false,
+      sync: false,
+      messageCacheLifetime: 5,
+    });
+    return new Bluebird((resolve, reject) => {
+      client.login(token).catch(reject);
+      client.on("ready", () => {
+        const id = client.user.id;
+        client.destroy();
+        resolve(id);
+      });
+    }).timeout(READY_TIMEOUT).catch((err: Error) => {
+      log.warn("ClientFactory", "Could not login as the bot user '%s'", err.message);
+      throw Error("Could not retrive ID");
     });
   }
 

@@ -1,6 +1,6 @@
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../store";
-import { Client } from "discord.js";
+import {DiscordClientFactory} from "../clientfactory";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 
@@ -54,10 +54,11 @@ export class Schema implements IDbSchema {
       `,
     ).then( (rows) => {
       let promises = [];
+      let clientFactory = new DiscordClientFactory(store);
       for (const row of rows) {
         let discordId = null;
         log.info("SchemaV3", "Moving %s.", row.userId);
-        promises.push(this.getDiscordIdFromToken(row.token).catch((err) => {
+        promises.push(clientFactory.getDiscordId(row.token).catch((err) => {
           log.info("SchemaV3", "Dropping %s from database due to an invalid token.");
           return null;
         }).then((dId) => {
@@ -76,7 +77,7 @@ export class Schema implements IDbSchema {
             $token: row.token,
           });
         }).then(() => {
-          if(discordId === null) {
+          if (discordId === null) {
             return null;
           }
           log.verbose("SchemaV3", "INSERT INTO user_id_discord_id.");
@@ -92,25 +93,6 @@ export class Schema implements IDbSchema {
         }));
       }
       return Bluebird.all(promises);
-    });
-  }
-
-  private getDiscordIdFromToken(token: String): any {
-    const client: any = new Client({
-      fetchAllMembers: false,
-      sync: false,
-      messageCacheLifetime: 5,
-    });
-    return new Bluebird((resolve, reject) => {
-      client.login(token).catch(reject);
-      client.on("ready", () => {
-        const id = client.user.id;
-        client.destroy();
-        resolve(id);
-      });
-    }).timeout(READY_TIMEOUT).catch((err: Error) => {
-      log.warn("SchemaV3", "Could not login as the bot user '%s'", err.message);
-      throw Error("Could not retrive ID");
     });
   }
 
