@@ -11,13 +11,15 @@ export class Schema implements IDbSchema {
   public run(store: DiscordStore): Promise<null> {
     const promise = Promise.all([store.create_table(`
       CREATE TABLE user_id_discord_id (
-        discord_id	TEXT UNIQUE NOT NULL,
-        user_id TEXT UNIQUE NOT NULL
+        discord_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        PRIMARY KEY(discord_id, user_id)
       );`, "user_id_discord_id"),
       store.create_table(`
       CREATE TABLE discord_id_token (
         discord_id TEXT UNIQUE NOT NULL,
-        token	TEXT NOT NULL
+        token	TEXT NOT NULL,
+        PRIMARY KEY(discord_id)
       );`, "discord_id_token",
     )]);
     return promise.then(() => {
@@ -59,7 +61,7 @@ export class Schema implements IDbSchema {
           log.info("SchemaV3", "Dropping %s from database due to an invalid token.");
           return null;
         }).then((dId) => {
-          if(dId === null) {
+          if (dId === null) {
             return null;
           }
           discordId = dId;

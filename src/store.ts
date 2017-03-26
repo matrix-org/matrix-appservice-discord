@@ -92,12 +92,16 @@ export class DiscordStore {
     this.db.close();
   }
 
-  public set_user_token(userId: string, token: string) {
+  public add_user_token(userId: string, discordId: string, token: string) {
     log.silly("SQL", "set_user_token => %s", userId);
     return this.db.runAsync(
-      `REPLACE INTO user_tokens (userId,token) VALUES ($id,$token);`
+      `
+      INSERT INTO user_id_discord_id (user_id,discord_id) VALUES ($userId,$discordId);
+      INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
+      `
     , {
-      $id: userId,
+      $userId: userId,
+      $discordId: discordId,
       $token: token,
     }).catch( (err) => {
       log.error("TwitDB", "Error storing user token %s", err);
@@ -105,32 +109,53 @@ export class DiscordStore {
     });
   }
 
-  public delete_user_token(userId: string) {
-    log.silly("SQL", "delete_user_token => %s", userId);
-    return this.db.runAsync(
-      `DELETE FROM user_tokens WHERE userId = $id;`
+  public delete_user_token(discordId: string) {
+    log.silly("SQL", "delete_user_token => %s", discordId);
+    return this.db.execAsync(
+      `
+      DELETE FROM user_id_discord_id WHERE discord_id = $id;
+      DELETE FROM discord_id_token WHERE discord_id = $id;
+      `
     , {
-      $id: userId,
+      $id: discordId,
     }).catch( (err) => {
       log.error("TwitDB", "Error deleting user token %s", err);
       throw err;
     });
   }
 
-  public get_user_token(userId: string): Promise<string> {
-    log.silly("SQL", "get_user_token => %s", userId);
+  public get_user_discord_ids(userId: string): Promise<string> {
+    log.silly("SQL", "get_user_discord_ids => %s", userId);
+    return this.db.getAsync(
+      `
+      SELECT discord_id
+      FROM user_id_discord_id
+      WHERE user_id = $userId
+      `, {
+        $userId: userId,
+      },
+    ).then( (rows) => {
+      return rows.map((row) => { return row.discord_id; });
+    }).catch( (err) => {
+      log.error("TwitDB", "Error getting discord ids  %s", err.Error);
+      throw err;
+    });
+  }
+
+  public get_token(discordId: string): Promise<string> {
+    log.silly("SQL", "discord_id_token => %s", discordId);
     return this.db.getAsync(
       `
       SELECT token
-      FROM user_tokens
-      WHERE user_tokens.userId = $id;
-      `
-    , {
-      $id: userId,
-    }).then( (row) => {
+      FROM discord_id_token
+      WHERE discord_id = $discordId
+      `, {
+        $discordId: discordId,
+      },
+    ).then( (row) => {
       return row !== undefined ? row.token : null;
     }).catch( (err) => {
-      log.error("TwitDB", "Error getting user token  %s", err.Error);
+      log.error("TwitDB", "Error getting discord ids  %s", err.Error);
       throw err;
     });
   }
@@ -166,20 +191,18 @@ export class DiscordStore {
       $discordId: discordId,
       $discordChannel: discordChannel,
       $roomId: roomId,
-    }).then( () => {
-      return
     }).catch( (err) => {
       log.error("TwitDB", "Error executing set_dm_room query  %s", err.Error);
       throw err;
     });
   }
 
-  public get_users_tokens(): Promise<any> {
+  public get_all_user_discord_ids(): Promise<any> {
     log.silly("SQL", "get_users_tokens");
     return this.db.allAsync(
       `
       SELECT *
-      FROM user_tokens
+      FROM get_user_discord_ids
       `,
     ).then( (rows) => {
       return rows;

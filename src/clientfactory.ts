@@ -34,32 +34,36 @@ export class DiscordClientFactory {
   }
 
   public getClient(userId?: string): Promise<any> {
-    let client;
-    if (userId) {
-      if (this.clients.has(userId)) {
-        log.verbose("ClientFactory", "Returning cached user client.");
-        return Promise.resolve(this.clients.get(userId));
-      }
-      return this.store.get_user_token(userId).then((token) => {
-        if (token === null) {
-          return Promise.resolve(this.botClient);
-        }
-        client = Bluebird.promisifyAll(new Client({
-          fetchAllMembers: true,
-          sync: true,
-          messageCacheLifetime: 5,
-        }));
-        log.verbose("ClientFactory", "Got user token. Logging in...");
-        return client.login(token).then(() => {
-          log.verbose("ClientFactory", "Logged in. Storing ", userId);
-          this.clients.set(userId, client);
-          return Promise.resolve(client);
-        }).catch((err) => {
-          log.warn("ClientFactory", `Could not log ${userId} in.`, err);
-        });
-      });
-      // Get from cache
+    if (userId == null) {
+      return Promise.resolve(this.botClient);
     }
-    return Promise.resolve(this.botClient);
+    return Bluebird.coroutine(this._getClient.bind(this))(userId);
+  }
+
+  private * _getClient(userId: string): any {
+    if (this.clients.has(userId)) {
+      log.verbose("ClientFactory", "Returning cached user client.");
+      return this.clients.get(userId);
+    }
+    const discordIds = yield this.store.get_user_discord_ids(userId);
+    if (discordIds.length === 0) {
+      return Promise.resolve(this.botClient);
+    }
+    // TODO: Select a profile based on preference, not the first one.
+    const token = yield this.store.get_token(discordIds[0]);
+    const client: any = Bluebird.promisifyAll(new Client({
+      fetchAllMembers: true,
+      sync: true,
+      messageCacheLifetime: 5,
+    }));
+    log.verbose("ClientFactory", "Got user token. Logging in...");
+    try {
+      yield client.login(token);
+      log.verbose("ClientFactory", "Logged in. Storing ", userId);
+      this.clients.set(userId, client);
+      return client;
+    } catch (err) {
+      log.warn("ClientFactory", `Could not log ${userId} in.`, err);
+    }
   }
 }
