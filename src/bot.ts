@@ -34,11 +34,15 @@ export class DiscordBot {
     this.config = config;
     this.store = store;
     this.sentMessages = [];
-    this.clientFactory = new DiscordClientFactory(config.auth, store);
+    this.clientFactory = new DiscordClientFactory(store, config.auth);
   }
 
   public setBridge(bridge: Bridge) {
     this.bridge = bridge;
+  }
+
+  get ClientFactory(): DiscordClientFactory {
+     return this.clientFactory;
   }
 
   public run (): Promise<null> {
@@ -106,7 +110,7 @@ export class DiscordBot {
     return this.clientFactory.getClient(sender).then((client) => {
       const guild = client.guilds.get(server);
       if (!guild) {
-        return Promise.reject(`Guild "${server}" not found`);
+        throw `Guild "${server}" not found`;
       }
       const channel = guild.channels.get(room);
       if (channel) {
@@ -115,7 +119,7 @@ export class DiscordBot {
         lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
-      return Promise.reject(`Channel "${room}" not found`);
+      throw `Channel "${room}" not found`;
     }).catch((err) => {
       log.verbose("DiscordBot", "LookupRoom => ", err);
       if (hasSender) {
@@ -179,8 +183,12 @@ export class DiscordBot {
         return chan.sendEmbed(embed, opts);
       }
       const body = this.HandleMentions(event.content.body, chan.members.array());
-      return chan.sendMessage(event.content.body, opts);
+      return chan.send(event.content.body, opts);
     }).then((msg) => {
+      if (Array.isArray(msg)) {
+        msg.forEach((m) => { this.sentMessages.push(m.id); });
+        return;
+      }
       this.sentMessages.push(msg.id);
     }).catch((err) => {
       log.error("DiscordBot", "Couldn't send message. ", err);
