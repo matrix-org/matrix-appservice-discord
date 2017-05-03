@@ -1,11 +1,12 @@
- /* tslint:disable:no-bitwise no-console no-var-requires */
+/* tslint:disable:no-bitwise no-console no-var-requires */
 /**
  * Generates a URL you can use to authorize a bot with a guild.
  */
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import { Permissions } from "discord.js";
 
-const flags = require("../../node_modules/discord.js/src/util/Constants.js").PermissionFlags;
+const flags = Permissions.FLAGS;
 const yamlConfig = yaml.safeLoad(fs.readFileSync("config.yaml", "utf8"));
 if (yamlConfig === null) {
   console.error("You have an error in your discord config.");
