@@ -76,9 +76,12 @@ function run (port: number, config: DiscordBridgeConfig) {
   log.info("discordas", "Initing store.");
   discordstore.init().then(() => {
     log.info("discordas", "Initing bot.");
-    return discordbot.run();
+    return discordbot.run().then(() => {
+      log.info("discordas", "Discordbot started successfully.");
+    });
   }).catch((err) => {
-    log.info("discordas", "Failure during startup. Exiting.");
+    log.error("discordas", err);
+    log.error("discordas", "Failure during startup. Exiting.");
     process.exit(1);
   });
 }

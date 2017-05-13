@@ -5,7 +5,7 @@
   "main": "discordas.js",
   "scripts": {
     "test": "npm run-script build && mocha --opts test/mocha.opts build/test",
-    "lint": "tslint --project ./tsconfig.json",
+    "lint": "tslint --project ./tsconfig.json --type-check -t stylish",
     "coverage": "istanbul --include-all-sources cover -x build/src/discordas.js _mocha -- build/test/ -R spec",
     "build": "tsc",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",

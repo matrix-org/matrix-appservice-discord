@@ -36,7 +36,7 @@ export class DiscordClientFactory {
     });
   }
 
- public getDiscordId(token: String): Bluebird<string|null> {
+ public getDiscordId(token: String): Bluebird<string> {
     const client: any = new Client({
       fetchAllMembers: false,
       sync: false,

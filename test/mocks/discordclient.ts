@@ -1,11 +1,11 @@
 export class MockDiscordClient {
-  public guilds: MockCollection<string, MockGuild>  = new MockCollection();
+  public guilds = new MockCollection<string, MockGuild>();
   public user: MockUser;
   private testLoggedIn: boolean = false;
   private testCallbacks: Array<() => void> = [];
 
   constructor() {
-    let channels = [
+    const channels = [
       {
         id: "321",
         name: "achannel",
@@ -53,8 +53,8 @@ class MockUser {
 }
 
 class MockGuild {
-  public channels: MockCollection<string, any> = new MockCollection();
-  public members: MockCollection<string, MockMember> = new MockCollection();
+  public channels = new MockCollection<string, any>();
+  public members = new MockCollection<string, MockMember>();
   public id: string;
   constructor(id: string, channels: any[]) {
     this.id = id;
@@ -65,7 +65,11 @@ class MockGuild {
 }
 
 class MockCollection<T1, T2> extends Map {
-  public array() {
+  public array(): T2[] {
     return [...this.values()];
+  }
+
+  public keyArray(): T1[] {
+    return [...this.keys()];
   }
 }

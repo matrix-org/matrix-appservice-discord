@@ -8,7 +8,6 @@ import {
   thirdPartyLocationResult,
  } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
-import { DiscordClientFactory } from "./clientfactory";
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -16,6 +15,8 @@ import * as Bluebird from "bluebird";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const JOIN_DELAY = 6000;
+const HTTP_UNSUPPORTED = 501;
+const ROOM_NAME_PARTS = 2;
 
 export class MatrixRoomHandler {
   private config: DiscordBridgeConfig;
@@ -47,7 +48,7 @@ export class MatrixRoomHandler {
     // Join a whole bunch of users.
     let promiseChain: any = Bluebird.resolve();
     let delay = JOIN_DELAY; /* We delay the joins to give some implmentations a chance to breathe */
-    this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
+    return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
       for (const member of (<Discord.TextChannel> channel).guild.members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
@@ -58,8 +59,9 @@ export class MatrixRoomHandler {
         }));
         delay += JOIN_DELAY;
       }
+    }).catch((err) => {
+      log.verbose("OnAliasQueried => %s", err);
     });
-    return promiseChain;
   }
 
   public OnEvent (request, context) {
@@ -69,8 +71,10 @@ export class MatrixRoomHandler {
     }
     if (event.type === "m.room.message" && context.rooms.remote) {
       log.verbose("MatrixRoomHandler", "Got m.room.message event");
-      let srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", 2);
-      this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+      const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+      return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
+        log.warn("There was an error sending a matrix event", err);
+      });
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
@@ -82,8 +86,8 @@ export class MatrixRoomHandler {
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
     log.info("MatrixRoomHandler", "Got request for #", aliasLocalpart);
-    let srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", 2);
-    if (srvChanPair.length < 2 || srvChanPair[0] === "" || srvChanPair[1] === "") {
+    const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
+    if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
@@ -146,43 +150,31 @@ export class MatrixRoomHandler {
   }
 
   public tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
-    return Promise.reject({err: "Unsupported", code: 501});
+    return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
 
   public tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
     log.info("MatrixRoomHandler", "Got user request ", protocol, fields);
-    return Promise.reject({err: "Unsupported", code: 501});
+    return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
 
   public tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
-    return Promise.reject({err: "Unsupported", code: 501});
+    return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
 
   private createMatrixRoom (channel: Discord.TextChannel, alias: string) {
-    const botID = this.bridge.getBot().getUserId();
-    // const roomOwner = "@_discord_" + user.id_str + ":" + this._bridge.opts.domain;
-    const users = {};
-    users[botID] = 100;
-    // users[roomOwner] = 75;
-    // var powers = util.roomPowers(users);
     const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}`);
     remote.set("discord_type", "text");
     remote.set("discord_guild", channel.guild.id);
     remote.set("discord_channel", channel.id);
     remote.set("update_name", true);
     remote.set("update_topic", true);
-
-    const gname = channel.guild.name.replace(" ", "-");
-    const cname = channel.name.replace(" ", "-");
-
     const creationOpts = {
       visibility: "public",
       room_alias_name: alias,
       name: `[Discord] ${channel.guild.name} #${channel.name}`,
       topic: channel.topic ? channel.topic : "",
-      // invite: [roomOwner],
       initial_state: [
-        // powers,
         {
           type: "m.room.join_rules",
           content: {
@@ -190,16 +182,6 @@ export class MatrixRoomHandler {
           },
           state_key: "",
         },
-        // }, {
-        //   type: "org.matrix.twitter.data",
-        //   content: user,
-        //   state_key: ""
-        // }, {
-        //   type: "m.room.avatar",
-        //   state_key: "",
-        //   content: {
-        //     url: avatar
-        //   }
       ],
     };
     return {

@@ -2,13 +2,12 @@ import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import * as log from "npmlog";
-import { DiscordBridgeConfig } from "../src/config";
 
 Chai.use(ChaiAsPromised);
 log.level = "silent";
 
 const assert = Chai.assert;
-const should = Chai.should as any;
+// const should = Chai.should as any;
 
 const mockBridge = {
   getRoomStore: () => {
@@ -17,7 +16,7 @@ const mockBridge = {
         if (data.discord_channel === "321") {
           return Promise.resolve([{
             matrix: {
-              getId: () => {return "foobar:example.com"; },
+              getId: () => "foobar:example.com",
             },
           }]);
         }

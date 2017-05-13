@@ -1,9 +1,11 @@
 import * as http from "http";
 import * as https from "https";
-import { Bridge, Intent } from "matrix-appservice-bridge";
+import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
 import * as log from "npmlog";
 import * as mime from "mime";
+
+const HTTP_OK = 200;
 
 export class Util {
 
@@ -21,7 +23,7 @@ export class Util {
       }
       const req = ht.get((url), (res) => {
         let buffer = Buffer.alloc(0);
-        if (res.statusCode !== 200) {
+        if (res.statusCode !== HTTP_OK) {
           reject(`Non 200 status code (${res.statusCode})`);
         }
 
@@ -42,10 +44,9 @@ export class Util {
    * uploadContentFromUrl - Upload content from a given URL to the homeserver
    * and return a MXC URL.
    */
-  public static UploadContentFromUrl(bridge: Bridge, url: string, id: string | Intent, name: string): Promise<any> {
+  public static UploadContentFromUrl (url: string, intent: Intent, name: string): Promise<IUploadResult> {
     let contenttype;
     let size;
-    id = id || null;
     name = name || null;
     return new Promise((resolve, reject) => {
       let ht;
@@ -65,7 +66,7 @@ export class Util {
         }
 
         if (name === null) {
-          let names = url.split("/");
+          const names = url.split("/");
           name = names[names.length - 1];
         }
 
@@ -82,10 +83,7 @@ export class Util {
       });
     }).then((buffer: Buffer) => {
       size = buffer.length;
-      if (id === null || typeof id === "string") {
-        id = bridge.getIntent(id);
-      }
-      return id.getClient().uploadContent(buffer, {
+      return intent.getClient().uploadContent(buffer, {
         name,
         type: contenttype,
         onlyContentUri: true,
@@ -94,7 +92,7 @@ export class Util {
     }).then((contentUri) => {
       log.verbose("UploadContent", "Media uploaded to %s", contentUri);
       return {
-        mxc_url: contentUri,
+        mxcUrl: contentUri,
         size,
       };
     }).catch((reason) => {
@@ -102,4 +100,9 @@ export class Util {
       throw reason;
     });
   }
+}
+
+interface IUploadResult {
+  mxcUrl: string;
+  size: number;
 }

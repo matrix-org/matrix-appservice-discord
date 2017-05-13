@@ -1,8 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
-import { DiscordDMHandler } from "./dmhandler";
-import { MatrixUser, RemoteUser, Bridge, RemoteRoom, Entry } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -15,7 +14,7 @@ import * as path from "path";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-const PRESENCE_UPDATE_DELAY = 60000 - 5000; // Synapse updates in 55 second intervals.
+const PRESENCE_UPDATE_DELAY = 55000; // Synapse updates in 55 second intervals.
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
@@ -26,7 +25,6 @@ export class DiscordBot {
   private clientFactory: DiscordClientFactory;
   private store: DiscordStore;
   private bot: Discord.Client;
-  private discordUser: Discord.ClientUser;
   private bridge: Bridge;
   private presenceInterval: any;
   private sentMessages: string[];
@@ -106,7 +104,7 @@ export class DiscordBot {
   }
 
   public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
-    let hasSender = sender !== null;
+    const hasSender = sender !== null;
     return this.clientFactory.getClient(sender).then((client) => {
       const guild = client.guilds.get(server);
       if (!guild) {
@@ -147,7 +145,7 @@ export class DiscordBot {
     });
   }
 
-  public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<any> {
+  public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
     const mxClient = this.bridge.getClientFactory().getClientAs();
     log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
     const result = await this.LookupRoom(guildId, channelId, event.sender);
@@ -188,7 +186,7 @@ export class DiscordBot {
     return false;
   }
 
-  public GetChannelFromRoomId(roomId: string): Promise<Discord.Channel|string> {
+  public GetChannelFromRoomId(roomId: string): Promise<Discord.Channel> {
     return this.bridge.getRoomStore().getEntriesByMatrixId(
       roomId,
     ).then((entries) => {
@@ -203,9 +201,9 @@ export class DiscordBot {
         if (channel) {
           return channel;
         }
-        throw "Channel given in room entry not found";
+        throw Error("Channel given in room entry not found");
       }
-      throw "Guild given in room entry not found";
+      throw Error("Guild given in room entry not found");
     });
   }
 
@@ -234,7 +232,7 @@ export class DiscordBot {
         log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
         return Promise.reject("Room(s) not found.");
       }
-      return rooms.map((room) => {return room.matrix.getId(); });
+      return rooms.map((room) => room.matrix.getId() as string);
     });
   }
 
@@ -246,29 +244,30 @@ export class DiscordBot {
         log.verbose("DiscordBot", `Couldn"t find room(s) for guild id:${guild}.`);
         return Promise.reject("Room(s) not found.");
       }
-      return rooms.map((room) => {return room.matrix.getId(); });
+      return rooms.map((room) => room.matrix.getId());
     });
   }
 
-  private UpdateRooms(discordChannel: Discord.Channel): Promise<null> {
+  private UpdateRooms(discordChannel: Discord.Channel) {
     if (discordChannel.type !== "text") {
       return; // Not supported for now.
     }
     log.info("DiscordBot", `Updating ${discordChannel.id}`);
-    const textChan = <Discord.TextChannel> discordChannel;
-    const intent = this.bridge.getIntent();
+    const textChan = (<Discord.TextChannel> discordChannel);
     const roomStore = this.bridge.getRoomStore();
-    return this.GetRoomIdsFromChannel(textChan).then((rooms) => {
+    this.GetRoomIdsFromChannel(textChan).then((rooms) => {
       return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
         return Object.keys(entries).map((key) => entries[key]);
       });
     }).then((entries: any) => {
       return Promise.all(entries.map((entry) => {
         if (entry.length === 0) {
-          return Promise.reject("Couldn't update room for channel, no assoicated entry in roomstore.");
+          throw Error("Couldn't update room for channel, no assoicated entry in roomstore.");
         }
         return this.UpdateRoomEntry(entry[0], textChan);
       }));
+    }).catch((err) => {
+      log.error("DiscordBot", "Error during room update %s", err);
     });
   }
 
@@ -324,12 +323,11 @@ export class DiscordBot {
     }).then(() => {
       if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
         return Util.UploadContentFromUrl(
-          this.bridge,
           discordUser.avatarURL,
           intent,
           discordUser.avatar,
         ).then((avatar) => {
-          intent.setAvatarUrl(avatar.mxc_url).then(() => {
+          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
             remoteUser.set("avatarurl", discordUser.avatarURL);
             return userStore.setRemoteUser(remoteUser);
           });
@@ -341,9 +339,9 @@ export class DiscordBot {
 
   private BulkPresenceUpdate() {
     log.info("DiscordBot", "Bulk presence update");
-    let members = [];
+    const members = [];
     for (const guild of this.bot.guilds.values()) {
-      for (const member of guild.members.array().filter((m) => { return members.indexOf(m.id) === -1; })) {
+      for (const member of guild.members.array().filter((m) => members.indexOf(m.id) === -1)) {
         /* We ignore offline because they are likely to have been set
          * by a 'presenceUpdate' event or will timeout. This saves
          * some work on the HS */
@@ -358,10 +356,11 @@ export class DiscordBot {
   private UpdatePresence(guildMember: Discord.GuildMember) {
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
-      let presence: any = {};
-      const msg = guildMember.presence.game ? "In Game: " + guildMember.presence.game : null;
-      presence.presence = guildMember.presence.status === "idle" ||
-      guildMember.presence.status === "dnd" ? "unavailable" : guildMember.presence.status;
+      const presence: any = {status_msg: null};
+      presence.presence = guildMember.presence.status;
+      if (presence.presence === "idle" || presence.presence === "dnd") {
+        presence.presence = "unavailable";
+      }
       if (guildMember.presence.game) {
         presence.status_msg = "Playing " + guildMember.presence.game.name;
       }
@@ -376,7 +375,7 @@ export class DiscordBot {
     const userId = client.credentials.userId;
     let avatar = null;
     log.info(`Updating nick for ${guildMember.user.username}`);
-    return Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
+    Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
       avatar = avatarUrl.avatar_url;
       return this.GetRoomIdsFromGuild(guildMember.guild.id);
     }), (room) => {
@@ -386,11 +385,13 @@ export class DiscordBot {
         avatar_url: avatar,
         displayname: guildMember.displayName,
       }, userId);
+    }).catch((err) => {
+      log.error("DiscordBot", "Failed to update guild member %s", err);
     });
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    return this.GetRoomIdsFromChannel(channel).then((rooms) => {
+    this.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
@@ -408,8 +409,8 @@ export class DiscordBot {
     while (results !== null) {
       const id = results[1];
       const member = msg.guild.members.get(id);
-      let memberId = `@_discord_${id}:${this.config.bridge.domain}`;
-      let memberStr = member ? member.user.username : memberId;
+      const memberId = `@_discord_${id}:${this.config.bridge.domain}`;
+      const memberStr = member ? member.user.username : memberId;
       content = content.replace(results[0], memberStr);
       results = userRegex.exec(content);
     }
@@ -419,8 +420,8 @@ export class DiscordBot {
     while (results !== null) {
       const id = results[1];
       const channel = msg.guild.channels.get(id);
-      let roomId = `#_discord_${msg.guild.id}_${id}:${this.config.bridge.domain}`;
-      let channelStr = channel ? "#" + channel.name : "#" + id;
+      const roomId = `#_discord_${msg.guild.id}_${id}:${this.config.bridge.domain}`;
+      const channelStr = channel ? "#" + channel.name : "#" + id;
       content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
       results = channelRegex.exec(content);
     }
@@ -443,13 +444,16 @@ export class DiscordBot {
     this.UpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
-        throw err;
+        return null;
       });
     }).then((rooms) => {
+      if (rooms === null) {
+        return null;
+      }
       const intent = this.bridge.getIntentFromLocalpart(`_discord_${msg.author.id}`);
       // Check Attachements
       msg.attachments.forEach((attachment) => {
-        Util.UploadContentFromUrl(this.bridge, attachment.url, intent, attachment.filename).then((content) => {
+        Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
           const fileMime = mime.lookup(attachment.filename);
           const msgtype = attachment.height ? "m.image" : "m.file";
           const info = {
@@ -467,14 +471,14 @@ export class DiscordBot {
               body: attachment.filename,
               info,
               msgtype,
-              url: content.mxc_url,
+              url: content.mxcUrl,
             });
           });
         });
       });
       if (msg.content !== null && msg.content !== "") {
         // Replace mentions.
-        let content = this.FormatDiscordMessage(msg);
+        const content = this.FormatDiscordMessage(msg);
         const fBody = marked(content);
         rooms.forEach((room) => {
           intent.sendMessage(room, {
@@ -486,7 +490,6 @@ export class DiscordBot {
         });
       }
     }).catch((err) => {
-      // 99% of the time, this is because we haven't made the room yet.
       log.verbose("DiscordBot", "Failed to send message into room.", err);
     });
   }

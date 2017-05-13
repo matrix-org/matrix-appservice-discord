@@ -15,13 +15,9 @@ export class DiscordStore {
   public db: any;
   private version: number;
   private filepath: string;
-  constructor (filepath) {
+  constructor (filepath: string) {
     this.version = null;
     this.filepath = filepath;
-  }
-
-  public init () {
-    return Bluebird.coroutine(this.co_init.bind(this))();
   }
 
   public open_database(): Promise<null|Error> {
@@ -53,34 +49,34 @@ export class DiscordStore {
   /**
    * Checks the database has all the tables needed.
    */
-  public * co_init () {
+  public async init (overrideSchema: number = 0) {
     log.info("DiscordStore", "Starting DB Init");
-    yield this.open_database();
-    let oldVersion = yield this.getSchemaVersion();
+    await this.open_database();
+    const oldVersion = await this.getSchemaVersion();
     let version = oldVersion;
-    let promises = [];
-    while (version < CURRENT_SCHEMA) {
+    const targetSchema = overrideSchema || CURRENT_SCHEMA;
+    while (version < targetSchema) {
       version++;
       const schemaClass = require(`./dbschema/v${version}.js`).Schema;
       const schema = (new schemaClass() as IDbSchema);
       log.info("DiscordStore", `Updating database to v${version}, "${schema.description}"`);
       try {
-        yield schema.run(this);
+        await schema.run(this);
         log.info("DiscordStore", "Updated database to version %s", version);
       } catch (ex) {
         log.error("DiscordStore", "Couldn't update database to schema %s", version);
         log.error("DiscordStore", ex);
         log.error("DiscordStore", "Rolling back to version %s", version - 1);
-        yield schema.rollBack(this);
+        await schema.rollBack(this);
         throw Error("Failure to update to latest schema.");
       }
       this.version = version;
-      yield this.setSchemaVersion(oldVersion, version);
+      await this.setSchemaVersion(oldVersion, version);
     }
     log.info("DiscordStore", "Updated database to the latest schema");
   }
 
-  public create_table (statement, tablename) {
+  public create_table (statement: string, tablename: string): Promise<null|Error> {
     return this.db.runAsync(statement).then(() => {
       log.info("DiscordStore", "Created table ", tablename);
     }).catch((err) => {
@@ -92,7 +88,7 @@ export class DiscordStore {
     this.db.close();
   }
 
-  public add_user_token(userId: string, discordId: string, token: string) {
+  public add_user_token(userId: string, discordId: string, token: string): Promise<null> {
     log.silly("SQL", "set_user_token => %s", userId);
     return this.db.runAsync(
       `
@@ -109,7 +105,7 @@ export class DiscordStore {
     });
   }
 
-  public delete_user_token(discordId: string) {
+  public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => %s", discordId);
     return this.db.execAsync(
       `
@@ -124,7 +120,7 @@ export class DiscordStore {
     });
   }
 
-  public get_user_discord_ids(userId: string): Promise<string> {
+  public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => %s", userId);
     return this.db.getAsync(
       `
@@ -135,7 +131,7 @@ export class DiscordStore {
         $userId: userId,
       },
     ).then( (rows) => {
-      return rows.map((row) => { return row.discord_id; });
+      return rows.map((row) => row.discord_id);
     }).catch( (err) => {
       log.error("TwitDB", "Error getting discord ids  %s", err.Error);
       throw err;
@@ -212,7 +208,7 @@ export class DiscordStore {
     });
   }
 
-  private getSchemaVersion ( ) {
+  private getSchemaVersion ( ): Promise<number> {
     log.silly("DiscordStore", "_get_schema_version");
     return this.db.getAsync(`SELECT version FROM schema`).then((row) => {
       return row === undefined ? 0 : row.version;
@@ -221,7 +217,7 @@ export class DiscordStore {
     });
   }
 
-  private setSchemaVersion (oldVer: number, ver: number) {
+  private setSchemaVersion (oldVer: number, ver: number): Promise<any> {
     log.silly("DiscordStore", "_set_schema_version => %s", ver);
     return this.db.getAsync(
       `

@@ -4,8 +4,6 @@ import {DiscordClientFactory} from "../clientfactory";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 
-const READY_TIMEOUT = 5000;
-
 export class Schema implements IDbSchema {
   public description = "user_tokens split into user_id_discord_id";
   public run(store: DiscordStore): Promise<null> {
@@ -53,8 +51,8 @@ export class Schema implements IDbSchema {
       FROM user_tokens
       `,
     ).then( (rows) => {
-      let promises = [];
-      let clientFactory = new DiscordClientFactory(store);
+      const promises = [];
+      const clientFactory = new DiscordClientFactory(store);
       for (const row of rows) {
         let discordId = null;
         log.info("SchemaV3", "Moving %s.", row.userId);

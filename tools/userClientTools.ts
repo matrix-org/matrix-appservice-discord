@@ -9,10 +9,8 @@ import {DiscordClientFactory} from "../src/clientfactory";
 
 import { DiscordBridgeConfig } from "../src/config";
 import { DiscordStore } from "../src/store";
-import { Client } from "discord.js";
 
 const PUPPETING_DOC_URL = "https://github.com/Half-Shot/matrix-appservice-discord/blob/develop/docs/puppeting.md";
-const READY_TIMEOUT = 5000;
 
 const optionDefinitions = [
   {
@@ -56,12 +54,11 @@ const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config
 const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
 discordstore.init().then(() => {
   log.info("tool", "Loaded database.");
+  handleUI();
 }).catch((err) => {
   log.info("tool", "Couldn't load database. Cannot continue.");
   log.info("tool", "Ensure the bridge is not running while using this command.");
   process.exit(1);
-}).then(() => {
-  handleUI();
 });
 
 function handleUI() {
@@ -97,9 +94,9 @@ Please enter your Discord Token
   });
 }
 
-function addUserToken (userid: string, token: string): Promise<null|string> {
+function addUserToken (userid: string, token: string): Bluebird<null> {
   const clientFactory = new DiscordClientFactory(discordstore);
-  return clientFactory.getDiscordId(token).then((discordid) => {
+  return clientFactory.getDiscordId(token).then((discordid: string) => {
     return discordstore.add_user_token(userid, discordid, token);
   });
 }
