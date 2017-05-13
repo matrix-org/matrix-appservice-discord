@@ -55,7 +55,7 @@ export class MatrixRoomHandler {
           continue;
         }
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-          return this.discord.InitJoinUser(member, roomId);
+          return this.discord.InitJoinUser(member, [roomId]);
         }));
         delay += JOIN_DELAY;
       }
