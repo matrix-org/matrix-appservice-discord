@@ -36,13 +36,13 @@ export class DiscordClientFactory {
     });
   }
 
-  public getDiscordId(token: String): any {
+ public getDiscordId(token: String): Bluebird<string|null> {
     const client: any = new Client({
       fetchAllMembers: false,
       sync: false,
       messageCacheLifetime: 5,
     });
-    return new Bluebird((resolve, reject) => {
+    return new Bluebird<string>((resolve, reject) => {
       client.login(token).catch(reject);
       client.on("ready", () => {
         const id = client.user.id;
@@ -55,32 +55,27 @@ export class DiscordClientFactory {
     });
   }
 
-  public getClient(userId?: string): Promise<any> {
+  public async getClient(userId: string = null): Promise<any> {
     if (userId == null) {
-      return Promise.resolve(this.botClient);
+      return this.botClient;
     }
-    return Bluebird.coroutine(this._getClient.bind(this))(userId);
-  }
-
-  private * _getClient(userId: string): any {
     if (this.clients.has(userId)) {
-      log.verbose("ClientFactory", "Returning cached user client.");
+      log.verbose("ClientFactory", "Returning cached user client for %s.", userId);
       return this.clients.get(userId);
     }
-    const discordIds = yield this.store.get_user_discord_ids(userId);
+    const discordIds = await this.store.get_user_discord_ids(userId);
     if (discordIds.length === 0) {
       return Promise.resolve(this.botClient);
     }
     // TODO: Select a profile based on preference, not the first one.
-    const token = yield this.store.get_token(discordIds[0]);
+    const token = await this.store.get_token(discordIds[0]);
     const client: any = Bluebird.promisifyAll(new Client({
       fetchAllMembers: true,
       sync: true,
       messageCacheLifetime: 5,
     }));
-    log.verbose("ClientFactory", "Got user token. Logging in...");
     try {
-      yield client.login(token);
+      await client.login(token);
       log.verbose("ClientFactory", "Logged in. Storing ", userId);
       this.clients.set(userId, client);
       return client;
