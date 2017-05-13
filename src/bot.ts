@@ -229,6 +229,15 @@ export class DiscordBot {
     });
   }
 
+  public InitJoinUser(member: Discord.GuildMember, roomId: string): Promise<any> {
+    const intent = this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
+    return this.UpdateUser(member.user).then(() => {
+      return intent.join(roomId);
+    }).then(() => {
+      return this.UpdateGuildMember(member, [roomId]);
+    });
+  }
+
   private GetFilenameForMediaEvent(content): string {
     if (content.body) {
       if (path.extname(content.body) !== "") {
@@ -392,14 +401,14 @@ export class DiscordBot {
     }
   }
 
-  private UpdateGuildMember(guildMember: Discord.GuildMember) {
+  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
     const client = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`).getClient();
     const userId = client.credentials.userId;
     let avatar = null;
     log.info(`Updating nick for ${guildMember.user.username}`);
     Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
       avatar = avatarUrl.avatar_url;
-      return this.GetRoomIdsFromGuild(guildMember.guild.id);
+      return roomIds || this.GetRoomIdsFromGuild(guildMember.guild.id);
     }), (room) => {
       log.verbose(`Updating ${room}`);
       client.sendStateEvent(room, "m.room.member", {

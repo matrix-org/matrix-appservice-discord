@@ -54,9 +54,8 @@ export class MatrixRoomHandler {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
-        const intent = this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-          return intent.join(roomId);
+          return this.discord.InitJoinUser(member, roomId);
         }));
         delay += JOIN_DELAY;
       }
