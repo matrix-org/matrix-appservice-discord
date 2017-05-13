@@ -6,9 +6,7 @@
         "noImplicitAny": false,
         "sourceMap": false,
         "outDir": "./build",
-        "types": ["mocha", "node"],
-        "noUnusedLocals": true,
-        "noUnusedParameters": false
+        "types": ["mocha", "node"]
     },
     "compileOnSave": true,
     "include": [

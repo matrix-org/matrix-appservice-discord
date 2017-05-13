@@ -20,7 +20,7 @@ export class DiscordStore {
     this.filepath = filepath;
   }
 
-  public open_database(): Promise<null|Error> {
+  private open_database(): Promise<null|Error> {
     log.info("DiscordStore", "Opening SQLITE database %s", this.filepath);
     return new Promise((resolve, reject) => {
       this.db = new SQLite3.Database(this.filepath, (err) => {
@@ -35,11 +35,26 @@ export class DiscordStore {
     });
   }
 
-  public backup_database(): Promise<null|Error> {
+  public backup_database(): Promise<null> {
+    if(this.filepath === ":memory:") {
+      log.warn("DiscordStore", "Can't backup a :memory: database.");
+      return Promise.resolve();
+    }
+    const BACKUP_NAME = this.filepath + ".backup";
+
     return new Promise((resolve, reject) => {
+      // Check to see if a backup file already exists.
+      fs.access(BACKUP_NAME, (err) => {
+        return resolve(err == null);
+      })
+    }).then((result) => {
+      if(!result) {
+        log.warn("DiscordStore", "NOT backing up database while a file already exists");
+        return;
+      }
       const rd = fs.createReadStream(this.filepath);
       rd.on("error", reject);
-      const wr = fs.createWriteStream(this.filepath + ".backup");
+      const wr = fs.createWriteStream(BACKUP_NAME);
       wr.on("error", reject);
       wr.on("close", resolve);
       rd.pipe(wr);
