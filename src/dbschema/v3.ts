@@ -27,10 +27,9 @@ export class Schema implements IDbSchema {
       // Move old data to new tables.
       return this.moveUserIds(store);
     }).then(() => {
-      log.info("SchemaV3", "Dropping user_tokens. Check backup database for table.");
       // Drop old table.
       return store.db.execAsync(
-        `DROP TABLE user_tokens;`,
+        `DROP TABLE IF EXISTS user_tokens;`,
       );
     });
   }
@@ -88,10 +87,20 @@ export class Schema implements IDbSchema {
             $discordId: discordId,
             $userId: row.userId,
           });
+        }).catch((err) => {
+          log.error(`Couldn't move ${row.userId}'s token into new table.`);
         }));
       }
       return Bluebird.all(promises);
-    });
+    }).catch((err) => {
+      log.error(`
+Could not select users from 'user_tokens'.It is possible that the table does
+not exist on your database in which case you can proceed safely. Otherwise
+a copy of the database before the schema update has been placed in the root
+directory.`);
+      log.error(err);
+      return Promise.resolve();
+    }));
   }
 
 }
