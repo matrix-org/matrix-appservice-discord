@@ -130,69 +130,58 @@ export class DiscordBot {
     });
   }
 
-  public ProcessMatrixMsgEvent(event, guildId: string, channelId: string): Promise<any> {
-    let chan: Discord.TextChannel;
-    let embed;
-    let botUser;
+  public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
+    profile.displayname = profile.displayname || event.sender;
+    if (profile.avatar_url) {
+      const mxClient = this.bridge.getClientFactory().getClientAs();
+      profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+    }
+    return new Discord.RichEmbed({
+      author: {
+        name: profile.displayname,
+        icon_url: profile.avatar_url,
+        url: `https://matrix.to/#/${event.sender}`,
+        // TODO: Avatar
+      },
+      description: this.HandleMentions(event.content.body, channel.members.array()),
+    });
+  }
+
+  public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<any> {
     const mxClient = this.bridge.getClientFactory().getClientAs();
     log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
-    return this.LookupRoom(guildId, channelId, event.sender).then((result) => {
-      log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
-      chan = result.channel;
-      botUser = result.botUser;
-      log.verbose("DiscordBot", botUser);
-      if (result.botUser) {
-        return mxClient.getProfileInfo(event.sender);
-      }
-      return null;
-    }).then((profile) => {
-      if (botUser === true) {
-        if (!profile.displayname) {
-          profile.displayname = event.sender;
-        }
-        if (profile.avatar_url) {
-          profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
-        }
-        embed = new Discord.RichEmbed({
-          author: {
-            name: profile.displayname,
-            icon_url: profile.avatar_url,
-            url: `https://matrix.to/#/${event.sender}`,
-            // TODO: Avatar
-          },
-          description: this.HandleMentions(event.content.body, chan.members.array()),
-        });
-      }
-      if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
-        return Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
-      }
-      return Promise.resolve(null);
-    }).then((attachment) => {
-      if (attachment !== null) {
-        let name = this.GetFilenameForMediaEvent(event.content);
-        return {
-          file : {
-            name,
-            attachment,
-          },
-        };
-      }
-      return {};
-    }).then((opts) => {
+    const result = await this.LookupRoom(guildId, channelId, event.sender);
+    log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
+    const chan = result.channel;
+    const botUser = result.botUser;
+    const profile = result.botUser ? mxClient.getProfileInfo(event.sender) : null;
+    const embed = this.MatrixEventToEmbed(event, profile, chan);
+    let opts = {};
+    if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
+      const attachment = await Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
+      const name = this.GetFilenameForMediaEvent(event.content);
+      opts = {
+        file : {
+          name,
+          attachment,
+        },
+      };
+    }
+    let msg = null;
+    try {
       if (botUser) {
-        return chan.sendEmbed(embed, opts);
+        msg = await chan.send(embed, opts);
+      } else {
+        msg = await chan.send(embed.description, opts);
       }
-      const body = this.HandleMentions(event.content.body, chan.members.array());
-      return chan.send(event.content.body, opts);
-    }).then((msg) => {
-      if (Array.isArray(msg)) {
-        msg.forEach((m) => { this.sentMessages.push(m.id); });
-        return;
-      }
-      this.sentMessages.push(msg.id);
-    }).catch((err) => {
+    } catch (err) {
       log.error("DiscordBot", "Couldn't send message. ", err);
-    });
+    }
+    if (Array.isArray(msg)) {
+      msg.forEach((m) => { this.sentMessages.push(m.id); });
+      return;
+    }
+    this.sentMessages.push(msg.id);
   }
 
   public OnUserQuery (userId: string): any {
@@ -220,7 +209,7 @@ export class DiscordBot {
     });
   }
 
-  private GetFilenameForMediaEvent(content) {
+  private GetFilenameForMediaEvent(content): string {
     if (content.body) {
       if (path.extname(content.body) !== "") {
         return content.body;
