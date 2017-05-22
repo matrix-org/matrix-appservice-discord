@@ -19,7 +19,7 @@ export class Schema implements IDbSchema {
         token	TEXT NOT NULL,
         PRIMARY KEY(discord_id)
       );`, "discord_id_token",
-    )]);
+      )]);
     return promise.then(() => {
       // Backup before moving data.
       return store.backup_database();
@@ -34,7 +34,7 @@ export class Schema implements IDbSchema {
     });
   }
 
-  public rollBack(store: DiscordStore): Promise<null> {
+  public rollBack(store: DiscordStore): Promise <null> {
     return Promise.all([store.db.execAsync(
       `DROP TABLE IF EXISTS user_id_discord_id;`,
     ), store.db.execAsync(
@@ -42,65 +42,53 @@ export class Schema implements IDbSchema {
     )]);
   }
 
-  private moveUserIds(store: DiscordStore): Promise<null> {
-    log.info("SchemaV3", "Performing one time moving of tokens to new table. Please wait.");
-    return store.db.allAsync(
-      `
-      SELECT *
-      FROM user_tokens
-      `,
-    ).then( (rows) => {
-      const promises = [];
-      const clientFactory = new DiscordClientFactory(store);
-      for (const row of rows) {
-        let discordId = null;
-        log.info("SchemaV3", "Moving %s.", row.userId);
-        promises.push(clientFactory.getDiscordId(row.token).catch((err) => {
-          log.info("SchemaV3", "Dropping %s from database due to an invalid token.");
-          return null;
-        }).then((dId) => {
-          if (dId === null) {
-            return null;
-          }
-          discordId = dId;
-          log.verbose("SchemaV3", "INSERT INTO discord_id_token.");
-          return store.db.runAsync(
-            `
-            INSERT INTO discord_id_token (discord_id,token)
-            VALUES ($discordId,$token);
-            `
-          , {
-            $discordId: discordId,
-            $token: row.token,
-          });
-        }).then(() => {
-          if (discordId === null) {
-            return null;
-          }
-          log.verbose("SchemaV3", "INSERT INTO user_id_discord_id.");
-          return store.db.runAsync(
-            `
-            INSERT INTO user_id_discord_id (discord_id,user_id)
-            VALUES ($discordId,$userId);
-            `
-          , {
-            $discordId: discordId,
-            $userId: row.userId,
-          });
-        }).catch((err) => {
-          log.error(`Couldn't move ${row.userId}'s token into new table.`);
-        }));
-      }
-      return Bluebird.all(promises);
-    }).catch((err) => {
-      log.error(`
+  private async moveUserIds(store: DiscordStore): Promise <null> {
+  log.info("SchemaV3", "Performing one time moving of tokens to new table. Please wait.");
+  let rows;
+  try {
+    rows = await store.db.allAsync(`SELECT * FROM user_tokens`);
+  } catch (err) {
+    log.error(`
 Could not select users from 'user_tokens'.It is possible that the table does
 not exist on your database in which case you can proceed safely. Otherwise
 a copy of the database before the schema update has been placed in the root
 directory.`);
-      log.error(err);
-      return Promise.resolve();
-    }));
+    log.error(err);
+    return;
   }
-
+  const promises = [];
+  const clientFactory = new DiscordClientFactory(store);
+  for (const row of rows) {
+    log.info("SchemaV3", "Moving %s.", row.userId);
+    try {
+      const dId = clientFactory.getDiscordId(row.token);
+      if (dId === null) {
+        continue;
+      }
+      log.verbose("SchemaV3", "INSERT INTO discord_id_token.");
+      await store.db.runAsync(
+        `
+            INSERT INTO discord_id_token (discord_id,token)
+            VALUES ($discordId,$token);
+            `
+        , {
+          $discordId: dId,
+          $token: row.token,
+        });
+      log.verbose("SchemaV3", "INSERT INTO user_id_discord_id.");
+      await store.db.runAsync(
+        `
+            INSERT INTO user_id_discord_id (discord_id,user_id)
+            VALUES ($discordId,$userId);
+            `
+        , {
+          $discordId: dId,
+          $userId: row.userId,
+        });
+    } catch (err) {
+      log.error("SchemaV3", `Couldn't move ${row.userId}'s token into new table.`);
+      log.error("SchemaV3", err);
+    }
+  }
+}
 }

@@ -20,23 +20,8 @@ export class DiscordStore {
     this.filepath = filepath;
   }
 
-  private open_database(): Promise<null|Error> {
-    log.info("DiscordStore", "Opening SQLITE database %s", this.filepath);
-    return new Promise((resolve, reject) => {
-      this.db = new SQLite3.Database(this.filepath, (err) => {
-        if (err) {
-          log.error("DiscordStore", "Error opening database, %s");
-          reject(new Error("Couldn't open database. The appservice won't be able to continue."));
-          return;
-        }
-        this.db = Bluebird.promisifyAll(this.db);
-        resolve();
-      });
-    });
-  }
-
   public backup_database(): Promise<null> {
-    if(this.filepath === ":memory:") {
+    if (this.filepath === ":memory:") {
       log.warn("DiscordStore", "Can't backup a :memory: database.");
       return Promise.resolve();
     }
@@ -46,18 +31,20 @@ export class DiscordStore {
       // Check to see if a backup file already exists.
       fs.access(BACKUP_NAME, (err) => {
         return resolve(err == null);
-      })
+      });
     }).then((result) => {
-      if(!result) {
-        log.warn("DiscordStore", "NOT backing up database while a file already exists");
-        return;
-      }
-      const rd = fs.createReadStream(this.filepath);
-      rd.on("error", reject);
-      const wr = fs.createWriteStream(BACKUP_NAME);
-      wr.on("error", reject);
-      wr.on("close", resolve);
-      rd.pipe(wr);
+      return new Promise((resolve, reject) => {
+        if (!result) {
+          log.warn("DiscordStore", "NOT backing up database while a file already exists");
+          return;
+        }
+        const rd = fs.createReadStream(this.filepath);
+        rd.on("error", reject);
+        const wr = fs.createWriteStream(BACKUP_NAME);
+        wr.on("error", reject);
+        wr.on("close", resolve);
+        rd.pipe(wr);
+      });
     });
   }
 
@@ -81,8 +68,13 @@ export class DiscordStore {
       } catch (ex) {
         log.error("DiscordStore", "Couldn't update database to schema %s", version);
         log.error("DiscordStore", ex);
-        log.error("DiscordStore", "Rolling back to version %s", version - 1);
-        await schema.rollBack(this);
+        log.info("DiscordStore", "Rolling back to version %s", version - 1);
+        try {
+          await schema.rollBack(this);
+        } catch (ex) {
+          log.error("DiscordStore", ex);
+          throw Error("Failure to update to latest schema. And failed to rollback.");
+        }
         throw Error("Failure to update to latest schema.");
       }
       this.version = version;
@@ -91,16 +83,16 @@ export class DiscordStore {
     log.info("DiscordStore", "Updated database to the latest schema");
   }
 
+  public close () {
+    this.db.close();
+  }
+
   public create_table (statement: string, tablename: string): Promise<null|Error> {
     return this.db.runAsync(statement).then(() => {
       log.info("DiscordStore", "Created table ", tablename);
     }).catch((err) => {
       throw new Error(`Error creating '${tablename}': ${err}`);
     });
-  }
-
-  public close () {
-    this.db.close();
   }
 
   public add_user_token(userId: string, discordId: string, token: string): Promise<null> {
@@ -241,5 +233,20 @@ export class DiscordStore {
       WHERE version = $old_ver
       `, {$ver: ver, $old_ver: oldVer},
     );
+  }
+
+  private open_database(): Promise<null|Error> {
+    log.info("DiscordStore", "Opening SQLITE database %s", this.filepath);
+    return new Promise((resolve, reject) => {
+      this.db = new SQLite3.Database(this.filepath, (err) => {
+        if (err) {
+          log.error("DiscordStore", "Error opening database, %s");
+          reject(new Error("Couldn't open database. The appservice won't be able to continue."));
+          return;
+        }
+        this.db = Bluebird.promisifyAll(this.db);
+        resolve();
+      });
+    });
   }
 }

@@ -338,7 +338,7 @@ export class DiscordBot {
   }
 
   private BulkPresenceUpdate() {
-    log.info("DiscordBot", "Bulk presence update");
+    log.verbose("DiscordBot", "Bulk presence update");
     const members = [];
     for (const guild of this.bot.guilds.values()) {
       for (const member of guild.members.array().filter((m) => members.indexOf(m.id) === -1)) {
