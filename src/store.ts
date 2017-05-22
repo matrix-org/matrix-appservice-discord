@@ -30,12 +30,13 @@ export class DiscordStore {
     return new Promise((resolve, reject) => {
       // Check to see if a backup file already exists.
       fs.access(BACKUP_NAME, (err) => {
-        return resolve(err == null);
+        return resolve(err === null);
       });
     }).then((result) => {
       return new Promise((resolve, reject) => {
         if (!result) {
           log.warn("DiscordStore", "NOT backing up database while a file already exists");
+          resolve(true);
           return;
         }
         const rd = fs.createReadStream(this.filepath);
