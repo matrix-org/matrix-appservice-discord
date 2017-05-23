@@ -159,7 +159,12 @@ export class DiscordBot {
     const profile = result.botUser ? await mxClient.getProfileInfo(event.sender) : null;
     const embed = this.MatrixEventToEmbed(event, profile, chan);
     let opts : Discord.MessageOptions = {};
-    if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
+    let hookOpts : Discord.WebhookMessageOptions = {
+      username: profile.displayname,
+      avatarURL: profile.icon_url,
+    };
+    const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
+    if (hasAttachment) {
       const attachment = await Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       const name = this.GetFilenameForMediaEvent(event.content);
       opts.file = {
@@ -168,12 +173,21 @@ export class DiscordBot {
       };
     }
     let msg = null;
+    const webhooks = await chan.fetchWebhooks();
+    const hook : Discord.Webhook = webhooks.filterArray((h) => h.name === "_matrix").pop();
     try {
-      if (botUser) {
+      if (!botUser) {
+        msg = await chan.send(embed.description, opts);
+      } else if (hook && !hasAttachment) { //Remove !hasAttachment and uncomment below when https://github.com/hydrabolt/discord.js/pull/1449 is fixed
+        //if (hasAttachment) {
+        //  hookOpts.file = opts.file;
+        //  msg = await hook.send(embed.description, hookOpts);
+        //} else {
+          msg = await hook.send(embed.description, hookOpts);
+        //}
+      } else {
         opts.embed = embed;
         msg = await chan.send("", opts);
-      } else {
-        msg = await chan.send(embed.description, opts);
       }
     } catch (err) {
       log.error("DiscordBot", "Couldn't send message. ", err);
