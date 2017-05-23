@@ -356,7 +356,7 @@ export class DiscordBot {
   private UpdatePresence(guildMember: Discord.GuildMember) {
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
-      const presence: any = {status_msg: null};
+      const presence: any = {};
       presence.presence = guildMember.presence.status;
       if (presence.presence === "idle" || presence.presence === "dnd") {
         presence.presence = "unavailable";
