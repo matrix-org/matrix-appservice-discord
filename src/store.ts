@@ -108,7 +108,7 @@ export class DiscordStore {
       $discordId: discordId,
       $token: token,
     }).catch( (err) => {
-      log.error("TwitDB", "Error storing user token %s", err);
+      log.error("DiscordStore", "Error storing user token %s", err);
       throw err;
     });
   }
@@ -123,7 +123,7 @@ export class DiscordStore {
     , {
       $id: discordId,
     }).catch( (err) => {
-      log.error("TwitDB", "Error deleting user token %s", err);
+      log.error("DiscordStore", "Error deleting user token %s", err);
       throw err;
     });
   }
@@ -139,9 +139,13 @@ export class DiscordStore {
         $userId: userId,
       },
     ).then( (rows) => {
-      return rows.map((row) => row.discord_id);
+      if(rows !== undefined) {
+        rows.map((row) => row.discord_id);
+      } else {
+        return [];
+      }
     }).catch( (err) => {
-      log.error("TwitDB", "Error getting discord ids  %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
       throw err;
     });
   }
@@ -159,7 +163,7 @@ export class DiscordStore {
     ).then( (row) => {
       return row !== undefined ? row.token : null;
     }).catch( (err) => {
-      log.error("TwitDB", "Error getting discord ids  %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
       throw err;
     });
   }
@@ -179,7 +183,7 @@ export class DiscordStore {
     }).then( (row) => {
       return row !== undefined ? row.room_id : null;
     }).catch( (err) => {
-      log.error("TwitDB", "Error getting room_id  %s", err.Error);
+      log.error("DiscordStore", "Error getting room_id  %s", err.Error);
       throw err;
     });
   }
@@ -196,7 +200,7 @@ export class DiscordStore {
       $discordChannel: discordChannel,
       $roomId: roomId,
     }).catch( (err) => {
-      log.error("TwitDB", "Error executing set_dm_room query  %s", err.Error);
+      log.error("DiscordStore", "Error executing set_dm_room query  %s", err.Error);
       throw err;
     });
   }
@@ -211,7 +215,7 @@ export class DiscordStore {
     ).then( (rows) => {
       return rows;
     }).catch( (err) => {
-      log.error("TwitDB", "Error getting user token  %s", err.Error);
+      log.error("DiscordStore", "Error getting user token  %s", err.Error);
       throw err;
     });
   }
