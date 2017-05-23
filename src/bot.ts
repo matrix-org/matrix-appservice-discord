@@ -156,7 +156,7 @@ export class DiscordBot {
     log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
     const chan = result.channel;
     const botUser = result.botUser;
-    const profile = result.botUser ? mxClient.getProfileInfo(event.sender) : null;
+    const profile = result.botUser ? await mxClient.getProfileInfo(event.sender) : null;
     const embed = this.MatrixEventToEmbed(event, profile, chan);
     let opts : Discord.MessageOptions = {};
     if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
