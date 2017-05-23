@@ -171,7 +171,7 @@ export class DiscordBot {
     try {
       if (botUser) {
         opts.embed = embed;
-        msg = await chan.send(null, opts);
+        msg = await chan.send("", opts);
       } else {
         msg = await chan.send(embed.description, opts);
       }
