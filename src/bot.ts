@@ -160,7 +160,8 @@ export class DiscordBot {
     const embed = this.MatrixEventToEmbed(event, profile, chan);
     let opts : Discord.MessageOptions = {};
     let hookOpts : Discord.WebhookMessageOptions = {
-      username: event.sender,
+      username: profile.displayname,
+      avatarURL: profile.icon_url,
     };
     const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
     if (hasAttachment) {
@@ -177,13 +178,13 @@ export class DiscordBot {
     try {
       if (!botUser) {
         msg = await chan.send(embed.description, opts);
-      } else if (hook && !hasAttachment) { //Remove !hasAttachment when https://github.com/hydrabolt/discord.js/pull/1449 is fixed
-        if (hasAttachment) {
-          hookOpts.file = opts.file;
+      } else if (hook && !hasAttachment) { //Remove !hasAttachment and uncomment below when https://github.com/hydrabolt/discord.js/pull/1449 is fixed
+        //if (hasAttachment) {
+        //  hookOpts.file = opts.file;
+        //  msg = await hook.send(embed.description, hookOpts);
+        //} else {
           msg = await hook.send(embed.description, hookOpts);
-        } else {
-          msg = await hook.send(embed.description, hookOpts);
-        }
+        //}
       } else {
         opts.embed = embed;
         msg = await chan.send("", opts);
