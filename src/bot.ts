@@ -129,18 +129,22 @@ export class DiscordBot {
   }
 
   public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-    profile.displayname = profile.displayname || event.sender;
-    if (profile.avatar_url) {
-      const mxClient = this.bridge.getClientFactory().getClientAs();
-      profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+    if(profile) {
+      profile.displayname = profile.displayname || event.sender;
+      if (profile.avatar_url) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+      }
+      return new Discord.RichEmbed({
+        author: {
+          name: profile.displayname,
+          icon_url: profile.avatar_url,
+          url: `https://matrix.to/#/${event.sender}`,
+        },
+        description: this.HandleMentions(event.content.body, channel.members.array()),
+      });
     }
     return new Discord.RichEmbed({
-      author: {
-        name: profile.displayname,
-        icon_url: profile.avatar_url,
-        url: `https://matrix.to/#/${event.sender}`,
-        // TODO: Avatar
-      },
       description: this.HandleMentions(event.content.body, channel.members.array()),
     });
   }
@@ -154,22 +158,20 @@ export class DiscordBot {
     const botUser = result.botUser;
     const profile = result.botUser ? mxClient.getProfileInfo(event.sender) : null;
     const embed = this.MatrixEventToEmbed(event, profile, chan);
-    let opts = {};
+    let opts : Discord.MessageOptions = {};
     if (["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1) {
       const attachment = await Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       const name = this.GetFilenameForMediaEvent(event.content);
-      opts = {
-        file : {
-          name,
-          attachment,
-        },
+      opts.file = {
+        name,
+        attachment,
       };
     }
     let msg = null;
     try {
-      log.verbose("DiscordBot", "Sending %s", JSON.stringify(embed));
       if (botUser) {
-        msg = await chan.send(embed, opts);
+        opts.embed = embed;
+        msg = await chan.send(null, opts);
       } else {
         msg = await chan.send(embed.description, opts);
       }
