@@ -167,6 +167,7 @@ export class DiscordBot {
     }
     let msg = null;
     try {
+      log.verbose("DiscordBot", "Sending %s", JSON.stringify(embed));
       if (botUser) {
         msg = await chan.send(embed, opts);
       } else {
