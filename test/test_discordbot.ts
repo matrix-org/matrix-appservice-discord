@@ -2,6 +2,7 @@ import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import * as log from "npmlog";
+import {DiscordClientFactory} from "./mocks/discordclientfactory";
 
 Chai.use(ChaiAsPromised);
 log.level = "silent";
@@ -28,6 +29,28 @@ const mockBridge = {
     return{
       sendTyping: (room: string, isTyping: boolean) => {
         return;
+      },
+    };
+  },
+  getClientFactory: () => {
+    return {
+      getClientAs: () => {
+        return {
+          getProfileInfo: (userId: string) => {
+            if (userId === "@example:localhost") {
+              return Promise.resolve({
+                displayname: "Example User",
+                avatar_url: "http://localhost/example_avatar.jpg",
+              });
+            } else {
+              return Promise.resolve({
+              });
+            }
+          },
+          mxcUrlToHttp: (mxcUrl: string) => {
+            return mxcUrl;
+          },
+        };
       },
     };
   },
@@ -71,6 +94,55 @@ describe("DiscordBot", () => {
 
     it("should resolve a guild and channel id.", () => {
       return assert.isFulfilled(discordBot.LookupRoom("123", "321"));
+    });
+  });
+
+  describe("ProcessMatrixMsgEvent()", () => {
+    beforeEach(() => {
+      discordBot = new modDiscordBot.DiscordBot(
+        config,
+        null,
+      );
+      discordBot.setBridge(mockBridge);
+      return discordBot.run();
+    });
+    it("should send discord a message via webhooks.", () => {
+        const guildId = "123";
+        const channelId = "321";
+        const messageEvent = {
+          "content": {
+            "body": "hello",
+            "msgtype": "m.text"
+          },
+          "event_id": "$14606535757KCGXo:localhost",
+          "origin_server_ts": 1460653575105,
+          "sender": "@example:localhost",
+          "type": "m.room.message",
+          "unsigned": {
+            "age": 800348
+          }
+        }
+        const result = discordBot.ProcessMatrixMsgEvent(messageEvent, guildId, channelId);
+        return assert.becomes(result.then((x) => { return DiscordClientFactory.sentWebhookMessages.length; }), 1);
+    });
+    it("should send discord a message via embed.", () => {
+        const guildId = "123";
+        const channelId = "654";
+        const messageEvent = {
+          "content": {
+            "body": "hello",
+            "msgtype": "m.text"
+          },
+          "event_id": "$14606535757KCGXo:localhost",
+          "origin_server_ts": 1460653575105,
+          "sender": "@example:localhost",
+          "type": "m.room.message",
+          "unsigned": {
+            "age": 800348
+          }
+        }
+        const result = discordBot.ProcessMatrixMsgEvent(messageEvent, guildId, channelId);
+        return assert.becomes(result.then((x) => { return DiscordClientFactory.sentMessages.length; }), 1);
     });
   });
   // describe("ProcessMatrixMsgEvent()", () => {
