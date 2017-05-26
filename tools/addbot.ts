@@ -20,6 +20,7 @@ const perms = flags.READ_MESSAGES |
   flags.SPEAK |
   flags.EMBED_LINKS |
   flags.ATTACH_FILES |
+  flags.MANAGE_WEBHOOKS |
   flags.READ_MESSAGE_HISTORY;
 
 const url = `https://discordapp.com/api/oauth2/authorize?client_id=${clientId}&scope=bot&permissions=${perms}`;
