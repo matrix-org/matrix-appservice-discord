@@ -46,6 +46,12 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.  
   * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
 
+### Settings up Webhooks (optional)
+
+This allows messages to be directly posted in the discord chat with the display name of the matrix user, rather than as embeds posted by the bot.
+* Go into the discord server settings and add a webhook for the channel you want. Name the webhook ``_matrix``
+* If you used the auth link recently it should have the correct permissions, otherwise check the bot has permission to ``Manage Webhooks`` on discord.
+
 ## Features and Roadmap
 In a vague order of what is coming up next
 
