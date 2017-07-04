@@ -139,7 +139,7 @@ export class DiscordStore {
         $userId: userId,
       },
     ).then( (rows) => {
-      if(rows !== undefined) {
+      if (rows !== undefined) {
         rows.map((row) => row.discord_id);
       } else {
         return [];
