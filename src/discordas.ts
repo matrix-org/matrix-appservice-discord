@@ -72,9 +72,10 @@ function run (port: number, config: DiscordBridgeConfig) {
   discordbot.setBridge(bridge);
   log.info("discordas", "Initing bridge.");
   log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
-  bridge.run(port, config);
-  log.info("discordas", "Initing store.");
-  discordstore.init().then(() => {
+  bridge.run(port, config).then(() => {
+    log.info("discordas", "Initing store.");
+    return discordstore.init();
+  }).then(() => {
     log.info("discordas", "Initing bot.");
     return discordbot.run().then(() => {
       log.info("discordas", "Discordbot started successfully.");
