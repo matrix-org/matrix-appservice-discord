@@ -129,7 +129,7 @@ export class DiscordBot {
   }
 
   public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-    if(profile) {
+    if (profile) {
       profile.displayname = profile.displayname || event.sender;
       if (profile.avatar_url) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
@@ -158,7 +158,7 @@ export class DiscordBot {
     const botUser = result.botUser;
     const profile = result.botUser ? await mxClient.getProfileInfo(event.sender) : null;
     const embed = this.MatrixEventToEmbed(event, profile, chan);
-    let opts : Discord.MessageOptions = {};
+    const opts: Discord.MessageOptions = {};
     const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
     if (hasAttachment) {
       const attachment = await Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
@@ -169,25 +169,26 @@ export class DiscordBot {
       };
     }
     let msg = null;
-    let hook : Discord.Webhook ;
-    if(botUser) {
+    let hook: Discord.Webhook ;
+    if (botUser) {
       const webhooks = await chan.fetchWebhooks();
       hook = webhooks.filterArray((h) => h.name === "_matrix").pop();
     }
     try {
       if (!botUser) {
         msg = await chan.send(embed.description, opts);
-      } else if (hook && !hasAttachment) { //Remove !hasAttachment and uncomment below when https://github.com/hydrabolt/discord.js/pull/1449 is fixed
-        const hookOpts : Discord.WebhookMessageOptions = {
+      } else if (hook && !hasAttachment) {
+        const hookOpts: Discord.WebhookMessageOptions = {
           username: embed.author.name,
           avatarURL: embed.author.icon_url,
         };
-        //if (hasAttachment) {
-        //  hookOpts.file = opts.file;
-        //  msg = await hook.send(embed.description, hookOpts);
-        //} else {
+        // Uncomment this and remove !hasAttachment above after https://github.com/hydrabolt/discord.js/pull/1449 pulled
+        // if (hasAttachment) {
+        //   hookOpts.file = opts.file;
+        //   msg = await hook.send(embed.description, hookOpts);
+        // } else {
         msg = await hook.send(embed.description, hookOpts);
-        //}
+        // }
       } else {
         opts.embed = embed;
         msg = await chan.send("", opts);

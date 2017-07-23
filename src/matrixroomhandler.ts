@@ -17,7 +17,7 @@ const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoES
 const JOIN_DELAY = 6000;
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
-const AGE_LIMIT = 15*60*1000;
+const AGE_LIMIT = 900000; // 15 * 60 * 1000
 
 export class MatrixRoomHandler {
   private config: DiscordBridgeConfig;
@@ -67,7 +67,7 @@ export class MatrixRoomHandler {
 
   public OnEvent (request, context) {
     const event = request.getData();
-    if(event.unsigned.age > AGE_LIMIT) {
+    if (event.unsigned.age > AGE_LIMIT) {
       log.warn("MatrixRoomHandler", "Skipping event due to age %s > %s", event.unsigned.age, AGE_LIMIT);
       return;
     }

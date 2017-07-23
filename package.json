@@ -45,7 +45,7 @@
     "npmlog": "^4.0.2",
     "sqlite3": "^3.1.8",
     "tslint": "^4.4.2",
-    "typescript": "^2.1.6"
+    "typescript": "2.3.4"
   },
   "devDependencies": {
     "@types/chai": "^3.4.35",
