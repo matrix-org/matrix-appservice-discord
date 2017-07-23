@@ -89,10 +89,7 @@ export class DiscordBot {
     let chan;
     let embed;
     const mxClient = this.bridge.getClientFactory().getClientAs();
-    return this.LookupRoom(guildId, channelId).then((channel) => {
-      chan = channel;
-      return mxClient.getProfileInfo(event.sender);
-    }).then((profile) => {
+    return this.LookupRoom(guildId, channelId).then((profile) => {
       if (!profile.displayname) {
         profile.displayname = event.sender;
       }
@@ -112,6 +109,9 @@ export class DiscordBot {
         return Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
       }
       return Promise.resolve(null);
+    }).then((channel) => {
+      chan = channel;
+      return mxClient.getProfileInfo(event.sender);
     }).then((attachment) => {
       if (attachment !== null) {
         return {
