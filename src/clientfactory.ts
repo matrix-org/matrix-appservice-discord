@@ -33,6 +33,7 @@ export class DiscordClientFactory {
     .timeout(READY_TIMEOUT, "Bot timed out waiting for ready.")
     .catch((err) => {
       log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
+      throw err;
     });
   }
 
@@ -50,7 +51,7 @@ export class DiscordClientFactory {
         resolve(id);
       });
     }).timeout(READY_TIMEOUT).catch((err: Error) => {
-      log.warn("ClientFactory", "Could not login as the bot user '%s'", err.message);
+      log.warn("ClientFactory", "Could not login as a normal user. '%s'", err.message);
       throw Error("Could not retrive ID");
     });
   }
