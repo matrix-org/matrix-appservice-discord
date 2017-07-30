@@ -26,8 +26,25 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 * Run ``npm install`` to grab the dependencies.
 * Run ``npm run-script build`` to build the typescript.
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
+  * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
+  While localhost would work, it does not resolve correctly with Webhooks/Avatars.
+
+  ````
+  bridge:
+  domain: "example.com"
+  homeserverUrl: "https://example.com:8448"
+  ````
+
 * Run ``node build/src/discordas.js -r -u "http://localhost:9005" -c config.yaml``
 * Modify your HSs appservices config so that it includes the generated file.
+  * e.g. On synapse, adding to ``app_service_config_files`` array in ``homeserver.yaml``
+
+  ````
+  app_service_config_files:
+  - "discord-registration.yaml"
+  ````
+
+  * Copy ``discord-registration.yaml`` to your Synapse's directory.
 
 #### 3PID Protocol Support
 
@@ -43,8 +60,23 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
 * Run ``npm run-script getbotlink`` to get a authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
 * Finally, you can join a room with ``#_discord_guildid_channelid``
-  * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.  
+  * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
   * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
+* You can use Webhooks to make messages relayed by the bridge not nested by the bot user. This will also display the avatar of the user speaking on matrix with their messages.
+  * Enable ``Manage Webhooks`` on the role added by the bot.
+  * Add the ``_matrix`` Webhook for each channel you'd like to enable this feature on.
+
+### Running the Bridge
+
+* For the bot to appear online on Discord you need to run the bridge itself.
+* ``node ./build/src/discordas.js -p 9005 -c config.yaml``
+
+## Setting privileges on bridge managed rooms
+
+* The ``adminme`` script is provided to set Admin/Moderator or any other custom power level to a specific user.
+* e.g. To set Alice to Admin on her ``example.com`` HS on default config. (``config.yaml``)
+  * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
+  * Run ``npm run adminme -- -h`` for usage.
 
 ## Features and Roadmap
 In a vague order of what is coming up next
