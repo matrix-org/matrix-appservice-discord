@@ -55,8 +55,7 @@ export class DiscordStore {
   public async init (overrideSchema: number = 0) {
     log.info("DiscordStore", "Starting DB Init");
     await this.open_database();
-    const oldVersion = await this.getSchemaVersion();
-    let version = oldVersion;
+    let version = await this.getSchemaVersion();
     const targetSchema = overrideSchema || CURRENT_SCHEMA;
     while (version < targetSchema) {
       version++;
@@ -79,7 +78,7 @@ export class DiscordStore {
         throw Error("Failure to update to latest schema.");
       }
       this.version = version;
-      await this.setSchemaVersion(oldVersion, version);
+      await this.setSchemaVersion(version);
     }
     log.info("DiscordStore", "Updated database to the latest schema");
   }
@@ -229,14 +228,13 @@ export class DiscordStore {
     });
   }
 
-  private setSchemaVersion (oldVer: number, ver: number): Promise<any> {
+  private setSchemaVersion (ver: number): Promise<any> {
     log.silly("DiscordStore", "_set_schema_version => %s", ver);
     return this.db.getAsync(
       `
       UPDATE schema
       SET version = $ver
-      WHERE version = $old_ver
-      `, {$ver: ver, $old_ver: oldVer},
+      `, {$ver: ver},
     );
   }
 
