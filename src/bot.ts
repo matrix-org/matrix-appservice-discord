@@ -53,6 +53,8 @@ export class DiscordBot {
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
+      client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
+      client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
@@ -229,6 +231,15 @@ export class DiscordBot {
     });
   }
 
+  public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
+    const intent = this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
+    return this.UpdateUser(member.user).then(() => {
+      return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
+    }).then(() => {
+      return this.UpdateGuildMember(member, roomIds);
+    });
+  }
+
   private GetFilenameForMediaEvent(content): string {
     if (content.body) {
       if (path.extname(content.body) !== "") {
@@ -392,14 +403,27 @@ export class DiscordBot {
     }
   }
 
-  private UpdateGuildMember(guildMember: Discord.GuildMember) {
+  private AddGuildMember(guildMember: Discord.GuildMember) {
+    return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
+      return this.InitJoinUser(guildMember, roomIds);
+    });
+  }
+
+  private RemoveGuildMember(guildMember: Discord.GuildMember) {
+    const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
+    return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
+      return intent.leave(roomId);
+    });
+  }
+
+  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
     const client = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`).getClient();
     const userId = client.credentials.userId;
     let avatar = null;
     log.info(`Updating nick for ${guildMember.user.username}`);
     Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
       avatar = avatarUrl.avatar_url;
-      return this.GetRoomIdsFromGuild(guildMember.guild.id);
+      return roomIds || this.GetRoomIdsFromGuild(guildMember.guild.id);
     }), (room) => {
       log.verbose(`Updating ${room}`);
       client.sendStateEvent(room, "m.room.member", {
