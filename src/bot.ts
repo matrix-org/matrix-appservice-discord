@@ -40,7 +40,7 @@ export class DiscordBot {
     this.bridge = bridge;
   }
 
-  get ClientFactory(): DiscordClientFactory {
+  public getClientFactory(): DiscordClientFactory {
      return this.clientFactory;
   }
 

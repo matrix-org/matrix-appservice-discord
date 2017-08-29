@@ -78,6 +78,12 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
   * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
   * Run ``npm run adminme -- -h`` for usage.
 
+### Settings up Webhooks (optional)
+
+This allows messages to be directly posted in the discord chat with the display name of the matrix user, rather than as embeds posted by the bot.
+* Go into the discord server settings and add a webhook for the channel you want. Name the webhook ``_matrix``
+* If you used the auth link recently it should have the correct permissions, otherwise check the bot has permission to ``Manage Webhooks`` on discord.
+
 ## Features and Roadmap
 In a vague order of what is coming up next
 

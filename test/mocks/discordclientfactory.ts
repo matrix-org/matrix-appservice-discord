@@ -1,8 +1,11 @@
 import {MockDiscordClient} from "./discordclient";
 
 export class DiscordClientFactory {
+  public static sentMessages: Array<any> = [];
+  public static sentWebhookMessages: Array<any> = [];
   constructor(config: any, store: any) {
-    ;
+      DiscordClientFactory.sentMessages = [];
+      DiscordClientFactory.sentWebhookMessages = [];
   }
 
   public init(): Promise<null> {
@@ -13,3 +16,4 @@ export class DiscordClientFactory {
     return Promise.resolve(new MockDiscordClient());
   }
 }
+
