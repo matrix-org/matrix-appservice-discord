@@ -2,7 +2,6 @@ import {MockCollection} from "./collection";
 import {MockGuild} from "./guild";
 import {MockUser} from "./user";
 
-
 export class MockDiscordClient {
   public guilds = new MockCollection<string, MockGuild>();
   public user: MockUser;

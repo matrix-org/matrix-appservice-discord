@@ -44,7 +44,7 @@ describe("DiscordBot", () => {
     },
     bridge: {
         domain: "localhost",
-    }
+    },
   };
   describe("run()", () => {
     it("should resolve when ready.", () => {

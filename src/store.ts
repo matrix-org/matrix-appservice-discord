@@ -3,7 +3,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
-import { IDbData} from "./db/dbdatainterface"
+import { IDbData} from "./db/dbdatainterface";
 const CURRENT_SCHEMA = 4;
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -103,17 +103,17 @@ export class DiscordStore {
           INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($userId,$discordId);
           `
         , {
-          $userId: userId,
-          $discordId: discordId,
+            $userId: userId,
+            $discordId: discordId,
         }),
         this.db.runAsync(
           `
           INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
           `
         , {
-          $discordId: discordId,
-          $token: token,
-        })
+            $discordId: discordId,
+            $token: token,
+        }),
     ]).catch( (err) => {
       log.error("DiscordStore", "Error storing user token %s", err);
       throw err;
@@ -227,15 +227,6 @@ export class DiscordStore {
     });
   }
 
-  private getSchemaVersion ( ): Promise<number> {
-    log.silly("DiscordStore", "_get_schema_version");
-    return this.db.getAsync(`SELECT version FROM schema`).then((row) => {
-      return row === undefined ? 0 : row.version;
-    }).catch( ()  => {
-      return 0;
-    });
-  }
-
   public Get<T extends IDbData>(dbType: {new(): T; }, params: any): T {
       const dType = new dbType();
       log.silly("DiscordStore", `get <${dType.constructor.name}>`);
@@ -251,6 +242,15 @@ export class DiscordStore {
   public Update<T extends IDbData>(data: T) {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       data.Update(this);
+  }
+
+  private getSchemaVersion ( ): Promise<number> {
+    log.silly("DiscordStore", "_get_schema_version");
+    return this.db.getAsync(`SELECT version FROM schema`).then((row) => {
+      return row === undefined ? 0 : row.version;
+    }).catch( ()  => {
+      return 0;
+    });
   }
 
   private setSchemaVersion (ver: number): Promise<any> {

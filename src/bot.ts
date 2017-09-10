@@ -35,7 +35,7 @@ export class DiscordBot {
     this.sentMessages = [];
     this.clientFactory = new DiscordClientFactory(store, config.auth);
     this.msgProcessor = new MessageProcessor(
-        new MessageProcessorOpts(this.config.bridge.domain)
+        new MessageProcessorOpts(this.config.bridge.domain),
     );
   }
 
@@ -505,7 +505,7 @@ export class DiscordBot {
           intent.sendMessage(room, {
             body: result.body,
             msgtype: "m.text",
-            formatted_body: result.formatted_body,
+            formatted_body: result.formattedBody,
             format: "org.matrix.custom.html",
           });
         });

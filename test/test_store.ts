@@ -19,11 +19,19 @@ describe("DiscordStore", () => {
       return store.init(-1);
     });
     for (let i = 1; i < TEST_SCHEMA; i++) {
-        it("update schema to v"+i, () => {
+        it("update schema to v" + i, () => {
           const store = new DiscordStore(":memory:");
           return store.init(i);
         });
     }
+  });
+  describe("add_user_token", () => {
+    it("should not throw when adding an entry", () => {
+      const store = new DiscordStore(":memory:");
+      return expect(store.init().then(() => {
+        return store.add_user_token("userid", "token", "discordid");
+      })).to.eventually.be.fulfilled;
+    });
   });
   describe("add_user_token", () => {
     it("should not throw when adding an entry", () => {

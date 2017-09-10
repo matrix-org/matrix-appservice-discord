@@ -15,31 +15,31 @@ export class MessageProcessorOpts {
 }
 
 export class MessageProcessorMatrixResult {
-    public formatted_body: string;
+    public formattedBody: string;
     public body: string;
 }
 
 export class MessageProcessor {
-    readonly opts: MessageProcessorOpts;
+    private readonly opts: MessageProcessorOpts;
 
     constructor (opts: MessageProcessorOpts) {
         this.opts = opts;
     }
 
     public FormatDiscordMessage(msg: Discord.Message): MessageProcessorMatrixResult {
-        let result = new MessageProcessorMatrixResult();
+        const result = new MessageProcessorMatrixResult();
         // Replace Users
         let content = msg.content;
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
-        //content = this.ReplaceEmoji(content, msg);
+        // content = this.ReplaceEmoji(content, msg);
         // Replace channels
         result.body = content;
-        result.formatted_body = marked(content);
+        result.formattedBody = marked(content);
         return result;
     }
 
-    public ReplaceMembers(content:string, msg: Discord.Message): string {
+    public ReplaceMembers(content: string, msg: Discord.Message): string {
         let results = USER_REGEX.exec(content);
         while (results !== null) {
           const id = results[1];
