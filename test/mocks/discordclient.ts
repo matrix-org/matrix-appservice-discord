@@ -1,3 +1,8 @@
+import {MockCollection} from "./collection";
+import {MockGuild} from "./guild";
+import {MockUser} from "./user";
+
+
 export class MockDiscordClient {
   public guilds = new MockCollection<string, MockGuild>();
   public user: MockUser;
@@ -35,41 +40,5 @@ export class MockDiscordClient {
   public login(token: string) {
     this.testLoggedIn = true;
     this.testCallbacks[0]();
-  }
-}
-
-class MockMember {
-  public id = "";
-  constructor(id: string) {
-    this.id = id;
-  }
-}
-
-class MockUser {
-  public id = "";
-  constructor(id: string) {
-    this.id = id;
-  }
-}
-
-class MockGuild {
-  public channels = new MockCollection<string, any>();
-  public members = new MockCollection<string, MockMember>();
-  public id: string;
-  constructor(id: string, channels: any[]) {
-    this.id = id;
-    channels.forEach((item) => {
-      this.channels.set(item.id, item);
-    });
-  }
-}
-
-class MockCollection<T1, T2> extends Map {
-  public array(): T2[] {
-    return [...this.values()];
-  }
-
-  public keyArray(): T1[] {
-    return [...this.keys()];
   }
 }
