@@ -209,6 +209,7 @@ export class DiscordBot {
         msg = [msg];
     }
     msg.forEach((m: Discord.Message) => {
+      log.verbose("DiscordBot", "Sent ", msg);
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
       evt.MatrixId = event.event_id;
