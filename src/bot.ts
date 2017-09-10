@@ -1,6 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
+import { DbGuildEmoji } from "./db/dbdataemoji";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
@@ -36,6 +37,7 @@ export class DiscordBot {
     this.clientFactory = new DiscordClientFactory(store, config.auth);
     this.msgProcessor = new MessageProcessor(
         new MessageProcessorOpts(this.config.bridge.domain),
+        this,
     );
   }
 
@@ -241,6 +243,25 @@ export class DiscordBot {
     }).then(() => {
       return this.UpdateGuildMember(member, roomIds);
     });
+  }
+
+  public async GetGuildEmoji(guild: Discord.Guild, id: string): Promise<string> {
+      const dbEmoji: DbGuildEmoji = await this.store.Get(DbGuildEmoji, {emoji_id: id});
+      if (!dbEmoji.Result) {
+          // Fetch the emoji
+          if (!guild.emojis.has(id)) {
+              throw new Error("The guild does not contain the emoji");
+          }
+          const emoji: Discord.Emoji = guild.emojis.get(id);
+          const intent = this.bridge.getIntent();
+          const mxcUrl = (await Util.UploadContentFromUrl(emoji.url, intent, emoji.name)).mxcUrl;
+          dbEmoji.EmojiId = emoji.id;
+          dbEmoji.GuildId = guild.id;
+          dbEmoji.Name = emoji.name;
+          dbEmoji.MxcUrl = mxcUrl;
+          await this.store.Insert(dbEmoji);
+      }
+      return dbEmoji.MxcUrl;
   }
 
   private GetFilenameForMediaEvent(content): string {
@@ -500,14 +521,15 @@ export class DiscordBot {
       });
       if (msg.content !== null && msg.content !== "") {
         // Replace mentions.
-        const result = this.msgProcessor.FormatDiscordMessage(msg);
-        rooms.forEach((room) => {
-          intent.sendMessage(room, {
-            body: result.body,
-            msgtype: "m.text",
-            formatted_body: result.formattedBody,
-            format: "org.matrix.custom.html",
-          });
+        this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
+            rooms.forEach((room) => {
+              intent.sendMessage(room, {
+                body: result.body,
+                msgtype: "m.text",
+                formatted_body: result.formattedBody,
+                format: "org.matrix.custom.html",
+              });
+            });
         });
       }
     }).catch((err) => {

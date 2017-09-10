@@ -1,5 +1,7 @@
 import * as Discord from "discord.js";
 import * as marked from "marked";
+import * as log from "npmlog";
+import { DiscordBot } from "./bot";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
@@ -21,18 +23,19 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-
-    constructor (opts: MessageProcessorOpts) {
+    private readonly bot: DiscordBot;
+    constructor (opts: MessageProcessorOpts, bot: DiscordBot) {
         this.opts = opts;
+        this.bot = bot;
     }
 
-    public FormatDiscordMessage(msg: Discord.Message): MessageProcessorMatrixResult {
+    public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
         // Replace Users
         let content = msg.content;
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
-        // content = this.ReplaceEmoji(content, msg);
+        content = await this.ReplaceEmoji(content, msg);
         // Replace channels
         result.body = content;
         result.formattedBody = marked(content);
@@ -65,16 +68,20 @@ export class MessageProcessor {
         return content;
     }
 
-    public ReplaceEmoji(content: string, msg: Discord.Message): string {
-        // let results = EMOJI_REGEX.exec(content);
-        // while (results !== null) {
-        //   const id = results[1];
-        // //   const channel = msg.guild.channels.get(id);
-        // //   const roomId = `#_discord_${msg.guild.id}_${id}:${this.opts.domain}`;
-        // //   const channelStr = channel ? "#" + channel.name : "#" + id;
-        // //   content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
-        //   results = EMOJI_REGEX.exec(content);
-        // }
+    public async ReplaceEmoji(content: string, msg: Discord.Message): Promise<string> {
+        let results = EMOJI_REGEX.exec(content);
+        while (results !== null) {
+          const id = results[1];
+          try {
+              const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+              content = content.replace(results[0], `![${id}](${mxcUrl})`);
+          } catch (ex) {
+              log.warn("MessageProcessor",
+              `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
+            );
+          }
+          results = EMOJI_REGEX.exec(content);
+        }
         return content;
     }
 }
