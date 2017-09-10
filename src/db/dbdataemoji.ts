@@ -3,7 +3,6 @@ import { IDbData } from "./dbdatainterface";
 import * as log from "npmlog";
 
 export class DbGuildEmoji implements IDbData {
-
     public EmojiId: string;
     public GuildId: string;
     public Name: string;
@@ -65,5 +64,9 @@ export class DbGuildEmoji implements IDbData {
                 $mxc_url: this.MxcUrl,
                 $updated_at: this.UpdatedAt,
         });
+    }
+
+    public Delete(store: DiscordStore): Promise<null> {
+        throw new Error("Delete is not implemented");
     }
 }

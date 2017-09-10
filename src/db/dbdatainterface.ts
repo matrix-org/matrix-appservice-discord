@@ -5,4 +5,5 @@ export interface IDbData {
     RunQuery(store: DiscordStore, params: any): Promise<null>;
     Insert(store: DiscordStore): Promise<null>;
     Update(store: DiscordStore): Promise<null>;
+    Delete(store: DiscordStore): Promise<null>;
 }

@@ -2,6 +2,7 @@ import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbGuildEmoji } from "./db/dbdataemoji";
+import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
@@ -205,7 +206,13 @@ export class DiscordBot {
       log.error("DiscordBot", "Couldn't send message. ", err);
     }
     if (Array.isArray(msg)) {
-      msg.forEach((m) => { this.sentMessages.push(m.id); });
+      msg.forEach((m) => {
+          this.sentMessages.push(m.id);
+          const evt = new DbEvent();
+          evt.MatrixId = event.event_id;
+          evt.DiscordId = m.id;
+          this.store.Insert(evt);
+      });
       return;
     }
     this.sentMessages.push(msg.id);
@@ -528,7 +535,12 @@ export class DiscordBot {
                 msgtype: "m.text",
                 formatted_body: result.formattedBody,
                 format: "org.matrix.custom.html",
-              });
+            }).then((res) => {
+                    const evt = new DbEvent();
+                    evt.MatrixId = res.event_id;
+                    evt.DiscordId = msg.id;
+                    this.store.Insert(evt);
+                });
             });
         });
       }

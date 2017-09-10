@@ -4,12 +4,13 @@ import * as ChaiAsPromised from "chai-as-promised";
 import { DiscordStore } from "../src/store";
 import * as log from "npmlog";
 import { DbGuildEmoji } from "../src/db/dbdataemoji";
+import { DbEvent } from "../src/db/dbdataevent";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 log.level = "warn";
 
-const TEST_SCHEMA = 4;
+const TEST_SCHEMA = 5;
 
 // const assert = Chai.assert;
 
@@ -83,6 +84,48 @@ describe("DiscordStore", () => {
         Chai.assert.equal(getEmoji.Name, "TestEmoji2");
         Chai.assert.equal(getEmoji.MxcUrl, "NewURL");
         Chai.assert.notEqual(getEmoji.CreatedAt, getEmoji.UpdatedAt);
+    });
+  });
+  describe("Get|Insert|Delete<DbEvent>", () => {
+    it("should insert successfully", () => {
+      const store = new DiscordStore(":memory:");
+      return expect(store.init().then(() => {
+        const event = new DbEvent();
+        event.MatrixId = "123";
+        event.DiscordId = "456";
+        return store.Insert(event);
+      })).to.eventually.be.fulfilled;
+    });
+    it("should get successfully", async () => {
+        const store = new DiscordStore(":memory:");
+        await store.init();
+        const event = new DbEvent();
+        event.MatrixId = "123";
+        event.DiscordId = "456";
+        await store.Insert(event);
+        const getEventDiscord = await store.Get(DbEvent, {discord_id: "456"});
+        Chai.assert.equal(getEventDiscord.MatrixId, "123");
+        Chai.assert.equal(getEventDiscord.DiscordId, "456");
+        const getEventMatrix = await store.Get(DbEvent, {matrix_id: "123"});
+        Chai.assert.equal(getEventDiscord.MatrixId, "123");
+        Chai.assert.equal(getEventDiscord.DiscordId, "456");
+    });
+    it("should not return nonexistant emoji", async () => {
+        const store = new DiscordStore(":memory:");
+        await store.init();
+        const getEmoji = await store.Get(DbEvent, {matrix_id: "123"});
+        Chai.assert.isFalse(getEmoji.Result);
+    });
+    it("should delete successfully", async () => {
+        const store = new DiscordStore(":memory:");
+        await store.init();
+        const event = new DbEvent();
+        event.MatrixId = "123";
+        event.DiscordId = "456";
+        await store.Insert(event);
+        await store.Delete(event);
+        const getEvent = await store.Get(DbEvent, {matrix_id: "123"});
+        Chai.assert.isFalse(getEvent.Result);
     });
   });
 });

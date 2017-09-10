@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 4;
+const CURRENT_SCHEMA = 5;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -243,6 +243,11 @@ export class DiscordStore {
   public Update<T extends IDbData>(data: T): Promise<null>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Update(this);
+  }
+
+  public Delete<T extends IDbData>(data: T): Promise<null>  {
+      log.silly("DiscordStore", `insert <${data.constructor.name}>`);
+      return data.Delete(this);
   }
 
   private getSchemaVersion ( ): Promise<number> {
