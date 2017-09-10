@@ -283,7 +283,7 @@ export class DiscordBot {
 
   private HandleMentions(body: string, members: Discord.GuildMember[]): string {
     for (const member of members) {
-      body = body.replace(new RegExp(escapeStringRegexp(member.displayName), "g"), `<@!${member.id}>`);
+      body = body.replace(new RegExp(`(^| |\\t)${escapeStringRegexp(member.displayName)}` , "mg"), ` <@!${member.id}>`);
     }
     return body;
   }
