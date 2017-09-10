@@ -20,8 +20,8 @@ export class DbGuildEmoji implements IDbData {
             WHERE emoji_id = $id`, {
                 $id: params.emoji_id,
             }).then((row) => {
-                this.Result = row != undefined;
-                if(this.Result) {
+                this.Result = row !== undefined;
+                if (this.Result) {
                     this.EmojiId = row.emoji_id;
                     this.GuildId = row.guild_id;
                     this.Name = row.name;
@@ -50,7 +50,7 @@ export class DbGuildEmoji implements IDbData {
 
     public Update(store: DiscordStore) {
         // Ensure this has incremented by 1 for Insert+Update operations.
-        this.UpdatedAt = new Date().getTime()+1;
+        this.UpdatedAt = new Date().getTime() + 1;
         return store.db.runAsync(`
             UPDATE guild_emoji
             SET name = $name,

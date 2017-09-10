@@ -46,43 +46,43 @@ describe("DiscordStore", () => {
         return store.Insert(emoji);
       })).to.eventually.be.fulfilled;
     });
-    it("should get successfully", async function() {
+    it("should get successfully", async () => {
         const store = new DiscordStore(":memory:");
         await store.init();
-        const insert_emoji = new DbGuildEmoji();
-        insert_emoji.EmojiId = "123";
-        insert_emoji.GuildId = "456";
-        insert_emoji.Name = "TestEmoji";
-        insert_emoji.MxcUrl = "TestUrl";
-        await store.Insert(insert_emoji);
-        const get_emoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
-        Chai.assert.equal(get_emoji.Name, "TestEmoji");
-        Chai.assert.equal(get_emoji.MxcUrl, "TestUrl");
+        const insertEmoji = new DbGuildEmoji();
+        insertEmoji.EmojiId = "123";
+        insertEmoji.GuildId = "456";
+        insertEmoji.Name = "TestEmoji";
+        insertEmoji.MxcUrl = "TestUrl";
+        await store.Insert(insertEmoji);
+        const getEmoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
+        Chai.assert.equal(getEmoji.Name, "TestEmoji");
+        Chai.assert.equal(getEmoji.MxcUrl, "TestUrl");
     });
-    it("should not return nonexistant emoji", async function() {
+    it("should not return nonexistant emoji", async () => {
         const store = new DiscordStore(":memory:");
         await store.init();
-        const get_emoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
-        Chai.assert.isFalse(get_emoji.Result);
+        const getEmoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
+        Chai.assert.isFalse(getEmoji.Result);
     });
-    it("should update successfully", async function() {
+    it("should update successfully", async () => {
         const store = new DiscordStore(":memory:");
         await store.init();
-        const insert_emoji = new DbGuildEmoji();
-        insert_emoji.EmojiId = "123";
-        insert_emoji.GuildId = "456";
-        insert_emoji.Name = "TestEmoji";
-        insert_emoji.MxcUrl = "TestUrl";
-        await store.Insert(insert_emoji);
-        insert_emoji.EmojiId = "123";
-        insert_emoji.GuildId = "456";
-        insert_emoji.Name = "TestEmoji2";
-        insert_emoji.MxcUrl = "NewURL";
-        await store.Update(insert_emoji);
-        const get_emoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
-        Chai.assert.equal(get_emoji.Name, "TestEmoji2");
-        Chai.assert.equal(get_emoji.MxcUrl, "NewURL");
-        Chai.assert.notEqual(get_emoji.CreatedAt,get_emoji.UpdatedAt);
+        const insertEmoji = new DbGuildEmoji();
+        insertEmoji.EmojiId = "123";
+        insertEmoji.GuildId = "456";
+        insertEmoji.Name = "TestEmoji";
+        insertEmoji.MxcUrl = "TestUrl";
+        await store.Insert(insertEmoji);
+        insertEmoji.EmojiId = "123";
+        insertEmoji.GuildId = "456";
+        insertEmoji.Name = "TestEmoji2";
+        insertEmoji.MxcUrl = "NewURL";
+        await store.Update(insertEmoji);
+        const getEmoji = await store.Get(DbGuildEmoji, {emoji_id: "123"});
+        Chai.assert.equal(getEmoji.Name, "TestEmoji2");
+        Chai.assert.equal(getEmoji.MxcUrl, "NewURL");
+        Chai.assert.notEqual(getEmoji.CreatedAt, getEmoji.UpdatedAt);
     });
   });
 });
