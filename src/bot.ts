@@ -3,18 +3,17 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
+import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import * as marked from "marked";
 import * as path from "path";
 import * as escapeStringRegexp from "escape-string-regexp";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
-const MATRIX_TO_LINK = "https://matrix.to/#/";
 const PRESENCE_UPDATE_DELAY = 55000; // Synapse updates in 55 second intervals.
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
@@ -29,11 +28,15 @@ export class DiscordBot {
   private bridge: Bridge;
   private presenceInterval: any;
   private sentMessages: string[];
+  private msgProcessor: MessageProcessor;
   constructor(config: DiscordBridgeConfig, store: DiscordStore) {
     this.config = config;
     this.store = store;
     this.sentMessages = [];
     this.clientFactory = new DiscordClientFactory(store, config.auth);
+    this.msgProcessor = new MessageProcessor(
+        new MessageProcessorOpts(this.config.bridge.domain)
+    );
   }
 
   public setBridge(bridge: Bridge) {
@@ -447,33 +450,6 @@ export class DiscordBot {
     });
   }
 
-  private FormatDiscordMessage(msg: Discord.Message): string {
-    // Replace Users
-    let content = msg.content;
-    const userRegex = /<@!?([0-9]*)>/g;
-    let results = userRegex.exec(content);
-    while (results !== null) {
-      const id = results[1];
-      const member = msg.guild.members.get(id);
-      const memberId = `@_discord_${id}:${this.config.bridge.domain}`;
-      const memberStr = member ? member.user.username : memberId;
-      content = content.replace(results[0], memberStr);
-      results = userRegex.exec(content);
-    }
-    // Replace channels
-    const channelRegex = /<#?([0-9]*)>/g;
-    results = channelRegex.exec(content);
-    while (results !== null) {
-      const id = results[1];
-      const channel = msg.guild.channels.get(id);
-      const roomId = `#_discord_${msg.guild.id}_${id}:${this.config.bridge.domain}`;
-      const channelStr = channel ? "#" + channel.name : "#" + id;
-      content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
-      results = channelRegex.exec(content);
-    }
-    return content;
-  }
-
   private OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
     if (indexOfMsg !== -1) {
@@ -524,13 +500,12 @@ export class DiscordBot {
       });
       if (msg.content !== null && msg.content !== "") {
         // Replace mentions.
-        const content = this.FormatDiscordMessage(msg);
-        const fBody = marked(content);
+        const result = this.msgProcessor.FormatDiscordMessage(msg);
         rooms.forEach((room) => {
           intent.sendMessage(room, {
-            body: content,
+            body: result.body,
             msgtype: "m.text",
-            formatted_body: fBody,
+            formatted_body: result.formatted_body,
             format: "org.matrix.custom.html",
           });
         });
