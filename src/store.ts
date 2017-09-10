@@ -2,9 +2,9 @@ import * as SQLite3 from "sqlite3";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as fs from "fs";
-import { IDbSchema } from "./dbschema/dbschema";
-
-const CURRENT_SCHEMA = 3;
+import { IDbSchema } from "./db/schema/dbschema";
+import { IDbData} from "./db/dbdatainterface"
+const CURRENT_SCHEMA = 4;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -59,7 +59,7 @@ export class DiscordStore {
     const targetSchema = overrideSchema || CURRENT_SCHEMA;
     while (version < targetSchema) {
       version++;
-      const schemaClass = require(`./dbschema/v${version}.js`).Schema;
+      const schemaClass = require(`./db/schema/v${version}.js`).Schema;
       const schema = (new schemaClass() as IDbSchema);
       log.info("DiscordStore", `Updating database to v${version}, "${schema.description}"`);
       try {
@@ -89,24 +89,32 @@ export class DiscordStore {
 
   public create_table (statement: string, tablename: string): Promise<null|Error> {
     return this.db.runAsync(statement).then(() => {
-      log.info("DiscordStore", "Created table ", tablename);
+      log.info("DiscordStore", "Created table", tablename);
     }).catch((err) => {
       throw new Error(`Error creating '${tablename}': ${err}`);
     });
   }
 
   public add_user_token(userId: string, discordId: string, token: string): Promise<null> {
-    log.silly("SQL", "set_user_token => %s", userId);
-    return this.db.runAsync(
-      `
-      INSERT INTO user_id_discord_id (user_id,discord_id) VALUES ($userId,$discordId);
-      INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
-      `
-    , {
-      $userId: userId,
-      $discordId: discordId,
-      $token: token,
-    }).catch( (err) => {
+    log.silly("SQL", "add_user_token => %s", userId);
+    return Promise.all([
+        this.db.runAsync(
+          `
+          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($userId,$discordId);
+          `
+        , {
+          $userId: userId,
+          $discordId: discordId,
+        }),
+        this.db.runAsync(
+          `
+          INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
+          `
+        , {
+          $discordId: discordId,
+          $token: token,
+        })
+    ]).catch( (err) => {
       log.error("DiscordStore", "Error storing user token %s", err);
       throw err;
     });
@@ -226,6 +234,23 @@ export class DiscordStore {
     }).catch( ()  => {
       return 0;
     });
+  }
+
+  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): T {
+      const dType = new dbType();
+      log.silly("DiscordStore", `get <${dType.constructor.name}>`);
+      dType.RunQuery(this, params);
+      return dType;
+  }
+
+  public Insert<T extends IDbData>(data: T) {
+      log.silly("DiscordStore", `insert <${data.constructor.name}>`);
+      data.Insert(this);
+  }
+
+  public Update<T extends IDbData>(data: T) {
+      log.silly("DiscordStore", `insert <${data.constructor.name}>`);
+      data.Update(this);
   }
 
   private setSchemaVersion (ver: number): Promise<any> {

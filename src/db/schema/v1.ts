@@ -1,5 +1,5 @@
 import {IDbSchema} from "./dbschema";
-import {DiscordStore} from "../store";
+import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
   public description = "Schema, Client Auth Table";
   public run(store: DiscordStore): Promise<null> {

@@ -1,6 +1,6 @@
 import {IDbSchema} from "./dbschema";
-import {DiscordStore} from "../store";
-import {DiscordClientFactory} from "../clientfactory";
+import {DiscordStore} from "../../store";
+import {DiscordClientFactory} from "../../clientfactory";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 
