@@ -102,15 +102,46 @@ describe("DiscordStore", () => {
         event.ChannelId = "123";
         await store.Insert(event);
         const getEventDiscord = await store.Get(DbEvent, {discord_id: "456"});
+        getEventDiscord.Next();
         Chai.assert.equal(getEventDiscord.MatrixId, "123");
         Chai.assert.equal(getEventDiscord.DiscordId, "456");
         Chai.assert.equal(getEventDiscord.GuildId, "123");
         Chai.assert.equal(getEventDiscord.ChannelId, "123");
         const getEventMatrix = await store.Get(DbEvent, {matrix_id: "123"});
+        getEventMatrix.Next();
         Chai.assert.equal(getEventMatrix.MatrixId, "123");
         Chai.assert.equal(getEventMatrix.DiscordId, "456");
         Chai.assert.equal(getEventMatrix.GuildId, "123");
         Chai.assert.equal(getEventMatrix.ChannelId, "123");
+    });
+    const MSG_COUNT = 5;
+    it("should get multiple discord msgs successfully", async () => {
+        const store = new DiscordStore(":memory:");
+        await store.init();
+        for (let i = 0; i < MSG_COUNT; i++) {
+            const event = new DbEvent();
+            event.MatrixId = "123";
+            event.DiscordId = "456" + i;
+            event.GuildId = "123";
+            event.ChannelId = "123";
+            await store.Insert(event);
+        }
+        const getEventDiscord = await store.Get(DbEvent, {matrix_id: "123"});
+        Chai.assert.equal(getEventDiscord.ResultCount, MSG_COUNT);
+    });
+    it("should get multiple matrix msgs successfully", async () => {
+        const store = new DiscordStore(":memory:");
+        await store.init();
+        for (let i = 0; i < MSG_COUNT; i++) {
+            const event = new DbEvent();
+            event.MatrixId = "123" + i;
+            event.DiscordId = "456";
+            event.GuildId = "123";
+            event.ChannelId = "123";
+            await store.Insert(event);
+        }
+        const getEventMatrix = await store.Get(DbEvent, {discord_id: "456"});
+        Chai.assert.equal(getEventMatrix.ResultCount, MSG_COUNT);
     });
     it("should not return nonexistant event", async () => {
         const store = new DiscordStore(":memory:");
@@ -129,6 +160,7 @@ describe("DiscordStore", () => {
         await store.Insert(event);
         await store.Delete(event);
         const getEvent = await store.Get(DbEvent, {matrix_id: "123"});
+        getEvent.Next();
         Chai.assert.isFalse(getEvent.Result);
     });
   });

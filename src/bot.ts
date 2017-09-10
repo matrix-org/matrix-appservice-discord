@@ -62,6 +62,7 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
+      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
@@ -212,7 +213,7 @@ export class DiscordBot {
       log.verbose("DiscordBot", "Sent ", m);
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
-      evt.MatrixId = event.event_id;
+      evt.MatrixId = event.event_id + ";" + event.room_id;
       evt.DiscordId = m.id;
       // Webhooks don't send guild info.
       evt.GuildId = guildId;
@@ -220,6 +221,29 @@ export class DiscordBot {
       this.store.Insert(evt);
     });
     return;
+  }
+
+  public async ProcessMatrixRedact(event: any) {
+    log.error("DiscordBot", `Got redact request for ${event.reacts}`);
+    const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
+    if (!storeEvent.Result) {
+        log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+        return;
+    }
+    while (storeEvent.Next()) {
+        log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+        if (!this.bot.guilds.has(storeEvent.GuildId)) {
+            log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
+            return;
+        }
+        if (!this.bot.guilds.get(storeEvent.GuildId).channels.has(storeEvent.ChannelId)) {
+            log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
+            return;
+        }
+        const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
+                        .channels.get(storeEvent.ChannelId);
+        await channel.fetchMessage(storeEvent.DiscordId);
+    }
   }
 
   public OnUserQuery (userId: string): any {
@@ -541,7 +565,7 @@ export class DiscordBot {
                 format: "org.matrix.custom.html",
             }).then((res) => {
                     const evt = new DbEvent();
-                    evt.MatrixId = res.event_id;
+                    evt.MatrixId = res.event_id + ";" + room;
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
@@ -554,4 +578,19 @@ export class DiscordBot {
       log.verbose("DiscordBot", "Failed to send message into room.", err);
     });
   }
+
+    private async DeleteDiscordMessage(msg: Discord.Message) {
+        log.error("DiscordBot", `Got delete event for ${msg.id}`);
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+        if (!storeEvent.Result) {
+          log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+          return;
+        }
+        while (storeEvent.Next()) {
+          log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+          const client = this.bridge.getIntent().getClient();
+          const matrixIds = storeEvent.MatrixId.split(";");
+          await client.redactEvent(matrixIds[1], matrixIds[0]);
+        }
+    }
 }

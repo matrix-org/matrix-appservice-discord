@@ -7,3 +7,8 @@ export interface IDbData {
     Update(store: DiscordStore): Promise<null|Error>;
     Delete(store: DiscordStore): Promise<null|Error>;
 }
+
+export interface IDbDataMany extends IDbData {
+    ResultCount: number;
+    Next(): boolean;
+}

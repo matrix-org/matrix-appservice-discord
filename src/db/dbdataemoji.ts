@@ -12,7 +12,6 @@ export class DbGuildEmoji implements IDbData {
     public Result: boolean;
 
     public RunQuery(store: DiscordStore, params: any): Promise<null> {
-        log.silly("DiscordStore", "_get_schema_version");
         return store.db.getAsync(`
             SELECT *
             FROM guild_emoji

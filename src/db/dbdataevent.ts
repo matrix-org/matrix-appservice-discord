@@ -1,26 +1,31 @@
 import { DiscordStore } from "../store";
-import { IDbData } from "./dbdatainterface";
+import { IDbData, IDbDataMany } from "./dbdatainterface";
 import * as log from "npmlog";
 
-export class DbEvent implements IDbData {
+export class DbEvent implements IDbDataMany {
     public MatrixId: string;
     public DiscordId: string;
     public GuildId: string;
     public ChannelId: string;
     public Result: boolean;
+    private rows: any[];
+
+    get ResultCount(): number {
+        return this.rows.length;
+    }
 
     public async RunQuery(store: DiscordStore, params: any): Promise<null> {
-        log.silly("DiscordStore", "_get_schema_version");
-        let rowM = null;
+        this.rows = [];
+        let rowsM = null;
         if (params.matrix_id) {
-            rowM = await store.db.getAsync(`
+            rowsM = await store.db.allAsync(`
                 SELECT *
                 FROM event_store
                 WHERE matrix_id = $id`, {
                     $id: params.matrix_id,
             });
         } else if (params.discord_id) {
-            rowM = await store.db.getAsync(`
+            rowsM = await store.db.allAsync(`
                 SELECT *
                 FROM event_store
                 WHERE discord_id = $id`, {
@@ -29,25 +34,37 @@ export class DbEvent implements IDbData {
         } else {
             throw new Error("Unknown/incorrect id given as a param");
         }
-        this.Result = rowM !== undefined;
-        if (this.Result) {
-            this.MatrixId = rowM.matrix_id;
-            this.DiscordId = rowM.discord_id;
-            const rowD = await store.db.getAsync(`
-                SELECT *
-                FROM discord_msg_store
-                WHERE msg_id = $id`, {
-                    $id: rowM.discord_id,
-            });
-            if (rowD !== undefined) {
-                this.GuildId = rowD.guild_id;
-                this.ChannelId = rowD.guild_id;
-            } else {
-                this.Result = false;
-                throw new Error("Could not find discord event data in discord_msg_store");
+
+        for (const rowM of rowsM) {
+            const row = {
+                matrix_id: rowM.matrix_id,
+                discord_id: rowM.discord_id,
+            };
+            for (const rowD of await store.db.allAsync(`
+                    SELECT *
+                    FROM discord_msg_store
+                    WHERE msg_id = $id`, {
+                        $id: rowM.discord_id,
+            })) {
+                const insertRow: any = Object.assign({}, row);
+                insertRow.guild_id = rowD.guild_id;
+                insertRow.channel_id = rowD.channel_id;
+                this.rows.push(insertRow);
             }
         }
+        this.Result = this.rows.length !== 0;
         return null;
+    }
+
+    public Next(): boolean {
+        if (!this.Result || this.ResultCount === 0) {
+            return false;
+        }
+        const item = this.rows.shift();
+        this.MatrixId = item.matrix_id;
+        this.DiscordId = item.discord_id;
+        this.GuildId = item.guild_id;
+        this.ChannelId = item.channel_id;
     }
 
     public async Insert(store: DiscordStore): Promise<null> {
@@ -58,6 +75,16 @@ export class DbEvent implements IDbData {
                 $matrix_id: this.MatrixId,
                 $discord_id: this.DiscordId,
         });
+        // Check if the discord item exists?
+        const msgExists = await store.db.getAsync(`
+                SELECT *
+                FROM discord_msg_store
+                WHERE msg_id = $id`, {
+                    $id: this.DiscordId,
+        }) !== undefined;
+        if (msgExists) {
+            return;
+        }
         return store.db.runAsync(`
             INSERT INTO discord_msg_store
             (msg_id, guild_id, channel_id)
