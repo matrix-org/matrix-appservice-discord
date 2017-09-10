@@ -224,7 +224,8 @@ export class DiscordBot {
   }
 
   public async ProcessMatrixRedact(event: any) {
-    log.error("DiscordBot", `Got redact request for ${event.reacts}`);
+    log.info("DiscordBot", `Got redact request for ${event.reacts}`);
+    log.verbose("DiscordBot", `Event:`, event);
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
     if (!storeEvent.Result) {
         log.warn("DiscordBot", `Could not redact because the event was in the store.`);
@@ -580,7 +581,7 @@ export class DiscordBot {
   }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {
-        log.error("DiscordBot", `Got delete event for ${msg.id}`);
+        log.info("DiscordBot", `Got delete event for ${msg.id}`);
         const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
         if (!storeEvent.Result) {
           log.warn("DiscordBot", `Could not redact because the event was in the store.`);
