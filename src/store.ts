@@ -227,21 +227,22 @@ export class DiscordStore {
     });
   }
 
-  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): T {
+  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T> {
       const dType = new dbType();
       log.silly("DiscordStore", `get <${dType.constructor.name}>`);
-      dType.RunQuery(this, params);
-      return dType;
+      return dType.RunQuery(this, params).then(() => {
+          return dType;
+      });
   }
 
-  public Insert<T extends IDbData>(data: T) {
+  public Insert<T extends IDbData>(data: T): Promise<null> {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
-      data.Insert(this);
+      return data.Insert(this);
   }
 
-  public Update<T extends IDbData>(data: T) {
+  public Update<T extends IDbData>(data: T): Promise<null>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
-      data.Update(this);
+      return data.Update(this);
   }
 
   private getSchemaVersion ( ): Promise<number> {
