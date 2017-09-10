@@ -208,11 +208,13 @@ export class DiscordBot {
     if (!Array.isArray(msg)) {
         msg = [msg];
     }
-    msg.forEach((m) => {
+    msg.forEach((m: Discord.Message) => {
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
       evt.MatrixId = event.event_id;
       evt.DiscordId = m.id;
+      evt.GuildId = m.guild.id;
+      evt.ChannelId = m.channel.id;
       this.store.Insert(evt);
     });
     return;
@@ -539,6 +541,8 @@ export class DiscordBot {
                     const evt = new DbEvent();
                     evt.MatrixId = res.event_id;
                     evt.DiscordId = msg.id;
+                    evt.ChannelId = msg.channel.id;
+                    evt.GuildId = msg.guild.id;
                     this.store.Insert(evt);
                 });
             });

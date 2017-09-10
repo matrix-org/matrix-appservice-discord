@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 5;
+const CURRENT_SCHEMA = 6;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -22,7 +22,7 @@ export class DiscordStore {
 
   public backup_database(): Promise<null> {
     if (this.filepath === ":memory:") {
-      log.warn("DiscordStore", "Can't backup a :memory: database.");
+      log.info("DiscordStore", "Can't backup a :memory: database.");
       return Promise.resolve();
     }
     const BACKUP_NAME = this.filepath + ".backup";

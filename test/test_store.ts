@@ -10,7 +10,7 @@ Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 log.level = "warn";
 
-const TEST_SCHEMA = 5;
+const TEST_SCHEMA = 6;
 
 // const assert = Chai.assert;
 
@@ -18,14 +18,8 @@ describe("DiscordStore", () => {
   describe("init", () => {
     it("can create a db", () => {
       const store = new DiscordStore(":memory:");
-      return store.init(-1);
+      return store.init();
     });
-    for (let i = 1; i < TEST_SCHEMA; i++) {
-        it("update schema to v" + i, () => {
-          const store = new DiscordStore(":memory:");
-          return store.init(i);
-        });
-    }
   });
   describe("add_user_token", () => {
     it("should not throw when adding an entry", () => {
@@ -93,6 +87,8 @@ describe("DiscordStore", () => {
         const event = new DbEvent();
         event.MatrixId = "123";
         event.DiscordId = "456";
+        event.GuildId = "123";
+        event.ChannelId = "123";
         return store.Insert(event);
       })).to.eventually.be.fulfilled;
     });
@@ -102,19 +98,25 @@ describe("DiscordStore", () => {
         const event = new DbEvent();
         event.MatrixId = "123";
         event.DiscordId = "456";
+        event.GuildId = "123";
+        event.ChannelId = "123";
         await store.Insert(event);
         const getEventDiscord = await store.Get(DbEvent, {discord_id: "456"});
         Chai.assert.equal(getEventDiscord.MatrixId, "123");
         Chai.assert.equal(getEventDiscord.DiscordId, "456");
+        Chai.assert.equal(getEventDiscord.GuildId, "123");
+        Chai.assert.equal(getEventDiscord.ChannelId, "123");
         const getEventMatrix = await store.Get(DbEvent, {matrix_id: "123"});
-        Chai.assert.equal(getEventDiscord.MatrixId, "123");
-        Chai.assert.equal(getEventDiscord.DiscordId, "456");
+        Chai.assert.equal(getEventMatrix.MatrixId, "123");
+        Chai.assert.equal(getEventMatrix.DiscordId, "456");
+        Chai.assert.equal(getEventMatrix.GuildId, "123");
+        Chai.assert.equal(getEventMatrix.ChannelId, "123");
     });
-    it("should not return nonexistant emoji", async () => {
+    it("should not return nonexistant event", async () => {
         const store = new DiscordStore(":memory:");
         await store.init();
-        const getEmoji = await store.Get(DbEvent, {matrix_id: "123"});
-        Chai.assert.isFalse(getEmoji.Result);
+        const getMessage = await store.Get(DbEvent, {matrix_id: "123"});
+        Chai.assert.isFalse(getMessage.Result);
     });
     it("should delete successfully", async () => {
         const store = new DiscordStore(":memory:");
@@ -122,6 +124,8 @@ describe("DiscordStore", () => {
         const event = new DbEvent();
         event.MatrixId = "123";
         event.DiscordId = "456";
+        event.GuildId = "123";
+        event.ChannelId = "123";
         await store.Insert(event);
         await store.Delete(event);
         const getEvent = await store.Get(DbEvent, {matrix_id: "123"});
