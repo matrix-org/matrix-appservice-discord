@@ -209,13 +209,14 @@ export class DiscordBot {
         msg = [msg];
     }
     msg.forEach((m: Discord.Message) => {
-      log.verbose("DiscordBot", "Sent ", msg);
+      log.verbose("DiscordBot", "Sent ", m);
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
       evt.MatrixId = event.event_id;
       evt.DiscordId = m.id;
-      evt.GuildId = m.guild.id;
-      evt.ChannelId = m.channel.id;
+      // Webhooks don't send guild info.
+      evt.GuildId = guildId;
+      evt.ChannelId = channelId;
       this.store.Insert(evt);
     });
     return;
