@@ -205,17 +205,17 @@ export class DiscordBot {
     } catch (err) {
       log.error("DiscordBot", "Couldn't send message. ", err);
     }
-    if (Array.isArray(msg)) {
-      msg.forEach((m) => {
-          this.sentMessages.push(m.id);
-          const evt = new DbEvent();
-          evt.MatrixId = event.event_id;
-          evt.DiscordId = m.id;
-          this.store.Insert(evt);
-      });
-      return;
+    if (!Array.isArray(msg)) {
+        msg = [msg];
     }
-    this.sentMessages.push(msg.id);
+    msg.forEach((m) => {
+      this.sentMessages.push(m.id);
+      const evt = new DbEvent();
+      evt.MatrixId = event.event_id;
+      evt.DiscordId = m.id;
+      this.store.Insert(evt);
+    });
+    return;
   }
 
   public OnUserQuery (userId: string): any {
