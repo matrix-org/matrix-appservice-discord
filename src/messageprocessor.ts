@@ -2,6 +2,7 @@ import * as Discord from "discord.js";
 import * as marked from "marked";
 import * as log from "npmlog";
 import { DiscordBot } from "./bot";
+import * as escapeStringRegexp from "escape-string-regexp";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
@@ -83,5 +84,14 @@ export class MessageProcessor {
           results = EMOJI_REGEX.exec(content);
         }
         return content;
+    }
+
+    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+      for (const member of members) {
+        body = body.replace(
+            new RegExp(`(^| |\\t)(${escapeStringRegexp(member.displayName)})($| |\\t)` , "mg"), ` <@!${member.id}>`,
+        );
+      }
+      return body;
     }
 }

@@ -112,4 +112,54 @@ describe("MessageProcessor", () => {
             Chai.assert.equal(content, "Hello ![3333333](mxc://image)");
         });
     });
+    describe("FindMentionsInPlainBody", () => {
+        it("processes mentioned username correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                user: {
+                    username: "TestUsername",
+                    id: "12345",
+                },
+            })];
+            const msg = "Hello TestUsername";
+            const content = processor.FindMentionsInPlainBody(msg, members);
+            Chai.assert.equal(content, "Hello <@!12345>");
+        });
+        it("processes mentioned nickname correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                nick: "TestNickname",
+                user: {
+                    username: "TestUsername",
+                    id: "12345",
+                },
+            })];
+            const msg = "Hello TestNickname";
+            const content = processor.FindMentionsInPlainBody(msg, members);
+            Chai.assert.equal(content, "Hello <@!12345>");
+        });
+        it("processes non-mentions correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                nick: "that",
+                user: {
+                    username: "TestUsername",
+                    id: "12345",
+                },
+            }),
+            new Discord.GuildMember(guild, {
+                nick: "testingstring",
+                user: {
+                    username: "that",
+                    id: "12345",
+                },
+            })];
+            const msg = "Welcome thatman";
+            const content = processor.FindMentionsInPlainBody(msg, members);
+            Chai.assert.equal(content, "Welcome thatman");
+        });
+    });
 });

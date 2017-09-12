@@ -11,7 +11,6 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import * as path from "path";
-import * as escapeStringRegexp from "escape-string-regexp";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -151,11 +150,11 @@ export class DiscordBot {
           icon_url: profile.avatar_url,
           url: `https://matrix.to/#/${event.sender}`,
         },
-        description: this.HandleMentions(event.content.body, channel.members.array()),
+        description: this.msgProcessor.FindMentionsInPlainBody(event.content.body, channel.members.array()),
       });
     }
     return new Discord.RichEmbed({
-      description: this.HandleMentions(event.content.body, channel.members.array()),
+      description: this.msgProcessor.FindMentionsInPlainBody(event.content.body, channel.members.array()),
     });
   }
 
@@ -224,7 +223,7 @@ export class DiscordBot {
   }
 
   public async ProcessMatrixRedact(event: any) {
-    log.info("DiscordBot", `Got redact request for ${event.reacts}`);
+    log.info("DiscordBot", `Got redact request for ${event.redacts}`);
     log.verbose("DiscordBot", `Event:`, event);
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
     if (!storeEvent.Result) {
@@ -308,13 +307,6 @@ export class DiscordBot {
       return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
     }
     return "matrix-media." + mime.extension(content.info.mimetype);
-  }
-
-  private HandleMentions(body: string, members: Discord.GuildMember[]): string {
-    for (const member of members) {
-      body = body.replace(new RegExp(`(^| |\\t)${escapeStringRegexp(member.displayName)}` , "mg"), ` <@!${member.id}>`);
-    }
-    return body;
   }
 
   private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
@@ -556,7 +548,6 @@ export class DiscordBot {
         });
       });
       if (msg.content !== null && msg.content !== "") {
-        // Replace mentions.
         this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
             rooms.forEach((room) => {
               intent.sendMessage(room, {
