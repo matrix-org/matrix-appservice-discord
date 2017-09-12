@@ -53,11 +53,15 @@ export class DiscordBot {
     return this.clientFactory.init().then(() => {
       return this.clientFactory.getClient();
     }).then((client: any) => {
-      client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
-      client.on("typingStop", (c, u) => { this.OnTyping(c, u, false); });
+      if (!this.config.bridge.disableTypingNotifications) {
+        client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
+        client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
+      }
+      if (!this.config.bridge.disablePresence) {
+        client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
+      }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
-      client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
@@ -68,14 +72,17 @@ export class DiscordBot {
       });
       log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
-      /* Currently synapse sadly times out presence after a minute.
-       * This will set the presence for each user who is not offline */
-      this.presenceInterval = setInterval(
-        this.BulkPresenceUpdate.bind(this),
-        PRESENCE_UPDATE_DELAY,
-      );
-      this.BulkPresenceUpdate();
-      return null;
+
+      if (!this.config.bridge.disablePresence) {
+        /* Currently synapse sadly times out presence after a minute.
+         * This will set the presence for each user who is not offline */
+        this.presenceInterval = setInterval(
+            this.BulkPresenceUpdate.bind(this),
+            PRESENCE_UPDATE_DELAY,
+        );
+        this.BulkPresenceUpdate();
+        return null;
+      }
     });
   }
 
@@ -423,6 +430,7 @@ export class DiscordBot {
   }
 
   private BulkPresenceUpdate() {
+    if (this.config.bridge.disablePresence) return;
     log.verbose("DiscordBot", "Bulk presence update");
     const members = [];
     for (const guild of this.bot.guilds.values()) {
@@ -439,6 +447,7 @@ export class DiscordBot {
 }
 
   private UpdatePresence(guildMember: Discord.GuildMember) {
+    if (this.config.bridge.disablePresence) return;
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
       const presence: any = {};

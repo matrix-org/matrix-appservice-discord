@@ -10,6 +10,10 @@ properties:
             type: "string"
           homeserverUrl:
             type: "string"
+          disablePresence:
+            type: "boolean"
+          disableTypingNotifications:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken"]
