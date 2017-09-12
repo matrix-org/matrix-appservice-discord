@@ -5,6 +5,7 @@ export class DiscordBridgeConfig {
   public auth: DiscordBridgeConfigAuth;
   public logging: DiscordBridgeConfigLogging;
   public database: DiscordBridgeConfigDatabase;
+  public room: DiscordBridgeConfigRoom;
 }
 
 class DiscordBridgeConfigBridge {
@@ -23,4 +24,8 @@ export class DiscordBridgeConfigAuth {
 }
 class DiscordBridgeConfigLogging {
   public level: string;
+}
+
+class DiscordBridgeConfigRoom {
+  public defaultVisibility: string;
 }

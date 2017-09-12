@@ -9,3 +9,5 @@ logging:
   level: "warn" #silly, verbose, info, http, warn, error
 database:
   filename: "discord.db"
+room:
+  defaultVisibility: "public"

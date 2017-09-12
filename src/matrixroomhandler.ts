@@ -175,7 +175,7 @@ export class MatrixRoomHandler {
     remote.set("update_name", true);
     remote.set("update_topic", true);
     const creationOpts = {
-      visibility: "public",
+      visibility: this.config.room.defaultVisibility,
       room_alias_name: alias,
       name: `[Discord] ${channel.guild.name} #${channel.name}`,
       topic: channel.topic ? channel.topic : "",
