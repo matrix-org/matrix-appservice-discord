@@ -430,7 +430,10 @@ export class DiscordBot {
   }
 
   private BulkPresenceUpdate() {
-    if (this.config.bridge.disablePresence) return;
+    if (this.config.bridge.disablePresence) {
+      return; // skip if there's nothing to do
+    }
+
     log.verbose("DiscordBot", "Bulk presence update");
     const members = [];
     for (const guild of this.bot.guilds.values()) {
@@ -447,7 +450,10 @@ export class DiscordBot {
 }
 
   private UpdatePresence(guildMember: Discord.GuildMember) {
-    if (this.config.bridge.disablePresence) return;
+    if (this.config.bridge.disablePresence) {
+      return; // skip if there's nothing to do
+    }
+
     const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
     try {
       const presence: any = {};
