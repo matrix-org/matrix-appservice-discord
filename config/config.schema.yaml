@@ -14,6 +14,8 @@ properties:
             type: "boolean"
           disableTypingNotifications:
             type: "boolean"
+          disableDiscordMentions:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken"]

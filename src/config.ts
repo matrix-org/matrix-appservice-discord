@@ -12,6 +12,7 @@ class DiscordBridgeConfigBridge {
   public homeserverUrl: string;
   public disablePresence: boolean;
   public disableTypingNotifications: boolean;
+  public disableDiscordMentions: boolean;
 }
 
 class DiscordBridgeConfigDatabase {

@@ -145,6 +145,11 @@ export class DiscordBot {
   }
 
   public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
+    const body = this.config.bridge.disableDiscordMentions ? event.content.body :
+                 this.msgProcessor.FindMentionsInPlainBody(
+                     event.content.body,
+                     channel.members.array(),
+                 );
     if (profile) {
       profile.displayname = profile.displayname || event.sender;
       if (profile.avatar_url) {
@@ -157,11 +162,11 @@ export class DiscordBot {
           icon_url: profile.avatar_url,
           url: `https://matrix.to/#/${event.sender}`,
         },
-        description: this.msgProcessor.FindMentionsInPlainBody(event.content.body, channel.members.array()),
+        description: body,
       });
     }
     return new Discord.RichEmbed({
-      description: this.msgProcessor.FindMentionsInPlainBody(event.content.body, channel.members.array()),
+      description: body,
     });
   }
 
