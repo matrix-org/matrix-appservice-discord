@@ -38,3 +38,9 @@ properties:
         properties:
           filename:
             type: "string"
+    room:
+        type: "object"
+        required: ["defaultVisibility"]
+        properties:
+          defaultVisibility:
+            type: "string"
