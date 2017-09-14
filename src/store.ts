@@ -229,9 +229,12 @@ export class DiscordStore {
 
   public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T> {
       const dType = new dbType();
-      log.silly("DiscordStore", `get <${dType.constructor.name}>`);
+      log.silly("DiscordStore", `get <${dType.constructor.name} with params ${params}>`);
       return dType.RunQuery(this, params).then(() => {
+          log.silly("DiscordStore", `Finished query with ${dType.Result ? "Results" : "No Results"}`);
           return dType;
+      }).catch((ex) => {
+          log.warn("DiscordStore", `get <${dType.constructor.name} with params ${params} FAILED with exception ${ex}>`);
       });
   }
 
