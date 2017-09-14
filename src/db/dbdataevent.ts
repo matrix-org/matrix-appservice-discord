@@ -65,6 +65,7 @@ export class DbEvent implements IDbDataMany {
         this.DiscordId = item.discord_id;
         this.GuildId = item.guild_id;
         this.ChannelId = item.channel_id;
+        return true;
     }
 
     public async Insert(store: DiscordStore): Promise<null> {
