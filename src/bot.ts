@@ -254,7 +254,13 @@ export class DiscordBot {
         }
         const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
                         .channels.get(storeEvent.ChannelId);
-        await channel.fetchMessage(storeEvent.DiscordId);
+        const msg = await channel.fetchMessage(storeEvent.DiscordId);
+        try {
+            await msg.delete();
+            log.info("DiscordBot", `Deleted message`);
+        } catch (ex) {
+            log.warn("DiscordBot", `Failed to delete message`, ex);
+        }
     }
   }
 
