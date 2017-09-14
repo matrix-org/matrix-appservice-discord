@@ -239,9 +239,10 @@ export class DiscordBot {
     log.verbose("DiscordBot", `Event:`, event);
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
     if (!storeEvent.Result) {
-        log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+        log.warn("DiscordBot", `Could not redact because the event was not in the store.`);
         return;
     }
+    log.info("DiscordBot", `Redact event matched ${storeEvent.ResultCount} entries`);
     while (storeEvent.Next()) {
         log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
         if (!this.bot.guilds.has(storeEvent.GuildId)) {
