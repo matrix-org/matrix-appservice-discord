@@ -32,8 +32,11 @@ export class MessageProcessor {
 
     public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
-        // Replace Users
+        // Replace embeds.
         let content = msg.content;
+        content = this.InsertEmbeds(content, msg);
+
+        // Replace Users
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
         content = await this.ReplaceEmoji(content, msg);
@@ -41,6 +44,16 @@ export class MessageProcessor {
         result.body = content;
         result.formattedBody = marked(content);
         return result;
+    }
+
+    public InsertEmbeds(content: string, msg: Discord.Message): string {
+        for (let embed of msg.embeds) {
+            let embedContent = "\n----\n"; // Horizontal rule.
+            const embedTitle = embed.url ? `[${embed.title}](${embed.url})` : embed.title;
+            embedContent += embedTitle != null ? `#### ${embedTitle}\n\n${embed.description}` : embed.description;
+            content += embedContent;
+        }
+        return content;
     }
 
     public ReplaceMembers(content: string, msg: Discord.Message): string {

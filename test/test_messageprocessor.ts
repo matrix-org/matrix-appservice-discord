@@ -35,6 +35,7 @@ describe("MessageProcessor", () => {
       it("processes plain text messages correctly", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
         msg.content = "Hello World!";
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert(result.body, "Hello World!");
@@ -43,6 +44,7 @@ describe("MessageProcessor", () => {
       it("processes markdown messages correctly.", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
         msg.content = "Hello *World*!";
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "Hello *World*!");
@@ -160,6 +162,80 @@ describe("MessageProcessor", () => {
             const msg = "Welcome thatman";
             const content = processor.FindMentionsInPlainBody(msg, members);
             Chai.assert.equal(content, "Welcome thatman");
+        });
+    });
+    describe("InsertEmbeds", () => {
+        it("processes titleless embeds properly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    description: "TestDescription"
+                })
+            ]
+            const inContent = "";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "\n----\nTestDescription");
+        });
+        it("processes urlless embeds properly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    title: "TestTitle",
+                    description: "TestDescription",
+                })
+            ]
+            const inContent = "";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "\n----\n#### TestTitle\n\nTestDescription");
+        });
+        it("processes linked embeds properly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    title: "TestTitle",
+                    url: "testurl",
+                    description: "TestDescription",
+                })
+            ]
+            const inContent = "";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "\n----\n#### [TestTitle](testurl)\n\nTestDescription");
+        });
+        it("processes multiple embeds properly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    title: "TestTitle",
+                    url: "testurl",
+                    description: "TestDescription",
+                }),
+                new Discord.MessageEmbed(msg, {
+                    title: "TestTitle2",
+                    url: "testurl2",
+                    description: "TestDescription2",
+                })
+            ]
+            const inContent = "";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "\n----\n#### [TestTitle](testurl)\n\nTestDescription\n----\n#### [TestTitle2](testurl2)\n\nTestDescription2");
+        });
+        it("inserts embeds properly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    title: "TestTitle",
+                    url: "testurl",
+                    description: "TestDescription",
+                })
+            ]
+            const inContent = "Content that goes in the message";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "Content that goes in the message\n----\n#### [TestTitle](testurl)\n\nTestDescription");
         });
     });
 });
