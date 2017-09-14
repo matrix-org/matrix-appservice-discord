@@ -47,7 +47,7 @@ export class MessageProcessor {
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
-        for (let embed of msg.embeds) {
+        for (const embed of msg.embeds) {
             let embedContent = "\n----\n"; // Horizontal rule.
             const embedTitle = embed.url ? `[${embed.title}](${embed.url})` : embed.title;
             embedContent += embedTitle != null ? `#### ${embedTitle}\n\n${embed.description}` : embed.description;
