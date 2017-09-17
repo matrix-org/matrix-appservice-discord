@@ -132,15 +132,34 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
             const guild: any = new MockGuild("123", []);
             const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                nick: "Test",
+                user: {
+                    username: "Test",
+                    id: "54321",
+                },
+            }), new Discord.GuildMember(guild, {
                 nick: "TestNickname",
                 user: {
                     username: "TestUsername",
                     id: "12345",
                 },
             })];
-            const msg = "Hello TestNickname";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Hello <@!12345>");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
+                "I wish <@!12345> was here",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I wish TestNickname was here, TestNickname is cool", members),
+                "I wish <@!12345> was here, <@!12345> is cool",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
+                "<@!12345> was here with <@!54321>",
+            );
         });
         it("processes non-mentions correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
