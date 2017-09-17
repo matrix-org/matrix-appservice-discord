@@ -122,11 +122,17 @@ describe("MessageProcessor", () => {
                 user: {
                     username: "TestUsername",
                     id: "12345",
+                    discriminator: "54321",
                 },
             })];
-            const msg = "Hello TestUsername";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Hello <@!12345>");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Hello TestUsername", members),
+                "Hello <@!12345>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
+                "Hello <@!12345>",
+            );
         });
         it("processes mentioned nickname correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -148,6 +154,7 @@ describe("MessageProcessor", () => {
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
                 "I wish <@!12345> was here",
