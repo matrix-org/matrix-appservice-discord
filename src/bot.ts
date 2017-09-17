@@ -16,7 +16,7 @@ import * as path from "path";
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
-const PRESENCE_UPDATE_DELAY = 3000;
+const MIN_PRESENCE_UPDATE_DELAY = 250;
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
@@ -86,7 +86,9 @@ export class DiscordBot {
                 this.presenceHandler.EnqueueMember(member);
             })
         })
-        this.presenceHandler.Start(PRESENCE_UPDATE_DELAY);
+        this.presenceHandler.Start(
+            Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY)
+        );
       }
     });
   }

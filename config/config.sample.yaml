@@ -1,6 +1,7 @@
 bridge:
   domain: "localhost"
   homeserverUrl: "http://localhost:8008"
+  presenceInterval: 500,
   disablePresence: false
   disableTypingNotifications: false
   disableDiscordMentions: false
