@@ -97,7 +97,10 @@ export class PresenceHandler {
 
     private setMatrixPresence(guildMember: Discord.GuildMember, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(guildMember);
-        intent.getClient().setPresence(status).catch((ex) => {
+        intent.getClient().setPresence({
+            presence: status.Presence,
+            status_msg: status.StatusMsg ? status.StatusMsg : undefined,
+        }).catch((ex) => {
             log.warn("PresenceHandler", `Could not update Matrix presence for ${guildMember.id}`);
         });
     }
