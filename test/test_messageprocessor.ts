@@ -175,7 +175,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\nTestDescription");
         });
         it("processes urlless embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -188,7 +188,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\n#### TestTitle\n\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\n##### TestTitle\nTestDescription");
         });
         it("processes linked embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -202,7 +202,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\n#### [TestTitle](testurl)\n\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\n##### [TestTitle](testurl)\nTestDescription");
         });
         it("processes multiple embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -223,7 +223,7 @@ describe("MessageProcessor", () => {
             const content = processor.InsertEmbeds(inContent, msg);
             Chai.assert.equal(
                 content,
-"\n----\n#### [TestTitle](testurl)\n\nTestDescription\n----\n#### [TestTitle2](testurl2)\n\nTestDescription2",
+"\n\n----\n##### [TestTitle](testurl)\nTestDescription\n\n----\n##### [TestTitle2](testurl2)\nTestDescription2",
             );
         });
         it("inserts embeds properly", () => {
@@ -240,7 +240,11 @@ describe("MessageProcessor", () => {
             const content = processor.InsertEmbeds(inContent, msg);
             Chai.assert.equal(
                 content,
-                "Content that goes in the message\n----\n#### [TestTitle](testurl)\n\nTestDescription",
+`Content that goes in the message
+
+----
+##### [TestTitle](testurl)
+TestDescription`,
             );
         });
     });
