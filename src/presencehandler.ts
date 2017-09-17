@@ -44,9 +44,11 @@ export class PresenceHandler {
     }
 
     public DequeueMember(member: Discord.GuildMember) {
-        const index = this.presenceQueue.findIndex(member);
+        const index = this.presenceQueue.findIndex((item) => {
+            return member == item;
+        });
         if(index !== -1) {
-            this.presenceQueue = this.presenceQueue.splice(this.presenceQueue.findIndex(member));
+            this.presenceQueue = this.presenceQueue.splice(index);
         } else {
             log.warn("PresenceHandler", `Tried to remove ${member.id} from the presence queue but it could not be found`);
         }
@@ -59,10 +61,10 @@ export class PresenceHandler {
     }
 
     private processIntervalThread() {
-        const item = this.presenceQueue.shift();
-        if (item) {
-            if(!this.ProcessMember(item)) {
-                this.presenceQueue.push(item);
+        const member = this.presenceQueue.shift();
+        if (member) {
+            if(!this.ProcessMember(member)) {
+                this.presenceQueue.push(member);
             } else {
                 log.info("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
             }
