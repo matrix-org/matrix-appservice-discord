@@ -16,6 +16,8 @@ properties:
             type: "boolean"
           disableDiscordMentions:
             type: "boolean"
+          disableDeletionForwarding:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken"]

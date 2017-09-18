@@ -65,7 +65,9 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
+      if (!this.config.bridge.disableDeletionForwarding) {
+        client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
+      }
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
@@ -256,11 +258,13 @@ export class DiscordBot {
         const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
                         .channels.get(storeEvent.ChannelId);
         const msg = await channel.fetchMessage(storeEvent.DiscordId);
-        try {
-            await msg.delete();
-            log.info("DiscordBot", `Deleted message`);
-        } catch (ex) {
-            log.warn("DiscordBot", `Failed to delete message`, ex);
+        if (!this.config.bridge.disableDeletionForwarding) {
+          try {
+              await msg.delete();
+              log.info("DiscordBot", `Deleted message`);
+          } catch (ex) {
+              log.warn("DiscordBot", `Failed to delete message`, ex);
+          }
         }
     }
   }

@@ -4,6 +4,7 @@ bridge:
   disablePresence: false
   disableTypingNotifications: false
   disableDiscordMentions: false
+  disableDeletionForwarding: false
 auth:
   clientID: "12345" # Get from discord
   secret: "blah"
