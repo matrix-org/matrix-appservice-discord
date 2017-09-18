@@ -12,6 +12,7 @@ import { MockMember } from "./mocks/member";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
+const INTERVAL = 250;
 let lastStatus = null;
 // const assert = Chai.assert;
 const bot = {
@@ -22,11 +23,11 @@ const bot = {
                     setPresence: (status) => {
                         lastStatus = status;
                         return Promise.resolve();
-                    }
+                    },
                 };
-            }
+            },
         };
-    }
+    },
 };
 
 describe("PresenceHandler", () => {
@@ -38,26 +39,27 @@ describe("PresenceHandler", () => {
     describe("Start", () => {
         it("should start without errors", () => {
             const handler = new PresenceHandler(<DiscordBot> bot);
-            handler.Start(250);
+            handler.Start(INTERVAL);
         });
     });
     describe("Stop", () => {
         it("should stop without errors", () => {
             const handler = new PresenceHandler(<DiscordBot> bot);
-            handler.Start(250);
+            handler.Start(INTERVAL);
             handler.Stop();
         });
     });
     describe("EnqueueMember", () => {
         it("adds a user properly", () => {
             const handler = new PresenceHandler(<DiscordBot> bot);
-            handler.EnqueueMember(<any> new MockMember("abc","def"));
-            handler.EnqueueMember(<any> new MockMember("abc","ghi"));
-            Chai.assert.equal(handler.QueueCount, 2);
+            const COUNT = 2;
+            handler.EnqueueMember(<any> new MockMember("abc", "def"));
+            handler.EnqueueMember(<any> new MockMember("abc", "ghi"));
+            Chai.assert.equal(handler.QueueCount, COUNT);
         });
         it("does not add duplicate users", () => {
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             handler.EnqueueMember(member);
             handler.EnqueueMember(member);
             Chai.assert.equal(handler.QueueCount, 1);
@@ -67,16 +69,16 @@ describe("PresenceHandler", () => {
         it("removes users properly", () => {
             const handler = new PresenceHandler(<DiscordBot> bot);
             const members = [
-                <any> new MockMember("abc","def"),
-                <any> new MockMember("abc","ghi"),
-                <any> new MockMember("abc","wew"),
-            ]
+                <any> new MockMember("abc", "def"),
+                <any> new MockMember("abc", "ghi"),
+                <any> new MockMember("abc", "wew"),
+            ];
             handler.EnqueueMember(members[0]);
             handler.EnqueueMember(members[1]);
-            handler.EnqueueMember(members[2]);
+            handler.EnqueueMember(members[members.length - 1]);
 
-            handler.DequeueMember(members[2]);
-            Chai.assert.equal(handler.QueueCount, 2);
+            handler.DequeueMember(members[members.length - 1]);
+            Chai.assert.equal(handler.QueueCount, members.length - 1);
             handler.DequeueMember(members[1]);
             Chai.assert.equal(handler.QueueCount, 1);
             handler.DequeueMember(members[0]);
@@ -87,9 +89,9 @@ describe("PresenceHandler", () => {
         it("processes an online user", () => {
             lastStatus = null;
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             member.MockSetPresence(new Discord.Presence({
-                status: 'online',
+                status: "online",
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -99,9 +101,9 @@ describe("PresenceHandler", () => {
         it("processes an offline user", () => {
             lastStatus = null;
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             member.MockSetPresence(new Discord.Presence({
-                status: 'offline',
+                status: "offline",
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -112,9 +114,9 @@ describe("PresenceHandler", () => {
         it("processes an idle user", () => {
             lastStatus = null;
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             member.MockSetPresence(new Discord.Presence({
-                status: 'idle',
+                status: "idle",
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -124,9 +126,9 @@ describe("PresenceHandler", () => {
         it("processes an dnd user", () => {
             lastStatus = null;
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             member.MockSetPresence(new Discord.Presence({
-                status: 'dnd',
+                status: "dnd",
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -134,8 +136,8 @@ describe("PresenceHandler", () => {
                 status_msg: "Do not disturb",
             });
             member.MockSetPresence(new Discord.Presence({
-                status: 'dnd',
-                game: new Discord.Game({name:"Test Game"}),
+                status: "dnd",
+                game: new Discord.Game({name: "Test Game"}),
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -146,10 +148,10 @@ describe("PresenceHandler", () => {
         it("processes a user playing games", () => {
             lastStatus = null;
             const handler = new PresenceHandler(<DiscordBot> bot);
-            const member = <any> new MockMember("abc","def");
+            const member = <any> new MockMember("abc", "def");
             member.MockSetPresence(new Discord.Presence({
-                status: 'online',
-                game: new Discord.Game({name:"Test Game"}),
+                status: "online",
+                game: new Discord.Game({name: "Test Game"}),
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -157,8 +159,8 @@ describe("PresenceHandler", () => {
                 status_msg: "Playing Test Game",
             });
             member.MockSetPresence(new Discord.Presence({
-                status: 'online',
-                game: new Discord.Game({name:"Test Game", type: 1}),
+                status: "online",
+                game: new Discord.Game({name: "Test Game", type: 1}),
             }));
             handler.ProcessMember(member);
             Chai.assert.deepEqual(lastStatus, {

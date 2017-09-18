@@ -15,7 +15,7 @@ import * as path from "path";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
-const MSG_PROCESS_DELAY = 750
+const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
@@ -81,13 +81,13 @@ export class DiscordBot {
       this.bot = client;
 
       if (!this.config.bridge.disablePresence) {
-        this.bot.guilds.forEach((guild) =>{
+        this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
                 this.presenceHandler.EnqueueMember(member);
-            })
-        })
+            });
+        });
         this.presenceHandler.Start(
-            Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY)
+            Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
         );
       }
     });
@@ -458,7 +458,7 @@ export class DiscordBot {
     const intent = this.GetIntentFromDiscordMember(guildMember);
     return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
         this.presenceHandler.DequeueMember(guildMember);
-      return intent.leave(roomId);
+        return intent.leave(roomId);
     });
   }
 

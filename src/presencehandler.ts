@@ -41,7 +41,7 @@ export class PresenceHandler {
     }
 
     public EnqueueMember(member: Discord.GuildMember) {
-        if(!this.presenceQueue.includes(member)) {
+        if (!this.presenceQueue.includes(member)) {
             log.info("PresenceHandler", `Adding ${member.id} (${member.user.username}) to the presence queue`);
             this.presenceQueue.push(member);
         }
@@ -51,10 +51,13 @@ export class PresenceHandler {
         const index = this.presenceQueue.findIndex((item) => {
             return member === item;
         });
-        if(index !== -1) {
+        if (index !== -1) {
             this.presenceQueue.splice(index, 1);
         } else {
-            log.warn("PresenceHandler", `Tried to remove ${member.id} from the presence queue but it could not be found`);
+            log.warn(
+                "PresenceHandler",
+                `Tried to remove ${member.id} from the presence queue but it could not be found`,
+            );
         }
     }
 
@@ -67,7 +70,7 @@ export class PresenceHandler {
     private processIntervalThread() {
         const member = this.presenceQueue.shift();
         if (member) {
-            if(!this.ProcessMember(member)) {
+            if (!this.ProcessMember(member)) {
                 this.presenceQueue.push(member);
             } else {
                 log.info("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
@@ -101,11 +104,11 @@ export class PresenceHandler {
 
     private setMatrixPresence(guildMember: Discord.GuildMember, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(guildMember);
-        let status_obj :any = {presence: status.Presence};
+        const statusObj: any = {presence: status.Presence};
         if (status.StatusMsg) {
-            status_obj.status_msg = status.StatusMsg;
+            statusObj.status_msg = status.StatusMsg;
         }
-        intent.getClient().setPresence(status_obj).catch((ex) => {
+        intent.getClient().setPresence(statusObj).catch((ex) => {
             log.warn("PresenceHandler", `Could not update Matrix presence for ${guildMember.id}`);
         });
     }
