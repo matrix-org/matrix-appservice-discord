@@ -36,8 +36,8 @@ export class DiscordBot {
     this.sentMessages = [];
     this.clientFactory = new DiscordClientFactory(store, config.auth);
     this.msgProcessor = new MessageProcessor(
-        new MessageProcessorOpts(this.config.bridge.domain),
-        this,
+      new MessageProcessorOpts(this.config.bridge.domain),
+      this,
     );
   }
 
@@ -65,9 +65,7 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      if (!this.config.bridge.disableDeletionForwarding) {
-        client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
-      }
+      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
@@ -79,8 +77,8 @@ export class DiscordBot {
         /* Currently synapse sadly times out presence after a minute.
          * This will set the presence for each user who is not offline */
         this.presenceInterval = setInterval(
-            this.BulkPresenceUpdate.bind(this),
-            PRESENCE_UPDATE_DELAY,
+          this.BulkPresenceUpdate.bind(this),
+          PRESENCE_UPDATE_DELAY,
         );
         this.BulkPresenceUpdate();
         return null;
@@ -220,7 +218,7 @@ export class DiscordBot {
       log.error("DiscordBot", "Couldn't send message. ", err);
     }
     if (!Array.isArray(msg)) {
-        msg = [msg];
+      msg = [msg];
     }
     msg.forEach((m: Discord.Message) => {
       log.verbose("DiscordBot", "Sent ", m);
@@ -237,35 +235,36 @@ export class DiscordBot {
   }
 
   public async ProcessMatrixRedact(event: any) {
+    if (this.config.bridge.disableDeletionForwarding) {
+      return
+    }
     log.info("DiscordBot", `Got redact request for ${event.redacts}`);
     log.verbose("DiscordBot", `Event:`, event);
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
     if (!storeEvent.Result) {
-        log.warn("DiscordBot", `Could not redact because the event was not in the store.`);
-        return;
+      log.warn("DiscordBot", `Could not redact because the event was not in the store.`);
+      return;
     }
     log.info("DiscordBot", `Redact event matched ${storeEvent.ResultCount} entries`);
     while (storeEvent.Next()) {
-        log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-        if (!this.bot.guilds.has(storeEvent.GuildId)) {
-            log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
-            return;
-        }
-        if (!this.bot.guilds.get(storeEvent.GuildId).channels.has(storeEvent.ChannelId)) {
-            log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
-            return;
-        }
-        const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
-                        .channels.get(storeEvent.ChannelId);
-        const msg = await channel.fetchMessage(storeEvent.DiscordId);
-        if (!this.config.bridge.disableDeletionForwarding) {
-          try {
-              await msg.delete();
-              log.info("DiscordBot", `Deleted message`);
-          } catch (ex) {
-              log.warn("DiscordBot", `Failed to delete message`, ex);
-          }
-        }
+      log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+      if (!this.bot.guilds.has(storeEvent.GuildId)) {
+        log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
+        return;
+      }
+      if (!this.bot.guilds.get(storeEvent.GuildId).channels.has(storeEvent.ChannelId)) {
+        log.warn("DiscordBot", `Could not redact because the guild could not be found.`);
+        return;
+      }
+      const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
+                      .channels.get(storeEvent.ChannelId);
+      const msg = await channel.fetchMessage(storeEvent.DiscordId);
+      try {
+        await msg.delete();
+        log.info("DiscordBot", `Deleted message`);
+      } catch (ex) {
+        log.warn("DiscordBot", `Failed to delete message`, ex);
+      }
     }
   }
 
@@ -304,22 +303,22 @@ export class DiscordBot {
   }
 
   public async GetGuildEmoji(guild: Discord.Guild, id: string): Promise<string> {
-      const dbEmoji: DbGuildEmoji = await this.store.Get(DbGuildEmoji, {emoji_id: id});
-      if (!dbEmoji.Result) {
-          // Fetch the emoji
-          if (!guild.emojis.has(id)) {
-              throw new Error("The guild does not contain the emoji");
-          }
-          const emoji: Discord.Emoji = guild.emojis.get(id);
-          const intent = this.bridge.getIntent();
-          const mxcUrl = (await Util.UploadContentFromUrl(emoji.url, intent, emoji.name)).mxcUrl;
-          dbEmoji.EmojiId = emoji.id;
-          dbEmoji.GuildId = guild.id;
-          dbEmoji.Name = emoji.name;
-          dbEmoji.MxcUrl = mxcUrl;
-          await this.store.Insert(dbEmoji);
+    const dbEmoji: DbGuildEmoji = await this.store.Get(DbGuildEmoji, {emoji_id: id});
+    if (!dbEmoji.Result) {
+      // Fetch the emoji
+      if (!guild.emojis.has(id)) {
+        throw new Error("The guild does not contain the emoji");
       }
-      return dbEmoji.MxcUrl;
+      const emoji: Discord.Emoji = guild.emojis.get(id);
+      const intent = this.bridge.getIntent();
+      const mxcUrl = (await Util.UploadContentFromUrl(emoji.url, intent, emoji.name)).mxcUrl;
+      dbEmoji.EmojiId = emoji.id;
+      dbEmoji.GuildId = guild.id;
+      dbEmoji.Name = emoji.name;
+      dbEmoji.MxcUrl = mxcUrl;
+      await this.store.Insert(dbEmoji);
+    }
+    return dbEmoji.MxcUrl;
   }
 
   private GetFilenameForMediaEvent(content): string {
@@ -463,7 +462,7 @@ export class DiscordBot {
         members.push(member.id);
       }
     }
-}
+  }
 
   private UpdatePresence(guildMember: Discord.GuildMember) {
     if (this.config.bridge.disablePresence) {
@@ -602,18 +601,21 @@ export class DiscordBot {
     });
   }
 
-    private async DeleteDiscordMessage(msg: Discord.Message) {
-        log.info("DiscordBot", `Got delete event for ${msg.id}`);
-        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-        if (!storeEvent.Result) {
-          log.warn("DiscordBot", `Could not redact because the event was in the store.`);
-          return;
-        }
-        while (storeEvent.Next()) {
-          log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-          const client = this.bridge.getIntent().getClient();
-          const matrixIds = storeEvent.MatrixId.split(";");
-          await client.redactEvent(matrixIds[1], matrixIds[0]);
-        }
+  private async DeleteDiscordMessage(msg: Discord.Message) {
+    if (this.config.bridge.disableDeletionForwarding) {
+      return;
     }
+    log.info("DiscordBot", `Got delete event for ${msg.id}`);
+    const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+    if (!storeEvent.Result) {
+      log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+      return;
+    }
+    while (storeEvent.Next()) {
+      log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+      const client = this.bridge.getIntent().getClient();
+      const matrixIds = storeEvent.MatrixId.split(";");
+      await client.redactEvent(matrixIds[1], matrixIds[0]);
+    }
+  }
 }
