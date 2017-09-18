@@ -15,6 +15,7 @@ class DiscordBridgeConfigBridge {
   public disablePresence: boolean;
   public disableTypingNotifications: boolean;
   public disableDiscordMentions: boolean;
+  public disableDeletionForwarding: boolean;
 }
 
 class DiscordBridgeConfigDatabase {
