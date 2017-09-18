@@ -15,7 +15,7 @@ import * as path from "path";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
-const MSG_PROCESS_DELAY = 750;
+const MSG_PROCESS_DELAY = 750
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
