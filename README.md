@@ -63,8 +63,9 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
   * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
 * You can use Webhooks to make messages relayed by the bridge not nested by the bot user. This will also display the avatar of the user speaking on matrix with their messages.
-  * Enable ``Manage Webhooks`` on the role added by the bot.
-  * Add the ``_matrix`` Webhook for each channel you'd like to enable this feature on.
+  * The bot should create this automatically, but if not perform the following:
+    * Enable ``Manage Webhooks`` on the role added by the bot.
+    * Add the ``_matrix`` Webhook for each channel you'd like to enable this feature on.
 
 ### Running the Bridge
 
