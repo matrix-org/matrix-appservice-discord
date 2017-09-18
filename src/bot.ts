@@ -81,6 +81,9 @@ export class DiscordBot {
       this.bot = client;
 
       if (!this.config.bridge.disablePresence) {
+        if (!this.config.bridge.presenceInterval) {
+          this.config.bridge.presenceInterval = MIN_PRESENCE_UPDATE_DELAY;
+        }
         this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
                 this.presenceHandler.EnqueueMember(member);
