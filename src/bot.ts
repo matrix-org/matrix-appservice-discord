@@ -65,7 +65,7 @@ export class DiscordBot {
         client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
       }
       if (!this.config.bridge.disablePresence) {
-        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.ProcessMember(newMember); });
+        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
       }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
