@@ -18,6 +18,10 @@ export class PresenceHandler {
         this.presenceQueue = new Array();
     }
 
+    get QueueCount (): number {
+        return this.presenceQueue.length;
+    }
+
     public Start(intervalTime: number) {
         if (this.interval) {
             log.info("PresenceHandler", "Restarting presence handler...");
@@ -45,10 +49,10 @@ export class PresenceHandler {
 
     public DequeueMember(member: Discord.GuildMember) {
         const index = this.presenceQueue.findIndex((item) => {
-            return member == item;
+            return member === item;
         });
         if(index !== -1) {
-            this.presenceQueue = this.presenceQueue.splice(index);
+            this.presenceQueue.splice(index, 1);
         } else {
             log.warn("PresenceHandler", `Tried to remove ${member.id} from the presence queue but it could not be found`);
         }
@@ -85,11 +89,11 @@ export class PresenceHandler {
             status.Presence = "online";
         } else if (presence.status === "dnd") {
             status.Presence = "online";
-            status.StatusMsg = "Do not disturb | " + status.StatusMsg ? status.StatusMsg : "";
+            status.StatusMsg = status.StatusMsg ? "Do not disturb | " + status.StatusMsg : "Do not disturb";
         } else if (presence.status === "offline") {
             status.Presence = "offline";
             status.ShouldDrop = true; // Drop until we recieve an update.
-        } else { // idle or dnd
+        } else { // idle
             status.Presence = "unavailable";
         }
         return status;
@@ -97,10 +101,11 @@ export class PresenceHandler {
 
     private setMatrixPresence(guildMember: Discord.GuildMember, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(guildMember);
-        intent.getClient().setPresence({
-            presence: status.Presence,
-            status_msg: status.StatusMsg ? status.StatusMsg : undefined,
-        }).catch((ex) => {
+        let status_obj :any = {presence: status.Presence};
+        if (status.StatusMsg) {
+            status_obj.status_msg = status.StatusMsg;
+        }
+        intent.getClient().setPresence(status_obj).catch((ex) => {
             log.warn("PresenceHandler", `Could not update Matrix presence for ${guildMember.id}`);
         });
     }
