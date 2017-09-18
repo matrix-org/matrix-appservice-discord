@@ -526,7 +526,7 @@ export class DiscordBot {
         return intent.sendTyping(room, isTyping);
       }));
     }).catch((err) => {
-      log.verbose("DiscordBot", "Failed to send typing indicator.", err);
+      log.warn("DiscordBot", "Failed to send typing indicator.", err);
     });
   }
 

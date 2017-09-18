@@ -122,25 +122,51 @@ describe("MessageProcessor", () => {
                 user: {
                     username: "TestUsername",
                     id: "12345",
+                    discriminator: "54321",
                 },
             })];
-            const msg = "Hello TestUsername";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Hello <@!12345>");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Hello TestUsername", members),
+                "Hello <@!12345>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
+                "Hello <@!12345>",
+            );
         });
         it("processes mentioned nickname correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
             const guild: any = new MockGuild("123", []);
             const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                nick: "Test",
+                user: {
+                    username: "Test",
+                    id: "54321",
+                },
+            }), new Discord.GuildMember(guild, {
                 nick: "TestNickname",
                 user: {
                     username: "TestUsername",
                     id: "12345",
                 },
             })];
-            const msg = "Hello TestNickname";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Hello <@!12345>");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
+                "I wish <@!12345> was here",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I wish TestNickname was here, TestNickname is cool", members),
+                "I wish <@!12345> was here, <@!12345> is cool",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
+                "<@!12345> was here with <@!54321>",
+            );
         });
         it("processes non-mentions correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -175,7 +201,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\nTestDescription");
         });
         it("processes urlless embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -188,7 +214,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\n#### TestTitle\n\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\n##### TestTitle\nTestDescription");
         });
         it("processes linked embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -202,7 +228,7 @@ describe("MessageProcessor", () => {
             ];
             const inContent = "";
             const content = processor.InsertEmbeds(inContent, msg);
-            Chai.assert.equal(content, "\n----\n#### [TestTitle](testurl)\n\nTestDescription");
+            Chai.assert.equal(content, "\n\n----\n##### [TestTitle](testurl)\nTestDescription");
         });
         it("processes multiple embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -223,7 +249,7 @@ describe("MessageProcessor", () => {
             const content = processor.InsertEmbeds(inContent, msg);
             Chai.assert.equal(
                 content,
-"\n----\n#### [TestTitle](testurl)\n\nTestDescription\n----\n#### [TestTitle2](testurl2)\n\nTestDescription2",
+"\n\n----\n##### [TestTitle](testurl)\nTestDescription\n\n----\n##### [TestTitle2](testurl2)\nTestDescription2",
             );
         });
         it("inserts embeds properly", () => {
@@ -240,7 +266,11 @@ describe("MessageProcessor", () => {
             const content = processor.InsertEmbeds(inContent, msg);
             Chai.assert.equal(
                 content,
-                "Content that goes in the message\n----\n#### [TestTitle](testurl)\n\nTestDescription",
+`Content that goes in the message
+
+----
+##### [TestTitle](testurl)
+TestDescription`,
             );
         });
     });

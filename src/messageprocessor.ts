@@ -48,9 +48,14 @@ export class MessageProcessor {
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
-            let embedContent = "\n----\n"; // Horizontal rule.
+            let embedContent = "\n\n----"; // Horizontal rule. Two to make sure the content doesn't become a title.
             const embedTitle = embed.url ? `[${embed.title}](${embed.url})` : embed.title;
-            embedContent += embedTitle != null ? `#### ${embedTitle}\n\n${embed.description}` : embed.description;
+            if (embedTitle) {
+                embedContent += "\n##### " + embedTitle; // h5 is probably best.
+            }
+            if (embed.description) {
+                embedContent += "\n" + embed.description;
+            }
             content += embedContent;
         }
         return content;
@@ -101,8 +106,12 @@ export class MessageProcessor {
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
       for (const member of members) {
+        const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
+                        escapeStringRegexp(member.displayName);
         body = body.replace(
-            new RegExp(`(^| |\\t)(${escapeStringRegexp(member.displayName)})($| |\\t)` , "mg"), ` <@!${member.id}>`,
+            new RegExp(
+                `\\b(${matcher})(?=\\b)`
+                , "mig"), `<@!${member.id}>`,
         );
       }
       return body;

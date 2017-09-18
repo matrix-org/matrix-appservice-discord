@@ -20,7 +20,8 @@ const perms = flags.READ_MESSAGES |
   flags.SPEAK |
   flags.EMBED_LINKS |
   flags.ATTACH_FILES |
-  flags.READ_MESSAGE_HISTORY;
+  flags.READ_MESSAGE_HISTORY |
+  flags.MANAGE_WEBHOOKS;
 
 const url = `https://discordapp.com/api/oauth2/authorize?client_id=${clientId}&scope=bot&permissions=${perms}`;
 console.log(`Go to ${url} to invite the bot into a guild.`);
