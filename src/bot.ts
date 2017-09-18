@@ -6,6 +6,7 @@ import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
+import { PresenceHandler } from "./presencehandler";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
@@ -15,7 +16,7 @@ import * as path from "path";
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
-const PRESENCE_UPDATE_DELAY = 55000; // Synapse updates in 55 second intervals.
+const MIN_PRESENCE_UPDATE_DELAY = 250;
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
@@ -30,6 +31,7 @@ export class DiscordBot {
   private presenceInterval: any;
   private sentMessages: string[];
   private msgProcessor: MessageProcessor;
+  private presenceHandler: PresenceHandler;
   constructor(config: DiscordBridgeConfig, store: DiscordStore) {
     this.config = config;
     this.store = store;
@@ -39,6 +41,7 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain),
       this,
     );
+    this.presenceHandler = new PresenceHandler(this);
   }
 
   public setBridge(bridge: Bridge) {
@@ -47,6 +50,10 @@ export class DiscordBot {
 
   get ClientFactory(): DiscordClientFactory {
      return this.clientFactory;
+  }
+
+  public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
+      return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
 
   public run (): Promise<null> {
@@ -58,7 +65,7 @@ export class DiscordBot {
         client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
       }
       if (!this.config.bridge.disablePresence) {
-        client.on("presenceUpdate", (_, newMember) => { this.UpdatePresence(newMember); });
+        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
       }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
@@ -74,14 +81,14 @@ export class DiscordBot {
       this.bot = client;
 
       if (!this.config.bridge.disablePresence) {
-        /* Currently synapse sadly times out presence after a minute.
-         * This will set the presence for each user who is not offline */
-        this.presenceInterval = setInterval(
-          this.BulkPresenceUpdate.bind(this),
-          PRESENCE_UPDATE_DELAY,
+        this.bot.guilds.forEach((guild) => {
+            guild.members.forEach((member) => {
+                this.presenceHandler.EnqueueMember(member);
+            });
+        });
+        this.presenceHandler.Start(
+            Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
         );
-        this.BulkPresenceUpdate();
-        return null;
       }
     });
   }
@@ -236,7 +243,7 @@ export class DiscordBot {
 
   public async ProcessMatrixRedact(event: any) {
     if (this.config.bridge.disableDeletionForwarding) {
-      return
+      return;
     }
     log.info("DiscordBot", `Got redact request for ${event.redacts}`);
     log.verbose("DiscordBot", `Event:`, event);
@@ -294,7 +301,7 @@ export class DiscordBot {
   }
 
   public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
-    const intent = this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
+    const intent = this.GetIntentFromDiscordMember(member);
     return this.UpdateUser(member.user).then(() => {
       return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
     }).then(() => {
@@ -444,47 +451,6 @@ export class DiscordBot {
     });
   }
 
-  private BulkPresenceUpdate() {
-    if (this.config.bridge.disablePresence) {
-      return; // skip if there's nothing to do
-    }
-
-    log.verbose("DiscordBot", "Bulk presence update");
-    const members = [];
-    for (const guild of this.bot.guilds.values()) {
-      for (const member of guild.members.array().filter((m) => members.indexOf(m.id) === -1)) {
-        /* We ignore offline because they are likely to have been set
-         * by a 'presenceUpdate' event or will timeout. This saves
-         * some work on the HS */
-        if (member.presence.status !== "offline") {
-          this.UpdatePresence(member);
-        }
-        members.push(member.id);
-      }
-    }
-  }
-
-  private UpdatePresence(guildMember: Discord.GuildMember) {
-    if (this.config.bridge.disablePresence) {
-      return; // skip if there's nothing to do
-    }
-
-    const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
-    try {
-      const presence: any = {};
-      presence.presence = guildMember.presence.status;
-      if (presence.presence === "idle" || presence.presence === "dnd") {
-        presence.presence = "unavailable";
-      }
-      if (guildMember.presence.game) {
-        presence.status_msg = "Playing " + guildMember.presence.game.name;
-      }
-      intent.getClient().setPresence(presence);
-    } catch (err) {
-      log.info("DiscordBot", "Couldn't set presence ", err);
-    }
-  }
-
   private AddGuildMember(guildMember: Discord.GuildMember) {
     return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
       return this.InitJoinUser(guildMember, roomIds);
@@ -492,14 +458,15 @@ export class DiscordBot {
   }
 
   private RemoveGuildMember(guildMember: Discord.GuildMember) {
-    const intent = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`);
+    const intent = this.GetIntentFromDiscordMember(guildMember);
     return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
-      return intent.leave(roomId);
+        this.presenceHandler.DequeueMember(guildMember);
+        return intent.leave(roomId);
     });
   }
 
   private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
-    const client = this.bridge.getIntentFromLocalpart(`_discord_${guildMember.id}`).getClient();
+    const client = this.GetIntentFromDiscordMember(guildMember).getClient();
     const userId = client.credentials.userId;
     let avatar = null;
     log.info(`Updating nick for ${guildMember.user.username}`);
@@ -520,7 +487,7 @@ export class DiscordBot {
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
     this.GetRoomIdsFromChannel(channel).then((rooms) => {
-      const intent = this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
+      const intent = this.GetIntentFromDiscordMember(user);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
       }));
@@ -541,7 +508,6 @@ export class DiscordBot {
       return;
     }
     // Update presence because sometimes discord misses people.
-    this.UpdatePresence(msg.member);
     this.UpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
@@ -551,7 +517,7 @@ export class DiscordBot {
       if (rooms === null) {
         return null;
       }
-      const intent = this.bridge.getIntentFromLocalpart(`_discord_${msg.author.id}`);
+      const intent = this.GetIntentFromDiscordMember(msg.author);
       // Check Attachements
       msg.attachments.forEach((attachment) => {
         Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
@@ -601,21 +567,18 @@ export class DiscordBot {
     });
   }
 
-  private async DeleteDiscordMessage(msg: Discord.Message) {
-    if (this.config.bridge.disableDeletionForwarding) {
-      return;
-    }
-    log.info("DiscordBot", `Got delete event for ${msg.id}`);
-    const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-    if (!storeEvent.Result) {
-      log.warn("DiscordBot", `Could not redact because the event was in the store.`);
-      return;
-    }
-    while (storeEvent.Next()) {
-      log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-      const client = this.bridge.getIntent().getClient();
-      const matrixIds = storeEvent.MatrixId.split(";");
-      await client.redactEvent(matrixIds[1], matrixIds[0]);
+    private async DeleteDiscordMessage(msg: Discord.Message) {
+        log.info("DiscordBot", `Got delete event for ${msg.id}`);
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+        if (!storeEvent.Result) {
+          log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+          return;
+        }
+        while (storeEvent.Next()) {
+          log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+          const client = this.GetIntentFromDiscordMember(msg.author);
+          const matrixIds = storeEvent.MatrixId.split(";");
+          await client.redactEvent(matrixIds[1], matrixIds[0]);
+        }
     }
   }
-}
