@@ -303,8 +303,6 @@ export class DiscordBot {
   public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
     const intent = this.GetIntentFromDiscordMember(member);
     return this.UpdateUser(member.user).then(() => {
-      return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
-    }).then(() => {
       return this.UpdateGuildMember(member, roomIds);
     });
   }
@@ -465,21 +463,38 @@ export class DiscordBot {
     });
   }
 
-  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
-    const client = this.GetIntentFromDiscordMember(guildMember).getClient();
+  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) : Bluebird<any> {
+    const intent = this.GetIntentFromDiscordMember(guildMember);
+    const client = intent.getClient();
     const userId = client.credentials.userId;
     let avatar = null;
     log.info(`Updating nick for ${guildMember.user.username}`);
-    Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
+    return Bluebird.map(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
       avatar = avatarUrl.avatar_url;
       return roomIds || this.GetRoomIdsFromGuild(guildMember.guild.id);
     }), (room) => {
       log.verbose(`Updating ${room}`);
-      client.sendStateEvent(room, "m.room.member", {
+      const tryJoin = () => client.sendStateEvent(room, "m.room.member", {
         membership: "join",
         avatar_url: avatar,
         displayname: guildMember.displayName,
       }, userId);
+      return intent.join(room).then(() => {
+        // ^ This join doesn't actually join the user (disabled via dontJoin),
+        // however it does ensure that they are registered.
+        // Instead the user will now be manually joined into the channel which
+        // allows their display name to be set to something other than their
+        // user name (in this case: their display name on Discord).
+        return tryJoin().catch((e) => {
+          if (e.errcode !== "M_FORBIDDEN") {
+            throw e;
+          }
+          // Direct join failed, room is probably invite-only
+          return this.bridge.getIntent().invite(room, userId).then(() => {
+            return tryJoin();
+          });
+        });
+      });
     }).catch((err) => {
       log.error("DiscordBot", "Failed to update guild member %s", err);
     });
@@ -513,6 +528,8 @@ export class DiscordBot {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;
       });
+    }).then((rooms) => {
+      return this.UpdateGuildMember(msg.member, rooms).then(() => rooms);
     }).then((rooms) => {
       if (rooms === null) {
         return null;
