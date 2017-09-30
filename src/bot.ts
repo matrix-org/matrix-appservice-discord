@@ -463,7 +463,7 @@ export class DiscordBot {
     });
   }
 
-  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) : Bluebird<any> {
+  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]): Bluebird<any> {
     const intent = this.GetIntentFromDiscordMember(guildMember);
     const client = intent.getClient();
     const userId = client.credentials.userId;
