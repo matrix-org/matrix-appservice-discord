@@ -67,6 +67,10 @@ function run (port: number, config: DiscordBridgeConfig) {
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
+    queue: {
+      type: "per_room",
+      perRequest: true,
+    },
   });
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
