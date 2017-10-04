@@ -30,12 +30,14 @@ export class DiscordBot {
   private bridge: Bridge;
   private presenceInterval: any;
   private sentMessages: string[];
+  private messageQueue: { [channelId: string]: Bluebird<any> };
   private msgProcessor: MessageProcessor;
   private presenceHandler: PresenceHandler;
   constructor(config: DiscordBridgeConfig, store: DiscordStore) {
     this.config = config;
     this.store = store;
     this.sentMessages = [];
+    this.messageQueue = {};
     this.clientFactory = new DiscordClientFactory(store, config.auth);
     this.msgProcessor = new MessageProcessor(
       new MessageProcessorOpts(this.config.bridge.domain),
@@ -73,9 +75,11 @@ export class DiscordBot {
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
       client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
-      client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
-          this.OnMessage(msg);
-        });
+      client.on("message", (msg) => {
+        this.messageQueue[msg.channel.id] = Bluebird.all([
+          this.messageQueue[msg.channel.id] || Promise.resolve(),
+          Bluebird.delay(MSG_PROCESS_DELAY),
+        ]).then(() => this.OnMessage(msg));
       });
       log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
