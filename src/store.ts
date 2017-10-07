@@ -137,22 +137,24 @@ export class DiscordStore {
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => %s", userId);
-    return this.db.getAsync(
+    return this.db.allAsync(
       `
       SELECT discord_id
       FROM user_id_discord_id
-      WHERE user_id = $userId
+      WHERE user_id = $userId;
       `, {
         $userId: userId,
       },
     ).then( (rows) => {
       if (rows !== undefined) {
-        rows.map((row) => row.discord_id);
+        let ret = [];
+        rows.forEach((row) => ret.push(row.discord_id));
+        return ret;
       } else {
         return [];
       }
     }).catch( (err) => {
-      log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids: %s", err.Error);
       throw err;
     });
   }
