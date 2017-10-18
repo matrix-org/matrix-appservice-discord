@@ -42,7 +42,7 @@ export class MessageProcessor {
         content = await this.ReplaceEmoji(content, msg);
         // Replace channels
         result.body = content;
-        result.formattedBody = marked(content);
+        result.formattedBody = marked(content.replace(/&/g, "&amp;").replace(/</g, "&lt;"));
         return result;
     }
 
