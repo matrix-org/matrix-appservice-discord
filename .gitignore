@@ -45,3 +45,4 @@ discord-registration.yaml
 build
 
 *.db
+package-lock.json
