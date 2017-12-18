@@ -134,7 +134,6 @@ export class DiscordStore {
       throw err;
     });
   }
-
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => %s", userId);
     return this.db.allAsync(
@@ -150,6 +149,26 @@ export class DiscordStore {
         let ret = [];
         rows.forEach((row) => ret.push(row.discord_id));
 	return ret;
+      } else {
+        return [];
+      }
+    }).catch( (err) => {
+      log.error("DiscordStore", "Error getting discord ids: %s", err);
+      throw err;
+    });
+  }
+    public get_all_puppeted_mxids(): Promise<string[]> {
+    log.silly("SQL", "get_all_puppeted_mxids");
+    return this.db.allAsync(
+      `
+      SELECT user_id
+      FROM user_id_discord_id;
+      `, {},
+    ).then( (rows) => {
+      if (rows !== undefined) {
+        let ret = [];
+        rows.forEach((row) => ret.push(row.user_id));
+        return ret;
       } else {
         return [];
       }
