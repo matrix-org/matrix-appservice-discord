@@ -1,11 +1,13 @@
 import * as Discord from "discord.js";
 import * as marked from "marked";
 import * as log from "npmlog";
+import { DiscordStore } from "./store";
 import { DiscordBot } from "./bot";
 import * as escapeStringRegexp from "escape-string-regexp";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
+const ROLES_REGEX = /<@&?([0-9]*)>/g;
 const EMOJI_REGEX = /<:\w+:?([0-9]*)>/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
@@ -25,6 +27,7 @@ export class MessageProcessorMatrixResult {
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
     private readonly bot: DiscordBot;
+
     constructor (opts: MessageProcessorOpts, bot: DiscordBot) {
         this.opts = opts;
         this.bot = bot;
@@ -37,8 +40,9 @@ export class MessageProcessor {
         content = this.InsertEmbeds(content, msg);
 
         // Replace Users
-        content = this.ReplaceMembers(content, msg);
+        content = await this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
+        content = this.ReplaceRoles(content, msg);
         content = await this.ReplaceEmoji(content, msg);
         // Replace channels
         result.body = content;
@@ -61,18 +65,37 @@ export class MessageProcessor {
         return content;
     }
 
-    public ReplaceMembers(content: string, msg: Discord.Message): string {
+    public async ReplaceMembers(content: string, msg: Discord.Message): Promise<string> {
         let results = USER_REGEX.exec(content);
         while (results !== null) {
           const id = results[1];
           const member = msg.guild.members.get(id);
           const memberId = `@_discord_${id}:${this.opts.domain}`;
-          const memberStr = member ? member.user.username : memberId;
+          let memberStr = member ? `[${member.user.username}#${member.user.discriminator}](${MATRIX_TO_LINK}${memberId})` : memberId;
+          const mxids = await this.bot.store.get_discord_user_mxids(id);
+          if (mxids.length > 0) {
+            const mxid = mxids[0];
+            const profile = await this.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
+            const name = profile.displayname || mxid;
+            memberStr = `[${name}](${MATRIX_TO_LINK}${mxid})`;
+          }
           content = content.replace(results[0], memberStr);
           results = USER_REGEX.exec(content);
         }
         return content;
     }
+
+    public ReplaceRoles(content: string, msg: Discord.Message): string {
+        let results = ROLES_REGEX.exec(content);
+        while (results !== null) {
+          const id = results[1];
+          const role = msg.guild.roles.get(id);
+          content = content.replace(results[0], `@${role.name}`);
+          results = ROLES_REGEX.exec(content);
+        }
+        return content;
+    }
+
 
     public ReplaceChannels(content: string, msg: Discord.Message): string {
         let results = CHANNEL_REGEX.exec(content);
@@ -106,8 +129,7 @@ export class MessageProcessor {
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
       for (const member of members) {
-        const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                        escapeStringRegexp(member.displayName);
+        const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator);
         body = body.replace(
             new RegExp(
                 `\\b(${matcher})(?=\\b)`
