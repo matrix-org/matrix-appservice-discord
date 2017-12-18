@@ -194,6 +194,18 @@ export class DiscordBot {
                     })
                 }
             });
+            if (!this.config.bridge.disableTypingNotifications) {
+                client.on("typingStart", (c, u) => {
+                    if (c.type == "dm") {
+                        this.OnTyping(c, u, true);
+                    }
+                });
+                client.on("typingStop", (c, u) => {
+                    if (c.type == "dm") {
+                        this.OnTyping(c, u, false);
+                    }
+                });
+            }
         }
     }
   public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
