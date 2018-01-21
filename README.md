@@ -71,12 +71,7 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
 * For the bot to appear online on Discord you need to run the bridge itself.
 * ``node ./build/src/discordas.js -p 9005 -c config.yaml``
 
-## Setting privileges on bridge managed rooms
-
-* The ``adminme`` script is provided to set Admin/Moderator or any other custom power level to a specific user.
-* e.g. To set Alice to Admin on her ``example.com`` HS on default config. (``config.yaml``)
-  * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
-  * Run ``npm run adminme -- -h`` for usage.
+[Howto](./docs/howto.md)
 
 ## Features and Roadmap
 In a vague order of what is coming up next
