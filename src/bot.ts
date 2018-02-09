@@ -539,6 +539,7 @@ export class DiscordBot {
               info,
               msgtype,
               url: content.mxcUrl,
+              external_url: attachment.url,
             });
           });
         });
