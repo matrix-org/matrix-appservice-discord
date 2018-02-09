@@ -167,6 +167,9 @@ export class DiscordBot {
       if (!isMarkdown) {
         body = "\\" + body;
       }
+      if (event.content.msgtype === "m.emote") {
+        body = `*${body}*`;
+      }
       return new Discord.RichEmbed({
         author: {
           name: profile.displayname,
