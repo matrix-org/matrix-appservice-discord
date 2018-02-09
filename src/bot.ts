@@ -152,7 +152,7 @@ export class DiscordBot {
   }
 
   public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-    const body = this.config.bridge.disableDiscordMentions ? event.content.body :
+    let body = this.config.bridge.disableDiscordMentions ? event.content.body :
                  this.msgProcessor.FindMentionsInPlainBody(
                      event.content.body,
                      channel.members.array(),
@@ -162,6 +162,10 @@ export class DiscordBot {
       if (profile.avatar_url) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
         profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+      }
+      const isMarkdown = (event.content.format === "org.matrix.custom.html");
+      if(!isMarkdown) {
+        body = "\\" + body;
       }
       return new Discord.RichEmbed({
         author: {
