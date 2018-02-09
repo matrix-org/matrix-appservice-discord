@@ -164,7 +164,7 @@ export class DiscordBot {
         profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
       }
       const isMarkdown = (event.content.format === "org.matrix.custom.html");
-      if(!isMarkdown) {
+      if (!isMarkdown) {
         body = "\\" + body;
       }
       return new Discord.RichEmbed({
