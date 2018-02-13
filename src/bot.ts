@@ -155,7 +155,7 @@ export class DiscordBot {
   }
 
   public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-    let body = this.config.bridge.disableDiscordMentions ? event.content.body :
+    const body = this.config.bridge.disableDiscordMentions ? event.content.body :
                  this.msgProcessor.FindMentionsInPlainBody(
                      event.content.body,
                      channel.members.array(),
@@ -166,6 +166,7 @@ export class DiscordBot {
         const mxClient = this.bridge.getClientFactory().getClientAs();
         profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
       }
+      /* See issue #82
       const isMarkdown = (event.content.format === "org.matrix.custom.html");
       if (!isMarkdown) {
         body = "\\" + body;
@@ -173,6 +174,7 @@ export class DiscordBot {
       if (event.content.msgtype === "m.emote") {
         body = `*${body}*`;
       }
+      */
       return new Discord.RichEmbed({
         author: {
           name: profile.displayname,
