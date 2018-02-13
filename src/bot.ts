@@ -197,9 +197,7 @@ export class DiscordBot {
     if (result.botUser) {
         // We are doing this through webhooks so fetch the user profile.
         profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
-        if (profile !== null) {
-          profile = profile.content;
-        } else {
+        if (profile === null) {
           log.warn("DiscordBot", `User ${event.sender} has no member state. That's odd.`);
         }
     }
