@@ -191,10 +191,18 @@ export class DiscordBot {
     const mxClient = this.bridge.getClientFactory().getClientAs();
     log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
     const result = await this.LookupRoom(guildId, channelId, event.sender);
-    log.verbose("DiscordBot", `Found channel! Looking up ${event.sender}`);
     const chan = result.channel;
     const botUser = result.botUser;
-    const profile = result.botUser ? await mxClient.getProfileInfo(event.sender) : null;
+    let profile = null;
+    if (result.botUser) {
+        // We are doing this through webhooks so fetch the user profile.
+        profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
+        if (profile !== null) {
+          profile = profile.content;
+        } else {
+          log.warn("DiscordBot", `User ${event.sender} has no member state. That's odd.`);
+        }
+    }
     const embed = this.MatrixEventToEmbed(event, profile, chan);
     const opts: Discord.MessageOptions = {};
     const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
