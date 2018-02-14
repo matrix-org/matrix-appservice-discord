@@ -73,6 +73,7 @@ export class DiscordBot {
       }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
+      client.on("channelPinsUpdate", (channel) => { this.UpdateChannelPins(channel); });
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
@@ -82,7 +83,9 @@ export class DiscordBot {
         });
       });
       client.on("messageUpdate", (old, msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
-          this.OnMessage(msg, true);
+          if (old.content != msg.content) {
+              this.OnMessage(msg, true);
+          }
         });
       });
       log.info("DiscordBot", "Discord bot client logged in.");
@@ -182,13 +185,15 @@ export class DiscordBot {
             client.new = false;
             client.on("message", (msg) => {
                 if (msg.channel.type == "dm") {
+                    msg.acknowledge();
                     Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
                         this.OnMessage(msg, false);
-                    })
+                    });
                 }
             });
             client.on("messageUpdate", (msg) => {
                 if (msg.channel.type == "dm") {
+                    msg.acknowledge();
                     Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
                         this.OnMessage(msg, false);
                     })
@@ -728,5 +733,28 @@ export class DiscordBot {
           const matrixIds = storeEvent.MatrixId.split(";");
           await client.client.redactEvent(matrixIds[1], matrixIds[0]);
         }
+    }
+    private async UpdateChannelPins(ch: any) {
+        log.info("DiscordBot", `Updating pins for ${ch.id}`);
+        const pins = await ch.fetchPinnedMessages();
+        let pinned_events = [];
+        let room;
+        for (let [key, msg] of pins) {
+            log.info("DiscordBot", `Getting message ${msg.id}`);
+            const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+            if (!storeEvent.Result) {
+                log.warn("DiscordBot", `Couldn't find ${msg.id} in the store.`);
+                continue;
+            }
+            while (storeEvent.Next()) {
+                const matrixIds = storeEvent.MatrixId.split(";");
+                pinned_events.push(matrixIds[0]);
+                log.info("DiscordBot", `adding matrix event ${matrixIds[0]}`);
+                room = matrixIds[1];
+            }
+        }
+        const client = this.bridge.getIntent();
+        log.info("DiscordBot", `Sending state event to ${room}`);
+        await client.client.sendStateEvent(room, "m.room.pinned_events", { pinned: pinned_events }, "");
     }
   }

@@ -91,13 +91,17 @@ export class MatrixRoomHandler {
         log.verbose("MatrixRoomHandler", `Got m.room.message event`);
         const srvChanPair = context.rooms.remote.roomId.substr("discord_".length).split("_");
         if (srvChanPair[0] == "dm") {
-            return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[1], srvChanPair[2], true).catch((err) => {
+            return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[1], srvChanPair[2], true).then(() => {
+                this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            }).catch((err) => {
                 log.warn("MatrixRoomHandler", "There was an error sending a matrix DM event", err);
             });
         }
-        return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1], false).catch((err) => {
+        return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1], false).then(() => {
+            this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+        }).catch((err) => {
             log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
-      });
+        });
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
