@@ -147,9 +147,7 @@ export class DiscordStore {
       },
     ).then( (rows) => {
       if (rows !== undefined) {
-        const ret = [];
-        rows.forEach((row) => ret.push(row.discord_id));
-        return ret;
+        return rows.map((row) => row.discord_id);
       } else {
         return [];
       }
