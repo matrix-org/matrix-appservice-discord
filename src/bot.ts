@@ -216,7 +216,7 @@ export class DiscordBot {
       // Create a new webhook if none already exists
       try {
         if (!hook) {
-          hook = await chan.createWebhook("_matrix", "", "Matrix Bridge: Allow rich user messages");
+          hook = await chan.createWebhook("_matrix", "");
         }
       } catch (err) {
         log.error("DiscordBot", "Unable to create \"_matrix\" webhook. ", err);
