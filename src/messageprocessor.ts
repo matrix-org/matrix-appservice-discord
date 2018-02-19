@@ -6,6 +6,7 @@ import * as escapeStringRegexp from "escape-string-regexp";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
+const EMOJI_SIZE = "1em";
 const EMOJI_REGEX = /<:\w+:?([0-9]*)>/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
@@ -93,7 +94,7 @@ export class MessageProcessor {
           const id = results[1];
           try {
               const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
-              content = content.replace(results[0], `![${id}](${mxcUrl})`);
+              content = content.replace(results[0], `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
           } catch (ex) {
               log.warn("MessageProcessor",
               `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
