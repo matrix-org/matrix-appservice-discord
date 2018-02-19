@@ -94,7 +94,8 @@ export class MessageProcessor {
           const id = results[1];
           try {
               const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
-              content = content.replace(results[0], `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
+              content = content.replace(results[0],
+                  `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
           } catch (ex) {
               log.warn("MessageProcessor",
               `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
