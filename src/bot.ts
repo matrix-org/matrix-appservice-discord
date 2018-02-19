@@ -17,6 +17,8 @@ import * as path from "path";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
+// TODO: This is bad. We should be serving the icon from the own homeserver.
+const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 class ChannelLookupResult {
   public channel: Discord.TextChannel;
   public botUser: boolean;
@@ -222,7 +224,7 @@ export class DiscordBot {
       // Create a new webhook if none already exists
       try {
         if (!hook) {
-          hook = await chan.createWebhook("_matrix", "", "Matrix Bridge: Allow rich user messages");
+          hook = await chan.createWebhook("_matrix", MATRIX_ICON_URL, "Matrix Bridge: Allow rich user messages");
         }
       } catch (err) {
         log.error("DiscordBot", "Unable to create \"_matrix\" webhook. ", err);
