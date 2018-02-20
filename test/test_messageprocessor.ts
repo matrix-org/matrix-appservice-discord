@@ -111,7 +111,7 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello <:hello:3333333>";
             content = await processor.ReplaceEmoji(content, msg);
-            Chai.assert.equal(content, "Hello ![3333333](mxc://image)");
+            Chai.assert.equal(content, "Hello <img alt=\"3333333\" src=\"mxc://image\" style=\"height: 1em;\"/>");
         });
     });
     describe("FindMentionsInPlainBody", () => {
