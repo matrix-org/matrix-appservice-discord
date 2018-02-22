@@ -524,7 +524,7 @@ export class DiscordBot {
     });
   }
 
-  private OnMessage(msg: Discord.Message) {
+  private async OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
     if (indexOfMsg !== -1) {
       log.verbose("DiscordBot", "Got repeated message, ignoring.");
@@ -535,6 +535,15 @@ export class DiscordBot {
       // We don't support double bridging.
       return;
     }
+    // Issue #57: Detect webhooks
+    if(msg.webhookID != null) {
+      const webhook = await chan.fetchWebhooks().filterArray((h) => h.name === "_matrix").pop();
+      if(webhook != null && msg.webhookID === webhook.id) {
+        // Filter out our own webhook messages.
+        return;
+      }
+    }
+
     // Update presence because sometimes discord misses people.
     this.UpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
