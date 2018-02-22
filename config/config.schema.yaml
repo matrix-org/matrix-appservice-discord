@@ -20,6 +20,8 @@ properties:
             type: "boolean"
           disableDeletionForwarding:
             type: "boolean"
+          enableSelfServiceBridging:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken"]

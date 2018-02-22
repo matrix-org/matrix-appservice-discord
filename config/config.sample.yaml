@@ -6,6 +6,7 @@ bridge:
   disableTypingNotifications: false
   disableDiscordMentions: false
   disableDeletionForwarding: false
+  enableSelfServiceBridging: false
 auth:
   clientID: "12345" # Get from discord
   secret: "blah"

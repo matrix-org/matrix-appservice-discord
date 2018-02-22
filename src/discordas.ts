@@ -6,6 +6,7 @@ import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
+import { Provisioner } from "./provisioner";
 
 const cli = new Cli({
   bridgeConfig: {
@@ -48,9 +49,10 @@ function run (port: number, config: DiscordBridgeConfig) {
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
+  const provisioner = new Provisioner();
   const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
-  const discordbot = new DiscordBot(config, discordstore);
-  const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
+  const discordbot = new DiscordBot(config, discordstore, provisioner);
+  const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
 
   const bridge = new Bridge({
     clientFactory,
@@ -68,6 +70,7 @@ function run (port: number, config: DiscordBridgeConfig) {
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
   });
+  provisioner.setBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
   log.info("discordas", "Initing bridge.");

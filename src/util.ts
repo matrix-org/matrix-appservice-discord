@@ -4,6 +4,7 @@ import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
 import * as log from "npmlog";
 import * as mime from "mime";
+import { Permissions } from "discord.js";
 
 const HTTP_OK = 200;
 
@@ -99,6 +100,35 @@ export class Util {
       log.error("UploadContent", "Failed to upload content:\n%s", reason);
       throw reason;
     });
+  }
+
+  /**
+   * Gets a promise that will resolve after the given number of milliseconds
+   * @param {number} duration The number of milliseconds to wait
+   * @returns {Promise<any>} The promise
+   */
+  public static DelayedPromise(duration: number): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      setTimeout(resolve, duration);
+    });
+  }
+
+  public static GetBotLink(config: any): string {
+    /* tslint:disable:no-bitwise */
+    const perms = Permissions.FLAGS.READ_MESSAGES |
+      Permissions.FLAGS.SEND_MESSAGES |
+      Permissions.FLAGS.CHANGE_NICKNAME |
+      Permissions.FLAGS.CONNECT |
+      Permissions.FLAGS.SPEAK |
+      Permissions.FLAGS.EMBED_LINKS |
+      Permissions.FLAGS.ATTACH_FILES |
+      Permissions.FLAGS.READ_MESSAGE_HISTORY |
+      Permissions.FLAGS.MANAGE_WEBHOOKS;
+    /* tslint:enable:no-bitwise */
+
+    const clientId = config.auth.clientID;
+
+    return `https://discordapp.com/api/oauth2/authorize?client_id=${clientId}&scope=bot&permissions=${perms}`;
   }
 }
 
