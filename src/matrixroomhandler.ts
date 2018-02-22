@@ -86,7 +86,15 @@ export class MatrixRoomHandler {
   }
 
   public HandleInvite(event: any) {
-    // Do nothing yet.
+    log.info("MatrixRoomHandler", "Received invite for " + event.state_key + " in room " + event.room_id);
+    if (event.state_key === this.botUserId) {
+      this.bridge.getIntent().getClient().joinRoom(event.room_id).catch(err => {
+        log.error("MatrixRoomHandler", err);
+        setTimeout(() => {
+            this.bridge.getIntent().join(event.room_id).catch(err => log.error("MatrixRoomHandler", err));
+        }, 5000); // Retry the join in 5 seconds if it failed the first time
+      });
+    }
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
