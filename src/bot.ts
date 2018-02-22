@@ -537,7 +537,7 @@ export class DiscordBot {
     }
     // Issue #57: Detect webhooks
     if(msg.webhookID != null) {
-      const webhook = await msg.channel.fetchWebhooks().filterArray((h) => h.name === "_matrix").pop();
+      const webhook = await (<Discord.TextChannel> msg.channel).fetchWebhooks().filterArray((h) => h.name === "_matrix").pop();
       if(webhook != null && msg.webhookID === webhook.id) {
         // Filter out our own webhook messages.
         return;
