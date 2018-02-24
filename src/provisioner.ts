@@ -30,7 +30,7 @@ export class Provisioner {
     }
 
     public unbridgeRoom(remoteRoom: RemoteRoom) {
-        return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom);
+        return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
     public askBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
