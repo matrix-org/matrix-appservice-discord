@@ -12,6 +12,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import * as path from "path";
+import { Provisioner } from "./provisioner";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -34,7 +35,7 @@ export class DiscordBot {
   private sentMessages: string[];
   private msgProcessor: MessageProcessor;
   private presenceHandler: PresenceHandler;
-  constructor(config: DiscordBridgeConfig, store: DiscordStore) {
+  constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
     this.store = store;
     this.sentMessages = [];
@@ -526,6 +527,7 @@ export class DiscordBot {
 
   private async OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
+    const chan = <Discord.TextChannel> msg.channel;
     if (indexOfMsg !== -1) {
       log.verbose("DiscordBot", "Got repeated message, ignoring.");
       delete this.sentMessages[indexOfMsg];
@@ -537,12 +539,36 @@ export class DiscordBot {
     }
     // Issue #57: Detect webhooks
     if (msg.webhookID != null) {
-      const webhook = (await (<Discord.TextChannel> msg.channel).fetchWebhooks())
+      const webhook = (await chan.fetchWebhooks())
                       .filterArray((h) => h.name === "_matrix").pop();
       if (webhook != null && msg.webhookID === webhook.id) {
         // Filter out our own webhook messages.
         return;
       }
+    }
+
+    // Check if there's an ongoing bridge request
+    if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.HasPendingRequest(chan)) {
+      try {
+        const isApproved = msg.content === "!approve";
+        const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
+        if (successfullyBridged && isApproved) {
+          msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
+        } else if (successfullyBridged && !isApproved) {
+          msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
+        } else {
+          msg.channel.sendMessage("Thanks for your response, however the time for responses has expired - sorry!");
+        }
+      } catch (err) {
+        if (err.message === "You do not have permission to manage webhooks in this channel") {
+          msg.channel.sendMessage(err.message);
+        } else {
+          log.error("DiscordBot", "Error processing room approval");
+          log.error("DiscordBot", err);
+        }
+      }
+
+      return; // stop processing - we're approving/declining the bridge request
     }
 
     // Update presence because sometimes discord misses people.
