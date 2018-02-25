@@ -201,7 +201,7 @@ export class MatrixRoomHandler {
               });
 
               await this.provisioner.AskBridgePermission(channel, event.sender);
-              await this.provisioner.BridgeMatrixRoom(channel, event.room_id);
+              this.provisioner.BridgeMatrixRoom(channel, event.room_id);
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "I have bridged this room to your channel",
@@ -250,7 +250,8 @@ export class MatrixRoomHandler {
               log.error("MatrixRoomHandler", err);
               return this.bridge.getItent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
-                  body: "There was an error unbridging this room. Please try again later or contact the bridge operator.",
+                  body: "There was an error unbridging this room. " +
+                    "Please try again later or contact the bridge operator.",
               });
           }
       } else if (command === "help") {
