@@ -190,23 +190,23 @@ export class MatrixRoomHandler {
 
           const guildId = args[0];
           const channelId = args[1];
-          let channel: Discord.TextChannel = null;
-          return this.discord.LookupRoom(guildId, channelId).then((result) => {
+          try {
+              const discordResult = await this.discord.LookupRoom(guildId, channelId);
+              const channel = <Discord.TextChannel> discordResult.channel;
+
               log.info("MatrixRoomHandler", `Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
-              channel = result.channel;
               this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "I'm asking permission from the guild administrators to make this bridge.",
               });
-              return this.provisioner.askBridgePermission(channel, event.sender);
-          }).then(() => {
-              return this.provisioner.bridgeMatrixRoom(channel, event.room_id);
-          }).then(() => {
+
+              await this.provisioner.AskBridgePermission(channel, event.sender);
+              await this.provisioner.BridgeMatrixRoom(channel, event.room_id);
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "I have bridged this room to your channel",
               });
-          }).catch((err) => {
+          } catch (err) {
               if (err.message === "Timed out waiting for a response from the Discord owners"
                   || err.message === "The bridge has been declined by the Discord guild") {
                   return this.bridge.getIntent().sendMessage(event.room_id, {
@@ -217,11 +217,11 @@ export class MatrixRoomHandler {
 
               log.error("MatrixRoomHandler", `Error bridging ${event.room_id} to ${guildId}/${channelId}`);
               log.error("MatrixRoomHandler", err);
-              this.bridge.getIntent().sendMessage(event.room_id, {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "There was a problem bridging that channel - has the guild owner approved the bridge?",
               });
-          });
+          }
       } else if (command === "unbridge") {
           const remoteRoom = context.rooms.remote;
 
@@ -239,19 +239,20 @@ export class MatrixRoomHandler {
               });
           }
 
-          this.provisioner.unbridgeRoom(remoteRoom).then(() => {
-              this.bridge.getIntent().sendMessage(event.room_id, {
+          try {
+              await this.provisioner.UnbridgeRoom(remoteRoom);
+              return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "This room has been unbridged",
               });
-          }).catch((err) => {
-            log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
-            log.error("MatrixRoomHandler", err);
-            this.bridge.getItent().sendMessage(event.room_id, {
-                msgtype: "m.notice",
-                body: "There was an error unbridging this room. Please try again later or contact the bridge operator.",
-            });
-          });
+          } catch (err) {
+              log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
+              log.error("MatrixRoomHandler", err);
+              return this.bridge.getItent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "There was an error unbridging this room. Please try again later or contact the bridge operator.",
+              });
+          }
       } else if (command === "help") {
           // Unknown command or no command given to get help on, so we'll just give them the help
           this.bridge.getIntent().sendMessage(event.room_id, {

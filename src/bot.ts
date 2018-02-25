@@ -548,10 +548,10 @@ export class DiscordBot {
     }
 
     // Check if there's an ongoing bridge request
-    if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.hasPendingRequest(chan)) {
+    if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.HasPendingRequest(chan)) {
       try {
         const isApproved = msg.content === "!approve";
-        const successfullyBridged = await this.provisioner.markApproved(chan, msg.member, isApproved);
+        const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
         if (successfullyBridged && isApproved) {
           msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
         } else if (successfullyBridged && !isApproved) {

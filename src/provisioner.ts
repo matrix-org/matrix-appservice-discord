@@ -13,11 +13,11 @@ export class Provisioner {
     private bridge: Bridge;
     private pendingRequests: { [channelId: string]: (approved: boolean) => void } = {}; // [channelId]: resolver fn
 
-    public setBridge(bridge: Bridge): void {
+    public SetBridge(bridge: Bridge): void {
         this.bridge = bridge;
     }
 
-    public bridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
+    public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
         const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}_bridged`);
         remote.set("discord_type", "text");
         remote.set("discord_guild", channel.guild.id);
@@ -29,11 +29,11 @@ export class Provisioner {
         this.bridge.getRoomStore().setMatrixRoom(local); // Needs to be done after linking
     }
 
-    public unbridgeRoom(remoteRoom: RemoteRoom) {
+    public UnbridgeRoom(remoteRoom: RemoteRoom) {
         return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
-    public askBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
+    public AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
         return new Promise((resolve, reject) => {
             const channelId = channel.guild.id + "/" + channel.id;
 
@@ -64,12 +64,12 @@ export class Provisioner {
         });
     }
 
-    public hasPendingRequest(channel: Discord.TextChannel): boolean {
+    public HasPendingRequest(channel: Discord.TextChannel): boolean {
         const channelId = channel.guild.id + "/" + channel.id;
         return !!this.pendingRequests[channelId];
     }
 
-    public markApproved(channel: Discord.TextChannel, member: Discord.GuildMember, allow: boolean): Promise<boolean> {
+    public MarkApproved(channel: Discord.TextChannel, member: Discord.GuildMember, allow: boolean): Promise<boolean> {
         const channelId = channel.guild.id + "/" + channel.id;
         if (!this.pendingRequests[channelId]) {
             return Promise.resolve(false); // no change, so false

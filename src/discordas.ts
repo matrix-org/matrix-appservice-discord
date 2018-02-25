@@ -70,7 +70,7 @@ function run (port: number, config: DiscordBridgeConfig) {
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
   });
-  provisioner.setBridge(bridge);
+  provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
   log.info("discordas", "Initing bridge.");
