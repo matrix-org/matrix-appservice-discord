@@ -10,6 +10,10 @@ const EMOJI_SIZE = "1em";
 const EMOJI_REGEX = /<:\w+:?([0-9]*)>/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
+marked.setOptions({
+    sanitize: true,
+});
+
 export class MessageProcessorOpts {
     public domain: string;
     constructor (domain: string) {
