@@ -78,37 +78,37 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
 In a vague order of what is coming up next
 
  - Matrix -> Discord
-   - [x] Text content
-   - [x] Image content
-   - [x] Audio/Video content
-   - [ ] Typing notifs (**Not supported, requires syncing**)
-   - [x] User Profiles
+     - [x] Text content
+     - [x] Image content
+     - [x] Audio/Video content
+     - [ ] Typing notifs (**Not supported, requires syncing**)
+     - [x] User Profiles
  - Discord -> Matrix
-   - [x] Text content
-   - [x] Image content
-   - [x] Audio/Video content
-   - [x] Typing notifs
-   - [x] User Profiles
-   - [x] Presence
-   - [x] Per-guild display names.
+     - [x] Text content
+     - [x] Image content
+     - [x] Audio/Video content
+     - [x] Typing notifs
+     - [x] User Profiles
+     - [x] Presence
+     - [x] Per-guild display names.
  - [x] Group messages
  - [ ] Third Party Lookup
-  - [x] Rooms
-  - [ ] Users
+    - [x] Rooms
+    - [ ] Users
  - [ ] Puppet a user's real Discord account.
-  - [x] Sending messages
-  - [ ] Direct messages
-  - [ ] UI for setup
+    - [x] Sending messages
+    - [ ] Direct messages
+    - [ ] UI for setup
  - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms
-  - [x] Feature
-  - [ ] UI
+    - [x] Feature
+    - [ ] UI
  - [ ] Manage channel from Matrix (possibly)
-  - [ ] Authorise admin rights from Discord to Matrix users
-  - [ ] Topic
-  - [ ] Room Name
+    - [ ] Authorise admin rights from Discord to Matrix users
+    - [ ] Topic
+    - [ ] Room Name
  - [ ] Provisioning API
- - [ ] Webhooks (allows for prettier messages to discord)
+ - [x] Webhooks (allows for prettier messages to discord)
  - [ ] VOIP (**Hard** | Unlikely to be finished anytime soon)
 
 
