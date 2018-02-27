@@ -70,7 +70,7 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
 ### Running the Bridge
 
 * For the bot to appear online on Discord you need to run the bridge itself.
-* ``node ./build/src/discordas.js -p 9005 -c config.yaml``
+* ``npm start``
 
 [Howto](./docs/howto.md)
 
