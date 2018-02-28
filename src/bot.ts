@@ -641,9 +641,9 @@ export class DiscordBot {
         }
         while (storeEvent.Next()) {
           log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-          const client = this.GetIntentFromDiscordMember(msg.author);
+          const intent = this.GetIntentFromDiscordMember(msg.author);
           const matrixIds = storeEvent.MatrixId.split(";");
-          await client.redactEvent(matrixIds[1], matrixIds[0]);
+          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
         }
     }
   }
