@@ -5,9 +5,12 @@ import { DiscordBot } from "./bot";
 import * as escapeStringRegexp from "escape-string-regexp";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
+const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
+const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
 const EMOJI_SIZE = "1em";
 const EMOJI_REGEX = /<:\w+:?([0-9]*)>/g;
+const EMOJI_REGEX_POSTMARK = /&lt;:\w+:?([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
 marked.setOptions({
@@ -37,18 +40,27 @@ export class MessageProcessor {
 
     public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
-        // Replace embeds.
+        // first do the plain-text body
+        result.body = await this.InsertDiscordSyntax(msg.content, msg, false);
+
+        // for the formatted body we need to parse markdown first
+        // as else it'll HTML escape the result of the discord syntax
         let content = msg.content;
+        content = marked(content);
+        content = await this.InsertDiscordSyntax(content, msg, true);
+        result.formattedBody = content;
+        return result;
+    }
+
+    public async InsertDiscordSyntax(content: string, msg: Discord.Message, postmark: boolean): Promise<string> {
+        // Replace embeds.
         content = this.InsertEmbeds(content, msg);
 
         // Replace Users
-        content = this.ReplaceMembers(content, msg);
-        content = this.ReplaceChannels(content, msg);
-        content = await this.ReplaceEmoji(content, msg);
-        // Replace channels
-        result.body = content;
-        result.formattedBody = marked(content);
-        return result;
+        content = this.ReplaceMembers(content, msg, postmark);
+        content = this.ReplaceChannels(content, msg, postmark);
+        content = await this.ReplaceEmoji(content, msg, postmark);
+        return content;
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
@@ -66,46 +78,49 @@ export class MessageProcessor {
         return content;
     }
 
-    public ReplaceMembers(content: string, msg: Discord.Message): string {
-        let results = USER_REGEX.exec(content);
+    public ReplaceMembers(content: string, msg: Discord.Message, postmark: boolean = false): string {
+        const reg = postmark ? USER_REGEX_POSTMARK : USER_REGEX;
+        let results = reg.exec(content);
         while (results !== null) {
-          const id = results[1];
-          const member = msg.guild.members.get(id);
-          const memberId = `@_discord_${id}:${this.opts.domain}`;
-          const memberStr = member ? member.user.username : memberId;
-          content = content.replace(results[0], memberStr);
-          results = USER_REGEX.exec(content);
+            const id = results[1];
+            const member = msg.guild.members.get(id);
+            const memberId = `@_discord_${id}:${this.opts.domain}`;
+            const memberStr = member ? member.user.username : memberId;
+            content = content.replace(results[0], memberStr);
+            results = reg.exec(content);
         }
         return content;
     }
 
-    public ReplaceChannels(content: string, msg: Discord.Message): string {
-        let results = CHANNEL_REGEX.exec(content);
+    public ReplaceChannels(content: string, msg: Discord.Message, postmark: boolean = false): string {
+        const reg = postmark ? CHANNEL_REGEX_POSTMARK : CHANNEL_REGEX;
+        let results = reg.exec(content);
         while (results !== null) {
-          const id = results[1];
-          const channel = msg.guild.channels.get(id);
-          const roomId = `#_discord_${msg.guild.id}_${id}:${this.opts.domain}`;
-          const channelStr = channel ? "#" + channel.name : "#" + id;
-          content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
-          results = CHANNEL_REGEX.exec(content);
+            const id = results[1];
+            const channel = msg.guild.channels.get(id);
+            const roomId = `#_discord_${msg.guild.id}_${id}:${this.opts.domain}`;
+            const channelStr = channel ? "#" + channel.name : "#" + id;
+            content = content.replace(results[0], `[${channelStr}](${MATRIX_TO_LINK}${roomId})`);
+            results = reg.exec(content);
         }
         return content;
     }
 
-    public async ReplaceEmoji(content: string, msg: Discord.Message): Promise<string> {
-        let results = EMOJI_REGEX.exec(content);
+    public async ReplaceEmoji(content: string, msg: Discord.Message, postmark: boolean = false): Promise<string> {
+        const reg = postmark ? EMOJI_REGEX_POSTMARK : EMOJI_REGEX;
+        let results = reg.exec(content);
         while (results !== null) {
-          const id = results[1];
-          try {
-              const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
-              content = content.replace(results[0],
-                  `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
-          } catch (ex) {
-              log.warn("MessageProcessor",
-              `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
-            );
-          }
-          results = EMOJI_REGEX.exec(content);
+            const id = results[1];
+            try {
+                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                content = content.replace(results[0],
+                    `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
+            } catch (ex) {
+                log.warn("MessageProcessor",
+                    `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
+                );
+            }
+            results = reg.exec(content);
         }
         return content;
     }
