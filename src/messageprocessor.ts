@@ -43,7 +43,8 @@ export class MessageProcessor {
         // first do the plain-text body
         result.body = await this.InsertDiscordSyntax(msg.content, msg, false);
 
-        // for the formatted body we need to parse markdown first as else it'll HTML escape the result of the discord syntax
+        // for the formatted body we need to parse markdown first
+        // as else it'll HTML escape the result of the discord syntax
         let content = msg.content;
         content = marked(content);
         content = await this.InsertDiscordSyntax(content, msg, true);
@@ -109,7 +110,7 @@ export class MessageProcessor {
         const reg = postmark ? EMOJI_REGEX_POSTMARK : EMOJI_REGEX;
         let results = reg.exec(content);
         while (results !== null) {
-            const animated = results[1] == 'a';
+            const animated = results[1] === "a";
             const name = results[2];
             const id = results[3];
             try {

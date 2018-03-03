@@ -344,7 +344,7 @@ export class DiscordBot {
     }
     const dbEmoji: DbGuildEmoji = await this.store.Get(DbGuildEmoji, {emoji_id: id});
     if (!dbEmoji.Result) {
-      const url = 'https://cdn.discordapp.com/emojis/'+id+(animated?'.gif':'.png');
+      const url = "https://cdn.discordapp.com/emojis/" + id + (animated ? ".gif" : ".png");
       const intent = this.bridge.getIntent();
       const mxcUrl = (await Util.UploadContentFromUrl(url, intent, name)).mxcUrl;
       dbEmoji.EmojiId = id;
