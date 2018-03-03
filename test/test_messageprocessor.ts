@@ -16,7 +16,7 @@ log.level = "silly";
 
 // const assert = Chai.assert;
 const bot = {
-    GetGuildEmoji: (guild: Discord.Guild, id: string): Promise<string> => {
+    getEmoji: (name: string, animated: boolean, id: string): Promise<string> => {
         if (id === "3333333") {
             return Promise.resolve("mxc://image");
         } else {
