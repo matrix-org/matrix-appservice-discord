@@ -9,8 +9,8 @@ const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
 const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
 const EMOJI_SIZE = "1em";
-const EMOJI_REGEX = /<:\w+:?([0-9]*)>/g;
-const EMOJI_REGEX_POSTMARK = /&lt;:\w+:?([0-9]*)&gt;/g;
+const EMOJI_REGEX = /<(a?):(\w+):?([0-9]*)>/g;
+const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):?([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
 marked.setOptions({
@@ -109,9 +109,11 @@ export class MessageProcessor {
         const reg = postmark ? EMOJI_REGEX_POSTMARK : EMOJI_REGEX;
         let results = reg.exec(content);
         while (results !== null) {
-            const id = results[1];
+            const animated = results[1] == 'a';
+            const name = results[2];
+            const id = results[3];
             try {
-                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                const mxcUrl = await this.bot.getEmoji(name, animated, id);
                 content = content.replace(results[0],
                     `<img alt="${id}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {
