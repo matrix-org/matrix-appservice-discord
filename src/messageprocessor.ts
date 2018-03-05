@@ -10,12 +10,13 @@ const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
 const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
 const EMOJI_SIZE = "1em";
-const EMOJI_REGEX = /<:(\w+):([0-9]*)>/g;
-const EMOJI_REGEX_POSTMARK = /&lt;:(\w+):([0-9]*)&gt;/g;
+const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
+const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
-const NAME_EMOJI_REGEX_GROUP = 1;
-const ID_EMOJI_REGEX_GROUP = 2;
+const ANIMATED_EMOJI_REGEX_GROUP = 1;
+const NAME_EMOJI_REGEX_GROUP = 2;
+const ID_EMOJI_REGEX_GROUP = 3;
 
 marked.setOptions({
     sanitize: true,
@@ -143,11 +144,12 @@ export class MessageProcessor {
     public async ReplaceEmoji(content: string, msg: Discord.Message): Promise<string> {
         let results = EMOJI_REGEX.exec(content);
         while (results !== null) {
+            const animated = results[ANIMATED_EMOJI_REGEX_GROUP] === "a";
             const name = results[NAME_EMOJI_REGEX_GROUP];
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
                 // we still fetch the mxcUrl to check if the emoji is valid
-                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
                 log.warn("MessageProcessor",
@@ -162,10 +164,11 @@ export class MessageProcessor {
     public async ReplaceEmojiPostmark(content: string, msg: Discord.Message): Promise<string> {
         let results = EMOJI_REGEX_POSTMARK.exec(content);
         while (results !== null) {
+            const animated = results[ANIMATED_EMOJI_REGEX_GROUP] === "a";
             const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0],
                     `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {

@@ -1,7 +1,7 @@
 import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
-import { DbGuildEmoji } from "./db/dbdataemoji";
+import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
@@ -338,19 +338,18 @@ export class DiscordBot {
     });
   }
 
-  public async GetGuildEmoji(guild: Discord.Guild, id: string): Promise<string> {
-    const dbEmoji: DbGuildEmoji = await this.store.Get(DbGuildEmoji, {emoji_id: id});
+  public async GetEmoji(name: string, animated: boolean, id: string): Promise<string> {
+    if (!id.match(/^\d+$/)) {
+      throw new Error("Non-numerical ID");
+    }
+    const dbEmoji: DbEmoji = await this.store.Get(DbEmoji, {emoji_id: id});
     if (!dbEmoji.Result) {
-      // Fetch the emoji
-      if (!guild.emojis.has(id)) {
-        throw new Error("The guild does not contain the emoji");
-      }
-      const emoji: Discord.Emoji = guild.emojis.get(id);
+      const url = "https://cdn.discordapp.com/emojis/" + id + (animated ? ".gif" : ".png");
       const intent = this.bridge.getIntent();
-      const mxcUrl = (await Util.UploadContentFromUrl(emoji.url, intent, emoji.name)).mxcUrl;
-      dbEmoji.EmojiId = emoji.id;
-      dbEmoji.GuildId = guild.id;
-      dbEmoji.Name = emoji.name;
+      const mxcUrl = (await Util.UploadContentFromUrl(url, intent, name)).mxcUrl;
+      dbEmoji.EmojiId = id;
+      dbEmoji.Name = name;
+      dbEmoji.Animated = animated;
       dbEmoji.MxcUrl = mxcUrl;
       await this.store.Insert(dbEmoji);
     }
