@@ -72,6 +72,29 @@ describe("MessageProcessor", () => {
             Chai.assert.equal(content, "Hello TestUsername");
         });
     });
+    describe("ReplaceMembersPostmark", () => {
+        it("processes members missing from the guild correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;@!12345&gt;";
+            content = processor.ReplaceMembersPostmark(content, msg);
+            Chai.assert.equal(content,
+                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
+        });
+        it("processes members with usernames correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            guild._mockAddMember(new MockMember("12345", "TestUsername"));
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;@!12345&gt;";
+            content = processor.ReplaceMembersPostmark(content, msg);
+            Chai.assert.equal(content,
+                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
+        });
+    });
     describe("ReplaceChannels", () => {
         it("processes unknown channel correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -80,7 +103,7 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello <#123456789>";
             content = processor.ReplaceChannels(content, msg);
-            Chai.assert.equal(content, "Hello [#123456789](https://matrix.to/#/#_discord_123_123456789:localhost)");
+            Chai.assert.equal(content, "Hello #123456789");
         });
         it("processes channels correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
@@ -90,7 +113,30 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello <#456>";
             content = processor.ReplaceChannels(content, msg);
-            Chai.assert.equal(content, "Hello [#TestChannel](https://matrix.to/#/#_discord_123_456:localhost)");
+            Chai.assert.equal(content, "Hello #TestChannel");
+        });
+    });
+    describe("ReplaceChannelsPostmark", () => {
+        it("processes unknown channel correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;#123456789&gt;";
+            content = processor.ReplaceChannelsPostmark(content, msg);
+            Chai.assert.equal(content,
+                "Hello <a href=\"https://matrix.to/#/#_discord_123_123456789:localhost\">#123456789</a>");
+        });
+        it("processes channels correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;#456&gt;";
+            content = processor.ReplaceChannelsPostmark(content, msg);
+            Chai.assert.equal(content,
+                "Hello <a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
         });
     });
     describe("ReplaceEmoji", () => {
@@ -111,7 +157,28 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello <:hello:3333333>";
             content = await processor.ReplaceEmoji(content, msg);
-            Chai.assert.equal(content, "Hello <img alt=\"3333333\" src=\"mxc://image\" style=\"height: 1em;\"/>");
+            Chai.assert.equal(content, "Hello :hello:");
+        });
+    });
+    describe("ReplaceEmojiPostmark", () => {
+        it("processes unknown emoji correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;:hello:123456789&gt;";
+            content = await processor.ReplaceEmojiPostmark(content, msg);
+            Chai.assert.equal(content, "Hello &lt;:hello:123456789&gt;");
+        });
+        it("processes emoji correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;:hello:3333333&gt;";
+            content = await processor.ReplaceEmojiPostmark(content, msg);
+            Chai.assert.equal(content, "Hello <img alt=\"hello\" src=\"mxc://image\" style=\"height: 1em;\"/>");
         });
     });
     describe("FindMentionsInPlainBody", () => {
