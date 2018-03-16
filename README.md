@@ -1,4 +1,4 @@
-# Matrix Discord Bridge
+# Matrix Discord Bridge [![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=master)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
 
 A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
 Currently the bridge is alpha quality, but is usable.
