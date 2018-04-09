@@ -167,7 +167,7 @@ export class DiscordBot {
       profile.displayname = profile.displayname || event.sender;
       if (profile.avatar_url) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
-        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url, 512, 512, 'scale');
       }
       /* See issue #82
       const isMarkdown = (event.content.format === "org.matrix.custom.html");
