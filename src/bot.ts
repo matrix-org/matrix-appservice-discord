@@ -18,6 +18,7 @@ import { Provisioner } from "./provisioner";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
+const AVATAR_SIZE = 512; // matrix -> discord
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 class ChannelLookupResult {
@@ -167,7 +168,7 @@ export class DiscordBot {
       profile.displayname = profile.displayname || event.sender;
       if (profile.avatar_url) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
-        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url, 512, 512, 'scale');
+        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url, AVATAR_SIZE, AVATAR_SIZE, "scale");
       }
       /* See issue #82
       const isMarkdown = (event.content.format === "org.matrix.custom.html");
