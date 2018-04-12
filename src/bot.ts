@@ -19,6 +19,8 @@ import { Provisioner } from "./provisioner";
 const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 const AVATAR_SIZE = 512; // matrix -> discord
+const MAX_DISCORD_NAME_LENGTH = 32;
+const DISCORD_NAME_START = 0;
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 class ChannelLookupResult {
@@ -181,7 +183,7 @@ export class DiscordBot {
       */
       return new Discord.RichEmbed({
         author: {
-          name: profile.displayname,
+          name: profile.displayname.substring(DISCORD_NAME_START, MAX_DISCORD_NAME_LENGTH),
           icon_url: profile.avatar_url,
           url: `https://matrix.to/#/${event.sender}`,
         },
