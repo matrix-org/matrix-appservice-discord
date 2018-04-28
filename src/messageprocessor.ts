@@ -150,7 +150,7 @@ export class MessageProcessor {
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
                 // we still fetch the mxcUrl to check if the emoji is valid=
-                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
+                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
                 log.warn("MessageProcessor",
@@ -169,7 +169,7 @@ export class MessageProcessor {
             const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
+                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0],
                     `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {

@@ -84,4 +84,5 @@ export class MatrixEventProcessor {
         }
         return body;
     }
+
 }
