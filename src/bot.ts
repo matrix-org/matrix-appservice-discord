@@ -47,7 +47,7 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
     this.mxEventProcessor = new MatrixEventProcessor(
-        new MatrixEventProcessorOpts(this.config, this.msgProcessor, this.bridge),
+        new MatrixEventProcessorOpts(this.config, this.bridge),
     );
     this.presenceHandler = new PresenceHandler(this);
   }
@@ -64,7 +64,7 @@ export class DiscordBot {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
 
-  public run (): Promise<null> {
+  public run (): Promise<void> {
     return this.clientFactory.init().then(() => {
       return this.clientFactory.getClient();
     }).then((client: any) => {
