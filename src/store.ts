@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 6;
+const CURRENT_SCHEMA = 7;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
