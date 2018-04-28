@@ -20,7 +20,7 @@ export class DiscordStore {
     this.filepath = filepath;
   }
 
-  public backup_database(): Promise<null> {
+  public backup_database(): Promise<void|{}> {
     if (this.filepath === ":memory:") {
       log.info("DiscordStore", "Can't backup a :memory: database.");
       return Promise.resolve();
@@ -37,7 +37,6 @@ export class DiscordStore {
         if (!result) {
           log.warn("DiscordStore", "NOT backing up database while a file already exists");
           resolve(true);
-          return;
         }
         const rd = fs.createReadStream(this.filepath);
         rd.on("error", reject);
@@ -52,7 +51,7 @@ export class DiscordStore {
   /**
    * Checks the database has all the tables needed.
    */
-  public async init (overrideSchema: number = 0) {
+  public async init (overrideSchema: number = 0): Promise<void> {
     log.info("DiscordStore", "Starting DB Init");
     await this.open_database();
     let version = await this.getSchemaVersion();
@@ -95,7 +94,7 @@ export class DiscordStore {
     });
   }
 
-  public add_user_token(userId: string, discordId: string, token: string): Promise<null> {
+  public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
     log.silly("SQL", "add_user_token => %s", userId);
     return Promise.all([
         this.db.runAsync(
@@ -227,7 +226,7 @@ export class DiscordStore {
     });
   }
 
-  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T> {
+  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
       const dType = new dbType();
       log.silly("DiscordStore", `get <${dType.constructor.name} with params ${params}>`);
       return dType.RunQuery(this, params).then(() => {
@@ -235,20 +234,21 @@ export class DiscordStore {
           return dType;
       }).catch((ex) => {
           log.warn("DiscordStore", `get <${dType.constructor.name} with params ${params} FAILED with exception ${ex}>`);
+          return null;
       });
   }
 
-  public Insert<T extends IDbData>(data: T): Promise<null> {
+  public Insert<T extends IDbData>(data: T): Promise<Error> {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Insert(this);
   }
 
-  public Update<T extends IDbData>(data: T): Promise<null>  {
+  public Update<T extends IDbData>(data: T): Promise<Error>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Update(this);
   }
 
-  public Delete<T extends IDbData>(data: T): Promise<null>  {
+  public Delete<T extends IDbData>(data: T): Promise<Error>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Delete(this);
   }

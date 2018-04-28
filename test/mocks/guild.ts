@@ -1,8 +1,9 @@
 import {MockCollection} from "./collection";
 import {MockMember} from "./member";
+import {Channel} from "discord.js";
 
 export class MockGuild {
-  public channels = new MockCollection<string, any>();
+  public channels = new MockCollection<string, Channel>();
   public members = new MockCollection<string, MockMember>();
   public id: string;
   constructor(id: string, channels: any[]) {

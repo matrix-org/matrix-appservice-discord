@@ -5,7 +5,7 @@ export class DiscordClientFactory {
     ;
   }
 
-  public init(): Promise<null> {
+  public init(): Promise<void> {
     return Promise.resolve();
   }
 

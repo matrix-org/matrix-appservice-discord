@@ -2,7 +2,6 @@ import * as Discord from "discord.js";
 import * as marked from "marked";
 import * as log from "npmlog";
 import { DiscordBot } from "./bot";
-import * as escapeStringRegexp from "escape-string-regexp";
 import * as escapeHtml from "escape-html";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
@@ -23,9 +22,8 @@ marked.setOptions({
 });
 
 export class MessageProcessorOpts {
-    public domain: string;
-    constructor (domain: string) {
-        this.domain = domain;
+    constructor (readonly domain: string, readonly bot: DiscordBot = null) {
+
     }
 
 }
@@ -37,10 +35,13 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    private readonly bot: DiscordBot;
-    constructor (opts: MessageProcessorOpts, bot: DiscordBot) {
-        this.opts = opts;
-        this.bot = bot;
+    constructor (opts: MessageProcessorOpts, bot: DiscordBot = null) {
+        // Backwards compat
+        if (bot != null) {
+            this.opts = new MessageProcessorOpts(opts.domain, bot);
+        } else {
+            this.opts = opts;
+        }
     }
 
     public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
@@ -148,8 +149,8 @@ export class MessageProcessor {
             const name = results[NAME_EMOJI_REGEX_GROUP];
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                // we still fetch the mxcUrl to check if the emoji is valid
-                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
+                // we still fetch the mxcUrl to check if the emoji is valid=
+                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
                 log.warn("MessageProcessor",
@@ -168,7 +169,7 @@ export class MessageProcessor {
             const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                const mxcUrl = await this.bot.GetEmoji(name, animated, id);
+                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0],
                     `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {
@@ -179,18 +180,5 @@ export class MessageProcessor {
             results = EMOJI_REGEX_POSTMARK.exec(content);
         }
         return content;
-    }
-
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
-      for (const member of members) {
-        const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                        escapeStringRegexp(member.displayName);
-        body = body.replace(
-            new RegExp(
-                `\\b(${matcher})(?=\\b)`
-                , "mig"), `<@!${member.id}>`,
-        );
-      }
-      return body;
     }
 }

@@ -2,7 +2,7 @@ import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
   public description = "Create DM Table, User Options";
-  public run(store: DiscordStore): Promise<null> {
+  public run(store: DiscordStore): Promise<Error[]> {
     return Promise.all([
       store.create_table(`
       CREATE TABLE dm_rooms (
@@ -17,7 +17,7 @@ export class Schema implements IDbSchema {
       );`, "client_options",
     )]);
   }
-  public rollBack(store: DiscordStore): Promise<null> {
+  public rollBack(store: DiscordStore): Promise<Error> {
     return store.db.execAsync(
       `DROP TABLE IF EXISTS dm_rooms;
       DROP TABLE IF EXISTS client_options;`,
