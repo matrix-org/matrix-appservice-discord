@@ -3,6 +3,12 @@ import {MessageProcessorOpts, MessageProcessor} from "./messageprocessor";
 import {DiscordBot} from "./bot";
 import {DiscordBridgeConfig} from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
+import {Util} from "./util";
+import * as path from "path";
+import * as mime from "mime";
+import * as log from "npmlog";
+
+const MaxFileSize = 8000000;
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -85,4 +91,39 @@ export class MatrixEventProcessor {
         return body;
     }
 
+    public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
+        const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
+        if (!hasAttachment) {
+            return "";
+        }
+        if (event.content.info == null) {
+            log.info("Event was an attachment type but was missing a content.info");
+            return "";
+        }
+
+        let size = event.content.info.size || 0;
+        const url = mxClient.mxcUrlToHttp(event.content.url);
+        const name = this.GetFilenameForMediaEvent(event.content);
+        if (size < MaxFileSize) {
+            const attachment = await Util.DownloadFile(url);
+            size = attachment.byteLength;
+            if (size < MaxFileSize) {
+                return {
+                    name,
+                    attachment,
+                };
+            }
+        }
+        return `[${name}](${url})`;
+    }
+
+    private GetFilenameForMediaEvent(content: any): string {
+        if (content.body) {
+            if (path.extname(content.body) !== "") {
+                return content.body;
+            }
+            return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
+        }
+        return "matrix-media." + mime.extension(content.info.mimetype);
+    }
 }
