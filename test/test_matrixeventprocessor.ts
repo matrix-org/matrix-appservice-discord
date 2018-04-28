@@ -53,7 +53,7 @@ function createMatrixEventProcessor
         "./util": {
             Util: {
                 DownloadFile: (name: string) => {
-                    const size = parseInt(name.substring(name.lastIndexOf("/")+1), undefined);
+                    const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
                     return Buffer.alloc(size);
                 },
             },
@@ -271,32 +271,34 @@ describe("MatrixEventProcessor", () => {
             }, mxClient)).to.eventually.eq("");
         });
         it("message with a large info.size", () => {
+            const LARGE_FILE = 8000000;
             const processor = createMatrixEventProcessor();
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.video",
                     info: {
-                        size: 8000000,
+                        size: LARGE_FILE,
                     },
                     body: "filename.webm",
-                    url: "mxc://localhost/8000000"
+                    url: "mxc://localhost/8000000",
                 },
             }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
         it("message with a small info.size", () => {
+            const SMALL_FILE = 200;
             const processor = createMatrixEventProcessor();
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.video",
                     info: {
-                        size: 200,
+                        size: SMALL_FILE,
                     },
                     body: "filename.webm",
-                    url: "mxc://localhost/200"
+                    url: "mxc://localhost/200",
                 },
             }, mxClient)).to.eventually.satisfy((attachment) => {
                 expect(attachment.name).to.eq("filename.webm");
-                expect(attachment.attachment.length).to.eq(200);
+                expect(attachment.attachment.length).to.eq(SMALL_FILE);
                 return true;
             });
         });
@@ -309,7 +311,7 @@ describe("MatrixEventProcessor", () => {
                         size: 200,
                     },
                     body: "filename.webm",
-                    url: "mxc://localhost/8000000"
+                    url: "mxc://localhost/8000000",
                 },
             }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
