@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 6;
+const CURRENT_SCHEMA = 7;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -136,22 +136,22 @@ export class DiscordStore {
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => %s", userId);
-    return this.db.getAsync(
+    return this.db.allAsync(
       `
       SELECT discord_id
       FROM user_id_discord_id
-      WHERE user_id = $userId
+      WHERE user_id = $userId;
       `, {
         $userId: userId,
       },
     ).then( (rows) => {
       if (rows !== undefined) {
-        rows.map((row) => row.discord_id);
+        return rows.map((row) => row.discord_id);
       } else {
         return [];
       }
     }).catch( (err) => {
-      log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids: %s", err.Error);
       throw err;
     });
   }

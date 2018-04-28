@@ -2,10 +2,10 @@ import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
 import * as log from "npmlog";
 
-export class DbGuildEmoji implements IDbData {
+export class DbEmoji implements IDbData {
     public EmojiId: string;
-    public GuildId: string;
     public Name: string;
+    public Animated: boolean;
     public MxcUrl: string;
     public CreatedAt: number;
     public UpdatedAt: number;
@@ -14,15 +14,15 @@ export class DbGuildEmoji implements IDbData {
     public RunQuery(store: DiscordStore, params: any): Promise<null> {
         return store.db.getAsync(`
             SELECT *
-            FROM guild_emoji
+            FROM emoji
             WHERE emoji_id = $id`, {
                 $id: params.emoji_id,
             }).then((row) => {
                 this.Result = row !== undefined;
                 if (this.Result) {
                     this.EmojiId = row.emoji_id;
-                    this.GuildId = row.guild_id;
                     this.Name = row.name;
+                    this.Animated = row.animated;
                     this.MxcUrl = row.mxc_url;
                     this.CreatedAt = row.created_at;
                     this.UpdatedAt = row.updated_at;
@@ -34,12 +34,12 @@ export class DbGuildEmoji implements IDbData {
         this.CreatedAt = new Date().getTime();
         this.UpdatedAt = this.CreatedAt;
         return store.db.runAsync(`
-            INSERT INTO guild_emoji
-            (emoji_id,guild_id,name,mxc_url,created_at,updated_at)
-            VALUES ($emoji_id,$guild_id,$name,$mxc_url,$created_at,$updated_at);`, {
+            INSERT INTO emoji
+            (emoji_id,name,animated,mxc_url,created_at,updated_at)
+            VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
                 $emoji_id: this.EmojiId,
-                $guild_id: this.GuildId,
                 $name: this.Name,
+                $animated: this.Animated,
                 $mxc_url: this.MxcUrl,
                 $created_at: this.CreatedAt,
                 $updated_at: this.UpdatedAt,
@@ -50,16 +50,16 @@ export class DbGuildEmoji implements IDbData {
         // Ensure this has incremented by 1 for Insert+Update operations.
         this.UpdatedAt = new Date().getTime() + 1;
         return store.db.runAsync(`
-            UPDATE guild_emoji
+            UPDATE emoji
             SET name = $name,
+            animated = $animated,
             mxc_url = $mxc_url,
             updated_at = $updated_at
             WHERE
-            emoji_id = $emoji_id
-            AND guild_id = $guild_id`, {
+            emoji_id = $emoji_id`, {
                 $emoji_id: this.EmojiId,
-                $guild_id: this.GuildId,
                 $name: this.Name,
+                $animated: this.Animated,
                 $mxc_url: this.MxcUrl,
                 $updated_at: this.UpdatedAt,
         });
