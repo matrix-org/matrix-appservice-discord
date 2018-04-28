@@ -6,6 +6,7 @@ import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
+import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -34,15 +35,19 @@ export class DiscordBot {
   private presenceInterval: any;
   private sentMessages: string[];
   private msgProcessor: MessageProcessor;
+  private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
+
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
     this.store = store;
     this.sentMessages = [];
     this.clientFactory = new DiscordClientFactory(store, config.auth);
     this.msgProcessor = new MessageProcessor(
-      new MessageProcessorOpts(this.config.bridge.domain),
-      this,
+      new MessageProcessorOpts(this.config.bridge.domain, this),
+    );
+    this.mxEventProcessor = new MatrixEventProcessor(
+        new MatrixEventProcessorOpts(this.config, this.msgProcessor, this.bridge),
     );
     this.presenceHandler = new PresenceHandler(this);
   }
@@ -157,41 +162,6 @@ export class DiscordBot {
     });
   }
 
-  public MatrixEventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-    const body = this.config.bridge.disableDiscordMentions ? event.content.body :
-                 this.msgProcessor.FindMentionsInPlainBody(
-                     event.content.body,
-                     channel.members.array(),
-                 );
-    if (profile) {
-      profile.displayname = profile.displayname || event.sender;
-      if (profile.avatar_url) {
-        const mxClient = this.bridge.getClientFactory().getClientAs();
-        profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
-      }
-      /* See issue #82
-      const isMarkdown = (event.content.format === "org.matrix.custom.html");
-      if (!isMarkdown) {
-        body = "\\" + body;
-      }
-      if (event.content.msgtype === "m.emote") {
-        body = `*${body}*`;
-      }
-      */
-      return new Discord.RichEmbed({
-        author: {
-          name: profile.displayname,
-          icon_url: profile.avatar_url,
-          url: `https://matrix.to/#/${event.sender}`,
-        },
-        description: body,
-      });
-    }
-    return new Discord.RichEmbed({
-      description: body,
-    });
-  }
-
   public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
     const mxClient = this.bridge.getClientFactory().getClientAs();
     log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
@@ -206,7 +176,7 @@ export class DiscordBot {
           log.warn("DiscordBot", `User ${event.sender} has no member state. That's odd.`);
         }
     }
-    const embed = this.MatrixEventToEmbed(event, profile, chan);
+    const embed = this.mxEventProcessor.EventToEmbed(event, profile, chan);
     const opts: Discord.MessageOptions = {};
     const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
     if (hasAttachment) {

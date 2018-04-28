@@ -22,9 +22,8 @@ marked.setOptions({
 });
 
 export class MessageProcessorOpts {
-    public domain: string;
-    constructor (domain: string) {
-        this.domain = domain;
+    constructor (readonly domain: string, readonly bot: DiscordBot = null) {
+
     }
 
 }
@@ -36,10 +35,12 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    private readonly bot: DiscordBot;
-    constructor (opts: MessageProcessorOpts, bot: DiscordBot) {
+    constructor (opts: MessageProcessorOpts, bot: DiscordBot = null) {
+        // Backwards compat
+        if (bot != null) {
+            this.opts = new MessageProcessorOpts(opts.domain, bot);
+        }
         this.opts = opts;
-        this.bot = bot;
     }
 
     public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
@@ -147,7 +148,7 @@ export class MessageProcessor {
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
                 // we still fetch the mxcUrl to check if the emoji is valid
-                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                const mxcUrl = await this.opts.bot.GetGuildEmoji(msg.guild, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
                 log.warn("MessageProcessor",
@@ -165,7 +166,7 @@ export class MessageProcessor {
             const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                const mxcUrl = await this.bot.GetGuildEmoji(msg.guild, id);
+                const mxcUrl = await this.opts.bot.GetGuildEmoji(msg.guild, id);
                 content = content.replace(results[0],
                     `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {
