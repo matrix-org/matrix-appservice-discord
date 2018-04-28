@@ -4,7 +4,6 @@ import * as log from "npmlog";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
-// import * as Proxyquire from "proxyquire";
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
@@ -29,17 +28,19 @@ const bot = {
     },
 };
 
+const mxClient = {
+    mxcUrlToHttp: (url) => {
+        return url.replace("mxc://", "https://");
+    },
+};
+
 function createMatrixEventProcessor
     (disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
     const bridge = {
         getClientFactory: () => {
             return {
                 getClientAs: () => {
-                    return {
-                        mxcUrlToHttp: () => {
-                            return "https://madeup.com";
-                        },
-                    };
+                    return mxClient;
                 },
             };
         },
@@ -48,7 +49,16 @@ function createMatrixEventProcessor
     config.bridge.disableDiscordMentions = disableMentions;
     config.bridge.disableEveryoneMention = disableEveryone;
     config.bridge.disableHereMention = disableHere;
-    return new MatrixEventProcessor(
+    return new (Proxyquire("../src/matrixeventprocessor", {
+        "./util": {
+            Util: {
+                DownloadFile: (name: string) => {
+                    const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
+                    return Buffer.alloc(size);
+                },
+            },
+        },
+    })).MatrixEventProcessor(
         new MatrixEventProcessorOpts(
             config,
             bridge,
@@ -71,7 +81,7 @@ describe("MatrixEventProcessor", () => {
                 avatar_url: "mxc://localhost/avatarurl",
             }, mockChannel as any);
             Chai.assert.equal(evt.author.name, "Test User");
-            Chai.assert.equal(evt.author.icon_url, "https://madeup.com");
+            Chai.assert.equal(evt.author.icon_url, "https://localhost/avatarurl");
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
@@ -109,9 +119,9 @@ describe("MatrixEventProcessor", () => {
                 content: {
                     body: "testcontent",
                 },
-            }, {avatar_url: "test"}, mockChannel as any);
+            }, {avatar_url: "mxc://localhost/test"}, mockChannel as any);
             Chai.assert.equal(evt.author.name, "@test:localhost");
-            Chai.assert.equal(evt.author.icon_url, "https://madeup.com");
+            Chai.assert.equal(evt.author.icon_url, "https://localhost/test");
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
@@ -233,6 +243,77 @@ describe("MatrixEventProcessor", () => {
             const msg = "Welcome thatman";
             const content = processor.FindMentionsInPlainBody(msg, members);
             Chai.assert.equal(content, "Welcome thatman");
+        });
+    });
+    describe("HandleAttachment", () => {
+        it("message without an attachment", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.text",
+                },
+            }, mxClient)).to.eventually.eq("");
+        });
+        it("message without an info", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                },
+            }, mxClient)).to.eventually.eq("");
+        });
+        it("message without an info", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                },
+            }, mxClient)).to.eventually.eq("");
+        });
+        it("message with a large info.size", () => {
+            const LARGE_FILE = 8000000;
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                    info: {
+                        size: LARGE_FILE,
+                    },
+                    body: "filename.webm",
+                    url: "mxc://localhost/8000000",
+                },
+            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+        });
+        it("message with a small info.size", () => {
+            const SMALL_FILE = 200;
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                    info: {
+                        size: SMALL_FILE,
+                    },
+                    body: "filename.webm",
+                    url: "mxc://localhost/200",
+                },
+            }, mxClient)).to.eventually.satisfy((attachment) => {
+                expect(attachment.name).to.eq("filename.webm");
+                expect(attachment.attachment.length).to.eq(SMALL_FILE);
+                return true;
+            });
+        });
+        it("message with a small info.size but a larger file", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                    info: {
+                        size: 200,
+                    },
+                    body: "filename.webm",
+                    url: "mxc://localhost/8000000",
+                },
+            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
     });
 });

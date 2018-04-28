@@ -12,7 +12,6 @@ import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import * as path from "path";
 import { Provisioner } from "./provisioner";
 
 // Due to messages often arriving before we get a response from the send call,
@@ -181,15 +180,13 @@ export class DiscordBot {
     }
     const embed = this.mxEventProcessor.EventToEmbed(event, profile, chan);
     const opts: Discord.MessageOptions = {};
-    const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
-    if (hasAttachment) {
-      const attachment = await Util.DownloadFile(mxClient.mxcUrlToHttp(event.content.url));
-      const name = this.GetFilenameForMediaEvent(event.content);
-      opts.file = {
-        name,
-        attachment,
-      };
+    const file = await this.mxEventProcessor.HandleAttachment(event, mxClient);
+    if (typeof(file) === "string") {
+        embed.description += " " + file;
+    } else {
+        opts.file = file;
     }
+
     let msg = null;
     let hook: Discord.Webhook ;
     if (botUser) {
@@ -207,18 +204,12 @@ export class DiscordBot {
     try {
       if (!botUser) {
         msg = await chan.send(embed.description, opts);
-      } else if (hook && !hasAttachment) {
-        const hookOpts: Discord.WebhookMessageOptions = {
-          username: embed.author.name,
-          avatarURL: embed.author.icon_url,
-        };
-        // Uncomment this and remove !hasAttachment above after https://github.com/hydrabolt/discord.js/pull/1449 pulled
-        // if (hasAttachment) {
-        //   hookOpts.file = opts.file;
-        //   msg = await hook.send(embed.description, hookOpts);
-        // } else {
-        msg = await hook.send(embed.description, hookOpts);
-        // }
+      } else if (hook) {
+        msg = await hook.send(embed.description, {
+            username: embed.author.name,
+            avatarURL: embed.author.icon_url,
+            file: opts.file,
+        });
       } else {
         opts.embed = embed;
         msg = await chan.send("", opts);
@@ -327,16 +318,6 @@ export class DiscordBot {
       await this.store.Insert(dbEmoji);
     }
     return dbEmoji.MxcUrl;
-  }
-
-  private GetFilenameForMediaEvent(content): string {
-    if (content.body) {
-      if (path.extname(content.body) !== "") {
-        return content.body;
-      }
-      return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
-    }
-    return "matrix-media." + mime.extension(content.info.mimetype);
   }
 
   private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
