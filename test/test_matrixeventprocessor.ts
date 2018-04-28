@@ -29,10 +29,8 @@ const bot = {
     },
 };
 
-function createMatrixEventProcessor(disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
-    const bot = {
-
-    };
+function createMatrixEventProcessor
+    (disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
     const bridge = {
         getClientFactory: () => {
             return {
@@ -45,7 +43,7 @@ function createMatrixEventProcessor(disableMentions: boolean = false, disableEve
                 },
             };
         },
-    }
+    };
     const config = new DiscordBridgeConfig();
     config.bridge.disableDiscordMentions = disableMentions;
     config.bridge.disableEveryoneMention = disableEveryone;
