@@ -2,7 +2,6 @@ import * as Discord from "discord.js";
 import * as marked from "marked";
 import * as log from "npmlog";
 import { DiscordBot } from "./bot";
-import * as escapeStringRegexp from "escape-string-regexp";
 import * as escapeHtml from "escape-html";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
@@ -39,8 +38,9 @@ export class MessageProcessor {
         // Backwards compat
         if (bot != null) {
             this.opts = new MessageProcessorOpts(opts.domain, bot);
+        } else {
+            this.opts = opts;
         }
-        this.opts = opts;
     }
 
     public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
@@ -177,18 +177,5 @@ export class MessageProcessor {
             results = EMOJI_REGEX_POSTMARK.exec(content);
         }
         return content;
-    }
-
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
-      for (const member of members) {
-        const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                        escapeStringRegexp(member.displayName);
-        body = body.replace(
-            new RegExp(
-                `\\b(${matcher})(?=\\b)`
-                , "mig"), `<@!${member.id}>`,
-        );
-      }
-      return body;
     }
 }

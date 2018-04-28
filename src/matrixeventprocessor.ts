@@ -2,12 +2,13 @@ import * as Discord from "discord.js";
 import {MessageProcessorOpts, MessageProcessor} from "./messageprocessor";
 import {DiscordBot} from "./bot";
 import {DiscordBridgeConfig} from "./config";
+import * as escapeStringRegexp from "escape-string-regexp";
 
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
         readonly bridge: any,
-        readonly msgProcessor: MessageProcessor) {
+        ) {
 
     }
 }
@@ -15,20 +16,29 @@ export class MatrixEventProcessorOpts {
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: any;
-    private msgProcessor: MessageProcessor;
 
     constructor (opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
-        this.msgProcessor = opts.msgProcessor;
         this.bridge = opts.bridge;
     }
 
-    public EventToEmbed(event: any, profile: any, channel: Discord.TextChannel): Discord.RichEmbed {
-        const body = this.config.bridge.disableDiscordMentions ? event.content.body :
-            this.msgProcessor.FindMentionsInPlainBody(
+    public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
+        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
+            this.FindMentionsInPlainBody(
                 event.content.body,
                 channel.members.array(),
             );
+
+        // Replace @everyone
+        if (this.config.bridge.disableEveryoneMention) {
+            body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
+        }
+
+        // Replace @here
+        if (this.config.bridge.disableHereMention) {
+            body = body.replace(new RegExp(`@here`, "g"), "@ here");
+        }
+
         if (profile) {
             profile.displayname = profile.displayname || event.sender;
             if (profile.avatar_url) {
@@ -54,7 +64,24 @@ export class MatrixEventProcessor {
             });
         }
         return new Discord.RichEmbed({
+            author: {
+                name: event.sender,
+                url: `https://matrix.to/#/${event.sender}`,
+            },
             description: body,
         });
+    }
+
+    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+        for (const member of members) {
+            const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
+                escapeStringRegexp(member.displayName);
+            body = body.replace(
+                new RegExp(
+                    `\\b(${matcher})(?=\\b)`
+                    , "mig"), `<@!${member.id}>`,
+            );
+        }
+        return body;
     }
 }
