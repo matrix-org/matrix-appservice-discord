@@ -48,14 +48,14 @@ export class DiscordBot {
     this.msgProcessor = new MessageProcessor(
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
-    this.mxEventProcessor = new MatrixEventProcessor(
-        new MatrixEventProcessorOpts(this.config, this.bridge),
-    );
     this.presenceHandler = new PresenceHandler(this);
   }
 
   public setBridge(bridge: Bridge) {
     this.bridge = bridge;
+    this.mxEventProcessor = new MatrixEventProcessor(
+        new MatrixEventProcessorOpts(this.config, bridge),
+    );
   }
 
   get ClientFactory(): DiscordClientFactory {
