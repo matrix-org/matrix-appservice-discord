@@ -60,7 +60,7 @@ export class MessageProcessor {
         let contentPostmark = marked(content);
         
         // parse the plain text stuff
-        content = this.ReplaceMembers(content, msg);
+        content = await this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
         content = this.ReplaceRoles(content, msg);
         content = await this.ReplaceEmoji(content, msg);
@@ -90,15 +90,24 @@ export class MessageProcessor {
         return content;
     }
 
-    public ReplaceMembers(content: string, msg: Discord.Message): string {
+    public async ReplaceMembers(content: string, msg: Discord.Message): Promise<string> {
         let results = USER_REGEX.exec(content);
         while (results !== null) {
             const id = results[1];
             const member = msg.guild.members.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? member.user.username : memberId;
+            let memberStr;
+            const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
+            if (mxids.length > 0) {
+                const mxid = mxids[0];
+                memberStr = mxid;
+            }
+            else {
+                memberStr = member ? member.user.username : memberId;
+            }
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
+
         }
         return content;
     }

@@ -61,14 +61,14 @@ describe("MessageProcessor", () => {
             content = await processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello @_discord_12345:localhost");
         });
-        it("processes members with usernames correctly", () => {
+        it("processes members with usernames correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
             const channel = new Discord.TextChannel(guild, null);
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello <@!12345>";
-            content = processor.ReplaceMembers(content, msg);
+            content = await processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello TestUsername");
         });
     });
