@@ -30,7 +30,7 @@ export class MatrixEventProcessor {
 
     public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
         let body = event.content.body;
-        if (channel && !this.config.bridge.disableDiscordMentions) {
+        if (channel.members && !this.config.bridge.disableDiscordMentions) {
             body = this.FindMentionsInPlainBody(
                 event.content.body,
                 channel.members.array(),
