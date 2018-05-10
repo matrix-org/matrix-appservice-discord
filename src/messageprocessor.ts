@@ -100,7 +100,8 @@ export class MessageProcessor {
             const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
             if (mxids.length > 0) {
                 const mxid = mxids[0];
-                memberStr = mxid;
+                const profile = await this.opts.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
+                memberStr = profile.displayname || mxid;
             }
             else {
                 memberStr = member ? member.user.username : memberId;
