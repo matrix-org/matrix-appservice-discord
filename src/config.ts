@@ -1,11 +1,11 @@
 /** Type annotations for config/config.schema.yaml */
 
 export class DiscordBridgeConfig {
-  public bridge: DiscordBridgeConfigBridge;
-  public auth: DiscordBridgeConfigAuth;
-  public logging: DiscordBridgeConfigLogging;
-  public database: DiscordBridgeConfigDatabase;
-  public room: DiscordBridgeConfigRoom;
+  public bridge: DiscordBridgeConfigBridge = new DiscordBridgeConfigBridge();
+  public auth: DiscordBridgeConfigAuth = new DiscordBridgeConfigAuth();
+  public logging: DiscordBridgeConfigLogging = new DiscordBridgeConfigLogging();
+  public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
+  public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
 }
 
 class DiscordBridgeConfigBridge {
@@ -16,6 +16,9 @@ class DiscordBridgeConfigBridge {
   public disableTypingNotifications: boolean;
   public disableDiscordMentions: boolean;
   public disableDeletionForwarding: boolean;
+  public enableSelfServiceBridging: boolean;
+  public disableEveryoneMention: boolean = false;
+  public disableHereMention: boolean = false;
 }
 
 class DiscordBridgeConfigDatabase {

@@ -6,6 +6,7 @@ import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
+import { Provisioner } from "./provisioner";
 
 const cli = new Cli({
   bridgeConfig: {
@@ -48,9 +49,10 @@ function run (port: number, config: DiscordBridgeConfig) {
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
   });
+  const provisioner = new Provisioner();
   const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
-  const discordbot = new DiscordBot(config, discordstore);
-  const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
+  const discordbot = new DiscordBot(config, discordstore, provisioner);
+  const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
 
   const bridge = new Bridge({
     clientFactory,
@@ -68,13 +70,15 @@ function run (port: number, config: DiscordBridgeConfig) {
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
   });
+  provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
   log.info("discordas", "Initing bridge.");
   log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
-  bridge.run(port, config);
-  log.info("discordas", "Initing store.");
-  discordstore.init().then(() => {
+  bridge.run(port, config).then(() => {
+    log.info("discordas", "Initing store.");
+    return discordstore.init();
+  }).then(() => {
     log.info("discordas", "Initing bot.");
     return discordbot.run().then(() => {
       log.info("discordas", "Discordbot started successfully.");

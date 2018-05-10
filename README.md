@@ -63,56 +63,52 @@ and synapse. Any new servers/guilds you bridge should show up in the network lis
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
   * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
 * You can use Webhooks to make messages relayed by the bridge not nested by the bot user. This will also display the avatar of the user speaking on matrix with their messages.
-  * Enable ``Manage Webhooks`` on the role added by the bot.
-  * Add the ``_matrix`` Webhook for each channel you'd like to enable this feature on.
+  * The bot should create this automatically, but if not perform the following:
+    * Enable ``Manage Webhooks`` on the role added by the bot.
+    * Add the ``_matrix`` Webhook for each channel you'd like to enable this feature on.
 
 ### Running the Bridge
 
 * For the bot to appear online on Discord you need to run the bridge itself.
-* ``node ./build/src/discordas.js -p 9005 -c config.yaml``
+* ``npm start``
 
-## Setting privileges on bridge managed rooms
-
-* The ``adminme`` script is provided to set Admin/Moderator or any other custom power level to a specific user.
-* e.g. To set Alice to Admin on her ``example.com`` HS on default config. (``config.yaml``)
-  * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
-  * Run ``npm run adminme -- -h`` for usage.
+[Howto](./docs/howto.md)
 
 ## Features and Roadmap
 In a vague order of what is coming up next
 
  - Matrix -> Discord
-   - [x] Text content
-   - [x] Image content
-   - [x] Audio/Video content
-   - [ ] Typing notifs (**Not supported, requires syncing**)
-   - [x] User Profiles
+     - [x] Text content
+     - [x] Image content
+     - [x] Audio/Video content
+     - [ ] Typing notifs (**Not supported, requires syncing**)
+     - [x] User Profiles
  - Discord -> Matrix
-   - [x] Text content
-   - [x] Image content
-   - [x] Audio/Video content
-   - [x] Typing notifs
-   - [x] User Profiles
-   - [x] Presence
-   - [x] Per-guild display names.
+     - [x] Text content
+     - [x] Image content
+     - [x] Audio/Video content
+     - [x] Typing notifs
+     - [x] User Profiles
+     - [x] Presence
+     - [x] Per-guild display names.
  - [x] Group messages
  - [ ] Third Party Lookup
-  - [x] Rooms
-  - [ ] Users
+    - [x] Rooms
+    - [ ] Users
  - [ ] Puppet a user's real Discord account.
-  - [x] Sending messages
-  - [ ] Direct messages
-  - [ ] UI for setup
+    - [x] Sending messages
+    - [ ] Direct messages
+    - [ ] UI for setup
  - [x] Rooms react to Discord updates
  - [ ] Integrate Discord into existing rooms
-  - [x] Feature
-  - [ ] UI
+    - [x] Feature
+    - [ ] UI
  - [ ] Manage channel from Matrix (possibly)
-  - [ ] Authorise admin rights from Discord to Matrix users
-  - [ ] Topic
-  - [ ] Room Name
+    - [ ] Authorise admin rights from Discord to Matrix users
+    - [ ] Topic
+    - [ ] Room Name
  - [ ] Provisioning API
- - [ ] Webhooks (allows for prettier messages to discord)
+ - [x] Webhooks (allows for prettier messages to discord)
  - [ ] VOIP (**Hard** | Unlikely to be finished anytime soon)
 
 

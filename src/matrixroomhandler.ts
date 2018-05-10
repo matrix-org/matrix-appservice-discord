@@ -2,6 +2,7 @@ import { DiscordBot } from "./bot";
 import {
   Bridge,
   RemoteRoom,
+  MatrixRoom,
   thirdPartyLookup,
   thirdPartyProtocolResult,
   thirdPartyUserResult,
@@ -12,19 +13,35 @@ import { DiscordBridgeConfig } from "./config";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
+import { Util } from "./util";
+import { Provisioner } from "./provisioner";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const JOIN_DELAY = 6000;
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
+const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
+const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
+
+// Note: The schedule must not have duplicate values to avoid problems in positioning.
+/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
+const JOIN_ROOM_SCHEDULE = [
+    0,              // Right away
+    1000,           // 1 second
+    30000,          // 30 seconds
+    300000,         // 5 minutes
+    900000,         // 15 minutes
+];
+/* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
+
   private config: DiscordBridgeConfig;
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
-  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string) {
+  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
@@ -89,6 +106,9 @@ export class MatrixRoomHandler {
       this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message" && context.rooms.remote) {
         log.verbose("MatrixRoomHandler", `Got m.room.message event`);
+        if (event.content.body && event.content.body.startsWith("!discord")) {
+            return this.ProcessCommand(event, context);
+        }
         const srvChanPair = context.rooms.remote.roomId.substr("discord_".length).split("_");
         if (srvChanPair[0] == "dm") {
             return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[1], srvChanPair[2], true).then(() => {
@@ -108,7 +128,163 @@ export class MatrixRoomHandler {
   }
 
   public HandleInvite(event: any) {
-    // Do nothing yet.
+    log.info("MatrixRoomHandler", "Received invite for " + event.state_key + " in room " + event.room_id);
+    if (event.state_key === this.botUserId) {
+      log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
+      return this.joinRoom(this.bridge.getIntent(), event.room_id);
+    }
+  }
+
+  public async ProcessCommand(event: any, context: any) {
+      if (!this.config.bridge.enableSelfServiceBridging) {
+          // We can do this here because the only commands we support are self-service bridging
+          return this.bridge.getIntent().sendMessage(event.room_id, {
+              msgtype: "m.notice",
+              body: "The owner of this bridge does not permit self-service bridging.",
+          });
+      }
+
+      // Check to make sure the user has permission to do anything in the room. We can do this here
+      // because the only commands we support are self-service commands (which therefore require some
+      // level of permissions)
+      const plEvent = await this.bridge.getIntent().getClient().getStateEvent(event.room_id, "m.room.power_levels", "");
+      let userLevel = PROVISIONING_DEFAULT_USER_POWER_LEVEL;
+      let requiredLevel = PROVISIONING_DEFAULT_POWER_LEVEL;
+      if (plEvent && plEvent.state_default) {
+          requiredLevel = plEvent.state_default;
+      }
+      if (plEvent && plEvent.users_default) {
+          userLevel = plEvent.users_default;
+      }
+      if (plEvent && plEvent.users && plEvent.users[event.sender]) {
+          userLevel = plEvent.users[event.sender];
+      }
+
+      if (userLevel < requiredLevel) {
+          return this.bridge.getIntent().sendMessage(event.room_id, {
+              msgtype: "m.notice",
+              body: "You do not have the required power level in this room to create a bridge to a Discord channel.",
+          });
+      }
+
+      const prefix = "!discord ";
+      let command = "help";
+      let args = [];
+      if (event.content.body.length >= prefix.length) {
+          const allArgs = event.content.body.substring(prefix.length).split(" ");
+          if (allArgs.length && allArgs[0] !== "") {
+              command = allArgs[0];
+              allArgs.splice(0, 1);
+              args = allArgs;
+          }
+      }
+
+      if (command === "help" && args[0] === "bridge") {
+          const link = Util.GetBotLink(this.config);
+          this.bridge.getIntent().sendMessage(event.room_id, {
+              msgtype: "m.notice",
+              body: "How to bridge a Discord guild:\n" +
+              "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
+              "2. Invite me to the matrix room you'd like to bridge\n" +
+              "3. Open the Discord channel you'd like to bridge in a web browser\n" +
+              "4. In the matrix room, send the message `!discord bridge <guild id> <channel id>` " +
+              "(without the backticks)\n" +
+              "   Note: The Guild ID and Channel ID can be retrieved from the URL in your web browser.\n" +
+              "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
+              "5. Enjoy your new bridge!",
+          });
+      } else if (command === "bridge") {
+          if (context.rooms.remote) {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "This room is already bridged to a Discord guild.",
+              });
+          }
+
+          const minArgs = 2;
+          if (args.length < minArgs) {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "Invalid syntax. For more information try !discord help bridge",
+              });
+          }
+
+          const guildId = args[0];
+          const channelId = args[1];
+          try {
+              const discordResult = await this.discord.LookupRoom(guildId, channelId);
+              const channel = <Discord.TextChannel> discordResult.channel;
+
+              log.info("MatrixRoomHandler", `Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
+              this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "I'm asking permission from the guild administrators to make this bridge.",
+              });
+
+              await this.provisioner.AskBridgePermission(channel, event.sender);
+              this.provisioner.BridgeMatrixRoom(channel, event.room_id);
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "I have bridged this room to your channel",
+              });
+          } catch (err) {
+              if (err.message === "Timed out waiting for a response from the Discord owners"
+                  || err.message === "The bridge has been declined by the Discord guild") {
+                  return this.bridge.getIntent().sendMessage(event.room_id, {
+                      msgtype: "m.notice",
+                      body: err.message,
+                  });
+              }
+
+              log.error("MatrixRoomHandler", `Error bridging ${event.room_id} to ${guildId}/${channelId}`);
+              log.error("MatrixRoomHandler", err);
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "There was a problem bridging that channel - has the guild owner approved the bridge?",
+              });
+          }
+      } else if (command === "unbridge") {
+          const remoteRoom = context.rooms.remote;
+
+          if (!remoteRoom) {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "This room is not bridged.",
+              });
+          }
+
+          if (!remoteRoom.data.plumbed) {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "This room cannot be unbridged.",
+              });
+          }
+
+          try {
+              await this.provisioner.UnbridgeRoom(remoteRoom);
+              return this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "This room has been unbridged",
+              });
+          } catch (err) {
+              log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
+              log.error("MatrixRoomHandler", err);
+              return this.bridge.getItent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "There was an error unbridging this room. " +
+                    "Please try again later or contact the bridge operator.",
+              });
+          }
+      } else if (command === "help") {
+          // Unknown command or no command given to get help on, so we'll just give them the help
+          this.bridge.getIntent().sendMessage(event.room_id, {
+              msgtype: "m.notice",
+              body: "Available commands:\n" +
+              "!discord bridge <guild id> <channel id>   - Bridges this room to a Discord channel\n" +
+              "!discord unbridge                         - Unbridges a Discord channel from this room\n" +
+              "!discord help <command>                   - Help menu for another command. Eg: !discord help bridge\n",
+          });
+      }
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
@@ -224,6 +400,25 @@ export class MatrixRoomHandler {
             remote,
         };
     }
+ private joinRoom(intent: any, roomIdOrAlias: string): Promise<string> {
+      let currentSchedule = JOIN_ROOM_SCHEDULE[0];
+      const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => intent.getClient().joinRoom(roomIdOrAlias));
+      const errorHandler = (err) => {
+          log.error("MatrixRoomHandler", `Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+          log.error("MatrixRoomHandler", err);
+          const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
+          if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
+              log.warn("MatrixRoomHandler", `Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+              return Promise.reject(err);
+          } else {
+              currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
+              return doJoin().catch(errorHandler);
+          }
+      };
+
+      return doJoin().catch(errorHandler);
+  }
+
   private createMatrixRoom (channel: Discord.TextChannel, alias: string) {
     const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}`);
     remote.set("discord_type", "text");

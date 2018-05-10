@@ -6,7 +6,7 @@ import * as Bluebird from "bluebird";
 
 export class Schema implements IDbSchema {
   public description = "create event_store table";
-  public run(store: DiscordStore): Promise<null> {
+  public run(store: DiscordStore): Promise<Error> {
     return store.create_table(`
       CREATE TABLE event_store (
         matrix_id TEXT NOT NULL,
@@ -15,7 +15,7 @@ export class Schema implements IDbSchema {
     );`, "event_store");
   }
 
-  public rollBack(store: DiscordStore): Promise <null> {
+  public rollBack(store: DiscordStore): Promise <Error> {
     return store.db.execAsync(
       `DROP TABLE IF EXISTS event_store;`,
     );
