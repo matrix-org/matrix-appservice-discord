@@ -36,9 +36,9 @@ class DmChannelLookupResult {
 export class DiscordBot {
   private config: DiscordBridgeConfig;
   private clientFactory: DiscordClientFactory;
-  private store: DiscordStore;
+  public store: DiscordStore;
   private bot: Discord.Client;
-  private bridge: Bridge;
+  public bridge: Bridge;
   private presenceInterval: any;
   private sentMessages: string[];
   private msgProcessor: MessageProcessor;

@@ -66,7 +66,7 @@ export class MessageProcessor {
         content = await this.ReplaceEmoji(content, msg);
         
         // parse postmark stuff
-        contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
+        contentPostmark = await this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
         
@@ -102,17 +102,27 @@ export class MessageProcessor {
         }
         return content;
     }
-    public ReplaceMembersPostmark(content: string, msg: Discord.Message): string {
+    public async ReplaceMembersPostmark(content: string, msg: Discord.Message): Promise<string> {
         let results = USER_REGEX_POSTMARK.exec(content);
         while (results !== null) {
             const id = results[1];
             const member = msg.guild.members.get(id);
             const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
-            let memberName = memberId;
-            if (member) {
-                memberName = escapeHtml(member.user.username);
+            let memberStr;
+            const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
+            if (mxids.length > 0) {
+                const mxid = mxids[0];
+                const profile = await this.opts.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
+                const name = profile.displayname || mxid;
+                memberStr = `[${name}](${MATRIX_TO_LINK}${mxid})`;
             }
-            const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
+            else {
+                let memberName = memberId;
+                if (member) {
+                    memberName = escapeHtml(member.user.username);
+                }
+                memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
+            }
             content = content.replace(results[0], memberStr);
             results = USER_REGEX_POSTMARK.exec(content);
         }
