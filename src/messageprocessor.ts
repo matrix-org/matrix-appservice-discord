@@ -107,22 +107,21 @@ export class MessageProcessor {
         while (results !== null) {
             const id = results[1];
             const member = msg.guild.members.get(id);
-            const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
-            let memberStr;
+            let memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
+            let memberName = memberId;
             const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
             if (mxids.length > 0) {
                 const mxid = mxids[0];
                 const profile = await this.opts.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
-                const name = profile.displayname || mxid;
-                memberStr = `[${name}](${MATRIX_TO_LINK}${mxid})`;
+                memberName = profile.displayname || mxid;
+                memberId = mxid;
             }
             else {
-                let memberName = memberId;
                 if (member) {
                     memberName = escapeHtml(member.user.username);
                 }
-                memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             }
+            const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);
             results = USER_REGEX_POSTMARK.exec(content);
         }
