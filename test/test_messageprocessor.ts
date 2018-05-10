@@ -61,36 +61,36 @@ describe("MessageProcessor", () => {
             content = await processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello @_discord_12345:localhost");
         });
-        it("processes members with usernames correctly", async () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
-            const guild: any = new MockGuild("123", []);
-            guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
-            let content = "Hello <@!12345>";
-            content = await processor.ReplaceMembers(content, msg);
-            Chai.assert.equal(content, "Hello TestUsername");
-        });
-    });
-    describe("ReplaceMembersPostmark", () => {
-        it("processes members missing from the guild correctly", () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
-            let content = "Hello &lt;@!12345&gt;";
-            content = processor.ReplaceMembersPostmark(content, msg);
-            Chai.assert.equal(content,
-                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
-        });
         it("processes members with usernames correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
             const channel = new Discord.TextChannel(guild, null);
             const msg = new Discord.Message(channel, null, null);
+            let content = "Hello <@!12345>";
+            content = processor.ReplaceMembers(content, msg);
+            Chai.assert.equal(content, "Hello TestUsername");
+        });
+    });
+    describe("ReplaceMembersPostmark", () => {
+        it("processes members missing from the guild correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
             let content = "Hello &lt;@!12345&gt;";
-            content = processor.ReplaceMembersPostmark(content, msg);
+            content = await processor.ReplaceMembersPostmark(content, msg);
+            Chai.assert.equal(content,
+                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
+        });
+        it("processes members with usernames correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            guild._mockAddMember(new MockMember("12345", "TestUsername"));
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello &lt;@!12345&gt;";
+            content = await processor.ReplaceMembersPostmark(content, msg);
             Chai.assert.equal(content,
                 "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
         });
