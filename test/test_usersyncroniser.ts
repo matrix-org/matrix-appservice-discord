@@ -29,6 +29,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
 })).UserSyncroniser;
 
 function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
+    UTIL_UPLOADED_AVATAR = false;
     const bridge: any = {
         getUserStore: () => {
             REMOTEUSER_SET = null;
@@ -220,6 +221,28 @@ describe("UserSyncroniser", () => {
                expect(UTIL_UPLOADED_AVATAR).to.be.true;
                expect(REMOTEUSER_SET).is.not.null;
                expect(REMOTEUSER_SET.data.avatarurl).equal("654321");
+               expect(REMOTEUSER_SET.data.displayname).is.undefined;
+               expect(DISPLAYNAME_SET).is.null;
+           });
+       });
+       it("Will remove an avatar", () => {
+           const userSync = CreateUserSync();
+           const state: IUserState = {
+               id: "123456",
+               createUser: true,
+               mxUserId: "@_discord_123456:localhost",
+               displayName: null, // Nullable
+               avatarUrl: null, // Nullable
+               avatarId: null,
+               removeAvatar: true,
+           };
+           return userSync.ApplyUserState(state).then(() => {
+               expect(LINK_MX_USER).is.not.null;
+               expect(LINK_RM_USER).is.not.null;
+               expect(AVATAR_SET).is.null;
+               expect(UTIL_UPLOADED_AVATAR).to.be.false;
+               expect(REMOTEUSER_SET).is.not.null;
+               expect(REMOTEUSER_SET.data.avatarurl).is.null;
                expect(REMOTEUSER_SET.data.displayname).is.undefined;
                expect(DISPLAYNAME_SET).is.null;
            });
