@@ -1,9 +1,9 @@
 export class MockUser {
-  public id = "";
-  public username: string;
-  public discriminator: string;
-  constructor(id: string, username: string = "") {
-    this.id = id;
-    this.username = username;
-  }
+  constructor(
+      public id: string,
+      public username: string = "",
+      public discriminator: string = "",
+      public avatarURL: string = "",
+      public avatar: string = "",
+  ) { }
 }
