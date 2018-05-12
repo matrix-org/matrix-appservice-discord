@@ -50,8 +50,9 @@ export class UserSyncroniser {
                 new MatrixUser(userState.mxUserId.substr("@".length)),
                 remoteUser,
             );
+
         } else {
-            remoteUser = await userStore.GetRemoteUser(userState.id);
+            remoteUser = await userStore.getRemoteUser(userState.id);
         }
 
         if (userState.displayName !== null) {
@@ -68,8 +69,14 @@ export class UserSyncroniser {
                 intent,
                 userState.avatarId,
             );
-            await intent.setAvatar(avatarMxc.mxcUrl);
+            await intent.setAvatarUrl(avatarMxc.mxcUrl);
             remoteUser.set("avatarurl", userState.avatarUrl);
+            userUpdated = true;
+        }
+
+        if (userState.removeAvatar) {
+            await intent.setAvatarUrl(null);
+            remoteUser.set("avatarurl", null);
             userUpdated = true;
         }
 
