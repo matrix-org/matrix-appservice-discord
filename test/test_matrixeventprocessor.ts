@@ -204,12 +204,22 @@ describe("MatrixEventProcessor", () => {
                     username: "TestUsername",
                     id: "12345",
                 },
+            }), new Discord.GuildMember(guild, {
+                nick: "𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊",
+                user: {
+                    username: "SomeFancyNickname",
+                    id: "66666",
+                },
             })];
             Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊 Hello", members),
+                "<@!66666> Hello",
+            );
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
                 "I wish <@!12345> was here",
