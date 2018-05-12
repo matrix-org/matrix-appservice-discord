@@ -13,6 +13,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { Provisioner } from "./provisioner";
+import {UserSyncroniser} from "./usersyncroniser";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -37,6 +38,7 @@ export class DiscordBot {
   private msgProcessor: MessageProcessor;
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
+  private userSync: UserSyncroniser;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -51,9 +53,14 @@ export class DiscordBot {
 
   public setBridge(bridge: Bridge) {
     this.bridge = bridge;
+    this.userSync = new UserSyncroniser(this.bridge, this.config);
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+    this.bot.on("userUpdate", this.userSync.OnUpdateUser);
+    this.bot.on("guildMemberAdd", this.userSync.OnAddGuildMember);
+    this.bot.on("guildMemberRemove", this.userSync.OnRemoveGuildMember);
+    this.bot.on("guildMemberUpdate", this.userSync.OnUpdateGuildMember);
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -75,11 +82,7 @@ export class DiscordBot {
       if (!this.config.bridge.disablePresence) {
         client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
       }
-      client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
-      client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
-      client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
-      client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
       client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
@@ -296,7 +299,7 @@ export class DiscordBot {
 
   public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
     const intent = this.GetIntentFromDiscordMember(member);
-    return this.UpdateUser(member.user).then(() => {
+    return this.userSync.OnUpdateUser(null, member.user).then(() => {
       return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
     }).then(() => {
       return this.UpdateGuildMember(member, roomIds);
@@ -392,48 +395,6 @@ export class DiscordBot {
     });
   }
 
-  private UpdateUser(discordUser: Discord.User) {
-    let remoteUser: RemoteUser;
-    const displayName = discordUser.username + "#" + discordUser.discriminator;
-    const id = `_discord_${discordUser.id}:${this.config.bridge.domain}`;
-    const intent = this.bridge.getIntent("@" + id);
-    const userStore = this.bridge.getUserStore();
-
-    return userStore.getRemoteUser(discordUser.id).then((u) => {
-      remoteUser = u;
-      if (remoteUser === null) {
-        remoteUser = new RemoteUser(discordUser.id);
-        return userStore.linkUsers(
-          new MatrixUser(id),
-          remoteUser,
-        );
-      }
-      return Promise.resolve();
-    }).then(() => {
-      if (remoteUser.get("displayname") !== displayName) {
-        return intent.setDisplayName(displayName).then(() => {
-          remoteUser.set("displayname", displayName);
-          return userStore.setRemoteUser(remoteUser);
-        });
-      }
-      return true;
-    }).then(() => {
-      if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
-        return Util.UploadContentFromUrl(
-          discordUser.avatarURL,
-          intent,
-          discordUser.avatar,
-        ).then((avatar) => {
-          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
-            remoteUser.set("avatarurl", discordUser.avatarURL);
-            return userStore.setRemoteUser(remoteUser);
-          });
-        });
-      }
-      return true;
-    });
-  }
-
   private AddGuildMember(guildMember: Discord.GuildMember) {
     return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
       return this.InitJoinUser(guildMember, roomIds);
@@ -526,7 +487,7 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.UpdateUser(msg.author).then(() => {
+    this.userSync.OnUpdateUser(null, msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;
