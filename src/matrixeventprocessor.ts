@@ -84,9 +84,10 @@ export class MatrixEventProcessor {
             const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
                 escapeStringRegexp(member.displayName);
             const regex = new RegExp(
-                `(?<=${WORD_BOUNDARY})(${matcher})(?=${WORD_BOUNDARY})`
-                , "igmu");
-            body = body.replace(regex, `<@!${member.id}>`);
+                    `(${WORD_BOUNDARY})(${matcher})(?=${WORD_BOUNDARY})`
+                    , "igmu");
+
+            body = body.replace(regex, `$1<@!${member.id}>`);
         }
         return body;
     }
