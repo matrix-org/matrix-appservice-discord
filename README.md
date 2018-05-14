@@ -1,7 +1,8 @@
 # Matrix Discord Bridge
 
 A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
-Currently the bridge is alpha quality, but is usable.
+Currently the bridge is in **Beta** and quite usable for everyday 
+bridging, with one or two bugs cropping up.
 
 ![Screenshot of Riot and Discord working together](screenshot.png)
 
