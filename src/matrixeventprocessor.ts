@@ -79,14 +79,15 @@ export class MatrixEventProcessor {
     }
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+        const WORD_BOUNDARY = "(^|\:|\@|\#|```|\\s|$|,)";
         for (const member of members) {
             const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
                 escapeStringRegexp(member.displayName);
-            body = body.replace(
-                new RegExp(
-                    `\\b(${matcher})(?=\\b)`
-                    , "mig"), `<@!${member.id}>`,
-            );
+            const regex = new RegExp(
+                    `(${WORD_BOUNDARY})(${matcher})(?=${WORD_BOUNDARY})`
+                    , "igmu");
+
+            body = body.replace(regex, `$1<@!${member.id}>`);
         }
         return body;
     }
