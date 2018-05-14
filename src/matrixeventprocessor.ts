@@ -93,7 +93,13 @@ export class MatrixEventProcessor {
     }
 
     public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
-        const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
+        const hasAttachment = [
+            "m.image",
+            "m.audio",
+            "m.video",
+            "m.file",
+            "m.sticker",
+        ].indexOf(event.content.msgtype) !== -1;
         if (!hasAttachment) {
             return "";
         }
