@@ -99,7 +99,7 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users userid if the displayname is not set.", () => {
+        it("Should should contain the users userid if the displayname is not set", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -112,7 +112,19 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users avatar if it exists.", () => {
+        it("Should should contain the users userid if the displayname is too short", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, {
+                displayname: "t"}, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@test:localhost");
+        });
+
+        it("Should should contain the users avatar if it exists", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",

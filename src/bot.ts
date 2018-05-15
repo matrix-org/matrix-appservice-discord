@@ -18,9 +18,7 @@ import { Provisioner } from "./provisioner";
 // messages get delayed from discord.
 const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
-const AVATAR_SIZE = 512; // matrix -> discord
-const MAX_DISCORD_NAME_LENGTH = 32;
-const DISCORD_NAME_START = 0;
+
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 class ChannelLookupResult {
