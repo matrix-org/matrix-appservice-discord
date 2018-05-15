@@ -148,7 +148,7 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.name, "@testwithalottosayaboutitselftha");
         });
 
-        it("Should should contain the users avatar if it exists", () => {
+        it("Should contain the users avatar if it exists.", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -297,14 +297,6 @@ describe("MatrixEventProcessor", () => {
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.text",
-                },
-            }, mxClient)).to.eventually.eq("");
-        });
-        it("message without an info", () => {
-            const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
-                content: {
-                    msgtype: "m.video",
                 },
             }, mxClient)).to.eventually.eq("");
         });
