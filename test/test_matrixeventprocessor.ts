@@ -133,7 +133,7 @@ describe("MatrixEventProcessor", () => {
                     body: "@testuser2 Hello!",
                 },
             }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(evt.description, "@<@!12345> Hello!");
+            Chai.assert.equal(evt.description, "<@!12345> Hello!");
         });
 
         it("Should disable mentions if configured.", () => {
@@ -231,6 +231,10 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
                 "<@!12345> was here with <@!54321>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
+                "Fixing this issue provided by <@!54321>",
             );
         });
         it("processes non-mentions correctly", async () => {
