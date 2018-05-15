@@ -10,6 +10,7 @@ import * as log from "npmlog";
 
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
+const MAX_NAME_LENGTH = 32;
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
@@ -47,7 +48,9 @@ export class MatrixEventProcessor {
         let displayName = event.sender;
         let avatarUrl = undefined;
         if (profile) {
-            if (profile.displayname && profile.displayname.length > MIN_NAME_LENGTH) {
+            if (profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
                 displayName = profile.displayname;
             }
 
@@ -67,7 +70,7 @@ export class MatrixEventProcessor {
         }
         return new Discord.RichEmbed({
             author: {
-                name: displayName,
+                name: displayName.substr(0, MAX_NAME_LENGTH),
                 icon_url: avatarUrl,
                 url: `https://matrix.to/#/${event.sender}`,
             },

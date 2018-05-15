@@ -112,7 +112,7 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users userid if the displayname is too short", () => {
+        it("Should use the userid when the displayname is too short", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -122,6 +122,30 @@ describe("MatrixEventProcessor", () => {
             }, {
                 displayname: "t"}, mockChannel as any);
             Chai.assert.equal(evt.author.name, "@test:localhost");
+        });
+
+        it("Should use the userid when displayname is too long", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, {
+                displayname: "this is a very very long displayname that should be capped",
+            }, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@test:localhost");
+        });
+
+        it("Should cap the sender name if it is too long", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, null, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@testwithalottosayaboutitselftha");
         });
 
         it("Should should contain the users avatar if it exists", () => {
