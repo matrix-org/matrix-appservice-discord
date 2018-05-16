@@ -85,6 +85,9 @@ export class DiscordBot {
           this.OnMessage(msg);
         });
       });
+      client.on("debug", (msg) => { log.verbose("discord.js", msg); });
+      client.on("error", (msg) => { log.error("discord.js", msg); });
+      client.on("warn", (msg) => { log.warn("discord.js", msg); });
       log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
 
