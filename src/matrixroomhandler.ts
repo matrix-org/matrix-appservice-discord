@@ -67,7 +67,7 @@ export class MatrixRoomHandler {
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
     return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
-      for (const member of (<Discord.TextChannel> channel).guild.members.array()) {
+      for (const member of (<Discord.TextChannel> channel).members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
@@ -78,19 +78,20 @@ export class MatrixRoomHandler {
       }
     }).catch((err) => {
       log.verbose("OnAliasQueried => %s", err);
+      throw err;
     });
   }
 
-  public OnEvent (request, context) {
+  public OnEvent (request, context): Promise<any> {
     const event = request.getData();
     if (event.unsigned.age > AGE_LIMIT) {
       log.warn("MatrixRoomHandler", "Skipping event due to age %s > %s", event.unsigned.age, AGE_LIMIT);
-      return;
+      return Promise.reject("Event too old");
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
-      this.HandleInvite(event);
+      return this.HandleInvite(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
-      this.discord.ProcessMatrixRedact(event);
+      return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
       log.verbose("MatrixRoomHandler", "Got m.room.message event");
       if (event.content.body && event.content.body.startsWith("!discord")) {
@@ -104,6 +105,7 @@ export class MatrixRoomHandler {
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
+    return Promise.reject("Event not processed by bridge");
   }
 
   public HandleInvite(event: any) {
@@ -160,7 +162,7 @@ export class MatrixRoomHandler {
 
       if (command === "help" && args[0] === "bridge") {
           const link = Util.GetBotLink(this.config);
-          this.bridge.getIntent().sendMessage(event.room_id, {
+          return this.bridge.getIntent().sendMessage(event.room_id, {
               msgtype: "m.notice",
               body: "How to bridge a Discord guild:\n" +
               "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
@@ -256,7 +258,7 @@ export class MatrixRoomHandler {
           }
       } else if (command === "help") {
           // Unknown command or no command given to get help on, so we'll just give them the help
-          this.bridge.getIntent().sendMessage(event.room_id, {
+          return this.bridge.getIntent().sendMessage(event.room_id, {
               msgtype: "m.notice",
               body: "Available commands:\n" +
               "!discord bridge <guild id> <channel id>   - Bridges this room to a Discord channel\n" +
