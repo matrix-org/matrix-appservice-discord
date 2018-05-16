@@ -238,7 +238,6 @@ describe("MatrixRoomHandler", () => {
                 room_id: "!123:localhost",
                 content: {body: "!discord help"},
             }).then((evt) => {
-                console.log(evt);
                 return expect(evt.body.startsWith("Available commands")).to.be.true;
             });
         });
