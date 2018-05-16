@@ -1,11 +1,11 @@
 /** Type annotations for config/config.schema.yaml */
-
 export class DiscordBridgeConfig {
   public bridge: DiscordBridgeConfigBridge = new DiscordBridgeConfigBridge();
   public auth: DiscordBridgeConfigAuth = new DiscordBridgeConfigAuth();
   public logging: DiscordBridgeConfigLogging = new DiscordBridgeConfigLogging();
   public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
+  public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
 }
 
 class DiscordBridgeConfigBridge {
@@ -36,4 +36,8 @@ class DiscordBridgeConfigLogging {
 
 class DiscordBridgeConfigRoom {
   public defaultVisibility: string;
+}
+
+class DiscordBridgeConfigLimits {
+  public roomGhostJoinDelay: number = 6000;
 }

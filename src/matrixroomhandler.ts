@@ -17,7 +17,6 @@ import { Util } from "./util";
 import { Provisioner } from "./provisioner";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
-const JOIN_DELAY = 6000;
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
@@ -65,7 +64,8 @@ export class MatrixRoomHandler {
   public OnAliasQueried (alias: string, roomId: string) {
     // Join a whole bunch of users.
     let promiseChain: any = Bluebird.resolve();
-    let delay = JOIN_DELAY; /* We delay the joins to give some implmentations a chance to breathe */
+    /* We delay the joins to give some implementations a chance to breathe */
+    let delay = this.config.limits.roomGhostJoinDelay;
     return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
       for (const member of (<Discord.TextChannel> channel).guild.members.array()) {
         if (member.id === this.discord.GetBotId()) {
@@ -74,7 +74,7 @@ export class MatrixRoomHandler {
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
           return this.discord.InitJoinUser(member, [roomId]);
         }));
-        delay += JOIN_DELAY;
+        delay += this.config.limits.roomGhostJoinDelay;
       }
     }).catch((err) => {
       log.verbose("OnAliasQueried => %s", err);
