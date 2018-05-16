@@ -6,7 +6,7 @@ export class MockDiscordClient {
   public guilds = new MockCollection<string, MockGuild>();
   public user: MockUser;
   private testLoggedIn: boolean = false;
-  private testCallbacks: Array<() => void> = [];
+  private testCallbacks: Map<string, () => void> = new Map();
 
   constructor() {
     const channels = [
@@ -31,13 +31,19 @@ export class MockDiscordClient {
   }
 
   public on(event: string, callback: () => void) {
-    if (event === "ready") {
-      this.testCallbacks[0] = callback;
-    }
+      this.testCallbacks.set(event, callback);
   }
 
-  public login(token: string) {
+  public async login(token: string): Promise<void> {
+    if (token !== "passme") {
+        throw new Error("Mock Discord Client only logins with the token 'passme'");
+    }
     this.testLoggedIn = true;
-    this.testCallbacks[0]();
+    if (this.testCallbacks.has("ready")) {
+        this.testCallbacks.get("ready")();
+    }
+    return;
   }
+
+  public destroy() { } // no-op
 }
