@@ -588,6 +588,11 @@ export class DiscordBot {
   }
 
   private async OnUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
+    // Check if an edit was actually made
+    if (oldMsg.toString() === newMsg.toString()) {
+      return;
+    }
+
     // Create a new edit message using the old and new message contents
     let editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
