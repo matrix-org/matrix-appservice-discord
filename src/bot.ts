@@ -80,7 +80,8 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
+      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnUpdate(oldMessage, newMessage); });
+      client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
@@ -583,6 +584,31 @@ export class DiscordBot {
       }
     }).catch((err) => {
       log.verbose("DiscordBot", "Failed to send message into room.", err);
+    });
+  }
+
+  private async OnUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
+    // Create a new edit message using the old and new message contents
+    let editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
+
+    // Send the message all bridged matrix rooms
+    const rooms = await this.GetRoomIdsFromChannel(newMsg.channel)
+    const intent = this.GetIntentFromDiscordMember(newMsg.author);
+
+    rooms.forEach((room) => {
+      intent.sendMessage(room, {
+        body: editedMsg.body,
+        msgtype: "m.text",
+        formatted_body: editedMsg.formattedBody,
+        format: "org.matrix.custom.html",
+      }).then((res) => {
+        const evt = new DbEvent();
+        evt.MatrixId = res.event_id + ";" + room;
+        evt.DiscordId = newMsg.id;
+        evt.ChannelId = newMsg.channel.id;
+        evt.GuildId = newMsg.guild.id;
+        this.store.Insert(evt);
+      });
     });
   }
 
