@@ -56,6 +56,15 @@ function createRH(opts: any = {}) {
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
         ProcessMatrixMsgEvent: () => Promise.resolve("processed"),
+        LookupRoom: (guildid, discordid) => {
+            if (guildid !== "123") {
+                return Promise.reject("Guild not found");
+            } else if (discordid !== "456") {
+                return Promise.reject("Channel not found");
+            }
+            const channel = new MockChannel();
+            return Promise.resolve({channel, botUser: true });
+        },
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -69,8 +78,22 @@ function createRH(opts: any = {}) {
             return Promise.resolve(opts.powerLevels || {});
         },
     };
-    const provisioner = null;
-    const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner);
+    const provisioner = {
+        AskBridgePermission: () => {
+            return opts.denyBridgePermission ?
+                Promise.reject(new Error("The bridge has been declined by the Discord guild")) : Promise.resolve();
+        },
+        BridgeMatrixRoom: () => {
+            if (opts.failBridgeMatrix) {
+                throw new Error("Test failed matrix bridge");
+            }
+        },
+        UnbridgeRoom: () => {
+            return opts.failUnbridge ?
+                Promise.reject(new Error("Test failed unbridge")) : Promise.resolve();
+        },
+    };
+    const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
     handler.setBridge({
         getIntent: () => { return {
             sendMessage: (roomId, content) => Promise.resolve(content),
@@ -255,17 +278,158 @@ describe("MatrixRoomHandler", () => {
                 return expect(evt.body.startsWith("Available commands")).to.be.true;
             });
         });
-        it("will not bridge if a link already exists", () => {
-            const handler: any = createRH({powerLevels: {
-                    users_default: 100,
-                }});
-            const context = {rooms: { remote: true }};
-            return handler.ProcessCommand({
-                room_id: "!123:localhost",
-                content: {body: "!discord bridge"},
-            }, context).then((evt) => {
-                return expect(evt.body.startsWith("This room is already bridged to a Discord guild")).to.be.true;
+        describe("!discord bridge", () => {
+            it("will bridge a new room, and ask for permissions", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: {}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord bridge 123 456"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("I have bridged this room to your channel");
+                });
             });
+            it("will fail to bridge if permissions were denied", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }, denyBridgePermission: true});
+                const context = {rooms: {}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord bridge 123 456"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("The bridge has been declined by the Discord guild");
+                });
+            });
+            it("will fail to bridge if permissions were denied", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }, failBridgeMatrix: true});
+                const context = {rooms: {}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord bridge 123 456"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be
+                        .eq("There was a problem bridging that channel - has the guild owner approved the bridge?");
+                });
+            });
+            it("will not bridge if a link already exists", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: { remote: true }};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord bridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("This room is already bridged to a Discord guild.");
+                });
+            });
+            it("will not bridge without required args", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: {}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord bridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.contain("Invalid syntax");
+                });
+            });
+        });
+        describe("!discord unbridge", () => {
+            it("will unbridge", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: { remote: {
+                    data: {
+                        plumbed: true,
+                    },
+                        } }};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord unbridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("This room has been unbridged");
+                });
+            });
+            it("will not unbridge if a link does not exist", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: { remote: undefined }};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord unbridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("This room is not bridged.");
+                });
+            });
+            it("will not unbridge non-plumbed rooms", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: { remote: {
+                            data: {
+                                plumbed: false,
+                }}}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord unbridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.be.eq("This room cannot be unbridged.");
+                });
+            });
+            it("will show error if unbridge fails", () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }, failUnbridge: true});
+                const context = {rooms: { remote: {
+                            data: {
+                                plumbed: true,
+                            }}}};
+                return handler.ProcessCommand({
+                    room_id: "!123:localhost",
+                    content: {body: "!discord unbridge"},
+                }, context).then((evt) => {
+                    return expect(evt.body).to.contain("There was an error unbridging this room.");
+                });
+            });
+        });
+    });
+    describe("OnAliasQuery", () => {
+        it("will create room", () => {
+            const handler: any = createRH({});
+            handler.createMatrixRoom = () => true;
+            return expect(handler.OnAliasQuery(
+                "_discord_123_456:localhost",
+                "_discord_123_456")).to.eventually.be.true;
+        });
+        it("will not create room if guild cannot be found", () => {
+            const handler: any = createRH({});
+            handler.createMatrixRoom = () => true;
+            return expect(handler.OnAliasQuery(
+                "_discord_111_456:localhost",
+                "_discord_111_456")).to.eventually.be.undefined;
+        });
+        it("will not create room if channel cannot be found", () => {
+            const handler: any = createRH({});
+            handler.createMatrixRoom = () => true;
+            return expect(handler.OnAliasQuery(
+                "_discord_123_444:localhost",
+                "_discord_123_444")).to.eventually.be.undefined;
+        });
+        it("will not create room if alias is wrong", () => {
+            const handler: any = createRH({});
+            handler.createMatrixRoom = () => true;
+            return expect(handler.OnAliasQuery(
+                "_discord_123:localhost",
+                "_discord_123")).to.be.undefined;
         });
     });
 });
