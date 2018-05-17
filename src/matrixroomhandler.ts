@@ -250,7 +250,7 @@ export class MatrixRoomHandler {
           } catch (err) {
               log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
               log.error("MatrixRoomHandler", err);
-              return this.bridge.getItent().sendMessage(event.room_id, {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "There was an error unbridging this room. " +
                     "Please try again later or contact the bridge operator.",
