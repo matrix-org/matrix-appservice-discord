@@ -11,6 +11,7 @@ import {MockChannel} from "./mocks/channel";
 import {MockMember} from "./mocks/member";
 import * as Bluebird from "bluebird";
 import {MockGuild} from "./mocks/guild";
+import {Guild} from "discord.js";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
@@ -477,6 +478,59 @@ describe("MatrixRoomHandler", () => {
         it("will reject", () => {
             const handler: any = createRH({});
             return expect(handler.tpParseUser("alias")).to.eventually.be.rejected;
+        });
+    });
+    describe("joinRoom", () => {
+        it("will join immediately", () => {
+            const handler: any = createRH({});
+            const intent = {
+                getClient: () => {
+                    return {
+                      joinRoom: () => {
+                          return Promise.resolve();
+                      }
+                    };
+                }
+            };
+            const startTime = Date.now();
+            const MAXTIME = 1000;
+            return expect(handler.joinRoom(intent, "#test:localhost")).to.eventually.be.fulfilled.and.satisfy(() => {
+                return (Date.now() - startTime) < MAXTIME;
+            });
+        });
+        it("will fail first, join after", () => {
+            log.level = "error";
+            const handler: any = createRH({});
+            let shouldFail = true;
+            const intent = {
+                getClient: () => {
+                    return {
+                        joinRoom: () => {
+                            if (shouldFail) {
+                                shouldFail = false;
+                                return Promise.reject("Test failed first time");
+                            }
+                            return Promise.resolve();
+                        },
+                        getUserId: () => "@test:localhost",
+                    };
+                }
+            };
+            const startTime = Date.now();
+            const MINTIME = 1000;
+            return expect(handler.joinRoom(intent, "#test:localhost")).to.eventually.be.fulfilled.and.satisfy(() => {
+                expect(shouldFail).to.be.false;
+                return (Date.now() - startTime) > MINTIME;
+            });
+        });
+    });
+    describe("createMatrixRoom", () => {
+        it("will return an object", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123", new MockGuild("456"));
+            const roomOpts = handler.createMatrixRoom(channel, "#test:localhost");
+            expect(roomOpts.creationOpts).to.exist;
+            expect(roomOpts.remote).to.exist;
         });
     });
 });
