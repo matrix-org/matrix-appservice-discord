@@ -488,9 +488,9 @@ describe("MatrixRoomHandler", () => {
                     return {
                       joinRoom: () => {
                           return Promise.resolve();
-                      }
+                      },
                     };
-                }
+                },
             };
             const startTime = Date.now();
             const MAXTIME = 1000;
@@ -514,7 +514,7 @@ describe("MatrixRoomHandler", () => {
                         },
                         getUserId: () => "@test:localhost",
                     };
-                }
+                },
             };
             const startTime = Date.now();
             const MINTIME = 1000;
