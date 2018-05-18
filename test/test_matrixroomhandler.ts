@@ -10,6 +10,7 @@ import {MatrixRoomHandler} from "../src/matrixroomhandler";
 import {MockChannel} from "./mocks/channel";
 import {MockMember} from "./mocks/member";
 import * as Bluebird from "bluebird";
+import {MockGuild} from "./mocks/guild";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
@@ -30,6 +31,7 @@ function buildRequest(eventData) {
 }
 
 function createRH(opts: any = {}) {
+    log.level = "silent";
     USERSJOINED = 0;
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
@@ -64,6 +66,10 @@ function createRH(opts: any = {}) {
             }
             const channel = new MockChannel();
             return Promise.resolve({channel, botUser: true });
+        },
+        GetGuilds: () => [new MockGuild("123", [])],
+        ThirdpartySearchForChannels: () => {
+            return [];
         },
     };
     const config = new DiscordBridgeConfig();
@@ -430,6 +436,47 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.OnAliasQuery(
                 "_discord_123:localhost",
                 "_discord_123")).to.be.undefined;
+        });
+    });
+    describe("tpGetProtocol", () => {
+       it("will return an object", () => {
+           const handler: any = createRH({});
+           return handler.tpGetProtocol("").then((protocol) => {
+               expect(protocol).to.not.be.null;
+               expect(protocol.instances[0].network_id).to.equal("123");
+               expect(protocol.instances[0].bot_user_id).to.equal("@botuser:localhost");
+               expect(protocol.instances[0].desc).to.equal("123");
+               expect(protocol.instances[0].network_id).to.equal("123");
+           });
+       });
+    });
+    describe("tpGetLocation", () => {
+        it("will return an array", () => {
+            const handler: any = createRH({});
+            return handler.tpGetLocation("", {
+                guild_id: "",
+                channel_name: "",
+            }).then((channels) => {
+                expect(channels).to.be.a("array");
+            });
+        });
+    });
+    describe("tpParseLocation", () => {
+        it("will reject", () => {
+            const handler: any = createRH({});
+            return expect(handler.tpParseLocation("alias")).to.eventually.be.rejected;
+        });
+    });
+    describe("tpGetUser", () => {
+        it("will reject", () => {
+            const handler: any = createRH({});
+            return expect(handler.tpGetUser("", {})).to.eventually.be.rejected;
+        });
+    });
+    describe("tpParseUser", () => {
+        it("will reject", () => {
+            const handler: any = createRH({});
+            return expect(handler.tpParseUser("alias")).to.eventually.be.rejected;
         });
     });
 });
