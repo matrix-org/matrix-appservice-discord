@@ -80,7 +80,7 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnUpdate(oldMessage, newMessage); });
+      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
@@ -435,6 +435,27 @@ export class DiscordBot {
     });
   }
 
+  private async SendMessage(msg: Discord.Message) {
+    const rooms = await this.GetRoomIdsFromChannel(msg.channel)
+    const intent = this.GetIntentFromDiscordMember(msg.author);
+
+    rooms.forEach((room) => {
+      intent.sendMessage(room, {
+        body: msg.body,
+        msgtype: "m.text",
+        formatted_body: msg.formattedBody,
+        format: "org.matrix.custom.html",
+      }).then((res) => {
+        const evt = new DbEvent();
+        evt.MatrixId = res.event_id + ";" + room;
+        evt.DiscordId = msg.id;
+        evt.ChannelId = msg.channel.id;
+        evt.GuildId = msg.guild.id;
+        this.store.Insert(evt);
+      });
+    });
+  }
+
   private AddGuildMember(guildMember: Discord.GuildMember) {
     return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
       return this.InitJoinUser(guildMember, roomIds);
@@ -587,34 +608,17 @@ export class DiscordBot {
     });
   }
 
-  private async OnUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
+  private async OnMessageUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
     // Check if an edit was actually made
-    if (oldMsg.toString() === newMsg.toString()) {
+    if (oldMsg.content === newMsg.content) {
       return;
     }
 
     // Create a new edit message using the old and new message contents
-    let editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
+    const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
-    // Send the message all bridged matrix rooms
-    const rooms = await this.GetRoomIdsFromChannel(newMsg.channel)
-    const intent = this.GetIntentFromDiscordMember(newMsg.author);
-
-    rooms.forEach((room) => {
-      intent.sendMessage(room, {
-        body: editedMsg.body,
-        msgtype: "m.text",
-        formatted_body: editedMsg.formattedBody,
-        format: "org.matrix.custom.html",
-      }).then((res) => {
-        const evt = new DbEvent();
-        evt.MatrixId = res.event_id + ";" + room;
-        evt.DiscordId = newMsg.id;
-        evt.ChannelId = newMsg.channel.id;
-        evt.GuildId = newMsg.guild.id;
-        this.store.Insert(evt);
-      });
-    });
+    // Send the message to all bridged matrix rooms
+    this.SendMessage(editedMsg);
   }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {
