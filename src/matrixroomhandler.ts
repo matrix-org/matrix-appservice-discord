@@ -17,7 +17,6 @@ import { Util } from "./util";
 import { Provisioner } from "./provisioner";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
-const JOIN_DELAY = 6000;
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
@@ -65,32 +64,34 @@ export class MatrixRoomHandler {
   public OnAliasQueried (alias: string, roomId: string) {
     // Join a whole bunch of users.
     let promiseChain: any = Bluebird.resolve();
-    let delay = JOIN_DELAY; /* We delay the joins to give some implmentations a chance to breathe */
+    /* We delay the joins to give some implementations a chance to breathe */
+    let delay = this.config.limits.roomGhostJoinDelay;
     return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
-      for (const member of (<Discord.TextChannel> channel).guild.members.array()) {
+      for (const member of (<Discord.TextChannel> channel).members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
           return this.discord.InitJoinUser(member, [roomId]);
         }));
-        delay += JOIN_DELAY;
+        delay += this.config.limits.roomGhostJoinDelay;
       }
     }).catch((err) => {
       log.verbose("OnAliasQueried => %s", err);
+      throw err;
     });
   }
 
-  public OnEvent (request, context) {
+  public OnEvent (request, context): Promise<any> {
     const event = request.getData();
     if (event.unsigned.age > AGE_LIMIT) {
       log.warn("MatrixRoomHandler", "Skipping event due to age %s > %s", event.unsigned.age, AGE_LIMIT);
-      return;
+      return Promise.reject("Event too old");
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
-      this.HandleInvite(event);
+      return this.HandleInvite(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
-      this.discord.ProcessMatrixRedact(event);
+      return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
       log.verbose("MatrixRoomHandler", "Got m.room.message event");
       if (event.content.body && event.content.body.startsWith("!discord")) {
@@ -104,6 +105,7 @@ export class MatrixRoomHandler {
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
+    return Promise.reject("Event not processed by bridge");
   }
 
   public HandleInvite(event: any) {
@@ -160,7 +162,7 @@ export class MatrixRoomHandler {
 
       if (command === "help" && args[0] === "bridge") {
           const link = Util.GetBotLink(this.config);
-          this.bridge.getIntent().sendMessage(event.room_id, {
+          return this.bridge.getIntent().sendMessage(event.room_id, {
               msgtype: "m.notice",
               body: "How to bridge a Discord guild:\n" +
               "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
@@ -248,7 +250,7 @@ export class MatrixRoomHandler {
           } catch (err) {
               log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
               log.error("MatrixRoomHandler", err);
-              return this.bridge.getItent().sendMessage(event.room_id, {
+              return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "There was an error unbridging this room. " +
                     "Please try again later or contact the bridge operator.",
@@ -256,7 +258,7 @@ export class MatrixRoomHandler {
           }
       } else if (command === "help") {
           // Unknown command or no command given to get help on, so we'll just give them the help
-          this.bridge.getIntent().sendMessage(event.room_id, {
+          return this.bridge.getIntent().sendMessage(event.room_id, {
               msgtype: "m.notice",
               body: "Available commands:\n" +
               "!discord bridge <guild id> <channel id>   - Bridges this room to a Discord channel\n" +
