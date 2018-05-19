@@ -61,7 +61,20 @@ export class MatrixRoomHandler {
     this.bridge = bridge;
   }
 
-  public OnAliasQueried (alias: string, roomId: string) {
+    public async OnAliasQueried (alias: string, roomId: string) {
+        log.info("MatrixRoomHandler", `OnAliasQueried for ${roomId}`);
+        const bot = this.bridge.getIntent();
+        let entries = await this.bridge.getRoomStore().getEntriesByMatrixId(roomId);
+        if (entries.length > 0) {
+            if (entries[0].remote.get("discord_type") == "dm") {
+                const user = entries[0].remote.get("user1_mxid");
+                log.info("DiscordBot", `Inviting user ${user}`);
+                await bot.invite(roomId, user);
+                return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.DMChannel) => {
+                    return this.discord.InitJoinUserDm(channel.recipient, roomId);
+                });
+            }
+        }
     // Join a whole bunch of users.
     let promiseChain: any = Bluebird.resolve();
     /* We delay the joins to give some implementations a chance to breathe */
@@ -91,17 +104,25 @@ export class MatrixRoomHandler {
     if (event.type === "m.room.member" && event.content.membership === "invite") {
       return this.HandleInvite(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
-      return this.discord.ProcessMatrixRedact(event);
-    } else if (event.type === "m.room.message") {
-      log.verbose("MatrixRoomHandler", "Got m.room.message event");
-      if (event.content.body && event.content.body.startsWith("!discord")) {
-        return this.ProcessCommand(event, context);
-      } else if (context.rooms.remote) {
-        const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
-        return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
+      this.discord.ProcessMatrixRedact(event);
+    } else if (event.type === "m.room.message" && context.rooms.remote) {
+        log.verbose("MatrixRoomHandler", `Got m.room.message event`);
+        if (event.content.body && event.content.body.startsWith("!discord")) {
+            return this.ProcessCommand(event, context);
+        }
+        const srvChanPair = context.rooms.remote.roomId.substr("discord_".length).split("_");
+        if (srvChanPair[0] == "dm") {
+            return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[1], srvChanPair[2], true).then(() => {
+                this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            }).catch((err) => {
+                log.warn("MatrixRoomHandler", "There was an error sending a matrix DM event", err);
+            });
+        }
+        return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1], false).then(() => {
+            this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+        }).catch((err) => {
             log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
         });
-      }
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
@@ -270,17 +291,31 @@ export class MatrixRoomHandler {
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
     log.info("MatrixRoomHandler", "Got request for #", aliasLocalpart);
-    const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
+    const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_");
     if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
       log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
-    return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
-      log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
-      return this.createMatrixRoom(result.channel, aliasLocalpart);
-    }).catch((err) => {
-      log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
-    });
+      if (srvChanPair[0] == "dm") {
+          if (srvChanPair.length < 3 || srvChanPair[2] === "") {
+              log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a 2nd user`);
+              return;
+          }
+          return this.discord.LookupDmRoom(srvChanPair[1], srvChanPair[2]).then((result) => {
+              log.info("MatrixRoomHandler", "Creating DM room #", aliasLocalpart);
+              return this.createMatrixDmRoom(result.channel, result.user, srvChanPair[1], srvChanPair[2], aliasLocalpart);
+          }).catch((err) => {
+              log.error("MatrixRoomHandler", `Couldn't find discord DM room '${aliasLocalpart}'.`, err);
+          });
+      }
+      else {
+          return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
+              log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
+              return this.createMatrixRoom(result.channel, aliasLocalpart);
+          }).catch((err) => {
+              log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
+          });
+      }
   }
 
   public tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
@@ -345,8 +380,29 @@ export class MatrixRoomHandler {
   public tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
     return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
-
-  private joinRoom(intent: any, roomIdOrAlias: string): Promise<string> {
+    private createMatrixDmRoom (channel: Discord.DMChannel, mxuser1: string, user1: string, user2: string, alias: string) {
+        const remote = new RemoteRoom(alias.substr(1));
+        remote.set("discord_type", "dm");
+        remote.set("discord_channel", channel.id);
+        remote.set("user1_mxid", mxuser1);
+        remote.set("discord_user1", user1);
+        remote.set("discord_user2", user2);
+        remote.set("update_name", true);
+        remote.set("update_topic", true);
+        const creationOpts = {
+            visibility: "private",
+            room_alias_name: alias,
+            name: `${channel.recipient.username}#${channel.recipient.discriminator} (DM on Discord)`,
+            topic: "",
+            preset: "trusted_private_chat",
+            is_direct: true
+        };
+        return {
+            creationOpts,
+            remote,
+        };
+    }
+ private joinRoom(intent: any, roomIdOrAlias: string): Promise<string> {
       let currentSchedule = JOIN_ROOM_SCHEDULE[0];
       const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => intent.getClient().joinRoom(roomIdOrAlias));
       const errorHandler = (err) => {
@@ -375,7 +431,7 @@ export class MatrixRoomHandler {
     const creationOpts = {
       visibility: this.config.room.defaultVisibility,
       room_alias_name: alias,
-      name: `[Discord] ${channel.guild.name} #${channel.name}`,
+      name: `#${channel.name} (${channel.guild.name} on Discord)`,
       topic: channel.topic ? channel.topic : "",
       initial_state: [
         {

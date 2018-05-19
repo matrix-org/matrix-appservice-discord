@@ -41,7 +41,10 @@ jspm_packages
 config.yaml
 discord-registration.yaml
 
+*.orig
+
 # Ignore TS output
 build
 
 *.db
+package-lock.json

@@ -30,12 +30,13 @@ export class MatrixEventProcessor {
     }
 
     public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
-        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
-            this.FindMentionsInPlainBody(
+        let body = event.content.body;
+        if (channel.members && !this.config.bridge.disableDiscordMentions) {
+            body = this.FindMentionsInPlainBody(
                 event.content.body,
                 channel.members.array(),
             );
-
+        }
         // Replace @everyone
         if (this.config.bridge.disableEveryoneMention) {
             body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");

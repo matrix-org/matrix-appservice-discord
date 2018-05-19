@@ -151,7 +151,51 @@ export class DiscordStore {
         return [];
       }
     }).catch( (err) => {
-      log.error("DiscordStore", "Error getting discord ids: %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids: %s", err);
+      throw err;
+    });
+  }
+    public get_all_puppeted_mxids(): Promise<string[]> {
+    log.silly("SQL", "get_all_puppeted_mxids");
+    return this.db.allAsync(
+      `
+      SELECT user_id
+      FROM user_id_discord_id;
+      `, {},
+    ).then( (rows) => {
+      if (rows !== undefined) {
+        let ret = [];
+        rows.forEach((row) => ret.push(row.user_id));
+        return ret;
+      } else {
+        return [];
+      }
+    }).catch( (err) => {
+      log.error("DiscordStore", "Error getting discord ids: %s", err);
+      throw err;
+    });
+  }
+
+  public get_discord_user_mxids(userId: string): Promise<string[]> {
+    log.silly("SQL", "get_discord_user_mxids => %s", userId);
+    return this.db.allAsync(
+      `
+      SELECT user_id
+      FROM user_id_discord_id
+      WHERE discord_id = $userId;
+      `, {
+        $userId: userId,
+      },
+    ).then( (rows) => {
+      if (rows !== undefined) {
+        let ret = [];
+        rows.forEach((row) => ret.push(row.user_id));
+        return ret;
+      } else {
+        return [];
+      }
+    }).catch( (err) => {
+      log.error("DiscordStore", "Error getting discord ids: %s", err);
       throw err;
     });
   }

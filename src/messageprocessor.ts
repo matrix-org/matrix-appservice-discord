@@ -1,7 +1,9 @@
 import * as Discord from "discord.js";
 import * as marked from "marked";
 import * as log from "npmlog";
+import { DiscordStore } from "./store";
 import { DiscordBot } from "./bot";
+import * as escapeStringRegexp from "escape-string-regexp";
 import * as escapeHtml from "escape-html";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
@@ -9,6 +11,7 @@ const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
 const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
 const EMOJI_SIZE = "1em";
+const ROLES_REGEX = /<@&?([0-9]*)>/g;
 const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
 const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
@@ -57,12 +60,13 @@ export class MessageProcessor {
         let contentPostmark = marked(content);
         
         // parse the plain text stuff
-        content = this.ReplaceMembers(content, msg);
+        content = await this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
+        content = this.ReplaceRoles(content, msg);
         content = await this.ReplaceEmoji(content, msg);
         
         // parse postmark stuff
-        contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
+        contentPostmark = await this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
         
@@ -86,28 +90,46 @@ export class MessageProcessor {
         return content;
     }
 
-    public ReplaceMembers(content: string, msg: Discord.Message): string {
+    public async ReplaceMembers(content: string, msg: Discord.Message): Promise<string> {
         let results = USER_REGEX.exec(content);
         while (results !== null) {
             const id = results[1];
             const member = msg.guild.members.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? member.user.username : memberId;
+            let memberStr;
+            const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
+            if (mxids.length > 0) {
+                const mxid = mxids[0];
+                const profile = await this.opts.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
+                memberStr = profile.displayname || mxid;
+            }
+            else {
+                memberStr = member ? member.user.username : memberId;
+            }
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
+
         }
         return content;
     }
-
-    public ReplaceMembersPostmark(content: string, msg: Discord.Message): string {
+    public async ReplaceMembersPostmark(content: string, msg: Discord.Message): Promise<string> {
         let results = USER_REGEX_POSTMARK.exec(content);
         while (results !== null) {
             const id = results[1];
             const member = msg.guild.members.get(id);
-            const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
+            let memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
             let memberName = memberId;
-            if (member) {
-                memberName = escapeHtml(member.user.username);
+            const mxids = await this.opts.bot.store.get_discord_user_mxids(id);
+            if (mxids.length > 0) {
+                const mxid = mxids[0];
+                const profile = await this.opts.bot.bridge.getClientFactory().getClientAs().getProfileInfo(mxid);
+                memberName = profile.displayname || mxid;
+                memberId = mxid;
+            }
+            else {
+                if (member) {
+                    memberName = escapeHtml(member.user.username);
+                }
             }
             const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);
@@ -115,6 +137,18 @@ export class MessageProcessor {
         }
         return content;
     }
+
+    public ReplaceRoles(content: string, msg: Discord.Message): string {
+        let results = ROLES_REGEX.exec(content);
+        while (results !== null) {
+          const id = results[1];
+          const role = msg.guild.roles.get(id);
+          content = content.replace(results[0], `@${role.name}`);
+          results = ROLES_REGEX.exec(content);
+        }
+        return content;
+    }
+
 
     public ReplaceChannels(content: string, msg: Discord.Message): string {
         let results = CHANNEL_REGEX.exec(content);

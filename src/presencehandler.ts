@@ -42,7 +42,7 @@ export class PresenceHandler {
 
     public EnqueueMember(member: Discord.GuildMember) {
         if (!this.presenceQueue.includes(member)) {
-            log.info("PresenceHandler", `Adding ${member.id} (${member.user.username}) to the presence queue`);
+            log.verbose("PresenceHandler", `Adding ${member.id} (${member.user.username}) to the presence queue`);
             this.presenceQueue.push(member);
         }
     }
@@ -73,7 +73,7 @@ export class PresenceHandler {
             if (!this.ProcessMember(member)) {
                 this.presenceQueue.push(member);
             } else {
-                log.info("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
+                log.verbose("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
             }
         }
     }

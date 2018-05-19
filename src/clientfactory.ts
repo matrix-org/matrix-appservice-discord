@@ -77,7 +77,8 @@ export class DiscordClientFactory {
     }));
     try {
       await client.login(token);
-      log.verbose("ClientFactory", "Logged in. Storing ", userId);
+        client.new = true;
+      log.info("ClientFactory", "Logged in. Storing ", userId);
       this.clients.set(userId, client);
       return client;
     } catch (err) {
