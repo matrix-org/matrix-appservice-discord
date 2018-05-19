@@ -85,7 +85,7 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users displayname if it exists.", () => {
+        it("Should contain the users displayname if it exists.", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -99,7 +99,7 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users userid if the displayname is not set.", () => {
+        it("Should contain the users userid if the displayname is not set", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -112,7 +112,43 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.author.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should should contain the users avatar if it exists.", () => {
+        it("Should use the userid when the displayname is too short", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, {
+                displayname: "t"}, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@test:localhost");
+        });
+
+        it("Should use the userid when displayname is too long", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, {
+                displayname: "this is a very very long displayname that should be capped",
+            }, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@test:localhost");
+        });
+
+        it("Should cap the sender name if it is too long", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
+                content: {
+                    body: "testcontent",
+                },
+            }, null, mockChannel as any);
+            Chai.assert.equal(evt.author.name, "@testwithalottosayaboutitselftha");
+        });
+
+        it("Should contain the users avatar if it exists.", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
@@ -133,7 +169,7 @@ describe("MatrixEventProcessor", () => {
                     body: "@testuser2 Hello!",
                 },
             }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(evt.description, "@<@!12345> Hello!");
+            Chai.assert.equal(evt.description, "<@!12345> Hello!");
         });
 
         it("Should disable mentions if configured.", () => {
@@ -204,12 +240,22 @@ describe("MatrixEventProcessor", () => {
                     username: "TestUsername",
                     id: "12345",
                 },
+            }), new Discord.GuildMember(guild, {
+                nick: "𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊",
+                user: {
+                    username: "SomeFancyNickname",
+                    id: "66666",
+                },
             })];
             Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
             Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊 Hello", members),
+                "<@!66666> Hello",
+            );
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
                 "I wish <@!12345> was here",
@@ -221,6 +267,10 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
                 "<@!12345> was here with <@!54321>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
+                "Fixing this issue provided by <@!54321>",
             );
         });
         it("processes non-mentions correctly", async () => {
@@ -251,14 +301,6 @@ describe("MatrixEventProcessor", () => {
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.text",
-                },
-            }, mxClient)).to.eventually.eq("");
-        });
-        it("message without an info", () => {
-            const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
-                content: {
-                    msgtype: "m.video",
                 },
             }, mxClient)).to.eventually.eq("");
         });

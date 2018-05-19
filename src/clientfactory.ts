@@ -17,7 +17,7 @@ export class DiscordClientFactory {
     this.store = store;
   }
 
-  public init(): Promise<null> {
+  public async init(): Promise<void> {
     if (this.config === undefined) {
       return Promise.reject("Client config not supplied.");
     }
@@ -28,12 +28,12 @@ export class DiscordClientFactory {
       sync: true,
       messageCacheLifetime: 5,
     }));
-    this.botClient.login(this.config.botToken);
-    return this.botClient.onAsync("ready")
-    .timeout(READY_TIMEOUT, "Bot timed out waiting for ready.")
-    .catch((err) => {
-      log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
-      throw err;
+    return Bluebird.all([
+        this.botClient.onAsync("ready").timeout(READY_TIMEOUT, "Bot timed out waiting for ready."),
+        this.botClient.login(this.config.botToken),
+    ]).then(() => { return; }).catch((err) => {
+        log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
+        throw err;
     });
   }
 
@@ -44,15 +44,15 @@ export class DiscordClientFactory {
       messageCacheLifetime: 5,
     });
     return new Bluebird<string>((resolve, reject) => {
-      client.login(token).catch(reject);
       client.on("ready", () => {
         const id = client.user.id;
         client.destroy();
         resolve(id);
       });
+      client.login(token).catch(reject);
     }).timeout(READY_TIMEOUT).catch((err: Error) => {
       log.warn("ClientFactory", "Could not login as a normal user. '%s'", err.message);
-      throw Error("Could not retrive ID");
+      throw Error("Could not retrieve ID");
     });
   }
 
@@ -82,7 +82,8 @@ export class DiscordClientFactory {
       this.clients.set(userId, client);
       return client;
     } catch (err) {
-      log.warn("ClientFactory", `Could not log ${userId} in.`, err);
+      log.warn("ClientFactory", `Could not log ${userId} in. Returning bot user for now.`, err);
+      return this.botClient;
     }
   }
 }

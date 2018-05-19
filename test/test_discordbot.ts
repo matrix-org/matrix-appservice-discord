@@ -25,7 +25,7 @@ const mockBridge = {
     };
   },
   getIntentFromLocalpart: (localpart: string) => {
-    return{
+    return {
       sendTyping: (room: string, isTyping: boolean) => {
         return;
       },

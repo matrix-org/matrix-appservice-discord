@@ -9,7 +9,8 @@ import * as mime from "mime";
 import * as log from "npmlog";
 
 const MaxFileSize = 8000000;
-
+const MIN_NAME_LENGTH = 2;
+const MAX_NAME_LENGTH = 32;
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
@@ -45,12 +46,18 @@ export class MatrixEventProcessor {
         if (this.config.bridge.disableHereMention) {
             body = body.replace(new RegExp(`@here`, "g"), "@ here");
         }
-
+        let displayName = event.sender;
+        let avatarUrl = undefined;
         if (profile) {
-            profile.displayname = profile.displayname || event.sender;
+            if (profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                displayName = profile.displayname;
+            }
+
             if (profile.avatar_url) {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
-                profile.avatar_url = mxClient.mxcUrlToHttp(profile.avatar_url);
+                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
             }
             /* See issue #82
             const isMarkdown = (event.content.format === "org.matrix.custom.html");
@@ -61,18 +68,11 @@ export class MatrixEventProcessor {
               body = `*${body}*`;
             }
             */
-            return new Discord.RichEmbed({
-                author: {
-                    name: profile.displayname,
-                    icon_url: profile.avatar_url,
-                    url: `https://matrix.to/#/${event.sender}`,
-                },
-                description: body,
-            });
         }
         return new Discord.RichEmbed({
             author: {
-                name: event.sender,
+                name: displayName.substr(0, MAX_NAME_LENGTH),
+                icon_url: avatarUrl,
                 url: `https://matrix.to/#/${event.sender}`,
             },
             description: body,
@@ -80,20 +80,27 @@ export class MatrixEventProcessor {
     }
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+        const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {
             const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
                 escapeStringRegexp(member.displayName);
-            body = body.replace(
-                new RegExp(
-                    `\\b(${matcher})(?=\\b)`
-                    , "mig"), `<@!${member.id}>`,
-            );
+            const regex = new RegExp(
+                    `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
+                    , "igmu");
+
+            body = body.replace(regex, `$1<@!${member.id}>`);
         }
         return body;
     }
 
     public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
-        const hasAttachment = ["m.image", "m.audio", "m.video", "m.file"].indexOf(event.content.msgtype) !== -1;
+        const hasAttachment = [
+            "m.image",
+            "m.audio",
+            "m.video",
+            "m.file",
+            "m.sticker",
+        ].indexOf(event.content.msgtype) !== -1;
         if (!hasAttachment) {
             return "";
         }
