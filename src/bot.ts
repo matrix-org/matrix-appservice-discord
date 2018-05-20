@@ -5,7 +5,7 @@ import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
-import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
+import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import * as Discord from "discord.js";
@@ -435,25 +435,30 @@ export class DiscordBot {
     });
   }
 
-  private async SendMessage(msg: Discord.Message) {
-    const rooms = await this.GetRoomIdsFromChannel(msg.channel)
-    const intent = this.GetIntentFromDiscordMember(msg.author);
+  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
+                                  guild: Discord.Guild, author: Discord.User,
+                                  msgID: string): Promise<boolean> {
+    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
       intent.sendMessage(room, {
-        body: msg.body,
+        body: matrixMsg.body,
         msgtype: "m.text",
-        formatted_body: msg.formattedBody,
+        formatted_body: matrixMsg.formattedBody,
         format: "org.matrix.custom.html",
       }).then((res) => {
         const evt = new DbEvent();
         evt.MatrixId = res.event_id + ";" + room;
-        evt.DiscordId = msg.id;
-        evt.ChannelId = msg.channel.id;
-        evt.GuildId = msg.guild.id;
+        evt.DiscordId = msgID;
+        evt.ChannelId = chan.id;
+        evt.GuildId = guild.id;
         this.store.Insert(evt);
       });
     });
+
+    // Sending was a success
+    return Promise.resolve(true);
   }
 
   private AddGuildMember(guildMember: Discord.GuildMember) {
@@ -618,7 +623,7 @@ export class DiscordBot {
     const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
     // Send the message to all bridged matrix rooms
-    this.SendMessage(editedMsg);
+    this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id);
   }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {

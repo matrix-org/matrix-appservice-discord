@@ -51,6 +51,24 @@ describe("MessageProcessor", () => {
         Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>\n");
       });
     });
+    describe("FormatEdit", () => {
+      it("should format edits appropriately", async () => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const oldMsg = new Discord.Message(null, null, null);
+        const newMsg = new Discord.Message(null, null, null);
+        oldMsg.embeds = [];
+        newMsg.embeds = [];
+       
+        // Content updated but not changed
+        oldMsg.content = "a";
+        newMsg.content = "b";
+
+        const result = await processor.FormatEdit(oldMsg, newMsg);
+        Chai.assert.equal(result.body, "edit: a -> b");
+        Chai.assert.equal(result.formattedBody, "<i>edit:</i> <del>a</del> -> b");
+      });
+    });
+        
     describe("ReplaceMembers", () => {
         it("processes members missing from the guild correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
