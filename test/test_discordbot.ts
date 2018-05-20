@@ -104,8 +104,9 @@ describe("DiscordBot", () => {
       let checkMsgSent = false;
       discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
-      discordBot.OnMessageUpdate(oldMsg, newMsg);
-      Chai.assert.equal(checkMsgSent, false);
+      discordBot.OnMessageUpdate(oldMsg, newMsg).then(() => {
+        Chai.assert.equal(checkMsgSent, false);
+      });
     });
 
     it("should send a matrix message on an edited discord message", () => {
@@ -130,8 +131,9 @@ describe("DiscordBot", () => {
       let checkMsgSent = false;
       discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
-      discordBot.OnMessageUpdate(oldMsg, newMsg);
-      Chai.assert.equal(checkMsgSent, true);
+      discordBot.OnMessageUpdate(oldMsg, newMsg).then(() => {
+        Chai.assert.equal(checkMsgSent, true);
+      });
     });
   });
 
