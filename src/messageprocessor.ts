@@ -74,7 +74,7 @@ export class MessageProcessor {
     public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
         oldMsg.content = "*edit:* ~~" + oldMsg.content + "~~ -> " + newMsg.content;
-        return await this.FormatDiscordMessage(oldMsg);
+        return this.FormatDiscordMessage(oldMsg);
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {

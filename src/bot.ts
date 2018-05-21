@@ -458,7 +458,7 @@ export class DiscordBot {
     });
 
     // Sending was a success
-    return Promise.resolve(true);
+    return true;
   }
 
   private AddGuildMember(guildMember: Discord.GuildMember) {
@@ -623,7 +623,9 @@ export class DiscordBot {
     const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
     // Send the message to all bridged matrix rooms
-    this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id);
+    if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {
+      log.error("DiscordBot", "Unable to announce message edit for msg id:", newMsg.id);
+    }
   }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {
