@@ -71,6 +71,12 @@ export class MessageProcessor {
         return result;
     }
 
+    public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
+        // TODO: Produce a nice, colored diff between the old and new message content
+        oldMsg.content = "*edit:* ~~" + oldMsg.content + "~~ -> " + newMsg.content;
+        return this.FormatDiscordMessage(oldMsg);
+    }
+
     public InsertEmbeds(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
             let embedContent = "\n\n----"; // Horizontal rule. Two to make sure the content doesn't become a title.
