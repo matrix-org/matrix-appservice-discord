@@ -102,11 +102,20 @@ function createRH(opts: any = {}) {
     };
     const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
     handler.setBridge({
-        getIntent: () => { return {
-            sendMessage: (roomId, content) => Promise.resolve(content),
-            getClient: () => mxClient,
-        }; },
-    });
+            getIntent: () => {
+                return {
+                    sendMessage: (roomId, content) => Promise.resolve(content),
+                    leave: (roomId) => Promise.resolve(roomId),
+                    getClient: () => mxClient,
+                };
+            },
+            getRoomStore: () => {
+                return {
+                    removeEntriesByMatrixRoomId: (roomId) => Promise.resolve(roomId),
+                };
+            },
+        },
+    );
     return handler;
 }
 
@@ -194,6 +203,18 @@ describe("MatrixRoomHandler", () => {
             };
             return expect(handler.OnEvent(buildRequest({
                 type: "m.room.message", content: {body: "abc"}}), context)).to.eventually.equal("processed");
+        });
+        it("should alert if encryption is turned on", () => {
+            const handler = createRH();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            return expect(handler.OnEvent(buildRequest({
+                type: "m.room.encryption", room_id: "!accept:localhost"}), context)).to.eventually.be.fulfilled;
         });
         it("should process !discord commands", () => {
             const handler = createRH();

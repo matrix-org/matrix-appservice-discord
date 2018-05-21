@@ -93,19 +93,42 @@ export class MatrixRoomHandler {
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
-      log.verbose("MatrixRoomHandler", "Got m.room.message event");
-      if (event.content.body && event.content.body.startsWith("!discord")) {
-        return this.ProcessCommand(event, context);
-      } else if (context.rooms.remote) {
-        const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
-        return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
-            log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
+        log.verbose("MatrixRoomHandler", "Got m.room.message event");
+        if (event.content.body && event.content.body.startsWith("!discord")) {
+            return this.ProcessCommand(event, context);
+        } else if (context.rooms.remote) {
+            const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+            return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
+                log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
+            });
+        }
+    } else if (event.type === "m.room.encryption" && context.rooms.remote) {
+        return this.HandleEncryptionWarning(event.room_id).catch((err) => {
+            return Promise.reject(`Failed to handle encrypted room, ${err}`);
         });
-      }
     } else {
       log.verbose("MatrixRoomHandler", "Got non m.room.message event");
     }
     return Promise.reject("Event not processed by bridge");
+  }
+
+  public async HandleEncryptionWarning(roomId: string): Promise<void> {
+      const intent = this.bridge.getIntent();
+      log.info("MatrixRoomHandler", `User has turned on encryption in ${roomId}, so leaving.`);
+      /* N.B 'status' is not specced but https://github.com/matrix-org/matrix-doc/pull/828
+       has been open for over a year with no resolution. */
+      const sendPromise = intent.sendMessage(roomId, {
+          msgtype: "m.notice",
+          status: "critical",
+          body: "You have turned on encryption in this room, so the service will not bridge any new messages.",
+      });
+      const channel = await this.discord.GetChannelFromRoomId(roomId);
+      await (channel as Discord.TextChannel).send(
+        "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
+      );
+      await sendPromise;
+      await intent.leave(roomId);
+      await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
   }
 
   public HandleInvite(event: any) {
