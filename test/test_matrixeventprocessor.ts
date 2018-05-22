@@ -7,7 +7,9 @@ import * as Proxyquire from "proxyquire";
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
+import { MockCollection } from "./mocks/collection";
 import { MockMember } from "./mocks/member";
+import { MockEmoji } from "./mocks/emoji";
 import {MatrixEventProcessor, MatrixEventProcessorOpts} from "../src/matrixeventprocessor";
 import {DiscordBridgeConfig} from "../src/config";
 import {MessageProcessor, MessageProcessorOpts} from "../src/messageprocessor";
@@ -204,7 +206,42 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannel as any);
             Chai.assert.equal(evt.description, "@ here Hello!");
         });
-        // TODO: Add a test for replaceDiscordEmoji
+
+        it("Should process custom discord emojis.", () => {
+            const processor = createMatrixEventProcessor(false, false, true);
+            const mockEmoji = new MockEmoji("123", "supercake");
+            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
+            mockCollectionEmojis.set("123", mockEmoji);
+
+            const mockChannelEmojis = new MockChannel("test", {
+                emojis: mockCollectionEmojis,
+            });
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "I like :supercake:",
+                },
+            }, {avatar_url: "test"}, mockChannelEmojis as any);
+            Chai.assert.equal(evt.description, "I like <:supercake:123>");
+        });
+
+        it("Should not process invalid custom discord emojis.", () => {
+            const processor = createMatrixEventProcessor(false, false, true);
+            const mockEmoji = new MockEmoji("123", "supercake");
+            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
+            mockCollectionEmojis.set("123", mockEmoji);
+
+            const mockChannelEmojis = new MockChannel("test", {
+                emojis: mockCollectionEmojis,
+            });
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "I like :lamecake:",
+                },
+            }, {avatar_url: "test"}, mockChannelEmojis as any);
+            Chai.assert.equal(evt.description, "I like :lamecake:");
+        });
     });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {

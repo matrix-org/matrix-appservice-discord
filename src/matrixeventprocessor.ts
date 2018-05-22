@@ -99,19 +99,17 @@ export class MatrixEventProcessor {
     }
 
     public ReplaceDiscordEmoji(content: string, guild: Discord.Guild): string {
-        console.log("Gonna replace")
         let results = DISCORD_EMOJI_REGEX.exec(content);
         while (results !== null) {
             const emojiName = results[1];
             const emojiNameWithColons = results[0];
 
             // Check if this emoji exists in the guild
-            if(guild.emojis[emojiName] !== null) {
+            const emoji = guild.emojis.find((e) => e.name === emojiName);
+            if (emoji) {
                 // Replace :a: with <:a:123ID123>
-                const emojiID = guild.emojis.find((emoji) => { return emoji.name === emojiName }).id;
-                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emojiID}>`);
+                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emoji.id}>`);
             }
-
             results = DISCORD_EMOJI_REGEX.exec(content);
         }
         return content;
