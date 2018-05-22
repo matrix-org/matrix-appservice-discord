@@ -204,6 +204,7 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannel as any);
             Chai.assert.equal(evt.description, "@ here Hello!");
         });
+        // TODO: Add a test for replaceDiscordEmoji
     });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {

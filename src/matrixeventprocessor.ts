@@ -11,6 +11,8 @@ import * as log from "npmlog";
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
+const DISCORD_EMOJI_REGEX = /:(\w+):/g;
+
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
@@ -45,6 +47,10 @@ export class MatrixEventProcessor {
         if (this.config.bridge.disableHereMention) {
             body = body.replace(new RegExp(`@here`, "g"), "@ here");
         }
+
+        // Handle discord custom emoji
+        body = this.ReplaceDiscordEmoji(body, channel.guild);
+
         let displayName = event.sender;
         let avatarUrl = undefined;
         if (profile) {
@@ -90,6 +96,25 @@ export class MatrixEventProcessor {
             body = body.replace(regex, `$1<@!${member.id}>`);
         }
         return body;
+    }
+
+    public ReplaceDiscordEmoji(content: string, guild: Discord.Guild): string {
+        console.log("Gonna replace")
+        let results = DISCORD_EMOJI_REGEX.exec(content);
+        while (results !== null) {
+            const emojiName = results[1];
+            const emojiNameWithColons = results[0];
+
+            // Check if this emoji exists in the guild
+            if(guild.emojis[emojiName] !== null) {
+                // Replace :a: with <:a:123ID123>
+                const emojiID = guild.emojis.find((emoji) => { return emoji.name === emojiName }).id;
+                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emojiID}>`);
+            }
+
+            results = DISCORD_EMOJI_REGEX.exec(content);
+        }
+        return content;
     }
 
     public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
