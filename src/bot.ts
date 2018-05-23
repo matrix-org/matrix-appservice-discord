@@ -84,9 +84,6 @@ export class DiscordBot {
       }
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
-      client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
-      client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
-      client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
