@@ -25,7 +25,6 @@ export class MessageProcessorOpts {
     constructor (readonly domain: string, readonly bot: DiscordBot = null) {
 
     }
-
 }
 
 export class MessageProcessorMatrixResult {
@@ -163,7 +162,9 @@ export class MessageProcessor {
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
             }
+
             results = EMOJI_REGEX.exec(content);
+
         }
         return content;
     }
