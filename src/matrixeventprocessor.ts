@@ -63,11 +63,10 @@ export class MatrixEventProcessor {
             const isMarkdown = (event.content.format === "org.matrix.custom.html");
             if (!isMarkdown) {
               body = "\\" + body;
-            }
+            }*/
             if (event.content.msgtype === "m.emote") {
-              body = `*${body}*`;
+                body = `* ${displayName} ${body}`;
             }
-            */
         }
         return new Discord.RichEmbed({
             author: {
