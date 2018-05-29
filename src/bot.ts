@@ -696,12 +696,25 @@ export class DiscordBot {
             info.h = attachment.height;
           }
           rooms.forEach((room) => {
-            intent.sendMessage(room, {
+            let prom = intent.sendMessage(room, {
               body: attachment.filename,
               info,
               msgtype,
               url: content.mxcUrl,
               external_url: attachment.url,
+            });
+            prom.then((res) => {
+              const evt = new DbEvent();
+              evt.MatrixId = res.event_id + ";" + room;
+              evt.DiscordId = msg.id;
+              evt.ChannelId = msg.channel.id;
+              if (msg.guild) {
+                evt.GuildId = msg.guild.id;
+              }
+              else {
+                evt.GuildId = "dm";
+              }
+              this.store.Insert(evt);
             });
           });
         });
