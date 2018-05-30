@@ -136,7 +136,9 @@ export class UserSyncroniser {
 
     }
 
-    public OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember) {
-
+    public OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember = null) {
+        if (newMember === null) {
+            newMember = oldMember;
+        }
     }
 }

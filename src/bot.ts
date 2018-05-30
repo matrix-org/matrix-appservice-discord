@@ -303,7 +303,7 @@ export class DiscordBot {
     return this.userSync.OnUpdateUser(null, member.user).then(() => {
       return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
     }).then(() => {
-      return this.UpdateGuildMember(member, roomIds);
+      return this.userSync.OnUpdateGuildMember(member);
     });
   }
 
@@ -420,20 +420,6 @@ export class DiscordBot {
 
     // Sending was a success
     return true;
-  }
-
-  private AddGuildMember(guildMember: Discord.GuildMember) {
-    return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
-      return this.InitJoinUser(guildMember, roomIds);
-    });
-  }
-
-  private RemoveGuildMember(guildMember: Discord.GuildMember) {
-    const intent = this.GetIntentFromDiscordMember(guildMember);
-    return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
-        this.presenceHandler.DequeueMember(guildMember);
-        return intent.leave(roomId);
-    });
   }
 
   private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {

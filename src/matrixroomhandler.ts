@@ -89,7 +89,9 @@ export class MatrixRoomHandler {
       return Promise.reject("Event too old");
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
-      return this.HandleInvite(event);
+        return this.HandleInvite(event);
+    } else if (event.type === "m.room.member" && event.content.membership === "join") {
+        // Potentially this means a AS user has
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
