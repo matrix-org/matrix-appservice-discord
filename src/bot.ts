@@ -579,14 +579,13 @@ export class DiscordBot {
             info.h = attachment.height;
           }
           rooms.forEach((room) => {
-            const prom = intent.sendMessage(room, {
+            intent.sendMessage(room, {
               body: attachment.filename,
               info,
               msgtype,
               url: content.mxcUrl,
               external_url: attachment.url,
-            });
-            prom.then((res) => {
+            }).then((res) => {
               const evt = new DbEvent();
               evt.MatrixId = res.event_id + ";" + room;
               evt.DiscordId = msg.id;
