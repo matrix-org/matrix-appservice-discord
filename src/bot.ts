@@ -579,7 +579,7 @@ export class DiscordBot {
             info.h = attachment.height;
           }
           rooms.forEach((room) => {
-            let prom = intent.sendMessage(room, {
+            const prom = intent.sendMessage(room, {
               body: attachment.filename,
               info,
               msgtype,
@@ -591,12 +591,7 @@ export class DiscordBot {
               evt.MatrixId = res.event_id + ";" + room;
               evt.DiscordId = msg.id;
               evt.ChannelId = msg.channel.id;
-              if (msg.guild) {
-                evt.GuildId = msg.guild.id;
-              }
-              else {
-                evt.GuildId = "dm";
-              }
+              evt.GuildId = msg.guild.id;
               this.store.Insert(evt);
             });
           });
