@@ -350,6 +350,17 @@ describe("MatrixEventProcessor", () => {
                 },
             }, mxClient)).to.eventually.eq("");
         });
+        it("message without a url", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                    info: {
+                        size: 1,
+                    },
+                },
+            }, mxClient)).to.eventually.eq("");
+        });
         it("message with a large info.size", () => {
             const LARGE_FILE = 8000000;
             const processor = createMatrixEventProcessor();
