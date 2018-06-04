@@ -121,7 +121,7 @@ export class DiscordStore {
 
   public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => %s", discordId);
-    return this.db.execAsync(
+    return this.db.runAsync(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
       DELETE FROM discord_id_token WHERE discord_id = $id;
