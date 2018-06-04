@@ -99,7 +99,7 @@ export class DiscordStore {
     return Promise.all([
         this.db.runAsync(
           `
-          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($userId,$discordId);
+          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
             $userId: userId,
