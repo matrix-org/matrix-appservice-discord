@@ -47,6 +47,32 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 
   * Copy ``discord-registration.yaml`` to your Synapse's directory.
 
+#### Docker
+
+Following the instructions above, generate a registration file. The file may also be hand-crafted if you're familiar with the layout. You'll need this file to use the Docker image.
+
+```
+# Create the volume where we'll keep the bridge's files
+mkdir -p /matrix-appservice-discord
+
+# Create the configuration file. Use the sample configuration file as a template.
+# Be sure to set the database paths to something like this:
+#  database:
+#    filename: "/data/discord.db"
+#    userStorePath: "/data/user-store.db"
+#    roomStorePath: "/data/room-store.db"
+nano /matrix-appservice-discord/config.yaml
+
+# Copy the registration file to the volume
+cp discord-registration.yaml /matrix-appservice-discord/discord-registration.yaml
+
+# Optional: Build the container yourself (requires a git clone, and to be in the root of the project)
+docker build -t half-shot/matrix-appservice-discord .
+
+# Run the container
+docker run -v /matrix-appservice-discord:/data -p 9005:9005 half-shot/matrix-appservice-discord
+```
+
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system

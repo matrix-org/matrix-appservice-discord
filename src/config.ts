@@ -23,6 +23,8 @@ class DiscordBridgeConfigBridge {
 
 class DiscordBridgeConfigDatabase {
   public filename: string;
+  public userStorePath: string;
+  public roomStorePath: string;
 }
 
 export class DiscordBridgeConfigAuth {
