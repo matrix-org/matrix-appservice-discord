@@ -8,6 +8,7 @@ import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
+import { ThirdpartyHandler } from "./thirdpartyhandler";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
@@ -58,6 +59,10 @@ export class DiscordBot {
 
   get ClientFactory(): DiscordClientFactory {
      return this.clientFactory;
+  }
+
+  get ThirdpartyHandler(): ThirdpartyHandler {
+      return new ThirdpartyHandler(this.bot, this.config);
   }
 
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
@@ -114,31 +119,6 @@ export class DiscordBot {
 
   public GetGuilds(): Discord.Guild[] {
     return this.bot.guilds.array();
-  }
-
-  public ThirdpartySearchForChannels(guildId: string, channelName: string): any[] {
-    if (channelName.startsWith("#")) {
-      channelName = channelName.substr(1);
-    }
-    if (this.bot.guilds.has(guildId) ) {
-      const guild = this.bot.guilds.get(guildId);
-      return guild.channels.filter((channel) => {
-        return channel.name.toLowerCase() === channelName.toLowerCase(); // Implement searching in the future.
-      }).map((channel) => {
-        return {
-          alias: `#_discord_${guild.id}_${channel.id}:${this.config.bridge.domain}`,
-          protocol: "discord",
-          fields: {
-            guild_id: guild.id,
-            channel_name: channel.name,
-            channel_id: channel.id,
-          },
-        };
-      });
-    } else {
-      log.info("DiscordBot", "Tried to do a third party lookup for a channel, but the guild did not exist");
-      return [];
-    }
   }
 
   public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {

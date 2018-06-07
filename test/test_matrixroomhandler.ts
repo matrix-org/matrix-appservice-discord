@@ -69,8 +69,10 @@ function createRH(opts: any = {}) {
             return Promise.resolve({channel, botUser: true });
         },
         GetGuilds: () => [new MockGuild("123", [])],
-        ThirdpartySearchForChannels: () => {
-            return [];
+        ThirdpartyHandler: {
+            SearchChannels: () => {
+                return [];
+            },
         },
     };
     const config = new DiscordBridgeConfig();
