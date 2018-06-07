@@ -262,6 +262,14 @@ describe("MatrixEventProcessor", () => {
                 processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
                 "Hello <@!12345>",
             );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to https://TestUsername.com", members),
+                "I really love going to https://TestUsername.com",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to www.TestUsername.com", members),
+                "I really love going to www.TestUsername.com",
+            );
         });
         it("processes mentioned nickname correctly", async () => {
             const processor = createMatrixEventProcessor();
@@ -309,6 +317,14 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
                 "Fixing this issue provided by <@!54321>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to https://Test.com", members),
+                "I really love going to https://Test.com",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to www.Test.com", members),
+                "I really love going to www.Test.com",
             );
         });
         it("processes non-mentions correctly", async () => {
