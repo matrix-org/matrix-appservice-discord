@@ -242,6 +242,17 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(evt.description, "I like :lamecake:");
         });
+        it("Should show emotes with italics.", () => {
+            const processor = createMatrixEventProcessor(false, false, true);
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "eats pizza",
+                    msgtype: "m.emote",
+                },
+            }, null, mockChannel as any);
+            Chai.assert.equal(evt.description, "*eats pizza*");
+        });
     });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {
