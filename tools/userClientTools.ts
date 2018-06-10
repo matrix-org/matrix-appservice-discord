@@ -5,6 +5,7 @@ import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import * as readline from "readline";
 import * as Bluebird from "bluebird";
+import * as process from "process";
 import {DiscordClientFactory} from "../src/clientfactory";
 
 import { DiscordBridgeConfig } from "../src/config";
@@ -79,16 +80,20 @@ Please enter your Discord Token
         rl.close();
         addUserToken(userid, token).then(() => {
           log.info("tool", "Completed successfully");
+          process.exit(0);
         }).catch((err) => {
           log.info("tool", "Failed to add, $s", err);
+          process.exit(1);
         });
       });
     } else if (options.remove) {
       rl.close();
       discordstore.delete_user_token(userid).then(() => {
         log.info("tool", "Completed successfully");
+        process.exit(0);
       }).catch((err) => {
         log.info("tool", "Failed to delete, $s", err);
+        process.exit(1);
       });
     }
   });
