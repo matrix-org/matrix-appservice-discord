@@ -51,6 +51,42 @@ describe("MessageProcessor", () => {
         Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>\n");
       });
     });
+    describe("FormatEdit", () => {
+      it("should format basic edits appropriately", async () => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const oldMsg = new Discord.Message(null, null, null);
+        const newMsg = new Discord.Message(null, null, null);
+        oldMsg.embeds = [];
+        newMsg.embeds = [];
+       
+        // Content updated but not changed
+        oldMsg.content = "a";
+        newMsg.content = "b";
+
+        const result = await processor.FormatEdit(oldMsg, newMsg);
+        Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
+        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>\n");
+      });
+
+      it("should format markdown heavy edits apropriately", async () => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const oldMsg = new Discord.Message(null, null, null);
+        const newMsg = new Discord.Message(null, null, null);
+        oldMsg.embeds = [];
+        newMsg.embeds = [];
+       
+        // Content updated but not changed
+        oldMsg.content = "a slice of **cake**";
+        newMsg.content = "*a* slice of cake";
+
+        const result = await processor.FormatEdit(oldMsg, newMsg);
+        Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
+        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
+          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>\n");
+      });
+
+    });
+        
     describe("ReplaceMembers", () => {
         it("processes members missing from the guild correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);

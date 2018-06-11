@@ -5,7 +5,7 @@ import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
 import { Util } from "./util";
-import { MessageProcessor, MessageProcessorOpts } from "./messageprocessor";
+import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
@@ -84,11 +84,15 @@ export class DiscordBot {
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
+      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
+      client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
       });
+      client.on("debug", (msg) => { log.verbose("discord.js", msg); });
+      client.on("error", (msg) => { log.error("discord.js", msg); });
+      client.on("warn", (msg) => { log.warn("discord.js", msg); });
       log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
 
@@ -231,7 +235,7 @@ export class DiscordBot {
       // Webhooks don't send guild info.
       evt.GuildId = guildId;
       evt.ChannelId = channelId;
-      this.store.Insert(evt);
+      return this.store.Insert(evt);
     });
     return;
   }
@@ -423,6 +427,32 @@ export class DiscordBot {
     });
   }
 
+  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
+                                  guild: Discord.Guild, author: Discord.User,
+                                  msgID: string): Promise<boolean> {
+    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const intent = this.GetIntentFromDiscordMember(author);
+
+    rooms.forEach((room) => {
+      intent.sendMessage(room, {
+        body: matrixMsg.body,
+        msgtype: "m.text",
+        formatted_body: matrixMsg.formattedBody,
+        format: "org.matrix.custom.html",
+      }).then((res) => {
+        const evt = new DbEvent();
+        evt.MatrixId = res.event_id + ";" + room;
+        evt.DiscordId = msgID;
+        evt.ChannelId = chan.id;
+        evt.GuildId = guild.id;
+        return this.store.Insert(evt);
+      });
+    });
+
+    // Sending was a success
+    return true;
+  }
+
   private AddGuildMember(guildMember: Discord.GuildMember) {
     return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
       return this.InitJoinUser(guildMember, roomIds);
@@ -547,6 +577,13 @@ export class DiscordBot {
               msgtype,
               url: content.mxcUrl,
               external_url: attachment.url,
+            }).then((res) => {
+              const evt = new DbEvent();
+              evt.MatrixId = res.event_id + ";" + room;
+              evt.DiscordId = msg.id;
+              evt.ChannelId = msg.channel.id;
+              evt.GuildId = msg.guild.id;
+              return this.store.Insert(evt);
             });
           });
         });
@@ -565,7 +602,7 @@ export class DiscordBot {
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
-                    this.store.Insert(evt);
+                    return this.store.Insert(evt);
                 });
             });
         });
@@ -575,6 +612,7 @@ export class DiscordBot {
     });
   }
 
+<<<<<<< HEAD
   private async DeleteDiscordMessage(msg: Discord.Message) {
       log.info("DiscordBot", `Got delete event for ${msg.id}`);
       const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
@@ -588,5 +626,36 @@ export class DiscordBot {
         const matrixIds = storeEvent.MatrixId.split(";");
         await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
       }
+=======
+  private async OnMessageUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
+    // Check if an edit was actually made
+    if (oldMsg.content === newMsg.content) {
+      return;
+    }
+
+    // Create a new edit message using the old and new message contents
+    const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
+
+    // Send the message to all bridged matrix rooms
+    if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {
+      log.error("DiscordBot", "Unable to announce message edit for msg id:", newMsg.id);
+    }
+  }
+
+    private async DeleteDiscordMessage(msg: Discord.Message) {
+        log.info("DiscordBot", `Got delete event for ${msg.id}`);
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+        if (!storeEvent.Result) {
+          log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+          return;
+        }
+        while (storeEvent.Next()) {
+          log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+          const intent = this.GetIntentFromDiscordMember(msg.author);
+          const matrixIds = storeEvent.MatrixId.split(";");
+          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+        }
+    }
+>>>>>>> develop
   }
 }

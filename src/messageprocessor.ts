@@ -25,7 +25,6 @@ export class MessageProcessorOpts {
     constructor (readonly domain: string, readonly bot: DiscordBot = null) {
 
     }
-
 }
 
 export class MessageProcessorMatrixResult {
@@ -69,6 +68,12 @@ export class MessageProcessor {
         result.body = content;
         result.formattedBody = contentPostmark;
         return result;
+    }
+
+    public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
+        // TODO: Produce a nice, colored diff between the old and new message content
+        oldMsg.content = "*edit:* ~~" + oldMsg.content + "~~ -> " + newMsg.content;
+        return this.FormatDiscordMessage(oldMsg);
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
@@ -157,7 +162,9 @@ export class MessageProcessor {
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
             }
+
             results = EMOJI_REGEX.exec(content);
+
         }
         return content;
     }

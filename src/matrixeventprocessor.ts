@@ -11,6 +11,8 @@ import * as log from "npmlog";
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
+const DISCORD_EMOJI_REGEX = /:(\w+):/g;
+
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
@@ -45,6 +47,20 @@ export class MatrixEventProcessor {
         if (this.config.bridge.disableHereMention) {
             body = body.replace(new RegExp(`@here`, "g"), "@ here");
         }
+
+        /* See issue #82
+        const isMarkdown = (event.content.format === "org.matrix.custom.html");
+        if (!isMarkdown) {
+          body = "\\" + body;
+        }*/
+
+        if (event.content.msgtype === "m.emote") {
+            body = `*${body}*`;
+        }
+
+        // Handle discord custom emoji
+        body = this.ReplaceDiscordEmoji(body, channel.guild);
+
         let displayName = event.sender;
         let avatarUrl = undefined;
         if (profile) {
@@ -58,15 +74,6 @@ export class MatrixEventProcessor {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
                 avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
             }
-            /* See issue #82
-            const isMarkdown = (event.content.format === "org.matrix.custom.html");
-            if (!isMarkdown) {
-              body = "\\" + body;
-            }
-            if (event.content.msgtype === "m.emote") {
-              body = `*${body}*`;
-            }
-            */
         }
         return new Discord.RichEmbed({
             author: {
@@ -92,6 +99,23 @@ export class MatrixEventProcessor {
         return body;
     }
 
+    public ReplaceDiscordEmoji(content: string, guild: Discord.Guild): string {
+        let results = DISCORD_EMOJI_REGEX.exec(content);
+        while (results !== null) {
+            const emojiName = results[1];
+            const emojiNameWithColons = results[0];
+
+            // Check if this emoji exists in the guild
+            const emoji = guild.emojis.find((e) => e.name === emojiName);
+            if (emoji) {
+                // Replace :a: with <:a:123ID123>
+                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emoji.id}>`);
+            }
+            results = DISCORD_EMOJI_REGEX.exec(content);
+        }
+        return content;
+    }
+
     public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
         const hasAttachment = [
             "m.image",
@@ -103,8 +127,14 @@ export class MatrixEventProcessor {
         if (!hasAttachment) {
             return "";
         }
+
         if (event.content.info == null) {
             log.info("Event was an attachment type but was missing a content.info");
+            return "";
+        }
+
+        if (event.content.url == null) {
+            log.info("Event was an attachment type but was missing a content.url");
             return "";
         }
 
