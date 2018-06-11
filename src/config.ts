@@ -40,7 +40,7 @@ class DiscordBridgeConfigRoom {
 }
 
 class DiscordBridgeConfigChannel {
-  public deleteChannelOptions = new DiscordBridgeConfigChannelDeleteOptions();
+  public deleteOptions = new DiscordBridgeConfigChannelDeleteOptions();
 }
 
 class DiscordBridgeConfigChannelDeleteOptions {

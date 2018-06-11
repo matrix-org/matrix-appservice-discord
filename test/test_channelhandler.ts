@@ -4,7 +4,7 @@ import * as log from "npmlog";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
-import { PresenceHandler } from "../src/presencehandler";
+import { ChannelHandler } from "../src/channelhandler";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
@@ -16,6 +16,26 @@ import {MockChannel} from "./mocks/channel";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
-describe("ChannelHandler", () => {
+const bot = {
 
+};
+
+const bridge = {
+
+};
+
+const config = new DiscordBridgeConfig();
+
+describe("ChannelHandler", () => {
+    describe("HandleChannelDelete", () => {
+        it("will not delete non-text channels" () => {
+
+        });
+    });
+    describe("GetRoomIdsFromChannel", () => {
+
+    });
+    describe("HandleChannelDelete", () => {
+
+    });
 });

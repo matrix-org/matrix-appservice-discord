@@ -430,7 +430,7 @@ export class DiscordBot {
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
                                   guild: Discord.Guild, author: Discord.User,
                                   msgID: string): Promise<boolean> {
-    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const rooms = await this.channelHandler.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
@@ -612,21 +612,6 @@ export class DiscordBot {
     });
   }
 
-<<<<<<< HEAD
-  private async DeleteDiscordMessage(msg: Discord.Message) {
-      log.info("DiscordBot", `Got delete event for ${msg.id}`);
-      const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-      if (!storeEvent.Result) {
-        log.warn("DiscordBot", `Could not redact because the event was in the store.`);
-        return;
-      }
-      while (storeEvent.Next()) {
-        log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-        const intent = this.GetIntentFromDiscordMember(msg.author);
-        const matrixIds = storeEvent.MatrixId.split(";");
-        await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
-      }
-=======
   private async OnMessageUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
     // Check if an edit was actually made
     if (oldMsg.content === newMsg.content) {
@@ -656,6 +641,4 @@ export class DiscordBot {
           await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
         }
     }
->>>>>>> develop
-  }
 }

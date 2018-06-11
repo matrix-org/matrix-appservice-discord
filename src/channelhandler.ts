@@ -1,4 +1,5 @@
-import {Channel, default as Discord, TextChannel} from "discord.js";
+import {Channel, TextChannel} from "discord.js";
+import * as Discord from "discord.js";
 import * as log from "npmlog";
 import {DiscordBot} from "./bot";
 import {DiscordBridgeConfig} from "./config";
@@ -49,7 +50,7 @@ export class ChannelHandler {
         entry: any): Promise<void> {
         log.info("ChannelHandler", `Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
-        const options = this.config.channel.deleteChannelOptions;
+        const options = this.config.channel.deleteOptions;
         const plumbed = entry.remote.get("plumbed");
 
         this.bridge.getRoomStore().upsertEntry(entry);
