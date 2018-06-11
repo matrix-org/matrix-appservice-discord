@@ -90,6 +90,12 @@ export class MatrixRoomHandler {
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
       return this.HandleInvite(event);
+    } else if (event.type === "m.room.member") {
+      return this.ProcessMatrixStateEvent(event);
+    } else if (event.type === "m.room.name") {    
+      return this.ProcessMatrixStateEvent(event);
+    } else if (event.type === "m.room.topic") {
+      return this.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
@@ -136,6 +142,8 @@ export class MatrixRoomHandler {
     if (event.state_key === this.botUserId) {
       log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
+    } else {
+      return this.ProcessMatrixStateEvent(event);
     }
   }
 

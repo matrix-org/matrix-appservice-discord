@@ -166,6 +166,25 @@ export class DiscordBot {
     });
   }
 
+  public async ProcessMatrixStateEvent(event: any): Promise<void> {
+      log.verbose("DiscordBot", `Got state event from ${roomId} ${event.type}`);
+      const channel = await this.GetChannelFromRoomId(event.room_id);
+      const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
+      if (msg == undefined) {
+          return;
+      }
+      res = await chan.send(msg);
+      log.verbose("DiscordBot", "Sent (state msg) ", res);
+      this.sentMessages.push(res.id);
+      const evt = new DbEvent();
+      evt.MatrixId = event.event_id + ";" + event.room_id;
+      evt.DiscordId = res.id;
+      evt.GuildId = channel.guild.id;
+      evt.ChannelId = channel.id;
+      await this.store.Insert(evt);
+      return;
+  }
+
   public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
     const mxClient = this.bridge.getClientFactory().getClientAs();
     log.verbose("DiscordBot", `Looking up ${guildId}_${channelId}`);
