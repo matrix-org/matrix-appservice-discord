@@ -15,7 +15,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import { Util } from "./util";
 import { Provisioner } from "./provisioner";
-import { ThirdpartyHandler } from "./thirdpartyhandler";
+import { ThirdPartyHandler } from "./thirdpartyhandler";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const HTTP_UNSUPPORTED = 501;
@@ -40,12 +40,12 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
-  private thirdPartyHandler: ThirdpartyHandler;
+  private ThirdPartyHandler: ThirdPartyHandler;
   constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
-    this.thirdPartyHandler = this.discord.ThirdpartyHandler;
+    this.ThirdPartyHandler = this.discord.ThirdPartyHandler;
   }
 
   public get ThirdPartyLookup(): thirdPartyLookup {
@@ -354,7 +354,7 @@ export class MatrixRoomHandler {
 
   public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
     log.info("MatrixRoomHandler", "Got location request ", protocol, fields);
-    const chans = this.thirdPartyHandler.SearchChannels(fields.guild_id, fields.channel_name);
+    const chans = this.ThirdPartyHandler.SearchChannels(fields.guild_id, fields.channel_name);
     return Promise.resolve(chans);
   }
 

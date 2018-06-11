@@ -8,7 +8,7 @@ import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
-import { ThirdpartyHandler } from "./thirdpartyhandler";
+import { ThirdPartyHandler } from "./thirdpartyhandler";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
@@ -61,8 +61,8 @@ export class DiscordBot {
      return this.clientFactory;
   }
 
-  get ThirdpartyHandler(): ThirdpartyHandler {
-      return new ThirdpartyHandler(this.bot, this.config);
+  get ThirdPartyHandler(): ThirdPartyHandler {
+      return new ThirdPartyHandler(this.bot, this.config);
   }
 
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {

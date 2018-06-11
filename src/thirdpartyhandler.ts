@@ -4,16 +4,16 @@ import * as log from "npmlog";
 
 // Response expected by the bridge.
 export type ThirdPartyLocationResult = {
-alias: string,
-protocol: string,
-fields: {
-    guild_id: string,
-    channel_name: string,
-    channel_id: string,
-}
+    alias: string,
+    protocol: string,
+    fields: {
+        guild_id: string,
+        channel_name: string,
+        channel_id: string,
+    },
 };
 
-export class ThirdpartyHandler {
+export class ThirdPartyHandler {
     constructor(private bot: Client, private config: DiscordBridgeConfig) {
 
     }
@@ -39,7 +39,9 @@ export class ThirdpartyHandler {
                 };
             });
         } else {
-            log.info("ThirdpartyHandler", "Tried to do a third party lookup for a channel, but the guild did not exist");
+            log.info("ThirdPartyHandler",
+                     "Tried to do a third party lookup for a channel, but the guild did not exist",
+            );
             return [];
         }
     }
