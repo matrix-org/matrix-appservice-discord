@@ -75,6 +75,9 @@ export class DiscordClientFactory {
       sync: true,
       messageCacheLifetime: 5,
     }));
+    client.on("debug", (msg) => { log.verbose("discord.js-ptp", msg); });
+    client.on("error", (msg) => { log.error("discord.js-ptp", msg); });
+    client.on("warn", (msg) => { log.warn("discord.js-ptp", msg); });
     try {
       await client.login(token);
       log.verbose("ClientFactory", "Logged in. Storing ", userId);
