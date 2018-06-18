@@ -32,6 +32,7 @@ function generateRegistration(reg, callback)  {
   reg.setSenderLocalpart("_discord_bot");
   reg.addRegexPattern("users", "@_discord_.*", true);
   reg.addRegexPattern("aliases", "#_discord_.*", true);
+  reg.setRateLimited(false);
   callback(reg);
 }
 
