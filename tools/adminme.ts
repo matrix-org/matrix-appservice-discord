@@ -3,7 +3,7 @@
  * Allows you to become an admin for a room the bot is in control of.
  */
 
-import { AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
+import { AppServiceRegistration, ClientFactory, Intent } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
@@ -81,33 +81,12 @@ const clientFactory = new ClientFactory({
  token: registration.as_token,
  url: config.bridge.homeserverUrl,
 });
-
 const client = clientFactory.getClientAs();
-client.startClient();
-client.on("sync", (state, prevState, data) => {
-  switch (state) {
-    case "ERROR":
-      console.error("Sync failed.", data);
-      break;
-    case "SYNCING":
-      console.log("Syncing.");
-      break;
-    case "PREPARED":
-      const room = client.getRoom(options.roomid);
-      if (room === null) {
-        console.error("Room not found.");
-        process.exit(1);
-      }
-      const levels = room.getLiveTimeline().getState("f").getStateEvents("m.room.power_levels")[0];
-      client.setPowerLevel(options.roomid, options.userid, options.power, levels).then(() => {
-        console.log("Power levels set");
-        process.exit(0);
-      }).catch((err) => {
-        console.error("Could not apply power levels: ", err);
-        process.exit(1);
-      });
-      break;
-    default:
-      break;
-  }
+const intent = new Intent(client, client, {registered: true});
+intent.setPowerLevel(options.roomid, options.userid, options.power).then(() => {
+    console.log("Power levels set");
+    process.exit(0);
+}).catch((err) => {
+    console.error("Could not apply power levels to room:", err);
+    process.exit(1);
 });
