@@ -33,6 +33,7 @@ function generateRegistration(reg, callback)  {
   reg.addRegexPattern("users", "@_discord_.*", true);
   reg.addRegexPattern("aliases", "#_discord_.*", true);
   reg.setRateLimited(false);
+  reg.setProtocols(["discord"]);
   callback(reg);
 }
 
