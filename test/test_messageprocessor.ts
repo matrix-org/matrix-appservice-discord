@@ -257,6 +257,18 @@ describe("MessageProcessor", () => {
             const content = processor.InsertEmbeds(inContent, msg);
             Chai.assert.equal(content, "\n\n----\n##### [TestTitle](testurl)\nTestDescription");
         });
+        it("rejects titleless and descriptionless embeds", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const msg = new Discord.Message(null, null, null);
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    url: "testurl",
+                }),
+            ];
+            const inContent = "Some content...";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(content, "Some content...");
+        });
         it("processes multiple embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
             const msg = new Discord.Message(null, null, null);

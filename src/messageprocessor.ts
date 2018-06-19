@@ -78,6 +78,9 @@ export class MessageProcessor {
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
+            if (embed.title === undefined && embed.description === undefined) {
+                continue;
+            }
             let embedContent = "\n\n----"; // Horizontal rule. Two to make sure the content doesn't become a title.
             const embedTitle = embed.url ? `[${embed.title}](${embed.url})` : embed.title;
             if (embedTitle) {
