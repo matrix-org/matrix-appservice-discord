@@ -10,7 +10,7 @@ Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 log.level = "warn";
 
-const TEST_SCHEMA = 6;
+const TEST_SCHEMA = 8;
 
 // const assert = Chai.assert;
 

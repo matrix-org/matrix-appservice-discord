@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 7;
+const CURRENT_SCHEMA = 8;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -170,43 +170,6 @@ export class DiscordStore {
       return row !== undefined ? row.token : null;
     }).catch( (err) => {
       log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
-      throw err;
-    });
-  }
-
-  public get_dm_room(discordId, discordChannel): Promise<string> {
-    log.silly("SQL", "get_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.getAsync(
-      `
-      SELECT room_id
-      FROM dm_rooms
-      WHERE dm_rooms.discord_id = $discordId
-      AND dm_rooms.discord_channel = $discordChannel;
-      `
-    , {
-      $discordId: discordId,
-      $discordChannel: discordChannel,
-    }).then( (row) => {
-      return row !== undefined ? row.room_id : null;
-    }).catch( (err) => {
-      log.error("DiscordStore", "Error getting room_id  %s", err.Error);
-      throw err;
-    });
-  }
-
-  public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
-    log.silly("SQL", "set_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.runAsync(
-      `
-      REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
-      VALUES ($discordId,$discordChannel,$roomId);
-      `
-    , {
-      $discordId: discordId,
-      $discordChannel: discordChannel,
-      $roomId: roomId,
-    }).catch( (err) => {
-      log.error("DiscordStore", "Error executing set_dm_room query  %s", err.Error);
       throw err;
     });
   }

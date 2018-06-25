@@ -40,7 +40,12 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
-  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
+  constructor (
+      discord: DiscordBot,
+      config: DiscordBridgeConfig,
+      botUserId: string,
+      private provisioner: Provisioner,
+  ) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
@@ -131,11 +136,19 @@ export class MatrixRoomHandler {
       await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
   }
 
-  public HandleInvite(event: any) {
+  public async HandleInvite(event: any): Promise<any> {
     log.info("MatrixRoomHandler", "Received invite for " + event.state_key + " in room " + event.room_id);
     if (event.state_key === this.botUserId) {
       log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
+    } else if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+      const dmhandler = this.discord.DMHandler;
+      try {
+          return await dmhandler.HandleInvite(event);
+      } catch (e) {
+          log.error("MatrixRoomHandler", "Failed to handle invite:", e);
+      }
+
     }
   }
 

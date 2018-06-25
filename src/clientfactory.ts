@@ -56,7 +56,7 @@ export class DiscordClientFactory {
     });
   }
 
-  public async getClient(userId: string = null): Promise<any> {
+  public async getClient(userId: string = null): Promise<Client> {
     if (userId == null) {
       return this.botClient;
     }
@@ -66,7 +66,7 @@ export class DiscordClientFactory {
     }
     const discordIds = await this.store.get_user_discord_ids(userId);
     if (discordIds.length === 0) {
-      return Promise.resolve(this.botClient);
+      return this.botClient;
     }
     // TODO: Select a profile based on preference, not the first one.
     const token = await this.store.get_token(discordIds[0]);
@@ -87,5 +87,13 @@ export class DiscordClientFactory {
       log.warn("ClientFactory", `Could not log ${userId} in. Returning bot user for now.`, err);
       return this.botClient;
     }
+  }
+
+  public async UserIsPuppeted(userId: string = null): Promise<boolean> {
+      if (this.clients.has(userId)) {
+          return true;
+      }
+      const discordIds = await this.store.get_user_discord_ids(userId);
+      return discordIds.length !== 0;
   }
 }

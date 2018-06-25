@@ -6,6 +6,7 @@ export class DiscordBridgeConfig {
   public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
   public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
+  public puppeting: DiscordBridgeConfigPuppeting = new DiscordBridgeConfigPuppeting();
 }
 
 class DiscordBridgeConfigBridge {
@@ -40,4 +41,8 @@ class DiscordBridgeConfigRoom {
 
 class DiscordBridgeConfigLimits {
   public roomGhostJoinDelay: number = 6000;
+}
+
+export class DiscordBridgeConfigPuppeting {
+  public enableDMs = true;
 }

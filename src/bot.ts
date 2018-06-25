@@ -13,6 +13,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { Provisioner } from "./provisioner";
+import {DMHandler} from "./dmhandler";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -37,6 +38,7 @@ export class DiscordBot {
   private msgProcessor: MessageProcessor;
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
+  private dmHandler: DMHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -54,10 +56,21 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+    console.log(this.config);
+    this.dmHandler = new DMHandler(
+        this.config.puppeting,
+        bridge,
+        this.clientFactory,
+        this.store,
+    );
   }
 
   get ClientFactory(): DiscordClientFactory {
      return this.clientFactory;
+  }
+
+  get DMHandler(): DMHandler {
+    return this.dmHandler;
   }
 
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
@@ -151,7 +164,7 @@ export class DiscordBot {
       const channel = guild.channels.get(room);
       if (channel) {
         const lookupResult = new ChannelLookupResult();
-        lookupResult.channel = channel;
+        lookupResult.channel = channel as any;
         lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
