@@ -24,6 +24,8 @@ Your account is not puppeted, so you cannot talk to Discord user's privately.
 You may leave this room. 
 `;
 
+const MAX_MEMBERS_FOR_DM = 9;
+
 interface InviteResult {
     valid: boolean;
     message: string;
@@ -53,7 +55,6 @@ export class DMHandler {
             return;
         }
         log.info("DMHandler", `Got invite for ${event.room_id} (${event.sender} invited ${event.state_key})`);
-
 
         let discordUserId = null;
         try {
@@ -107,12 +108,10 @@ export class DMHandler {
     }
 
     public async OnMatrixMessage(event): Promise<void> {
-        const DMRoom = new DbDmRoom();
-        await DMRoom.RunQuery(this.store, {room_id: event.room_id});
+        const DMRoom = await this.store.Get(DbDmRoom, {room_id: event.room_id});
         if (!DMRoom.Result) {
             return;
         }
-        DMRoom.
     }
 
     private async onDiscordMessage(): Promise<void> {
@@ -120,7 +119,7 @@ export class DMHandler {
     }
 
     private async CheckInvite(event): Promise<InviteResult> {
-        const MAX_MEMBERS = 2;
+        const MAX_MEMBERS_FOR_DM = 2;
         const userIntent = this.bridge.getIntent(event.state_key);
         /* We still fetch state so we can send the correct error message, even though we could bomb out early
            if we disabled DMs.
@@ -128,7 +127,7 @@ export class DMHandler {
         const state = await userIntent.roomState(event.room_id);
         const memberEvents = state.filter((stateEvent) => stateEvent.type === "m.room.member").length;
 
-        if (memberEvents > MAX_MEMBERS) {
+        if (memberEvents > MAX_MEMBERS_FOR_DM) {
             return {valid: false, message: NOT_DM_ROOM};
         }
 
