@@ -486,9 +486,17 @@ export class DiscordBot {
     }), (room) => {
       log.verbose(`Updating ${room}`);
       client.sendStateEvent(room, "m.room.member", {
-        membership: "join",
-        avatar_url: avatar,
-        displayname: guildMember.displayName,
+        "membership": "join",
+        "avatar_url": avatar,
+        "displayname": guildMember.displayName,
+        "uk.half-shot.discord.member": {
+          id: guildMember.id,
+          roles: guildMember.roles.map((role) => { return {
+            name: role.name,
+            color: role.color,
+            position: role.position,
+          }; }),
+        },
       }, userId);
     }).catch((err) => {
       log.error("DiscordBot", "Failed to update guild member %s", err);
