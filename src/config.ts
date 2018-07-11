@@ -5,6 +5,7 @@ export class DiscordBridgeConfig {
   public logging: DiscordBridgeConfigLogging = new DiscordBridgeConfigLogging();
   public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
+  public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
   public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
 }
 
@@ -36,6 +37,20 @@ class DiscordBridgeConfigLogging {
 
 class DiscordBridgeConfigRoom {
   public defaultVisibility: string;
+}
+
+class DiscordBridgeConfigChannel {
+  public deleteOptions = new DiscordBridgeConfigChannelDeleteOptions();
+}
+
+class DiscordBridgeConfigChannelDeleteOptions {
+  public namePrefix: string = null;
+  public topicPrefix: string = null;
+  public disableMessaging: boolean = false;
+  public unsetRoomAlias: boolean = true;
+  public unlistFromDirectory: boolean = true;
+  public setInviteOnly: boolean = true;
+  public ghostsLeave: boolean = true;
 }
 
 class DiscordBridgeConfigLimits {

@@ -8,11 +8,12 @@ import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
+import { Provisioner } from "./provisioner";
+import { ChannelHandler } from "./channelhandler";
 import * as Discord from "discord.js";
-import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import { Provisioner } from "./provisioner";
+import * as log from "npmlog";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -37,6 +38,7 @@ export class DiscordBot {
   private msgProcessor: MessageProcessor;
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
+  private channelHandler: ChannelHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -47,6 +49,7 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
     this.presenceHandler = new PresenceHandler(this);
+    this.channelHandler = new ChannelHandler(this, this.bridge, config);
   }
 
   public setBridge(bridge: Bridge) {
@@ -77,6 +80,7 @@ export class DiscordBot {
       }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
+      client.on("channelDelete", (channel) => { this.channelHandler.HandleChannelDelete(channel); });
       client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
       client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
       client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
@@ -322,18 +326,6 @@ export class DiscordBot {
     return dbEmoji.MxcUrl;
   }
 
-  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-      discord_channel: channel.id,
-    }).then((rooms) => {
-      if (rooms.length === 0) {
-        log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
-        return Promise.reject("Room(s) not found.");
-      }
-      return rooms.map((room) => room.matrix.getId() as string);
-    });
-  }
-
   private GetRoomIdsFromGuild(guild: String): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
       discord_guild: guild,
@@ -353,7 +345,7 @@ export class DiscordBot {
     log.info("DiscordBot", `Updating ${discordChannel.id}`);
     const textChan = (<Discord.TextChannel> discordChannel);
     const roomStore = this.bridge.getRoomStore();
-    this.GetRoomIdsFromChannel(textChan).then((rooms) => {
+    this.channelHandler.GetRoomIdsFromChannel(textChan).then((rooms) => {
       return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
         return Object.keys(entries).map((key) => entries[key]);
       });
@@ -438,7 +430,7 @@ export class DiscordBot {
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
                                   guild: Discord.Guild, author: Discord.User,
                                   msgID: string): Promise<boolean> {
-    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const rooms = await this.channelHandler.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
@@ -496,7 +488,7 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    this.GetRoomIdsFromChannel(channel).then((rooms) => {
+    this.channelHandler.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.GetIntentFromDiscordMember(user);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
@@ -554,7 +546,7 @@ export class DiscordBot {
 
     // Update presence because sometimes discord misses people.
     this.UpdateUser(msg.author).then(() => {
-      return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
+      return this.channelHandler.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;
       });
@@ -649,4 +641,4 @@ export class DiscordBot {
           await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
         }
     }
-  }
+}
