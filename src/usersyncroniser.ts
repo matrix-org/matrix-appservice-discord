@@ -108,6 +108,7 @@ export class UserSyncroniser {
             );
             await intent.setAvatarUrl(avatarMxc.mxcUrl);
             remoteUser.set("avatarurl", userState.avatarUrl);
+            remoteUser.set("avatarurl_mxc", avatarMxc.mxcUrl);
             userUpdated = true;
         }
 
@@ -115,6 +116,7 @@ export class UserSyncroniser {
             log.verbose("UserSync", `Clearing avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
             await intent.setAvatarUrl(null);
             remoteUser.set("avatarurl", null);
+            remoteUser.set("avatarurl_mxc", null);
             userUpdated = true;
         }
 
@@ -135,7 +137,7 @@ export class UserSyncroniser {
         log.verbose("UserSync", `Sending state event for state ${JSON.stringify(memberState)}.`);
         await intent.sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
             membership: "join",
-            avatar_url: remoteUser.get("avatarurl"),
+            avatar_url: remoteUser.get("avatarurl_mxc"),
             displayname: memberState.displayName,
         });
         remoteUser.set(nickKey, memberState.displayName);
