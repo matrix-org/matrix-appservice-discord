@@ -53,7 +53,6 @@ export class DiscordBot {
 
   public setBridge(bridge: Bridge) {
     this.bridge = bridge;
-    this.userSync = new UserSyncroniser(this.bridge, this.config, this);
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
@@ -89,6 +88,8 @@ export class DiscordBot {
           this.OnMessage(msg);
         });
       });
+      
+      this.userSync = new UserSyncroniser(this.bridge, this.config, this);
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
       client.on("guildMemberAdd", (_, user) => this.userSync.OnAddGuildMember(user));
       client.on("guildMemberRemove", (_, user) =>  this.userSync.OnRemoveGuildMember(user));
