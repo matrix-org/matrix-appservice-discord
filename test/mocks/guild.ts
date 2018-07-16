@@ -17,7 +17,7 @@ export class MockGuild {
     });
   }
 
-  public fetchMember(id: string): Promise<MockMember|Error>{
+  public fetchMember(id: string): Promise<MockMember|Error> {
     if (this.members.has(id)) {
       return Promise.resolve(this.members.get(id));
     }

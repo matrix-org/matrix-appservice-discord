@@ -39,15 +39,16 @@ function createRH(opts: any = {}) {
             return {
                 sendMessage: (roomId, content) => Promise.resolve(content),
                 getClient: () => mxClient,
-                join: () => { USERSJOINED++ },
-        }; },
+                join: () => { USERSJOINED++; },
+            }; 
+        },
         getBot: () => {
             return {
                 _isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
             };
-        }
+        },
     };
     const us = {
         OnMemberState: () => Promise.resolve("user_sync_handled"),

@@ -70,7 +70,7 @@ export class UserSyncroniser {
         const userState = await this.GetUserUpdateState(discordUser);
         try {
             await this.ApplyStateToProfile(userState);
-        } catch(e) {
+        } catch (e) {
             log.error("UserSync", "Failed to update user's profile", e);
         }
     }
@@ -273,6 +273,7 @@ export class UserSyncroniser {
             }
         }
         this.userStateHold.set(userStateKey, ev);
+        // tslint:disable-next-line:await-promise
         await Bluebird.delay(delayMs);
         if (this.userStateHold.get(userStateKey).event_id !== ev.event_id) {
             // Event has changed and we are out of date.

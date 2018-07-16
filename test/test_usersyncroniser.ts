@@ -123,7 +123,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 return chan;
             }
             throw new Error("Channel not found"); 
-        }
+        },
     };
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
@@ -456,7 +456,7 @@ describe("UserSyncroniser", () => {
                },
                room_id: "!found:localhost",
                state_key: "123456",
-           },0).then(() => {
+           }, 0).then(() => {
                 expect(SEV_COUNT).to.equal(1);
            });
        });
@@ -468,7 +468,7 @@ describe("UserSyncroniser", () => {
                },
                room_id: "!abcdef:localhost",
                state_key: "123456",
-            },0)).to.eventually.equal(UserSyncroniser.ERR_USER_NOT_FOUND);
+            }, 0)).to.eventually.equal(UserSyncroniser.ERR_USER_NOT_FOUND);
        });
        it("will not update state for a unknown room", () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -478,7 +478,7 @@ describe("UserSyncroniser", () => {
                },
                room_id: "!notfound:localhost",
                state_key: "123456",
-            },0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+            }, 0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
        });
        it("will not update state for a member not found in the channel", () => {
             const userSync = CreateUserSync([new RemoteUser("111222")]);
@@ -488,9 +488,10 @@ describe("UserSyncroniser", () => {
                },
                room_id: "!found:localhost",
                state_key: "111222",
-            },0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+            }, 0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
        });
        it("will not process old events", () => {
+            const DELAY_MS = 250;
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             return Promise.all([
                 expect(userSync.OnMemberState({
@@ -501,7 +502,7 @@ describe("UserSyncroniser", () => {
                     event_id: "Anicent:localhost",
                     room_id: "!found:localhost",
                     state_key: "123456",
-                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 1 Failed"),
+                }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 1 Failed"),
                 expect(userSync.OnMemberState({
                     origin_server_ts: 7000,
                     content: {
@@ -510,7 +511,7 @@ describe("UserSyncroniser", () => {
                     event_id: "QuiteOld:localhost",
                     room_id: "!found:localhost",
                     state_key: "123456",
-                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 2 Failed"),
+                }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 2 Failed"),
                 expect(userSync.OnMemberState({
                     origin_server_ts: 3000,
                     content: {
@@ -519,7 +520,7 @@ describe("UserSyncroniser", () => {
                     event_id: "FreshEnough:localhost",
                     room_id: "!found:localhost",
                     state_key: "123456",
-                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 3 Failed"),
+                }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 3 Failed"),
                 expect(userSync.OnMemberState({
                     origin_server_ts: 4000,
                     content: {
@@ -528,7 +529,7 @@ describe("UserSyncroniser", () => {
                     event_id: "GettingOnABit:localhost",
                     room_id: "!found:localhost",
                     state_key: "123456",
-                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 4 Failed"),
+                }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 4 Failed"),
                 expect(userSync.OnMemberState({
                     origin_server_ts: 100,
                     content: {
@@ -537,7 +538,7 @@ describe("UserSyncroniser", () => {
                     event_id: "FreshOutTheOven:localhost",
                     room_id: "!found:localhost",
                     state_key: "123456",
-                },300)).to.eventually.be.fulfilled
+                }, DELAY_MS)).to.eventually.be.fulfilled,
             ]);
        });
    });

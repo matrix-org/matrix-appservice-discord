@@ -321,7 +321,6 @@ export class DiscordBot {
     return dbEmoji.MxcUrl;
   }
 
-
   public GetRoomIdsFromGuild(guild: String): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
       discord_guild: guild,
