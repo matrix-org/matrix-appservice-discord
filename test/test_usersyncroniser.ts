@@ -6,8 +6,8 @@ import {MockUser} from "./mocks/user";
 import {DiscordBridgeConfig} from "../src/config";
 import * as Proxyquire from "proxyquire";
 import {MockMember} from "./mocks/member";
-import {GuildMember} from "discord.js";
 import {MockGuild} from "./mocks/guild";
+import { MockChannel } from "./mocks/channel";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
@@ -30,7 +30,6 @@ let LEAVES = 0;
 let SEV_COUNT = 0;
 
 const GUILD_ROOM_IDS = ["!abc:localhost", "!def:localhost", "!ghi:localhost"];
-
 
 const UserSync = (Proxyquire("../src/usersyncroniser", {
     "./util": {
@@ -114,6 +113,16 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
         },
         GetIntentFromDiscordMember: (id) => {
             return bridge.getIntent(id);
+        },
+        GetChannelFromRoomId: (id) => {
+            if (id === "!found:localhost") {
+                const guild = new MockGuild("666666");
+                guild.members.set("123456", new MockMember("123456", "fella", guild));
+                const chan = new MockChannel("543345", guild);
+                guild.channels.set("543345", chan as any);
+                return chan;
+            }
+            throw new Error("Channel not found"); 
         }
     };
     const config = new DiscordBridgeConfig();
@@ -445,10 +454,91 @@ describe("UserSyncroniser", () => {
                content: {
 
                },
+               room_id: "!found:localhost",
                state_key: "123456",
            },0).then(() => {
-
+                expect(SEV_COUNT).to.equal(1);
            });
+       });
+       it("will not update state for a unknown user", () => {
+           const userSync = CreateUserSync([]);
+           return expect(userSync.OnMemberState({
+               content: {
+
+               },
+               room_id: "!abcdef:localhost",
+               state_key: "123456",
+            },0)).to.eventually.equal(UserSyncroniser.ERR_USER_NOT_FOUND);
+       });
+       it("will not update state for a unknown room", () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            return expect(userSync.OnMemberState({
+               content: {
+
+               },
+               room_id: "!notfound:localhost",
+               state_key: "123456",
+            },0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+       });
+       it("will not update state for a member not found in the channel", () => {
+            const userSync = CreateUserSync([new RemoteUser("111222")]);
+            return expect(userSync.OnMemberState({
+               content: {
+
+               },
+               room_id: "!found:localhost",
+               state_key: "111222",
+            },0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+       });
+       it("will not process old events", () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            return Promise.all([
+                expect(userSync.OnMemberState({
+                    origin_server_ts: 10000,
+                    content: {
+
+                    },
+                    event_id: "Anicent:localhost",
+                    room_id: "!found:localhost",
+                    state_key: "123456",
+                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 1 Failed"),
+                expect(userSync.OnMemberState({
+                    origin_server_ts: 7000,
+                    content: {
+
+                    },
+                    event_id: "QuiteOld:localhost",
+                    room_id: "!found:localhost",
+                    state_key: "123456",
+                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 2 Failed"),
+                expect(userSync.OnMemberState({
+                    origin_server_ts: 3000,
+                    content: {
+
+                    },
+                    event_id: "FreshEnough:localhost",
+                    room_id: "!found:localhost",
+                    state_key: "123456",
+                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 3 Failed"),
+                expect(userSync.OnMemberState({
+                    origin_server_ts: 4000,
+                    content: {
+
+                    },
+                    event_id: "GettingOnABit:localhost",
+                    room_id: "!found:localhost",
+                    state_key: "123456",
+                },300)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 4 Failed"),
+                expect(userSync.OnMemberState({
+                    origin_server_ts: 100,
+                    content: {
+
+                    },
+                    event_id: "FreshOutTheOven:localhost",
+                    room_id: "!found:localhost",
+                    state_key: "123456",
+                },300)).to.eventually.be.fulfilled
+            ]);
        });
    });
     // TODO: Add test to ensure onMemberState doesn't recurse.
