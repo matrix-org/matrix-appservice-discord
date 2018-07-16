@@ -91,8 +91,8 @@ export class DiscordBot {
       
       this.userSync = new UserSyncroniser(this.bridge, this.config, this);
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
-      client.on("guildMemberAdd", (_, user) => this.userSync.OnAddGuildMember(user));
-      client.on("guildMemberRemove", (_, user) =>  this.userSync.OnRemoveGuildMember(user));
+      client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
+      client.on("guildMemberRemove", (user) =>  this.userSync.OnRemoveGuildMember(user));
       client.on("guildMemberUpdate", (oldUser, newUser) =>  this.userSync.OnUpdateGuildMember(oldUser, newUser));
       client.on("debug", (msg) => { log.verbose("discord.js", msg); });
       client.on("error", (msg) => { log.error("discord.js", msg); });
