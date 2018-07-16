@@ -57,10 +57,6 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
-    this.bot.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
-    this.bot.on("guildMemberAdd", this.userSync.OnAddGuildMember);
-    this.bot.on("guildMemberRemove", this.userSync.OnRemoveGuildMember);
-    this.bot.on("guildMemberUpdate", this.userSync.OnUpdateGuildMember);
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -93,6 +89,10 @@ export class DiscordBot {
           this.OnMessage(msg);
         });
       });
+      client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
+      client.on("guildMemberAdd", this.userSync.OnAddGuildMember);
+      client.on("guildMemberRemove", this.userSync.OnRemoveGuildMember);
+      client.on("guildMemberUpdate", this.userSync.OnUpdateGuildMember);
       client.on("debug", (msg) => { log.verbose("discord.js", msg); });
       client.on("error", (msg) => { log.error("discord.js", msg); });
       client.on("warn", (msg) => { log.warn("discord.js", msg); });
