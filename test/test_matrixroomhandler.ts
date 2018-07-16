@@ -40,6 +40,7 @@ function createRH(opts: any = {}) {
                 sendMessage: (roomId, content) => Promise.resolve(content),
                 getClient: () => mxClient,
                 join: () => { USERSJOINED++; },
+                leave: () => { },
             }; 
         },
         getBot: () => {
@@ -49,6 +50,13 @@ function createRH(opts: any = {}) {
                 },
             };
         },
+        getRoomStore: () => {
+            return {
+                removeEntriesByMatrixRoomId:() => {
+
+                }
+            }
+        },
     };
     const us = {
         OnMemberState: () => Promise.resolve("user_sync_handled"),
@@ -57,12 +65,14 @@ function createRH(opts: any = {}) {
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
-                const chan = new MockChannel();
+                const guild = new MockGuild("666666");
+                const chan = new MockChannel("777777", guild);
                 if (opts.createMembers) {
                     chan.members.set("12345", new MockMember("12345", "testuser1"));
                     chan.members.set("54321", new MockMember("54321", "testuser2"));
                     chan.members.set("bot12345", new MockMember("bot12345", "botuser"));
                 }
+                guild.members = chan.members;
                 return Promise.resolve(chan);
             } else {
                 return Promise.reject("Roomid not found");

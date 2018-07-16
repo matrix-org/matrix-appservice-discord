@@ -98,7 +98,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                     AVATAR_SET = ava;
                     return Promise.resolve();
                 },
-                sendStateEvent: (roomId, type, content, key) => {
+                sendStateEvent: (roomId, type, key, content) => {
                     SEV_ROOM_ID = roomId;
                     SEV_CONTENT = content;
                     SEV_KEY = key;
@@ -123,6 +123,9 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 return chan;
             }
             throw new Error("Channel not found"); 
+        },
+        GetGuilds: () => {
+            return []
         },
     };
     const config = new DiscordBridgeConfig();
