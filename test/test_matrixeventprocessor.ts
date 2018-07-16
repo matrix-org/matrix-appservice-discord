@@ -242,6 +242,17 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(evt.description, "I like :lamecake:");
         });
+        it("Should show emotes with italics.", () => {
+            const processor = createMatrixEventProcessor(false, false, true);
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                content: {
+                    body: "eats pizza",
+                    msgtype: "m.emote",
+                },
+            }, null, mockChannel as any);
+            Chai.assert.equal(evt.description, "*eats pizza*");
+        });
     });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {
@@ -261,6 +272,14 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(
                 processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
                 "Hello <@!12345>",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to https://TestUsername.com", members),
+                "I really love going to https://TestUsername.com",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to www.TestUsername.com", members),
+                "I really love going to www.TestUsername.com",
             );
         });
         it("processes mentioned nickname correctly", async () => {
@@ -310,6 +329,14 @@ describe("MatrixEventProcessor", () => {
                 processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
                 "Fixing this issue provided by <@!54321>",
             );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to https://Test.com", members),
+                "I really love going to https://Test.com",
+            );
+            Chai.assert.equal(
+                processor.FindMentionsInPlainBody("I really love going to www.Test.com", members),
+                "I really love going to www.Test.com",
+            );
         });
         it("processes non-mentions correctly", async () => {
             const processor = createMatrixEventProcessor();
@@ -347,6 +374,17 @@ describe("MatrixEventProcessor", () => {
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.video",
+                },
+            }, mxClient)).to.eventually.eq("");
+        });
+        it("message without a url", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                content: {
+                    msgtype: "m.video",
+                    info: {
+                        size: 1,
+                    },
                 },
             }, mxClient)).to.eventually.eq("");
         });

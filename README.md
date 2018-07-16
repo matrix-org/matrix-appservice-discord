@@ -1,7 +1,7 @@
 # Matrix Discord Bridge
 
 A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
-Currently the bridge is in **Beta** and quite usable for everyday 
+Currently the bridge is in **Beta** and quite usable for everyday
 bridging, with one or two bugs cropping up.
 
 ![Screenshot of Riot and Discord working together](screenshot.png)
@@ -50,9 +50,8 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system
-used in clients like [Riot](https://riot.im). However, it requires a small manual change
-to your registration file. Add ``protocols: ["discord"]`` to the end and restart both your bridge
-and synapse. Any new servers/guilds you bridge should show up in the network list on Riot and other clients.
+used in clients like [Riot](https://riot.im). Any new servers/guilds you bridge
+should show up in the network list on Riot and other clients.
 
 ### Setting up Discord
 

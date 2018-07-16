@@ -213,6 +213,18 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.OnEvent(buildRequest({
                 type: "m.room.message", content: {body: "abc"}}), context)).to.eventually.equal("processed");
         });
+        it("should alert if encryption is turned on", () => {
+            const handler = createRH();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            return expect(handler.OnEvent(buildRequest({
+                type: "m.room.encryption", room_id: "!accept:localhost"}), context)).to.eventually.be.fulfilled;
+        });
         it("should process !discord commands", () => {
             const handler = createRH();
             handler.ProcessCommand = (ev) => Promise.resolve("processedcmd");

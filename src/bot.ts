@@ -238,7 +238,7 @@ export class DiscordBot {
       // Webhooks don't send guild info.
       evt.GuildId = guildId;
       evt.ChannelId = channelId;
-      this.store.Insert(evt);
+      return this.store.Insert(evt);
     });
     return;
   }
@@ -410,7 +410,7 @@ export class DiscordBot {
         evt.DiscordId = msgID;
         evt.ChannelId = chan.id;
         evt.GuildId = guild.id;
-        this.store.Insert(evt);
+        return this.store.Insert(evt);
       });
     });
 
@@ -508,6 +508,13 @@ export class DiscordBot {
               msgtype,
               url: content.mxcUrl,
               external_url: attachment.url,
+            }).then((res) => {
+              const evt = new DbEvent();
+              evt.MatrixId = res.event_id + ";" + room;
+              evt.DiscordId = msg.id;
+              evt.ChannelId = msg.channel.id;
+              evt.GuildId = msg.guild.id;
+              return this.store.Insert(evt);
             });
           });
         });
@@ -526,7 +533,7 @@ export class DiscordBot {
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
-                    this.store.Insert(evt);
+                    return this.store.Insert(evt);
                 });
             });
         });
