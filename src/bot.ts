@@ -53,11 +53,11 @@ export class DiscordBot {
 
   public setBridge(bridge: Bridge) {
     this.bridge = bridge;
-    this.userSync = new UserSyncroniser(this.bridge, this.config);
+    this.userSync = new UserSyncroniser(this.bridge, this.config, this);
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
-    this.bot.on("userUpdate", this.userSync.OnUpdateUser);
+    this.bot.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
     this.bot.on("guildMemberAdd", this.userSync.OnAddGuildMember);
     this.bot.on("guildMemberRemove", this.userSync.OnRemoveGuildMember);
     this.bot.on("guildMemberUpdate", this.userSync.OnUpdateGuildMember);
@@ -65,6 +65,10 @@ export class DiscordBot {
 
   get ClientFactory(): DiscordClientFactory {
      return this.clientFactory;
+  }
+
+  get UserSyncroniser(): UserSyncroniser {
+    return this.userSync;
   }
 
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
@@ -298,15 +302,6 @@ export class DiscordBot {
     });
   }
 
-  public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
-    const intent = this.GetIntentFromDiscordMember(member);
-    return this.userSync.OnUpdateUser(null, member.user).then(() => {
-      return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
-    }).then(() => {
-      return this.userSync.OnUpdateGuildMember(member);
-    });
-  }
-
   public async GetEmoji(name: string, animated: boolean, id: string): Promise<string> {
     if (!id.match(/^\d+$/)) {
       throw new Error("Non-numerical ID");
@@ -325,19 +320,8 @@ export class DiscordBot {
     return dbEmoji.MxcUrl;
   }
 
-  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-      discord_channel: channel.id,
-    }).then((rooms) => {
-      if (rooms.length === 0) {
-        log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
-        return Promise.reject("Room(s) not found.");
-      }
-      return rooms.map((room) => room.matrix.getId() as string);
-    });
-  }
 
-  private GetRoomIdsFromGuild(guild: String): Promise<string[]> {
+  public GetRoomIdsFromGuild(guild: String): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
       discord_guild: guild,
     }).then((rooms) => {
@@ -346,6 +330,18 @@ export class DiscordBot {
         return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => room.matrix.getId());
+    });
+  }
+
+  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+        discord_channel: channel.id,
+    }).then((rooms) => {
+        if (rooms.length === 0) {
+            log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
+            return Promise.reject("Room(s) not found.");
+        }
+        return rooms.map((room) => room.matrix.getId() as string);
     });
   }
 
@@ -422,26 +418,6 @@ export class DiscordBot {
     return true;
   }
 
-  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
-    const client = this.GetIntentFromDiscordMember(guildMember).getClient();
-    const userId = client.credentials.userId;
-    let avatar = null;
-    log.info(`Updating nick for ${guildMember.user.username}`);
-    Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
-      avatar = avatarUrl.avatar_url;
-      return roomIds || this.GetRoomIdsFromGuild(guildMember.guild.id);
-    }), (room) => {
-      log.verbose(`Updating ${room}`);
-      client.sendStateEvent(room, "m.room.member", {
-        membership: "join",
-        avatar_url: avatar,
-        displayname: guildMember.displayName,
-      }, userId);
-    }).catch((err) => {
-      log.error("DiscordBot", "Failed to update guild member %s", err);
-    });
-  }
-
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
     this.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.GetIntentFromDiscordMember(user);
@@ -500,7 +476,7 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.userSync.OnUpdateUser(null, msg.author).then(() => {
+    this.userSync.OnUpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;

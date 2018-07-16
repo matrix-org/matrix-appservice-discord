@@ -34,6 +34,9 @@ function buildRequest(eventData) {
 function createRH(opts: any = {}) {
     log.level = "silent";
     USERSJOINED = 0;
+    const us = {
+        OnMemberState: () => Promise.resolve("user_sync_handled"),
+    };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
@@ -47,14 +50,6 @@ function createRH(opts: any = {}) {
             } else {
                 return Promise.reject("Roomid not found");
             }
-        },
-        InitJoinUser: (member: MockMember, roomids: string[]) => {
-                if (opts.failUser) {
-                    return Promise.reject("test is rejecting joins");
-                }
-                USERSJOINED++;
-                return Promise.resolve();
-
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
@@ -72,6 +67,7 @@ function createRH(opts: any = {}) {
         ThirdpartySearchForChannels: () => {
             return [];
         },
+        UserSyncroniser: us,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -106,6 +102,13 @@ function createRH(opts: any = {}) {
             sendMessage: (roomId, content) => Promise.resolve(content),
             getClient: () => mxClient,
         }; },
+        getBot: () => {
+            return {
+                _isRemoteUser: (id) => {
+                    return id !== undefined && id.startsWith("@_discord_");
+                },
+            };
+        }
     });
     return handler;
 }
@@ -156,11 +159,19 @@ describe("MatrixRoomHandler", () => {
                 content: {membership: "invite"},
                 type: "m.room.member"}), null)).to.eventually.equal("invited");
         });
+        it("should handle own state updates", () => {
+            const handler = createRH();
+            return expect(handler.OnEvent(buildRequest({
+                content: {membership: "join"},
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null)).to.eventually.equal("user_sync_handled");
+        });
         it("should ignore other member types", () => {
             const handler = createRH();
             handler.HandleInvite = (ev) => Promise.resolve("invited");
             return expect(handler.OnEvent(buildRequest({
                 content: {membership: "join"},
+                state_key: "@bacon:localhost",
                 type: "m.room.member"}), null)).to.be.rejectedWith("Event not processed by bridge");
         });
         it("should handle redactions with existing rooms", () => {

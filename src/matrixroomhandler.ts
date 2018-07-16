@@ -93,7 +93,9 @@ export class MatrixRoomHandler {
     if (event.type === "m.room.member" && event.content.membership === "invite") {
         return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
-        // Potentially this means a AS user has
+        if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+            return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
+        }
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {
