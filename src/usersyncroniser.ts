@@ -81,7 +81,7 @@ export class UserSyncroniser {
         let remoteUser = null;
         if (userState.createUser) {
             /* NOTE: Setting the displayname/avatar will register the user if they don't exist */
-            log.info(`Creating new user ${userState.mxUserId}`);
+            log.info("UserSync", `Creating new user ${userState.mxUserId}`);
             remoteUser = new RemoteUser(userState.id);
             await this.userStore.linkUsers(
                 new MatrixUser(userState.mxUserId.substr("@".length)),
@@ -124,6 +124,7 @@ export class UserSyncroniser {
     }
 
     public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
+        log.info("UserSync", `Applying new room state for ${memberState.mxUserId} to ${roomId}`);
         if (memberState.displayName === null) {
             // Nothing to do. Quitting
             return;
@@ -131,12 +132,12 @@ export class UserSyncroniser {
         const nickKey = `nick_${guildId}`;
         const remoteUser = await this.userStore.getRemoteUser(memberState.id);
         const intent = this.bridge.getIntent(memberState.mxUserId);
-
-        await intent.sendStateEvent(roomId, "m.room.member", {
+        log.verbose("UserSync", `Sending state event for state ${JSON.stringify(memberState)}.`);
+        await intent.sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
             membership: "join",
             avatar_url: remoteUser.get("avatarurl"),
             displayname: memberState.displayName,
-        }, memberState.mxUserId);
+        });
         remoteUser.set(nickKey, memberState.displayName);
         return this.userStore.setRemoteUser(remoteUser);
     }
@@ -200,15 +201,15 @@ export class UserSyncroniser {
         const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         await this.OnUpdateUser(member.user);
-        await Promise.all(
+        return Promise.all(
             rooms.map(
                 (roomId) => intent.join(roomId),
             ),
         );
-        ;
     }
 
     public async OnRemoveGuildMember(member: GuildMember) {
+        /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
         log.info("UserSync", `Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
         const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
         const intent = this.discord.GetIntentFromDiscordMember(member);
@@ -220,6 +221,7 @@ export class UserSyncroniser {
     }
 
     public async OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember) {
+        log.info("UserSync", `Got update for ${oldMember.id}.`);
         const state = await this.GetUserStateForGuildMember(newMember, oldMember.displayName);
         const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
         return Promise.all(
