@@ -43,6 +43,11 @@ export interface IGuildMemberState {
  * Also handles member events that may occur when using guild nicknames.
  */
 export class UserSyncroniser {
+
+    public static readonly ERR_USER_NOT_FOUND = "user_not_found";
+    public static readonly ERR_CHANNEL_MEMBER_NOT_FOUND = "channel_or_member_not_found";
+    public static readonly ERR_NEWER_EVENT = "newer_state_event_arrived";
+
     // roomId+userId => ev
     public userStateHold: Map<string, any>;
     private userStore: UserBridgeStore;
@@ -224,11 +229,11 @@ export class UserSyncroniser {
         );
     }
 
-    public async OnMemberState(ev: any, delayMs: number = 0) {
+    public async OnMemberState(ev: any, delayMs: number = 0): Promise<string> {
         // Avoid tripping over multiple state events.
         if (await this.memberStateLock(ev, delayMs) === false) {
             // We're igorning this update because we have a newer one.
-            return;
+            return UserSyncroniser.ERR_NEWER_EVENT;
         }
         log.verbose("UserSync", `m.room.member was updated for ${ev.state_key}, checking if nickname needs updating.`);
         const roomId = ev.room_id;
@@ -241,17 +246,17 @@ export class UserSyncroniser {
             discordId = remoteUsers[0].getId();
         } catch (e) {
             log.warn("UserSync", `Got member update for ${ev.state_key}, but no user is linked in the store`);
-            return;
+            return UserSyncroniser.ERR_USER_NOT_FOUND;
         }
 
         // Fetch guild member by roomId;
         let member;
         try {
             const channel = await this.discord.GetChannelFromRoomId(roomId) as GuildChannel;
-            member = channel.guild.fetchMember(discordId);
+            member = await channel.guild.fetchMember(discordId);
         } catch (e) {
-            log.warn("UserSync", `Got member update for ${roomId}, but no channel was associated with it`);
-            return;
+            log.warn("UserSync", `Got member update for ${roomId}, but no channel or guild member could be found.`);
+            return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
         const state = await this.GetUserStateForGuildMember(member, ev.content.displayname);
         return this.ApplyStateToRoom(state, roomId, member.guild.id);
@@ -261,7 +266,7 @@ export class UserSyncroniser {
         const userStateKey = `${ev.room_id}${ev.state_key}`;
         if (this.userStateHold.has(userStateKey)) {
             const oldEv = this.userStateHold.get(userStateKey);
-            if (ev.origin_server_ts < oldEv.origin_server_ts) {
+            if (ev.origin_server_ts > oldEv.origin_server_ts) {
                 return false; // New event is older
             }
         }
