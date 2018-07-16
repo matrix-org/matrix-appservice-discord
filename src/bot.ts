@@ -90,9 +90,9 @@ export class DiscordBot {
         });
       });
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
-      client.on("guildMemberAdd", this.userSync.OnAddGuildMember);
-      client.on("guildMemberRemove", this.userSync.OnRemoveGuildMember);
-      client.on("guildMemberUpdate", this.userSync.OnUpdateGuildMember);
+      client.on("guildMemberAdd", (_, user) => this.userSync.OnAddGuildMember(user));
+      client.on("guildMemberRemove", (_, user) =>  this.userSync.OnRemoveGuildMember(user));
+      client.on("guildMemberUpdate", (oldUser, newUser) =>  this.userSync.OnUpdateGuildMember(oldUser, newUser));
       client.on("debug", (msg) => { log.verbose("discord.js", msg); });
       client.on("error", (msg) => { log.error("discord.js", msg); });
       client.on("warn", (msg) => { log.warn("discord.js", msg); });

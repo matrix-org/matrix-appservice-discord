@@ -183,7 +183,6 @@ export class UserSyncroniser {
         newMember: GuildMember,
         displayname: string,
     ): Promise<IGuildMemberState> {
-        const nickKey = `nick_${newMember.guild.id}`;
         const guildState = Object.assign({}, DEFAULT_GUILD_STATE, {
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
