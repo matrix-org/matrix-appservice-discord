@@ -122,6 +122,7 @@ export class UserSyncroniser {
 
         if (userUpdated) {
             await this.userStore.setRemoteUser(remoteUser);
+            await this.UpdateStateForGuilds(remoteUser);
         }
     }
 
@@ -231,6 +232,25 @@ export class UserSyncroniser {
                 (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
             ),
         );
+    }
+
+    public async UpdateStateForGuilds(remoteUser: any) {
+        const id = remoteUser.getId();
+        log.info("UserSync", `Got update for ${id}.`);
+
+        return this.discord.GetGuilds().map(async (guild) => {
+            if (guild.members.has(id)) {
+                log.info("UserSync", `Updating user ${id} in guild ${guild.id}.`);
+                const member = guild.members.get(id);
+                const state = await this.GetUserStateForGuildMember(member, remoteUser.get("displayname"));
+                const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
+                return Promise.all(
+                    rooms.map(
+                        (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
+                    ),
+                );
+            }
+        });
     }
 
     public async OnMemberState(ev: any, delayMs: number = 0): Promise<string> {
