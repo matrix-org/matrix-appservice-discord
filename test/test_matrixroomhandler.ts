@@ -34,8 +34,24 @@ function buildRequest(eventData) {
 function createRH(opts: any = {}) {
     log.level = "silent";
     USERSJOINED = 0;
+    const bridge = {
+        getIntent: () => {
+            return {
+                sendMessage: (roomId, content) => Promise.resolve(content),
+                getClient: () => mxClient,
+                join: () => { USERSJOINED++ },
+        }; },
+        getBot: () => {
+            return {
+                _isRemoteUser: (id) => {
+                    return id !== undefined && id.startsWith("@_discord_");
+                },
+            };
+        }
+    };
     const us = {
         OnMemberState: () => Promise.resolve("user_sync_handled"),
+        OnUpdateUser: () => Promise.resolve(),
     };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
@@ -67,6 +83,9 @@ function createRH(opts: any = {}) {
         ThirdpartySearchForChannels: () => {
             return [];
         },
+        GetIntentFromDiscordMember: () => {
+            return bridge.getIntent();
+        },
         UserSyncroniser: us,
     };
     const config = new DiscordBridgeConfig();
@@ -97,45 +116,33 @@ function createRH(opts: any = {}) {
         },
     };
     const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge({
-        getIntent: () => { return {
-            sendMessage: (roomId, content) => Promise.resolve(content),
-            getClient: () => mxClient,
-        }; },
-        getBot: () => {
-            return {
-                _isRemoteUser: (id) => {
-                    return id !== undefined && id.startsWith("@_discord_");
-                },
-            };
-        }
-    });
+    handler.setBridge(bridge);
     return handler;
 }
 
 describe("MatrixRoomHandler", () => {
-    // describe("OnAliasQueried", () => {
-    //     it("should join successfully", () => {
-    //         const handler = createRH();
-    //         return expect(handler.OnAliasQueried("#accept:localhost", "!accept:localhost")).to.be.fulfilled;
-    //     });
-    //     it("should join successfully and create ghosts", () => {
-    //         const EXPECTEDUSERS = 2;
-    //         const TESTDELAY = 50;
-    //         const handler = createRH({createMembers: true});
-    //         return  handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
-    //             return Bluebird.delay(TESTDELAY);
-    //         }).then(() => {
-    //                 expect(USERSJOINED).to.equal(EXPECTEDUSERS);
-    //                 // test for something
-    //                 return true;
-    //         });
-    //     });
-    //     it("should not join successfully", () => {
-    //         const handler = createRH();
-    //         return expect(handler.OnAliasQueried("#reject:localhost", "!reject:localhost")).to.be.rejected;
-    //     });
-    // });
+    describe("OnAliasQueried", () => {
+        it("should join successfully", () => {
+            const handler = createRH();
+            return expect(handler.OnAliasQueried("#accept:localhost", "!accept:localhost")).to.be.fulfilled;
+        });
+        it("should join successfully and create ghosts", () => {
+            const EXPECTEDUSERS = 2;
+            const TESTDELAY = 50;
+            const handler = createRH({createMembers: true});
+            return  handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
+                return Bluebird.delay(TESTDELAY);
+            }).then(() => {
+                    expect(USERSJOINED).to.equal(EXPECTEDUSERS);
+                    // test for something
+                    return true;
+            });
+        });
+        it("should not join successfully", () => {
+            const handler = createRH();
+            return expect(handler.OnAliasQueried("#reject:localhost", "!reject:localhost")).to.be.rejected;
+        });
+    });
     describe("OnEvent", () => {
         it("should reject old events", () => {
             const AGE = 900001; // 15 * 60 * 1000

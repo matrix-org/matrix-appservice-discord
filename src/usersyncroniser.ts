@@ -80,6 +80,7 @@ export class UserSyncroniser {
         let userUpdated = false;
         let remoteUser = null;
         if (userState.createUser) {
+            /* NOTE: Setting the displayname/avatar will register the user if they don't exist */
             log.info(`Creating new user ${userState.mxUserId}`);
             remoteUser = new RemoteUser(userState.id);
             await this.userStore.linkUsers(
