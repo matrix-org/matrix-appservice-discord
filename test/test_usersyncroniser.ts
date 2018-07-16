@@ -125,7 +125,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
             throw new Error("Channel not found"); 
         },
         GetGuilds: () => {
-            return []
+            return [];
         },
     };
     const config = new DiscordBridgeConfig();

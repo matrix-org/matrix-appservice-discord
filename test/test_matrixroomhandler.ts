@@ -52,10 +52,10 @@ function createRH(opts: any = {}) {
         },
         getRoomStore: () => {
             return {
-                removeEntriesByMatrixRoomId:() => {
+                removeEntriesByMatrixRoomId: () => {
 
-                }
-            }
+                },
+            };
         },
     };
     const us = {
