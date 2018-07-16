@@ -63,26 +63,31 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQueried (alias: string, roomId: string) {
+    log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
     // Join a whole bunch of users.
     // TODO: Make UserSync do this!
-    let promiseChain: any = Bluebird.resolve();
+    let promiseChain: Bluebird<void|any> = Bluebird.resolve();
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
-    return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
-      for (const member of (<Discord.TextChannel> channel).members.array()) {
+    return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.GuildChannel) => {
+      log.info("OnAliasQueried", `Got ${channel.id} for ${roomId}. ${channel.guild.members} members.`);
+      for (const member of channel.guild.members.array()) {
+        log.info("OnAliasQueried", `Starting to join ${member.id} to ${roomId}`);
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+            log.info("OnAliasQueried", `UserSyncing ${member.id}`);
             // Ensure the profile is up to date.
             return this.discord.UserSyncroniser.OnUpdateUser(member.user);
         }).then(() => {
+            log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
             return this.discord.GetIntentFromDiscordMember(member).join(roomId);
         }));
         delay += this.config.limits.roomGhostJoinDelay;
       }
     }).catch((err) => {
-      log.verbose("OnAliasQueried => %s", err);
+      log.error("OnAliasQueried => %s", err);
       throw err;
     });
   }
