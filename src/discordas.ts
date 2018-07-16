@@ -45,6 +45,7 @@ function run (port: number, config: DiscordBridgeConfig) {
   if (registration === null) {
     throw new Error("Failed to parse registration file");
   }
+  config = Object.assign({}, new DiscordBridgeConfig(), config);
   const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
   const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
