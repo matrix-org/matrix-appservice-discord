@@ -61,13 +61,20 @@ export class MatrixRoomHandler {
     this.bridge = bridge;
   }
 
-  public OnAliasQueried (alias: string, roomId: string) {
-    // Join a whole bunch of users.
+  public async OnAliasQueried (alias: string, roomId: string) {
+    const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
+    // Fire and forget RoomDirectory mapping
+    this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
+        channel.guild.id,
+        roomId,
+        "public",
+    );
     let promiseChain: any = Bluebird.resolve();
+
+    // Join a whole bunch of users.
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
-    return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.Channel) => {
-      for (const member of (<Discord.TextChannel> channel).members.array()) {
+    for (const member of (<Discord.TextChannel> channel).members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
@@ -75,11 +82,8 @@ export class MatrixRoomHandler {
           return this.discord.InitJoinUser(member, [roomId]);
         }));
         delay += this.config.limits.roomGhostJoinDelay;
-      }
-    }).catch((err) => {
-      log.verbose("OnAliasQueried => %s", err);
-      throw err;
-    });
+    }
+    await promiseChain;
   }
 
   public OnEvent (request, context): Promise<any> {
