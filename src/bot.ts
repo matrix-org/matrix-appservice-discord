@@ -56,13 +56,6 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
-    console.log(this.config);
-    this.dmHandler = new DMHandler(
-        this.config.puppeting,
-        bridge,
-        this.clientFactory,
-        this.store,
-    );
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -104,6 +97,17 @@ export class DiscordBot {
       client.on("warn", (msg) => { log.warn("discord.js", msg); });
       log.info("DiscordBot", "Discord bot client logged in.");
       this.bot = client;
+
+      this.dmHandler = new DMHandler(
+          this.config.puppeting,
+          this.bridge,
+          this.clientFactory,
+          this.store
+      );
+
+      this.dmHandler.StartPuppetedClients().catch(() => {
+        log.warn("DiscordBot", "Failed to start puppeted clients for DMs");
+      });
 
       if (!this.config.bridge.disablePresence) {
         if (!this.config.bridge.presenceInterval) {
@@ -648,18 +652,18 @@ export class DiscordBot {
     }
   }
 
-    private async DeleteDiscordMessage(msg: Discord.Message) {
-        log.info("DiscordBot", `Got delete event for ${msg.id}`);
-        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-        if (!storeEvent.Result) {
-          log.warn("DiscordBot", `Could not redact because the event was in the store.`);
-          return;
-        }
-        while (storeEvent.Next()) {
-          log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
-          const intent = this.GetIntentFromDiscordMember(msg.author);
-          const matrixIds = storeEvent.MatrixId.split(";");
-          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
-        }
+  private async DeleteDiscordMessage(msg: Discord.Message) {
+    log.info("DiscordBot", `Got delete event for ${msg.id}`);
+    const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+    if (!storeEvent.Result) {
+      log.warn("DiscordBot", `Could not redact because the event was in the store.`);
+      return;
+    }
+    while (storeEvent.Next()) {
+      log.info("DiscordBot", `Deleting discord msg ${storeEvent.DiscordId}`);
+      const intent = this.GetIntentFromDiscordMember(msg.author);
+      const matrixIds = storeEvent.MatrixId.split(";");
+      await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
     }
   }
+}

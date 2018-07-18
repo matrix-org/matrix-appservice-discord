@@ -15,13 +15,11 @@ export class Schema implements IDbSchema {
 
         return store.create_table(`
           CREATE TABLE dm_room (
-            discord_id TEXT NOT NULL,
-            matrix_user_id TEXT NOT NULL,
-            room_id TEXT NOT NULL,
+            room_id TEXT NOT NULL UNIQUE,
+            chan_id TEXT NOT NULL UNIQUE,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
-            PRIMARY KEY(discord_id,matrix_user_id)
-          );`, "dm_room");
+          )`, "dm_room");
     }
 
     public rollBack(store: DiscordStore): Promise <null> {

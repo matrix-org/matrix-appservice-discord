@@ -179,7 +179,7 @@ export class DiscordStore {
     return this.db.allAsync(
       `
       SELECT *
-      FROM get_user_discord_ids
+      FROM user_id_discord_id
       `,
     ).then( (rows) => {
       return rows;

@@ -22,7 +22,7 @@ marked.setOptions({
 });
 
 export class MessageProcessorOpts {
-    constructor (readonly domain: string, readonly bot: DiscordBot = null) {
+    constructor (readonly domain: string, readonly bot?: DiscordBot) {
 
     }
 }
@@ -34,7 +34,7 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    constructor (opts: MessageProcessorOpts, bot: DiscordBot = null) {
+    constructor (opts: MessageProcessorOpts, bot?: DiscordBot) {
         // Backwards compat
         if (bot != null) {
             this.opts = new MessageProcessorOpts(opts.domain, bot);
@@ -49,7 +49,9 @@ export class MessageProcessor {
         let content = msg.content;
         // embeds are markdown formatted, thus inserted before
         // for both plaintext and markdown
-        content = this.InsertEmbeds(content, msg);
+        if (this.opts.bot !== null) {
+            content = this.InsertEmbeds(content, msg);
+        }
         
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax

@@ -4,8 +4,7 @@ import * as log from "npmlog";
 
 export class DbDmRoom implements IDbData {
     public RoomId: string;
-    public UserId: string;
-    public DiscordId: string;
+    public ChannelId: string;
     public Result: boolean;
     public CreatedAt: number;
     public UpdatedAt: number;
@@ -14,10 +13,10 @@ export class DbDmRoom implements IDbData {
         let selectStatement = "";
         if(params.room_id !== undefined) {
             selectStatement = "WHERE room_id = $room_id";
-        } else if (params.user_id !== undefined && params.discord_id !== undefined) {
-            selectStatement = "WHERE matrix_user_id = $user_id AND discord_id = $discord_id";
+        } else if (params.chan_id !== undefined) {
+            selectStatement = "WHERE chan_id = $chan_id";
         } else {
-            throw Error("Missing room_id|user_id,discord_id");
+            throw Error("Missing room_id|chan_id");
         }
 
         return store.db.getAsync(`
@@ -25,14 +24,15 @@ export class DbDmRoom implements IDbData {
             FROM dm_room
             ${selectStatement}`, {
             $room_id: params.room_id,
-            $user_id: params.user_id,
-            $discord_id: params.discord_id,
+            $chan_id: params.chan_id,
         }).then((row) => {
             this.Result = row !== undefined;
             if (this.Result) {
                 this.RoomId = row.room_id;
-                this.UserId = row.matrix_user_id;
-                this.DiscordId = row.discord_id;
+                this.ChannelId = row.chan_id;
+                this.CreatedAt = row.created_at;
+                this.UpdatedAt = row.updated_at;
+
             }
         });
     }
@@ -42,11 +42,10 @@ export class DbDmRoom implements IDbData {
         this.UpdatedAt = this.CreatedAt;
         return store.db.runAsync(`
             INSERT INTO dm_room
-            (discord_id,matrix_user_id,room_id,created_at,updated_at)
-            VALUES ($discord_id,$user_id,$room_id,$created_at,$updated_at);`, {
+            (room_id,chan_id,created_at,updated_at)
+            VALUES ($room_id,$chan_id, $created_at, $updated_at);`, {
             $room_id: this.RoomId,
-            $user_id: this.UserId,
-            $discord_id: this.DiscordId,
+            $chan_id: this.ChannelId,
             $created_at: this.CreatedAt,
             $updated_at: this.UpdatedAt,
         });
