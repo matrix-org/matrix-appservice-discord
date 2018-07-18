@@ -11,7 +11,8 @@
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
     "getbotlink": "node ./build/tools/addbot.js",
     "adminme": "node ./build/tools/adminme.js",
-    "usertool": "node ./build/tools/userClientTools.js"
+    "usertool": "node ./build/tools/userClientTools.js",
+    "directoryfix": "node ./build/tools/addRoomsToDirectory.js"
   },
   "repository": {
     "type": "git",
