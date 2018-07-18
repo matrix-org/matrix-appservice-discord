@@ -38,6 +38,7 @@ function createRH(opts: any = {}) {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
                 const chan = new MockChannel();
+                chan.guild = new MockGuild("asb");
                 if (opts.createMembers) {
                     chan.members.set("12345", new MockMember("12345", "testuser1"));
                     chan.members.set("54321", new MockMember("54321", "testuser2"));
@@ -83,6 +84,9 @@ function createRH(opts: any = {}) {
     const mxClient = {
         getStateEvent: () => {
             return Promise.resolve(opts.powerLevels || {});
+        },
+        setRoomDirectoryVisibilityAppService: () => {
+            return Promise.resolve();
         },
     };
     const provisioner = {
