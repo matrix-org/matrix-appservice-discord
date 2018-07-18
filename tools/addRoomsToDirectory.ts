@@ -16,7 +16,7 @@ const optionDefinitions = [
         name: "help",
         alias: "h",
         type: Boolean,
-        description: "Display this usage guide."
+        description: "Display this usage guide.",
     },
     {
       name: "config",
@@ -24,14 +24,14 @@ const optionDefinitions = [
       type: String,
       defaultValue: "config.yaml",
       description: "The AS config file.",
-      typeLabel: "<config.yaml>"
+      typeLabel: "<config.yaml>",
     },
     {
         name: "store",
         alias: "s",
         type: String,
         defaultValue: "room-store.db",
-        description: "The location of the room store."
+        description: "The location of the room store.",
     },
 ];
 
@@ -65,13 +65,13 @@ const clientFactory = new ClientFactory({
 });
 
 const bridge = new Bridge({
-    "homeserverUrl": true,
-    "registration": true,
-    "domain": "rubbish",
-    "controller": {
-        "onEvent": function () { }
+    homeserverUrl: true,
+    registration: true,
+    domain: "rubbish",
+    controller: {
+        onEvent: () => { },
     },
-    roomStore: options.store
+    roomStore: options.store,
 });
 
 bridge.loadDatabases().catch((e) => {
@@ -83,14 +83,14 @@ bridge.loadDatabases().catch((e) => {
 }).then((rooms) => {
     rooms = rooms.filter((r) => r.remote.get("plumbed") !== true );
     const client = clientFactory.getClientAs();
-    log.info("AddRoom",`Got ${rooms.length} rooms to set`);
-    rooms.forEach(room => {
+    log.info("AddRoom", `Got ${rooms.length} rooms to set`);
+    rooms.forEach((room) => {
         const guild = room.remote.get("discord_guild");
         const roomId = room.matrix.getId();
         client.setRoomDirectoryVisibilityAppService(
             guild,
             roomId,
-            'public'
+            "public",
         ).then(() => {
             log.info("AddRoom", `Set ${roomId} to visible in ${guild}'s directory`);
         }).catch((e) => {
@@ -100,7 +100,3 @@ bridge.loadDatabases().catch((e) => {
 }).catch((e) => {
     log.error("AddRoom", `Failed to run script`, e);
 });
-
-
-
-

@@ -67,7 +67,7 @@ export class MatrixRoomHandler {
     this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
         channel.guild.id,
         roomId,
-        'public'
+        "public",
     );
     let promiseChain: any = Bluebird.resolve();
 
