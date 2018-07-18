@@ -78,9 +78,10 @@ bridge.loadDatabases().catch((e) => {
     log.error("AddRoom", `Failed to load database`, e);
 }).then(() => {
     return bridge.getRoomStore().getEntriesByRemoteRoomData({
-        discord_type: "text"
+        discord_type: "text",
     });
 }).then((rooms) => {
+    rooms = rooms.filter((r) => r.remote.get("plumbed") !== true );
     const client = clientFactory.getClientAs();
     log.info("AddRoom",`Got ${rooms.length} rooms to set`);
     rooms.forEach(room => {
