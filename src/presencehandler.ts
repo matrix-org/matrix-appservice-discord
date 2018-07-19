@@ -1,6 +1,7 @@
 import * as Discord from "discord.js";
-import * as log from "npmlog";
 import { DiscordBot } from "./bot";
+import { Log } from "./log";
+const log = new Log("PresenceHandler");
 
 export class PresenceHandlerStatus {
     /* One of: ["online", "offline", "unavailable"] */
@@ -24,25 +25,25 @@ export class PresenceHandler {
 
     public Start(intervalTime: number) {
         if (this.interval) {
-            log.info("PresenceHandler", "Restarting presence handler...");
+            log.info("Restarting presence handler...");
             this.Stop();
         }
-        log.info("PresenceHandler", `Starting presence handler with new interval ${intervalTime}ms`);
+        log.info(`Starting presence handler with new interval ${intervalTime}ms`);
         this.interval = setInterval(this.processIntervalThread.bind(this), intervalTime);
     }
 
     public Stop() {
         if (!this.interval) {
-            log.info("PresenceHandler", "Can not stop interval, not running.");
+            log.info("Can not stop interval, not running.");
         }
-        log.info("PresenceHandler", "Stopping presence handler");
+        log.info("Stopping presence handler");
         clearInterval(this.interval);
         this.interval = null;
     }
 
     public EnqueueMember(member: Discord.GuildMember) {
         if (!this.presenceQueue.includes(member)) {
-            log.info("PresenceHandler", `Adding ${member.id} (${member.user.username}) to the presence queue`);
+            log.info(`Adding ${member.id} (${member.user.username}) to the presence queue`);
             this.presenceQueue.push(member);
         }
     }
@@ -55,7 +56,6 @@ export class PresenceHandler {
             this.presenceQueue.splice(index, 1);
         } else {
             log.warn(
-                "PresenceHandler",
                 `Tried to remove ${member.id} from the presence queue but it could not be found`,
             );
         }
@@ -73,7 +73,7 @@ export class PresenceHandler {
             if (!this.ProcessMember(member)) {
                 this.presenceQueue.push(member);
             } else {
-                log.info("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
+                log.info(`Dropping ${member.id} from the presence queue.`);
             }
         }
     }
@@ -109,7 +109,7 @@ export class PresenceHandler {
             statusObj.status_msg = status.StatusMsg;
         }
         intent.getClient().setPresence(statusObj).catch((ex) => {
-            log.warn("PresenceHandler", `Could not update Matrix presence for ${guildMember.id}`);
+            log.warn(`Could not update Matrix presence for ${guildMember.id}`);
         });
     }
 }

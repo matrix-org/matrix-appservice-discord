@@ -2,7 +2,6 @@ import { DiscordBot } from "./bot";
 import {
   Bridge,
   RemoteRoom,
-  MatrixRoom,
   thirdPartyLookup,
   thirdPartyProtocolResult,
   thirdPartyUserResult,
@@ -11,10 +10,12 @@ import {
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
-import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import { Util } from "./util";
 import { Provisioner } from "./provisioner";
+import { Log } from "./log";
+const log = new Log("MatrixRoomHandler");
+
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const HTTP_UNSUPPORTED = 501;

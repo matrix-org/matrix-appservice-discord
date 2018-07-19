@@ -2,14 +2,14 @@ import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
-import * as log from "npmlog";
+import { Log } from "../src/log";
 
 import { MessageProcessorMatrixResult } from "../src/messageprocessor";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 
 Chai.use(ChaiAsPromised);
-log.level = "silent";
+Log.ForceSilent();
 
 const assert = Chai.assert;
 // const should = Chai.should as any;

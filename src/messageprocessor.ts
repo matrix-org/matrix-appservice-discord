@@ -1,8 +1,10 @@
 import * as Discord from "discord.js";
 import * as marked from "marked";
-import * as log from "npmlog";
 import { DiscordBot } from "./bot";
 import * as escapeHtml from "escape-html";
+
+import { Log } from "./log";
+const log = new Log("MessageProcessor");
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
@@ -161,7 +163,7 @@ export class MessageProcessor {
                 const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
-                log.warn("MessageProcessor",
+                log.warn(
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
             }
@@ -183,7 +185,7 @@ export class MessageProcessor {
                 content = content.replace(results[0],
                     `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
             } catch (ex) {
-                log.warn("MessageProcessor",
+                log.warn(
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
             }
