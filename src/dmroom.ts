@@ -1,4 +1,4 @@
-import { Snowflake, Client, TextChannel, Collection, GuildMember, Channel, DMChannel, GroupDMChannel, Message, FileOptions } from "discord.js";
+import { Snowflake, Client, TextChannel, Collection, GuildMember, Channel, DMChannel, GroupDMChannel, Message, FileOptions, User } from "discord.js";
 import { MatrixRoom , Intent} from "matrix-appservice-bridge";
 import * as log from "npmlog";
 import { DbDmRoom } from "./db/dbdatadmroom";
@@ -113,7 +113,6 @@ export class DMRoom {
         log.info("DMRoom", `Got discord message for ${this.dbroom.ChannelId}`);
         const intent = this.handler.GetIntentForUser(msg.author);
         const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
-        console.log(matrixMsg);
         await matrixMsg.attachmentEvents.map((evt) => {
             return intent.sendMessage((this.dbroom.RoomId), evt);
         });
@@ -127,6 +126,12 @@ export class DMRoom {
             body: matrixMsg.body,
             formatted_body: matrixMsg.formattedBody
         });
+    }
+
+    public async OnDiscordTyping(user: User, typing: Boolean) {
+        log.verbose("DMRoom", `Got typing for ${this.dbroom.ChannelId} ${typing}`);
+        const intent = this.handler.GetIntentForUser(user);
+        intent.sendTyping(this.RoomId, typing);
     }
 
 }

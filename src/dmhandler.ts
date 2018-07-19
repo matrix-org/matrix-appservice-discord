@@ -79,6 +79,8 @@ export class DMHandler {
             return this.clientFactory.getClient(user_id).then((client) => {
                 this.discordToUserIdMap.set(client.user.id, user_id);
                 client.on("message", (msg) => { this.onDiscordMessage(msg); });
+                client.on("typingStart", (channel, user,) => { this.onDiscordTyping(channel, user, true); } )
+                client.on("typingStop", (channel, user,) => { this.onDiscordTyping(channel, user, false); } )
             }).catch((e) => {
                 log.error("DMHandler", "Failed to start client", e);
             });
@@ -170,6 +172,16 @@ export class DMHandler {
 
     private async GetDMRoom(msg: Message): Promise<DMRoom> {
         // Check if we have a hydrated one ready for use?
+    private async onDiscordTyping(channel: Channel, user: User, typing: boolean) {
+        if (!["group", "dm"].includes(channel.type)) {
+            return;
+        }
+        log.verbose("DMHandler", `Got typing from ${channel.id} ${user.id} ${user.username}`);
+        const dmRoom = await this.GetDMRoomByDiscordChannel(channel);
+        if (dmRoom !== null) {
+            dmRoom.OnDiscordTyping(user, typing);
+        }
+    }
         let room = this.dmRooms.find(
             (dmRoom) => dmRoom.DiscordChannelId === msg.channel.id
         );
