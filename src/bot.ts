@@ -99,7 +99,7 @@ export class DiscordBot {
       this.bot = client;
 
       this.dmHandler = new DMHandler(
-          this.config.puppeting,
+          this.config,
           this.bridge,
           this.clientFactory,
           this.store

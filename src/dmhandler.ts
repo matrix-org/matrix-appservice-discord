@@ -1,4 +1,4 @@
-import {DiscordBridgeConfigPuppeting} from "./config";
+import {DiscordBridgeConfig} from "./config";
 import {DiscordClientFactory} from "./clientfactory";
 import {
     Bridge,
@@ -9,6 +9,7 @@ import {DbDmRoom} from "./db/dbdatadmroom";
 import { Message, Client, User, DMChannel } from "discord.js";
 import { DMRoom } from "./dmroom";
 import { MessageProcessor } from "./messageprocessor";
+import { MatrixEventProcessor } from "./matrixeventprocessor";
 
 const NOT_ENABLED_ERROR =
 `
@@ -38,8 +39,9 @@ export class DMHandler {
     private dmRooms: DMRoom[];
     private discordToUserIdMap: Map<string,string>;
     private messageProcessor: MessageProcessor;
+    private matrixEventProcessor: MatrixEventProcessor;
     constructor (
-        private config: DiscordBridgeConfigPuppeting,
+        private config: DiscordBridgeConfig,
         private bridge: Bridge,
         private clientFactory: DiscordClientFactory,
         private store: DiscordStore,
@@ -49,11 +51,23 @@ export class DMHandler {
             domain: bridge.opts.domain,
             bot: null // No emoji support.
         });
+        this.matrixEventProcessor = new MatrixEventProcessor({
+            bridge: bridge,
+            config: config
+        });
         this.discordToUserIdMap = new Map();
     }
 
     get MessageProcessor() {
         return this.messageProcessor;
+    }
+
+    get EventProcessor() {
+        return this.matrixEventProcessor;
+    }
+
+    get ClientFactory() {
+        return this.clientFactory;
     }
 
     public async StartPuppetedClients() {
@@ -128,13 +142,16 @@ export class DMHandler {
     }
 
     public async OnMatrixMessage(event): Promise<void> {
-        // const DMRoom = await this.store.Get(DbDmRoom, {room_id: event.room_id});
-        // if (!DMRoom.Result) {
-        //     return;
-        // }
+        log.verbose("DMHandler", `Got DM message from ${event.room_id}`);
+        try {
+            const dmRoom = await this.GetDMRoomByRoomId(event);
+            dmRoom.OnMatrixEvent(event);
+        } catch(e) {
+            log.error("DMHandler", `"Failed to get DM room, dropping message! ${event.room_id}`, e);
+        }
     }
 
-    public GetIntentForUser(user: User): any {
+    public GetIntentForUser(user?: User): any {
         return this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
     }
 
@@ -162,7 +179,6 @@ export class DMHandler {
             let dbRoom = await this.store.Get(DbDmRoom,{
                 chan_id: msg.channel.id
             });
-            console.log(dbRoom);
 
             if (!dbRoom.Result) {
                 log.info("DMHandler", `DmRoom ${msg.channel.id} not DB, creating new room!`);
@@ -190,6 +206,27 @@ export class DMHandler {
             this.dmRooms.push(room);
         }
         return room;
+    }
+
+    private async GetDMRoomByRoomId(event: any) {
+        // Check if we have a hydrated one ready for use?
+        let room = this.dmRooms.find(
+            (dmRoom) => dmRoom.RoomId === event.room_id
+        );
+        if (room !== undefined) {
+            return room;
+        }
+        log.info("DMHandler", `DmRoom ${event.room_id} not in memory, trying DB`);
+        // Try to fetch one from the DB.
+        let dbRoom = await this.store.Get(DbDmRoom,{
+            room_id: event.room_id
+        });
+        if (dbRoom.Result) {
+            room = new DMRoom(dbRoom, this);
+            this.dmRooms.push(room);
+            return room;
+        }
+        throw new Error("DM room not found!");
     }
 
     private async CheckInvite(event): Promise<InviteResult> {
