@@ -138,11 +138,11 @@ export class UserSyncroniser {
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         try {
-            await intent.getClient().sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
+            await intent.getClient().sendStateEvent(roomId, "m.room.member", {
                 membership: "join",
                 avatar_url: remoteUser.get("avatarurl_mxc"),
                 displayname: memberState.displayName,
-            });
+            }, memberState.mxUserId);
         } catch (e) {
             log.warn("UserSync", `Failed to send state to ${roomId}`, e);
         }
