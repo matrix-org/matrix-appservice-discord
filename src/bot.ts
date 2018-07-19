@@ -413,6 +413,20 @@ export class DiscordBot {
       }
       return Promise.resolve();
     }).then(() => {
+      if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
+        return Util.UploadContentFromUrl(
+          discordUser.avatarURL,
+          intent,
+          discordUser.avatar,
+        ).then((avatar) => {
+          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
+            remoteUser.set("avatarurl", discordUser.avatarURL);
+            return userStore.setRemoteUser(remoteUser);
+          });
+        });
+      }
+      return true;
+    }).then(() => {
       if (remoteUser.get("displayname") !== displayName) {
         // iterate over guilds and do the stuff right
         const avatar = remoteUser.get("avatarurl");
@@ -438,20 +452,6 @@ export class DiscordBot {
         });
         return Bluebird.all(updates).then(() => {
           remoteUser.set("displayname", displayName);
-        });
-      }
-      return true;
-    }).then(() => {
-      if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
-        return Util.UploadContentFromUrl(
-          discordUser.avatarURL,
-          intent,
-          discordUser.avatar,
-        ).then((avatar) => {
-          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
-            remoteUser.set("avatarurl", discordUser.avatarURL);
-            return userStore.setRemoteUser(remoteUser);
-          });
         });
       }
       return true;
