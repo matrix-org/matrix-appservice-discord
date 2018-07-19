@@ -414,9 +414,29 @@ export class DiscordBot {
       return Promise.resolve();
     }).then(() => {
       if (remoteUser.get("displayname") !== displayName) {
-        return intent.setDisplayName(displayName).then(() => {
+        // iterate over guilds and do the stuff right
+        const avatar = remoteUser.get("avatarurl");
+        const client = this.GetIntentFromDiscordMember(discordUser).getClient();
+        const userId = client.credentials.userId;
+        const updates = [];
+        this.bot.guilds.forEach((guild) => {
+            guild.members.forEach((member) => {
+                if (discordUser.id === member.id) {
+                  updates.push(Bluebird.each(this.GetRoomIdsFromGuild(member.guild.id), (room) => {
+                      log.verbose(`Updating ${room}`);
+                      client.sendStateEvent(room, "m.room.member", {
+                        membership: "join",
+                        avatar_url: avatar,
+                        displayname: member.displayName,
+                      }, userId);
+                    }).catch((err) => {
+                      log.error("DiscordBot", "Failed to update guild member %s", err);
+                    }));
+                }
+            });
+        });
+        return Bluebird.all(updates).then(() => {
           remoteUser.set("displayname", displayName);
-          return userStore.setRemoteUser(remoteUser);
         });
       }
       return true;
