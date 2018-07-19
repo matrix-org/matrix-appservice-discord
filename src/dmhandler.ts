@@ -153,8 +153,19 @@ export class DMHandler {
         }
     }
 
-    public GetIntentForUser(user?: User): any {
-        return this.bridge.getIntentFromLocalpart(`_discord_${user.id}`);
+    public GetMatrixIdForUser(user: User): any {
+        // TODO: We should find out what the prefix actually is?
+        return `@_discord_${user.id}:${this.bridge.opts.domain}`;
+    }
+
+    /**
+     * Create a virtual user's intent based off a Discord user.
+     * @param user A discord user
+     */
+    public GetIntentForUser(user: User): any {
+        const userId = this.GetMatrixIdForUser(user);
+        log.verbose("DMHandler", `Creating intent for ${userId}`);
+        return this.bridge.getIntent(userId);
     }
 
     private async onDiscordMessage(msg: Message): Promise<void> {
