@@ -6,7 +6,7 @@ import {
 import * as log from "npmlog";
 import {DiscordStore} from "./store";
 import {DbDmRoom} from "./db/dbdatadmroom";
-import { Message, Client, User, DMChannel } from "discord.js";
+import { Message, Client, User, DMChannel, Channel, GroupDMChannel, Util } from "discord.js";
 import { DMRoom } from "./dmroom";
 import { MessageProcessor } from "./messageprocessor";
 import { MatrixEventProcessor } from "./matrixeventprocessor";
@@ -34,7 +34,11 @@ interface InviteResult {
     valid: boolean;
     message: string;
 }
-
+/**
+ * Handler class that forwards memberstate and messages between Matrix and Discord DMs.
+ * This class does not handle direct messaging rules or message formatting which 
+ * should be handled in DMRoom.
+ */
 export class DMHandler {
     private dmRooms: DMRoom[];
     private discordToUserIdMap: Map<string,string>;
@@ -58,6 +62,8 @@ export class DMHandler {
         this.discordToUserIdMap = new Map();
     }
 
+    /* A selection of processors and factories useful to DMRoom */
+
     get MessageProcessor() {
         return this.messageProcessor;
     }
@@ -70,6 +76,10 @@ export class DMHandler {
         return this.clientFactory;
     }
 
+    /**
+     * Start all clients from accounts we can puppet, and listen for DM related events.
+     * This uses clientFactory so any clients that are already started will be retrived instead.
+     */
     public async StartPuppetedClients() {
         log.info("DMHandler", "Starting puppeted clients to hook into DMs.");
         const users = await this.store.get_all_user_discord_ids();
@@ -143,6 +153,11 @@ export class DMHandler {
         //TODO: Start client if not active.
     }
 
+    /**
+     * An event that should be forwarded to a viable DMRoom. If a DM room doesn't exist
+     * then one should be created locally and on the discord side.
+     * @param event A matrix event
+     */
     public async OnMatrixMessage(event): Promise<void> {
         log.verbose("DMHandler", `Got DM message from ${event.room_id}`);
         try {
