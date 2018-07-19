@@ -22,6 +22,9 @@ export class MatrixEventProcessorOpts {
     }
 }
 
+type UserMemberArray = Discord.GuildMember[]|Discord.User[];
+type ChannelTypes = Discord.TextChannel|Discord.DMChannel|Discord.GroupDMChannel;
+
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: any;
@@ -31,11 +34,22 @@ export class MatrixEventProcessor {
         this.bridge = opts.bridge;
     }
 
-    public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
+    public EventToEmbed(event: any, profile: any|null, channel: ChannelTypes): Discord.RichEmbed {
+
+        let members: UserMemberArray = [];
+        if (channel.type === "text") {
+            members = (<Discord.TextChannel>channel).members.array();
+        } else if (channel.type === "group") {
+            members = (<Discord.GroupDMChannel>channel).recipients.array();
+        } else {
+            const dm = <Discord.DMChannel>channel;
+            members = [dm.recipient, dm.client.user];
+        }
+
         let body = this.config.bridge.disableDiscordMentions ? event.content.body :
             this.FindMentionsInPlainBody(
                 event.content.body,
-                channel.members.array(),
+                members,
             );
 
         // Replace @everyone
@@ -59,7 +73,9 @@ export class MatrixEventProcessor {
         }
 
         // Handle discord custom emoji
-        body = this.ReplaceDiscordEmoji(body, channel.guild);
+        if (channel.type === "text") {
+            body = this.ReplaceDiscordEmoji(body, (<Discord.TextChannel>channel).guild);
+        }
 
         let displayName = event.sender;
         let avatarUrl = undefined;
@@ -85,11 +101,14 @@ export class MatrixEventProcessor {
         });
     }
 
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+    public FindMentionsInPlainBody(body: string, members: UserMemberArray): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {
-            const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                escapeStringRegexp(member.displayName);
+            const user = member["user"] !== undefined ? member["user"] : member;
+            let matcher = escapeStringRegexp(user.username + "#" + user.discriminator);
+            if (member["displayName"] !== undefined) {
+                matcher + "|" + escapeStringRegexp(member["displayName"]);
+            }
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
                     , "igmu");
