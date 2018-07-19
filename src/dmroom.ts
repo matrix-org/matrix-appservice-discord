@@ -4,6 +4,7 @@ import * as log from "npmlog";
 import { DbDmRoom } from "./db/dbdatadmroom";
 import { DMHandler } from "./dmhandler";
 import { MessageProcessor } from "./messageprocessor";
+import { Util } from "./util";
 
 export class DMRoom {
     private matrixMembers: Set<string>;
@@ -132,6 +133,35 @@ export class DMRoom {
         log.verbose("DMRoom", `Got typing for ${this.dbroom.ChannelId} ${typing}`);
         const intent = this.handler.GetIntentForUser(user);
         intent.sendTyping(this.RoomId, typing);
+    }
+
+    public UpdateName(user: User, name: string) {
+        log.info("DMRoom", `Updating name for ${this.RoomId}`);
+        const intent = this.handler.GetIntentForUser(user);
+        intent.setRoomName(this.RoomId, name);
+    }
+
+    public async UpdateAvatar(user: User, url: string) {
+        log.info("DMRoom", `Updating avatar for ${this.RoomId}`);
+        const intent = this.handler.GetIntentForUser(user);
+        const mxc = await Util.UploadContentFromUrl(url, intent, null);
+        intent.setRoomAvatar(this.RoomId, mxc.mxcUrl);
+    }
+
+    public async AddToRoom(user: User, newUser: User) {
+        log.info("DMRoom", `Adding ${newUser.id} to ${this.RoomId}`);
+        const intent = this.handler.GetIntentForUser(user);
+        const intentNew = this.handler.GetIntentForUser(newUser);
+        await intent.invite(this.RoomId, this.handler.GetMatrixIdForUser(newUser));
+        intentNew.join(this.RoomId);
+    }
+
+    public KickFromRoom(user: User, kickee: User) {
+        log.info("DMRoom", `Kicking ${kickee.id} from ${this.RoomId}`);
+        const intent = this.handler.GetIntentForUser(user);
+        const intentKicked = this.handler.GetIntentForUser(kickee);
+        intent.sendMessage(this.RoomId, {msgtype: "m.notice", body: "Kicking user from room."});
+        intentKicked.leave(this.RoomId);
     }
 
 }

@@ -158,9 +158,48 @@ export class DMHandler {
     }
 
     private async onDiscordMessage(msg: Message): Promise<void> {
-        if (msg.channel.type !== "dm") {
-            return; // We currently only support DMs.
+        if (!["group", "dm"].includes(msg.channel.type)) {
+            return;
         }
+
+        if (msg.type === "RECIPIENT_ADD") {
+            const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
+            if (dmRoom) {
+                dmRoom.AddToRoom(msg.author, msg.mentions.users.first());
+            }
+            return;
+        }
+
+        if (msg.type === "RECIPIENT_REMOVE") {
+            const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
+            if (dmRoom) {
+                dmRoom.KickFromRoom(msg.author, msg.mentions.users.first());
+            }
+            return;
+        }
+
+        if (msg.type === "CHANNEL_NAME_CHANGE") {
+            const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
+            if (dmRoom) {
+                dmRoom.UpdateName(msg.author, msg.content);
+            }
+            return;
+        }
+
+        if (msg.type === "CHANNEL_ICON_CHANGE") {
+            const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
+            if (dmRoom) {
+                dmRoom.UpdateAvatar(msg.author, (<GroupDMChannel>msg.channel)["iconUrl"]);
+            }
+            return;
+        }
+
+        if (msg.type !== "DEFAULT"){ 
+            log.verbose("DMHandler", `Ignoring unknown message type ${msg.type}`);
+            console.log(msg);
+            return;
+        }
+
         log.verbose("DMHandler", `Got DM message from ${msg.channel.id}`);
         try {
             const dmRoom = await this.GetDMRoom(msg);
