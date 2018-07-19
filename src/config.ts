@@ -30,8 +30,9 @@ export class DiscordBridgeConfigAuth {
   public secret: string;
   public botToken: string;
 }
-class DiscordBridgeConfigLogging {
+export class DiscordBridgeConfigLogging {
   public level: string;
+  public lineDateFormat: string = 'MMM-D HH:mm:ss.SSS';
 }
 
 class DiscordBridgeConfigRoom {
