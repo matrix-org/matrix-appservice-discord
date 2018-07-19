@@ -452,13 +452,27 @@ export class DiscordBot {
     });
   }
 
-  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
-                                  guild: Discord.Guild, author: Discord.User,
+  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult,
+                                  chan: Discord.GuildChannel,
+                                  author: Discord.User,
                                   msgID: string): Promise<boolean> {
     const rooms = await this.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
+      matrixMsg.attachmentEvents.forEach((evt) => {
+        intent.sendMessage(room, evt).then((res) => {
+          const evt = new DbEvent();
+          evt.MatrixId = res.event_id + ";" + room;
+          evt.DiscordId = msgID;
+          evt.ChannelId = chan.id;
+          evt.GuildId = chan.guild.id;
+          return this.store.Insert(evt);
+        })
+      });
+      if(matrixMsg.body === "") {
+        return;
+      }
       intent.sendMessage(room, {
         body: matrixMsg.body,
         msgtype: "m.text",
@@ -469,7 +483,7 @@ export class DiscordBot {
         evt.MatrixId = res.event_id + ";" + room;
         evt.DiscordId = msgID;
         evt.ChannelId = chan.id;
-        evt.GuildId = guild.id;
+        evt.GuildId = chan.guild.id;
         return this.store.Insert(evt);
       });
     });
@@ -570,71 +584,24 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.UpdateUser(msg.author).then(() => {
-      return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
-        log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
-        return null;
-      });
-    }).then((rooms) => {
-      if (rooms === null) {
-        return null;
-      }
-      const intent = this.GetIntentFromDiscordMember(msg.author);
-      // Check Attachements
-      msg.attachments.forEach((attachment) => {
-        Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
-          const fileMime = mime.lookup(attachment.filename);
-          const msgtype = attachment.height ? "m.image" : "m.file";
-          const info = {
-            mimetype: fileMime,
-            size: attachment.filesize,
-            w: null,
-            h: null,
-          };
-          if (msgtype === "m.image") {
-            info.w = attachment.width;
-            info.h = attachment.height;
-          }
-          rooms.forEach((room) => {
-            intent.sendMessage(room, {
-              body: attachment.filename,
-              info,
-              msgtype,
-              url: content.mxcUrl,
-              external_url: attachment.url,
-            }).then((res) => {
-              const evt = new DbEvent();
-              evt.MatrixId = res.event_id + ";" + room;
-              evt.DiscordId = msg.id;
-              evt.ChannelId = msg.channel.id;
-              evt.GuildId = msg.guild.id;
-              return this.store.Insert(evt);
-            });
-          });
-        });
-      });
-      if (msg.content !== null && msg.content !== "") {
-        this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
-            rooms.forEach((room) => {
-              intent.sendMessage(room, {
-                body: result.body,
-                msgtype: "m.text",
-                formatted_body: result.formattedBody,
-                format: "org.matrix.custom.html",
-            }).then((res) => {
-                    const evt = new DbEvent();
-                    evt.MatrixId = res.event_id + ";" + room;
-                    evt.DiscordId = msg.id;
-                    evt.ChannelId = msg.channel.id;
-                    evt.GuildId = msg.guild.id;
-                    return this.store.Insert(evt);
-                });
-            });
-        });
-      }
-    }).catch((err) => {
-      log.verbose("DiscordBot", "Failed to send message into room.", err);
-    });
+    await this.UpdateUser(msg.author);
+    let rooms;
+    try {
+      rooms = await this.GetRoomIdsFromChannel(msg.channel);
+    }
+    catch (e) {
+      log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
+    }
+    if (rooms === null) {
+      return null;
+    }
+    const intent = this.GetIntentFromDiscordMember(msg.author);
+    const result = await this.msgProcessor.FormatDiscordMessage(msg, intent);
+    try {
+      await this.SendMatrixMessage(result, <Discord.GuildChannel>msg.channel, msg.author, msg.id);
+    } catch (e) {
+      log.verbose("DiscordBot", "Failed to send message into room.", e);
+    }
   }
 
   private async OnMessageUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {
@@ -647,7 +614,7 @@ export class DiscordBot {
     const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
     // Send the message to all bridged matrix rooms
-    if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {
+    if (!await this.SendMatrixMessage(editedMsg, <Discord.GuildChannel>newMsg.channel, newMsg.author, newMsg.id)) {
       log.error("DiscordBot", "Unable to announce message edit for msg id:", newMsg.id);
     }
   }
