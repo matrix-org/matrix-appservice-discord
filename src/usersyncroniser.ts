@@ -135,12 +135,18 @@ export class UserSyncroniser {
         const nickKey = `nick_${guildId}`;
         const remoteUser = await this.userStore.getRemoteUser(memberState.id);
         const intent = this.bridge.getIntent(memberState.mxUserId);
-        log.verbose("UserSync", `Sending state event for state ${JSON.stringify(memberState)}.`);
-        await intent.sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
-            membership: "join",
-            avatar_url: remoteUser.get("avatarurl_mxc"),
-            displayname: memberState.displayName,
-        });
+        /* The intent class tries to be smart and deny a state update for <PL50 users.
+           Obviously a user can change their own state so we use the client instead. */
+        try {
+            await intent.getClient().sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
+                membership: "join",
+                avatar_url: remoteUser.get("avatarurl_mxc"),
+                displayname: memberState.displayName,
+            });
+        } catch (e) {
+            log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+        }
+
         remoteUser.set(nickKey, memberState.displayName);
         return this.userStore.setRemoteUser(remoteUser);
     }
