@@ -73,7 +73,9 @@ export class DiscordBot {
         client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
       }
       if (!this.config.bridge.disablePresence) {
-        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
+        client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
+          this.presenceHandler.EnqueueUser(newMember.user); 
+        });
       }
       client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
@@ -98,7 +100,7 @@ export class DiscordBot {
         }
         this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
-                this.presenceHandler.EnqueueMember(member);
+                this.presenceHandler.EnqueueUser(member.user);
             });
         });
         this.presenceHandler.Start(
@@ -470,7 +472,6 @@ export class DiscordBot {
   private RemoveGuildMember(guildMember: Discord.GuildMember) {
     const intent = this.GetIntentFromDiscordMember(guildMember);
     return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
-        this.presenceHandler.DequeueMember(guildMember);
         return intent.leave(roomId);
     });
   }
