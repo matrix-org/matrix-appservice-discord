@@ -110,6 +110,9 @@ export class MatrixRoomHandler {
             return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
                 log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
             });
+        } else {
+            // Might be a DM room.
+            return this.discord.DMHandler.OnMatrixMessage(event);
         }
     } else if (event.type === "m.room.encryption" && context.rooms.remote) {
         return this.HandleEncryptionWarning(event.room_id).catch((err) => {
