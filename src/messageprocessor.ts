@@ -19,7 +19,19 @@ const ID_EMOJI_REGEX_GROUP = 3;
 
 marked.setOptions({
     sanitize: true,
+    tables: false,
 });
+
+const markedLexer = new marked.Lexer();
+for (const r of ["hr", "heading", "lheading", "blockquote", "list", "item", "bullet", "def", "table", "lheading"]) {
+    markedLexer.rules[r] = /$^/;
+}
+markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
+
+const markedInlineLexer = new marked.InlineLexer(true);
+for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
+    markedInlineLexer.rules[r] = /$^/;
+}
 
 export class MessageProcessorOpts {
     constructor (readonly domain: string, readonly bot: DiscordBot = null) {
@@ -53,7 +65,7 @@ export class MessageProcessor {
         
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
-        let contentPostmark = marked(content);
+        let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
         
         // parse the plain text stuff
         content = this.ReplaceMembers(content, msg);

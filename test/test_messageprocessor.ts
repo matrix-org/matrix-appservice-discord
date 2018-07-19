@@ -48,7 +48,7 @@ describe("MessageProcessor", () => {
         msg.content = "Hello *World*!";
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "Hello *World*!");
-        Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>\n");
+        Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
       });
     });
     describe("FormatEdit", () => {
@@ -65,7 +65,7 @@ describe("MessageProcessor", () => {
 
         const result = await processor.FormatEdit(oldMsg, newMsg);
         Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
-        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>\n");
+        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>");
       });
 
       it("should format markdown heavy edits apropriately", async () => {
@@ -82,7 +82,7 @@ describe("MessageProcessor", () => {
         const result = await processor.FormatEdit(oldMsg, newMsg);
         Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
         Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
-          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>\n");
+          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>");
       });
 
     });
