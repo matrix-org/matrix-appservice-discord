@@ -424,10 +424,11 @@ export class DiscordBot {
                 if (discordUser.id === member.id) {
                   updates.push(Bluebird.each(this.GetRoomIdsFromGuild(member.guild.id), (room) => {
                       log.verbose(`Updating ${room}`);
+                      const nick = member.displayName ? member.displayName : displayName;
                       client.sendStateEvent(room, "m.room.member", {
                         membership: "join",
                         avatar_url: avatar,
-                        displayname: member.displayName,
+                        displayname: nick,
                       }, userId);
                     }).catch((err) => {
                       log.error("DiscordBot", "Failed to update guild member %s", err);
