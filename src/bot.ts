@@ -419,17 +419,24 @@ export class DiscordBot {
           intent,
           discordUser.avatar,
         ).then((avatar) => {
-          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
-            remoteUser.set("avatarurl", discordUser.avatarURL);
-            return userStore.setRemoteUser(remoteUser);
-          });
+          remoteUser.set("avatarurl", discordUser.avatarURL);
+          return {
+            avatar: avatar.mxcUrl,
+            avatar_change: true,
+          };
         });
       }
-      return true;
-    }).then(() => {
-      if (remoteUser.get("displayname") !== displayName) {
+      const client = this.GetIntentFromDiscordMember(discordUser).getClient();
+      const userId = client.credentials.userId;
+      return client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
+        return {
+          avatar: avatarUrl.avatar_url,
+          avatar_change: false,
+        };
+      });
+    }).then(({avatar, avatar_change}) => {
+      if (avatar_change || remoteUser.get("displayname") !== displayName) {
         // iterate over guilds and do the stuff right
-        const avatar = remoteUser.get("avatarurl");
         const client = this.GetIntentFromDiscordMember(discordUser).getClient();
         const userId = client.credentials.userId;
         const updates = [];
