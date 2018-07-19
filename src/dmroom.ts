@@ -83,7 +83,7 @@ export class DMRoom {
             payload = msg.description += " " + file;
         } else {
             log.verbose("DMRoom", "Sending a file");
-            payload = file;
+            payload = {files: [file]};
         }
         await this.deferLock;
         this.deferLock = new Promise((resolve, _) => {
