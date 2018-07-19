@@ -5,6 +5,7 @@ import { DiscordBot } from "./bot";
 import * as escapeHtml from "escape-html";
 import { Util } from "./util";
 import * as mime from "mime";
+import { Snowflake, DMChannel, GroupDMChannel } from "discord.js";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
@@ -48,7 +49,6 @@ export class MessageProcessor {
 
     public async FormatDiscordMessage(msg: Discord.Message, intent: any = null): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
-
         let content = msg.content;
         // embeds are markdown formatted, thus inserted before
         // for both plaintext and markdown
@@ -128,13 +128,31 @@ export class MessageProcessor {
         return content;
     }
 
+    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User> {
+        if(msg.guild !== null) {
+            let users = new Discord.Collection<Snowflake, Discord.User>();
+            msg.guild.members.forEach((u) => users.set(u.id, u.user));
+            return users;
+        } else if(msg.channel.type === "dm") {
+            return new Discord.Collection<Snowflake, Discord.User>([
+                ["asc", msg.author],
+                ["asc", (<DMChannel>msg.channel).recipient],
+            ]);
+        } else if (msg.channel.type === "group") {
+            return (<GroupDMChannel>msg.channel).recipients;
+        } else {
+            return new Discord.Collection<Snowflake, Discord.User>();
+        }
+    }
+
     public ReplaceMembers(content: string, msg: Discord.Message): string {
         let results = USER_REGEX.exec(content);
+        const users = this.GetUsers(msg);
         while (results !== null) {
             const id = results[1];
-            const member = msg.guild.members.get(id);
+            const user = users.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? member.user.username : memberId;
+            const memberStr = user ? user.username : memberId;
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
         }
@@ -143,13 +161,14 @@ export class MessageProcessor {
 
     public ReplaceMembersPostmark(content: string, msg: Discord.Message): string {
         let results = USER_REGEX_POSTMARK.exec(content);
+        const users = this.GetUsers(msg);
         while (results !== null) {
             const id = results[1];
-            const member = msg.guild.members.get(id);
+            const user = users.get(id);
             const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
             let memberName = memberId;
-            if (member) {
-                memberName = escapeHtml(member.user.username);
+            if (user) {
+                memberName = escapeHtml(user.username);
             }
             const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);
