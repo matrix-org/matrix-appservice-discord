@@ -112,7 +112,15 @@ export class DMRoom {
         }
         log.info("DMRoom", `Got discord message for ${this.dbroom.ChannelId}`);
         const intent = this.handler.GetIntentForUser(msg.author);
-        const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg);
+        const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
+        console.log(matrixMsg);
+        await matrixMsg.attachmentEvents.map((evt) => {
+            return intent.sendMessage((this.dbroom.RoomId), evt);
+        });
+
+        if(matrixMsg.body === "") {
+            return;
+        }
         return intent.sendMessage(this.dbroom.RoomId, {
             msgtype: "m.text",
             format: "org.matrix.custom.html",
