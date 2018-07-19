@@ -3,6 +3,8 @@ import * as marked from "marked";
 import * as log from "npmlog";
 import { DiscordBot } from "./bot";
 import * as escapeHtml from "escape-html";
+import { Util } from "./util";
+import * as mime from "mime";
 
 const USER_REGEX = /<@!?([0-9]*)>/g;
 const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
@@ -30,6 +32,7 @@ export class MessageProcessorOpts {
 export class MessageProcessorMatrixResult {
     public formattedBody: string;
     public body: string;
+    public attachmentEvents: any[] = [];
 }
 
 export class MessageProcessor {
@@ -43,7 +46,7 @@ export class MessageProcessor {
         }
     }
 
-    public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
+    public async FormatDiscordMessage(msg: Discord.Message, intent: any = null): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
 
         let content = msg.content;
@@ -69,6 +72,35 @@ export class MessageProcessor {
         
         result.body = content;
         result.formattedBody = contentPostmark;
+
+        if (intent === null) {
+            return result;
+        }
+
+        result.attachmentEvents = await Promise.all(msg.attachments.map((attachment) => {
+            return Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
+                const fileMime = mime.lookup(attachment.filename);
+                const msgtype = attachment.height ? "m.image" : "m.file";
+                const info = {
+                mimetype: fileMime,
+                size: attachment.filesize,
+                    w: null,
+                    h: null,
+                };
+                if (msgtype === "m.image") {
+                    info.w = attachment.width;
+                    info.h = attachment.height;
+                }
+                return {
+                    body: attachment.filename,
+                    info,
+                    msgtype,
+                    url: content.mxcUrl,
+                    external_url: attachment.url,
+                }
+            });
+        }));
+
         return result;
     }
 
