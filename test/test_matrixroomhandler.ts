@@ -73,6 +73,10 @@ function createRH(opts: any = {}) {
         ThirdpartySearchForChannels: () => {
             return [];
         },
+        DMHandler: {
+            OnMatrixMessage: () => Promise.resolve("DMMessageHandled"),
+            HandleInvite: () => Promise.resolve("DMInviteHandled")
+        }
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -118,6 +122,13 @@ function createRH(opts: any = {}) {
                     removeEntriesByMatrixRoomId: (roomId) => Promise.resolve(roomId),
                 };
             },
+            getBot: () => {
+                return {
+                    _isRemoteUser: (user_id) => {
+                        return user_id.startsWith("_discord");
+                    }
+                };
+            }
         },
     );
     return handler;
@@ -227,7 +238,7 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.message", content: {body: "!discord cmd"}}), null))
                 .to.eventually.equal("processedcmd");
         });
-        it("should ignore regular messages with no linked room", () => {
+        it("should send messages with no linked room to the DM handler", () => {
             const handler = createRH();
             const context = {
                 rooms: {
@@ -236,7 +247,7 @@ describe("MatrixRoomHandler", () => {
             };
             return expect(handler.OnEvent(buildRequest({
                 type: "m.room.message", content: {body: "abc"}}), context))
-                .to.be.rejectedWith("Event not processed by bridge");
+                .to.eventually.equal("DMMessageHandled");
         });
     });
     describe("HandleInvite", () => {
@@ -247,12 +258,17 @@ describe("MatrixRoomHandler", () => {
                 state_key: "@botuser:localhost",
             })).to.eventually.be.equal("joinedroom");
         });
+        it("should accept invite for virtual users (DMs)", () => {
+            const handler: any = createRH();
+            return expect(handler.HandleInvite({
+                state_key: "_discord_123:localhost",
+            })).to.eventually.be.equal("DMInviteHandled");
+        });
         it("should deny invite for other users", () => {
             const handler: any = createRH();
-            handler.joinRoom = () => Promise.resolve("joinedroom");
             return expect(handler.HandleInvite({
-                state_key: "@user:localhost",
-            })).to.be.undefined;
+                state_key: "user:localhost",
+            })).to.eventually.be.undefined;
         });
     });
     describe("ProcessCommand", () => {

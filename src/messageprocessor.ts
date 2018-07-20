@@ -129,9 +129,10 @@ export class MessageProcessor {
     }
 
     private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User> {
-        if(msg.guild !== null) {
+        if(msg.channel.type === "text") {
+            const channel = msg.channel as Discord.TextChannel;
             let users = new Discord.Collection<Snowflake, Discord.User>();
-            msg.guild.members.forEach((u) => users.set(u.id, u.user));
+            channel.guild.members.forEach((u) => users.set(u.id, u.user));
             return users;
         } else if(msg.channel.type === "dm") {
             return new Discord.Collection<Snowflake, Discord.User>([

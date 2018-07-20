@@ -212,10 +212,9 @@ describe("MatrixEventProcessor", () => {
             const mockEmoji = new MockEmoji("123", "supercake");
             const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
             mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
+            const mockGuild = new MockGuild("123");
+            mockGuild.emojis = mockCollectionEmojis;
+            const mockChannelEmojis = new MockChannel("test", mockGuild);
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
                 content: {
@@ -230,10 +229,10 @@ describe("MatrixEventProcessor", () => {
             const mockEmoji = new MockEmoji("123", "supercake");
             const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
             mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
+            const mockGuild = new MockGuild("123");
+            mockGuild.emojis = mockCollectionEmojis;
+            const mockChannelEmojis = new MockChannel("test", mockGuild);
+            
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
                 content: {

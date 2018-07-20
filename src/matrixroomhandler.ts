@@ -149,14 +149,9 @@ export class MatrixRoomHandler {
       log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
     } else if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
-      const dmhandler = this.discord.DMHandler;
-      try {
-          return await dmhandler.HandleInvite(event);
-      } catch (e) {
-          log.error("MatrixRoomHandler", "Failed to handle invite:", e);
-      }
-
+      return await this.discord.DMHandler.HandleInvite(event);
     }
+    log.warn("MatrixRoomHandler", `Ignoring invite for ${event.room_id}, ${event.sender} => ${event.state_key}`);
   }
 
   public async ProcessCommand(event: any, context: any) {

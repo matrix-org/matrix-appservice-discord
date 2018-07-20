@@ -105,9 +105,10 @@ export class MatrixEventProcessor {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {
             const user = member["user"] !== undefined ? member["user"] : member;
-            let matcher = escapeStringRegexp(user.username + "#" + user.discriminator);
-            if (member["displayName"] !== undefined) {
-                matcher + "|" + escapeStringRegexp(member["displayName"]);
+            let matcher = escapeStringRegexp(user.username + "#" + user.discriminator) +
+            "|" + escapeStringRegexp(user.username);
+            if (typeof(member["nickname"]) === "string") {
+                matcher = matcher + "|" + escapeStringRegexp(member["nickname"]);
             }
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`

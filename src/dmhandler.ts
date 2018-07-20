@@ -222,7 +222,6 @@ export class DMHandler {
 
         if (msg.type !== "DEFAULT"){ 
             log.verbose("DMHandler", `Ignoring unknown message type ${msg.type}`);
-            console.log(msg);
             return;
         }
 

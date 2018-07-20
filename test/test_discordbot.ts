@@ -15,6 +15,9 @@ const assert = Chai.assert;
 // const should = Chai.should as any;
 
 const mockBridge = {
+  opts: {
+    domain: "localhost"
+  },
   getRoomStore: () => {
     return {
       getEntriesByRemoteRoomData: (data) => {
@@ -55,8 +58,8 @@ describe("DiscordBot", () => {
     it("should resolve when ready.", () => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
       );
+      discordBot.setBridge(mockBridge);
       return discordBot.run();
     });
   });
@@ -65,8 +68,8 @@ describe("DiscordBot", () => {
     beforeEach(() => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
       );
+      discordBot.setBridge(mockBridge);
       return discordBot.run();
     });
     it("should reject a missing guild.", () => {
@@ -85,7 +88,6 @@ describe("DiscordBot", () => {
     it("should return on an unchanged message", () => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
       );
 
       const guild: any = new MockGuild("123", []);
@@ -112,7 +114,6 @@ describe("DiscordBot", () => {
     it("should send a matrix message on an edited discord message", () => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
       );
 
       const guild: any = new MockGuild("123", []);
