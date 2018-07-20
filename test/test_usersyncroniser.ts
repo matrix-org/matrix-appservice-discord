@@ -98,11 +98,15 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                     AVATAR_SET = ava;
                     return Promise.resolve();
                 },
-                sendStateEvent: (roomId, type, key, content) => {
-                    SEV_ROOM_ID = roomId;
-                    SEV_CONTENT = content;
-                    SEV_KEY = key;
-                    SEV_COUNT++;
+                getClient: () => {
+                    return {
+                        sendStateEvent: (roomId, type, content, key) => {
+                            SEV_ROOM_ID = roomId;
+                            SEV_CONTENT = content;
+                            SEV_KEY = key;
+                            SEV_COUNT++;
+                        },
+                    };
                 },
             };
         },

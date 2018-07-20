@@ -107,6 +107,10 @@ function createRH(opts: any = {}) {
         config.bridge.enableSelfServiceBridging = true;
     }
     const mxClient = {
+        joinRoom: () => {
+            USERSJOINED++;
+            return Promise.resolve();
+        },
         getStateEvent: () => {
             return Promise.resolve(opts.powerLevels || {});
         },
@@ -142,14 +146,9 @@ describe("MatrixRoomHandler", () => {
         });
         it("should join successfully and create ghosts", () => {
             const EXPECTEDUSERS = 2;
-            const TESTDELAY = 50;
             const handler = createRH({createMembers: true});
-            return  handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
-                return Bluebird.delay(TESTDELAY);
-            }).then(() => {
-                    expect(USERSJOINED).to.equal(EXPECTEDUSERS);
-                    // test for something
-                    return true;
+            return handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
+                expect(USERSJOINED).to.equal(EXPECTEDUSERS);
             });
         });
         it("should not join successfully", () => {
