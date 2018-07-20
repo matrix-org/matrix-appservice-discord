@@ -135,7 +135,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
 
 describe("UserSyncroniser", () => {
    describe("GetUserUpdateState", () => {
-       it("Will create new users", () => {
+       it("Will create a new user", () => {
            const userSync = CreateUserSync();
            const user = new MockUser(
                "123456",
@@ -306,7 +306,7 @@ describe("UserSyncroniser", () => {
                expect(DISPLAYNAME_SET).is.null;
            });
        });
-       it("Will fetch an existing user", () => {
+       it("will do nothing if nothing needs to be done", () => {
            const userSync = CreateUserSync([new RemoteUser("123456")]);
            const state: IUserState = {
                id: "123456",
