@@ -91,6 +91,7 @@ export class MatrixRoomHandler {
         }));
         delay += this.config.limits.roomGhostJoinDelay;
     }
+    // tslint:disable-next-line:await-promise
     await promiseChain;
   }
 
