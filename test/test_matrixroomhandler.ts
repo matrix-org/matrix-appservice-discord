@@ -110,6 +110,9 @@ function createRH(opts: any = {}) {
         getStateEvent: () => {
             return Promise.resolve(opts.powerLevels || {});
         },
+        setRoomDirectoryVisibilityAppService: () => {
+            return Promise.resolve();
+        },
     };
     const provisioner = {
         AskBridgePermission: () => {

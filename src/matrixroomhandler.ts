@@ -62,17 +62,22 @@ export class MatrixRoomHandler {
     this.bridge = bridge;
   }
 
-  public OnAliasQueried (alias: string, roomId: string) {
+  public async OnAliasQueried (alias: string, roomId: string) {
     log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
+    const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
+    
+    // Fire and forget RoomDirectory mapping
+    this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
+        channel.guild.id,
+        roomId,
+        "public",
+    );
+    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    /* We delay the joins to give some implementations a chance to breathe */
     // Join a whole bunch of users.
-    // TODO: Make UserSync do this!
-    let promiseChain: Bluebird<void|any> = Bluebird.resolve();
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
-    return this.discord.GetChannelFromRoomId(roomId).then((channel: Discord.GuildChannel) => {
-      log.info("OnAliasQueried", `Got ${channel.id} for ${roomId}. ${channel.guild.members} members.`);
-      for (const member of channel.guild.members.array()) {
-        log.info("OnAliasQueried", `Starting to join ${member.id} to ${roomId}`);
+    for (const member of (<Discord.TextChannel> channel).members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
@@ -85,11 +90,8 @@ export class MatrixRoomHandler {
             return this.discord.GetIntentFromDiscordMember(member).join(roomId);
         }));
         delay += this.config.limits.roomGhostJoinDelay;
-      }
-    }).catch((err) => {
-      log.error("OnAliasQueried => %s", err);
-      throw err;
-    });
+    }
+    await promiseChain;
   }
 
   public OnEvent (request, context): Promise<any> {
