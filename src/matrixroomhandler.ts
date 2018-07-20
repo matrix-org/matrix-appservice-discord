@@ -87,7 +87,7 @@ export class MatrixRoomHandler {
             return this.discord.UserSyncroniser.OnUpdateUser(member.user);
         }).then(() => {
             log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-            return this.discord.GetIntentFromDiscordMember(member).join(roomId);
+            return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
         }));
         delay += this.config.limits.roomGhostJoinDelay;
     }
