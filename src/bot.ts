@@ -82,7 +82,7 @@ export class DiscordBot {
         client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
       }
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
-      client.on("messageDelete", (msg) => {this.DeleteDiscordMessage(msg); });
+      client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
