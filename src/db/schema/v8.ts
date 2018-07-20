@@ -18,7 +18,7 @@ export class Schema implements IDbSchema {
             room_id TEXT NOT NULL UNIQUE,
             chan_id TEXT NOT NULL UNIQUE,
             created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
           )`, "dm_room");
     }
 
