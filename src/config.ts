@@ -6,6 +6,21 @@ export class DiscordBridgeConfig {
   public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
   public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
+
+  /**
+   * Apply a set of keys and values over the default config.
+   * @param _config Config keys
+   * @param configLayer Private parameter
+   */
+  public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
+    Object.keys(newConfig).forEach((key) => {
+      if (typeof(configLayer[key]) === "object")  {
+        this.ApplyConfig(newConfig[key], this[key]);
+        return;
+      } 
+      configLayer[key] = newConfig[key];
+    });
+  }
 }
 
 class DiscordBridgeConfigBridge {
