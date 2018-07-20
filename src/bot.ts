@@ -79,7 +79,9 @@ export class DiscordBot {
         client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
       }
       if (!this.config.bridge.disablePresence) {
-        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
+        client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
+          this.presenceHandler.EnqueueUser(newMember.user); 
+        });
       }
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
@@ -106,7 +108,7 @@ export class DiscordBot {
         }
         this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
-                this.presenceHandler.EnqueueMember(member);
+                this.presenceHandler.EnqueueUser(member.user);
             });
         });
         this.presenceHandler.Start(
