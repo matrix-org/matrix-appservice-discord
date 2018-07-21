@@ -32,6 +32,8 @@ const markedInlineLexer = new marked.InlineLexer(true);
 for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
     markedInlineLexer.rules[r] = /$^/;
 }
+markedInlineLexer.rules.em = /^_([^_](?:[^_]|__)*?[^_]?)_\b|^\*((?:\*\*|[^*])+?)\*(?!\*)/;
+
 
 export class MessageProcessorOpts {
     constructor (readonly domain: string, readonly bot: DiscordBot = null) {
@@ -59,20 +61,19 @@ export class MessageProcessor {
         const result = new MessageProcessorMatrixResult();
 
         let content = msg.content;
-        // embeds are markdown formatted, thus inserted before
-        // for both plaintext and markdown
-        content = this.InsertEmbeds(content, msg);
         
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
         
         // parse the plain text stuff
+        content = this.InsertEmbeds(content, msg);
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
         content = await this.ReplaceEmoji(content, msg);
         
         // parse postmark stuff
+        contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
@@ -100,6 +101,24 @@ export class MessageProcessor {
             }
             if (embed.description) {
                 embedContent += "\n" + embed.description;
+            }
+            content += embedContent;
+        }
+        return content;
+    }
+
+    public InsertEmbedsPostmark(content: string, msg: Discord.Message): string {
+        for (const embed of msg.embeds) {
+            if (embed.title === undefined && embed.description === undefined) {
+                continue;
+            }
+            let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
+            const embedTitle = embed.url ? "<a href=\""+escapeHtml(embed.url)+"\">"+escapeHtml(embed.title)+"</a>" : escapeHtml(embed.title);
+            if (embedTitle) {
+                embedContent += "<h5>" + embedTitle + "</h5>"; // h5 is probably best.
+            }
+            if (embed.description) {
+                embedContent += marked(embed.description).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
             }
             content += embedContent;
         }
