@@ -71,6 +71,11 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
         log.verbose("matrix-appservice-bridge", line);
       },
     },
+    intentOptions: {
+      clients: {
+        dontJoin: true, // handled manually
+      },
+    },
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
