@@ -17,23 +17,30 @@ const ANIMATED_EMOJI_REGEX_GROUP = 1;
 const NAME_EMOJI_REGEX_GROUP = 2;
 const ID_EMOJI_REGEX_GROUP = 3;
 
-marked.setOptions({
-    sanitize: true,
-    tables: false,
-});
-
-const markedLexer = new marked.Lexer();
-for (const r of ["hr", "heading", "lheading", "blockquote", "list", "item", "bullet", "def", "table", "lheading"]) {
-    markedLexer.rules[r] = /$^/;
+function _setupMarked() {
+    marked.setOptions({
+        sanitize: true,
+        tables: false,
+    });
+    
+    const markedLexer = new marked.Lexer();
+    // as discord doesn't support these markdown rules
+    // we want to disable them by setting their regexes to non-matchable ones
+    // deleting the regexes would lead to marked-internal errors
+    for (const r of ["hr", "heading", "lheading", "blockquote", "list", "item", "bullet", "def", "table", "lheading"]) {
+        markedLexer.rules[r] = /$^/;
+    }
+    // paragraph-end matching is different, as we don't have headers and thelike
+    markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
+    
+    const markedInlineLexer = new marked.InlineLexer(true);
+    // same again, remove tags discord doesn't support
+    for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
+        markedInlineLexer.rules[r] = /$^/;
+    }
+    // discords em for underscores supports if there are spaces around the underscores, thus change that
+    markedInlineLexer.rules.em = /^_([^_](?:[^_]|__)*?[^_]?)_\b|^\*((?:\*\*|[^*])+?)\*(?!\*)/;
 }
-markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
-
-const markedInlineLexer = new marked.InlineLexer(true);
-for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
-    markedInlineLexer.rules[r] = /$^/;
-}
-markedInlineLexer.rules.em = /^_([^_](?:[^_]|__)*?[^_]?)_\b|^\*((?:\*\*|[^*])+?)\*(?!\*)/;
-
 
 export class MessageProcessorOpts {
     constructor (readonly domain: string, readonly bot: DiscordBot = null) {
@@ -113,12 +120,15 @@ export class MessageProcessor {
                 continue;
             }
             let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
-            const embedTitle = embed.url ? "<a href=\""+escapeHtml(embed.url)+"\">"+escapeHtml(embed.title)+"</a>" : escapeHtml(embed.title);
+            const embedTitle = embed.url ? "<a href=\"" +
+                escapeHtml(embed.url) + "\">" + escapeHtml(embed.title) +
+                "</a>" : escapeHtml(embed.title);
             if (embedTitle) {
                 embedContent += "<h5>" + embedTitle + "</h5>"; // h5 is probably best.
             }
             if (embed.description) {
-                embedContent += marked(embed.description).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
+                embedContent += marked(embed.description).replace(/\n/g, "<br>")
+                    .replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
             }
             content += embedContent;
         }
@@ -223,3 +233,5 @@ export class MessageProcessor {
         return content;
     }
 }
+
+_setupMarked();

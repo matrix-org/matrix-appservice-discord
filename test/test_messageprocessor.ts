@@ -50,6 +50,62 @@ describe("MessageProcessor", () => {
         Chai.assert.equal(result.body, "Hello *World*!");
         Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
       });
+      it("processes non-discord markdown correctly.", async() => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
+        msg.content = "> inb4 tests";
+        let result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "> inb4 tests");
+        Chai.assert.equal(result.formattedBody, "<p>&gt; inb4 tests</p>");
+
+        msg.embeds = [];
+        msg.content = "[test](http://example.com)";
+        result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "[test](http://example.com)");
+        Chai.assert.equal(result.formattedBody, "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
+      });
+      it("processes discord-specific markdown correctly.", async() => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
+        msg.content = "_ italic _";
+        const result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "_ italic _");
+        Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
+      });
+    });
+    describe("FormatEmbeds", () => {
+      it("should format embeds correctly", async () => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [
+            {
+                author: null,
+                client: null,
+                color: null,
+                createdAt: null,
+                createdTimestamp: null,
+                fields: null,
+                footer: null,
+                hexColor: null,
+                image: null,
+                message: null,
+                provider: null,
+                thumbnail: null,
+                type: null,
+                video: null,
+                title: "Title",
+                description: "Description",
+                url: "http://example.com",
+            },
+        ];
+        msg.content = "message";
+        const result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
+        Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
+            "</h5><p>Description</p>");
+      });
     });
     describe("FormatEdit", () => {
       it("should format basic edits appropriately", async () => {
