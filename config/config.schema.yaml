@@ -53,7 +53,7 @@ properties:
                   type: "string"
                   enum: ["error", "warn", "info", "verbose", "silly"]
                 maxFiles:
-                  type: "number"
+                  type: "string"
                 maxSize:
                   type: ["number", "string"]
                 datePattern:
