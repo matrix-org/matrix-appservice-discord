@@ -1,20 +1,13 @@
 import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
-import * as log from "npmlog";
 import * as Discord from "discord.js";
-import * as Proxyquire from "proxyquire";
-
-// import * as Proxyquire from "proxyquire";
 import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 
 Chai.use(ChaiAsPromised);
-const expect = Chai.expect;
-log.level = "silly";
 
-// const assert = Chai.assert;
 const bot = {
     GetEmoji: (name: string, animated: boolean, id: string): Promise<string> => {
         if (id === "3333333") {

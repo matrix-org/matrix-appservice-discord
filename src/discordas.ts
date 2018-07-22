@@ -37,7 +37,9 @@ function generateRegistration(reg, callback)  {
   callback(reg);
 }
 
-function run (port: number, config: DiscordBridgeConfig) {
+function run (port: number, fileConfig: DiscordBridgeConfig) {
+  const config = new DiscordBridgeConfig();
+  config.ApplyConfig(fileConfig);
   log.level = config.logging ? (config.logging.level || "warn") : "warn";
   log.info("discordas", "Starting Discord AS");
   const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
@@ -45,6 +47,7 @@ function run (port: number, config: DiscordBridgeConfig) {
   if (registration === null) {
     throw new Error("Failed to parse registration file");
   }
+
   const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
   const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
