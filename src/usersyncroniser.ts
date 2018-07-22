@@ -126,6 +126,17 @@ export class UserSyncroniser {
         }
     }
 
+    public async EnsureJoin(member: GuildMember, roomId: string) {
+        const mxUserId = `@_discord_${member.id}:${this.config.bridge.domain}`;
+        log.info("UserSync", `Ensuring ${mxUserId} is joined to ${roomId}`);
+        const state = <IGuildMemberState> {
+            id: member.id,
+            mxUserId,
+            displayName: member.displayName,
+        };
+        await this.ApplyStateToRoom(state, roomId, member.guild.id);
+    }
+
     public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
         log.info("UserSync", `Applying new room state for ${memberState.mxUserId} to ${roomId}`);
         if (memberState.displayName === null) {
@@ -137,14 +148,25 @@ export class UserSyncroniser {
         const intent = this.bridge.getIntent(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
+        const tryState = () => intent.getClient().sendStateEvent(roomId, "m.room.member", {
+            membership: "join",
+            avatar_url: remoteUser.get("avatarurl_mxc"),
+            displayname: memberState.displayName,
+        }, memberState.mxUserId);
         try {
-            await intent.getClient().sendStateEvent(roomId, "m.room.member", {
-                membership: "join",
-                avatar_url: remoteUser.get("avatarurl_mxc"),
-                displayname: memberState.displayName,
-            }, memberState.mxUserId);
+            await tryState();
         } catch (e) {
-            log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+            if (e.errorcode !== "M_FORBIDDEN") {
+                log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+            } else {
+                log.warn("UserSync", `User not in room ${roomId}, inviting`);
+                try {
+                    await this.bridge.getIntent().invite(roomId, memberState.mxUserId);
+                    await tryState();
+                } catch (e) {
+                    log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+                }
+            }
         }
 
         remoteUser.set(nickKey, memberState.displayName);

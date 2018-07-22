@@ -524,19 +524,27 @@ export class DiscordBot {
       if (msg.content !== null && msg.content !== "") {
         this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
             rooms.forEach((room) => {
-              intent.sendMessage(room, {
+              const trySend = () => intent.sendMessage(room, {
                 body: result.body,
                 msgtype: "m.text",
                 formatted_body: result.formattedBody,
                 format: "org.matrix.custom.html",
-            }).then((res) => {
-                    const evt = new DbEvent();
-                    evt.MatrixId = res.event_id + ";" + room;
-                    evt.DiscordId = msg.id;
-                    evt.ChannelId = msg.channel.id;
-                    evt.GuildId = msg.guild.id;
-                    return this.store.Insert(evt);
-                });
+              });
+              const afterSend = (res) => {
+                const evt = new DbEvent();
+                evt.MatrixId = res.event_id + ";" + room;
+                evt.DiscordId = msg.id;
+                evt.ChannelId = msg.channel.id;
+                evt.GuildId = msg.guild.id;
+                return this.store.Insert(evt);
+              };
+              trySend().then(afterSend).catch((e) => {
+                if (e.errcode !== "M_FORBIDDEN") {
+                  log.error("DiscordBot", "Failed to send message into room.", e);
+                  return;
+                }
+                return this.userSync.EnsureJoin(msg.member, room).then(() => trySend()).then(afterSend);
+              });
             });
         });
       }
