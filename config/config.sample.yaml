@@ -15,5 +15,7 @@ logging:
   level: "warn" #silly, verbose, info, http, warn, error
 database:
   filename: "discord.db"
+  userStorePath: "user-store.db"
+  roomStorePath: "room-store.db"
 room:
   defaultVisibility: "public"
