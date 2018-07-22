@@ -109,7 +109,13 @@ export class PresenceHandler {
             statusObj.status_msg = status.StatusMsg;
         }
         intent.getClient().setPresence(statusObj).catch((ex) => {
-            log.warn("PresenceHandler", `Could not update Matrix presence for ${user.id}`);
+            if (ex.errcode !== "M_FORBIDDEN") {
+                log.warn("PresenceHandler", `Could not update Matrix presence for ${user.id}`);
+                return;
+            }
+            return this.bot.UserSyncroniser.OnUpdateUser(user).catch((err) => {
+                log.warn("PresenceHandler", `Could not register new Matrix user for ${user.id}`);
+            });
         });
     }
 }
