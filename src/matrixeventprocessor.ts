@@ -58,6 +58,9 @@ export class MatrixEventProcessor {
             body = `*${body}*`;
         }
 
+        // replace <del>blah</del> with ~~blah~~
+        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
+
         // Handle discord custom emoji
         body = this.ReplaceDiscordEmoji(body, channel.guild);
 
