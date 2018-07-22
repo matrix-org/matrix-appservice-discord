@@ -1,7 +1,6 @@
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 
-
 export class Schema implements IDbSchema {
   public description = "create guild emoji table";
   public run(store: DiscordStore): Promise<Error> {

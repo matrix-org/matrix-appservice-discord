@@ -16,7 +16,6 @@ import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 
-
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
