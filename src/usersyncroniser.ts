@@ -127,9 +127,11 @@ export class UserSyncroniser {
     }
 
     public async EnsureJoin(member: GuildMember, roomId: string) {
+        const mxUserId = `@_discord_${member.id}:${this.config.bridge.domain}`;
+        log.info("UserSync", `Ensuring ${mxUserId} is joined to ${roomId}`);
         const state = <IGuildMemberState> {
             id: member.id,
-            mxUserId: `@_discord_${member.id}:${this.config.bridge.domain}`,
+            mxUserId,
             displayName: member.displayName,
         };
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
