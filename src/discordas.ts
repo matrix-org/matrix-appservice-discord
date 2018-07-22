@@ -40,7 +40,6 @@ function generateRegistration(reg, callback)  {
 }
 
 function run (port: number, config: DiscordBridgeConfig) {
-  config = Object.assign(new DiscordBridgeConfig(), config);
   Log.ConfigureBridge(config.logging);
   log.info("Starting Discord AS");
   const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
