@@ -54,6 +54,10 @@ properties:
                   enum: ["error", "warn", "info", "verbose", "silly"]
                 maxFiles:
                   type: "number"
+                maxSize:
+                  type: ["number", "string"]
+                datePattern:
+                  type: "string"
                 enabled:
                   type: "array"
                   items:

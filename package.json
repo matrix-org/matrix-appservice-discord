@@ -50,7 +50,8 @@
     "sqlite3": "^4.0.0",
     "tslint": "^4.4.2",
     "typescript": "2.3.4",
-    "winston": "^3.0.0"
+    "winston": "^3.0.0",
+    "winston-daily-rotate-file": "^3.3.0"
   },
   "devDependencies": {
     "@types/chai": "^3.4.35",

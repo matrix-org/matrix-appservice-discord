@@ -49,6 +49,8 @@ export class LoggingFile {
   public file: string;
   public level: string = "info";
   public maxFiles: number = -1;
-  public enabled: string[];
-  public disabled: string[];
+  public maxSize: string|number = "50m";
+  public datePattern: string = "YYYY-MM-DD";
+  public enabled: string[] = [];
+  public disabled: string[] = [];
 }
