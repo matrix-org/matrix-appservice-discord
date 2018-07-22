@@ -67,10 +67,10 @@ nano /matrix-appservice-discord/config.yaml
 cp discord-registration.yaml /matrix-appservice-discord/discord-registration.yaml
 
 # Optional: Build the container yourself (requires a git clone, and to be in the root of the project)
-docker build -t half-shot/matrix-appservice-discord .
+docker build -t halfshot/matrix-appservice-discord .
 
 # Run the container
-docker run -v /matrix-appservice-discord:/data -p 9005:9005 half-shot/matrix-appservice-discord
+docker run -v /matrix-appservice-discord:/data -p 9005:9005 halfshot/matrix-appservice-discord
 ```
 
 #### 3PID Protocol Support
