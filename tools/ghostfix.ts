@@ -10,6 +10,18 @@ import { DiscordBot } from "../src/bot";
 import { DiscordStore } from "../src/store";
 import { Provisioner } from "../src/provisioner";
 import { UserSyncroniser } from "../src/usersyncroniser";
+import { Util } from "../src/util";
+
+// Note: The schedule must not have duplicate values to avoid problems in positioning.
+/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
+const JOIN_ROOM_SCHEDULE = [
+    0,              // Right away
+    1000,           // 1 second
+    30000,          // 30 seconds
+    300000,         // 5 minutes
+    900000,         // 15 minutes
+];
+/* tslint:enable:no-magic-numbers */
 
 const optionDefinitions = [
     {
@@ -106,7 +118,23 @@ bridge.loadDatabases().catch((e) => {
                     return;
                 }
                 promiseList.push(Bluebird.each(discordbot.GetRoomIdsFromChannel(channel), (room) => {
-                    return userSync.EnsureJoin(member, room);
+                    let currentSchedule = JOIN_ROOM_SCHEDULE[0];
+                    const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
+                        userSync.EnsureJoin(member, room);
+                    });
+                    const errorHandler = (err) => {
+                        log.error("Ghostfix", `Error joining room ${room} as ${member.id}`);
+                        log.error("Ghostfix", err);
+                        const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
+                        if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
+                            log.warn("Ghostfix", `Cannot join ${room} as ${member.id}`);
+                            return Promise.reject(err);
+                        } else {
+                            currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
+                            return doJoin().catch(errorHandler);
+                        }
+                    };
+                    return doJoin().catch(errorHandler);
                 }));
             });
         });
