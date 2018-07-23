@@ -61,6 +61,7 @@ function createRH(opts: any = {}) {
     const us = {
         OnMemberState: () => Promise.resolve("user_sync_handled"),
         OnUpdateUser: () => Promise.resolve(),
+        EnsureJoin: () => Promise.resolve(),
     };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
