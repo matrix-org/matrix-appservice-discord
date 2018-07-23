@@ -335,7 +335,7 @@ export class DiscordBot {
     });
   }
 
-  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+  public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
         discord_channel: channel.id,
     }).then((rooms) => {

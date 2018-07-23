@@ -97,13 +97,18 @@ bridge.loadDatabases().catch((e) => {
     client = clientTmp;
     const promiseList = [];
     client.guilds.forEach((guild) => {
-        guild.members.forEach((member) => {
-            if (member.id === client.user.id) {
+        guild.channels.forEach((channel) => {
+            if (channel.type !== "text") {
                 return;
             }
-            promiseList.push(Bluebird.each(discordbot.GetRoomIdsFromGuild(guild.id), (room) => {
-                return userSync.EnsureJoin(member, room);
-            }));
+            channel.members.forEach((member) => {
+                if (member.id === client.user.id) {
+                    return;
+                }
+                promiseList.push(Bluebird.each(discordbot.GetRoomIdsFromChannel(channel), (room) => {
+                    return userSync.EnsureJoin(member, room);
+                }));
+            });
         });
     });
     return Bluebird.all(promiseList);
