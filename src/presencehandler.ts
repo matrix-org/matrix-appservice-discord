@@ -41,7 +41,7 @@ export class PresenceHandler {
     }
 
     public EnqueueUser(user: User) {
-        if (this.presenceQueue.find((u) => u.id === user.id) === undefined) {
+        if (user.id !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.id === user.id) === undefined) {
             log.info("PresenceHandler", `Adding ${user.id} (${user.username}) to the presence queue`);
             this.presenceQueue.push(user);
         }

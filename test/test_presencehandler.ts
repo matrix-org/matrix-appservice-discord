@@ -26,6 +26,9 @@ const bot = {
             },
         };
     },
+    GetBotId: () => {
+        return "1234";
+    },
 };
 
 describe("PresenceHandler", () => {
