@@ -51,7 +51,6 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
     this.presenceHandler = new PresenceHandler(this);
-    this.channelHandler = new ChannelHandler(this, this.bridge, config);
   }
 
   public setBridge(bridge: Bridge) {
@@ -86,6 +85,7 @@ export class DiscordBot {
           this.presenceHandler.EnqueueUser(newMember.user); 
         });
       }
+      this.channelHandler = new ChannelHandler(this.bridge, this.config, this);
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
       client.on("channelDelete", (channel) => { this.channelHandler.HandleChannelDelete(channel); });
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
@@ -327,17 +327,17 @@ export class DiscordBot {
     return dbEmoji.MxcUrl;
   }
 
-  private GetRoomIdsFromGuild(guild: String): Promise<string[]> {
+  public GetRoomIdsFromGuild(guild: String): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-        discord_channel: channel.id,
+      discord_guild: guild,
     }).then((rooms) => {
-        if (rooms.length === 0) {
-            log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
-            return Promise.reject("Room(s) not found.");
-        }
-        return rooms.map((room) => room.matrix.getId() as string);
+      if (rooms.length === 0) {
+        log.verbose("DiscordBot", `Couldn't find room(s) for guild id:${guild}.`);
+        return Promise.reject("Room(s) not found.");
+      }
+      return rooms.map((room) => room.matrix.getId());
     });
-  }
+}
 
   private UpdateRooms(discordChannel: Discord.Channel) {
     if (discordChannel.type !== "text") {

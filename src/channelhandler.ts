@@ -3,10 +3,17 @@ import * as Discord from "discord.js";
 import * as log from "npmlog";
 import {DiscordBot} from "./bot";
 import {DiscordBridgeConfig} from "./config";
+import { Bridge, RoomBridgeStore } from "matrix-appservice-bridge";
 
 export class ChannelHandler {
 
-    constructor(private bot: DiscordBot, private bridge: any, private config: DiscordBridgeConfig) { }
+    private roomStore: RoomBridgeStore;
+    constructor(
+        private bridge: Bridge,
+        private config: DiscordBridgeConfig,
+        private bot: DiscordBot) {
+        this.roomStore = this.bridge.getRoomStore();
+    }
 
     public async HandleChannelDelete(channel: Channel) {
         if (channel.type !== "text") {
@@ -18,14 +25,14 @@ export class ChannelHandler {
         let entries;
         try {
             roomids = await this.GetRoomIdsFromChannel(channel);
-            entries = this.bridge.getRoomStore().getEntriesByMatrixIds(roomids);
+            entries = await this.roomStore.getEntriesByMatrixIds(roomids);
         } catch (e) {
             log.warn("ChannelHandler", `Couldn't find roomids for deleted channel ${channel.id}`);
             return;
         }
         for (const roomid of roomids){
             try {
-                await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid]);
+                await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid][0]);
             } catch (e) {
                 log.error("ChannelHandler", `Failed to delete channel from room: ${e}`);
             }
@@ -33,7 +40,7 @@ export class ChannelHandler {
     }
 
     public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-        return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+        return this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
         }).then((rooms) => {
             if (rooms.length === 0) {
@@ -51,9 +58,9 @@ export class ChannelHandler {
         log.info("ChannelHandler", `Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
         const options = this.config.channel.deleteOptions;
-        const plumbed = entry.remote.get("plumbed");
+        const plumbed = entry.remote.get('plumbed');
 
-        this.bridge.getRoomStore().upsertEntry(entry);
+        this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
             for (const member of channel.members.array()){
                 try {
@@ -65,24 +72,69 @@ export class ChannelHandler {
                 }
             }
         }
-        // Remove alias
+        if (options.namePrefix) {
+            try {
+                const name = await intent.getClient().getStateEvent(roomId, "m.room.name");
+                name.name = options.namePrefix+name.name;
+                await intent.getClient().setRoomName(roomId, name.name);
+            } catch (e) {
+                log.error("ChannelHandler", `Failed to set name of room ${roomId} ${e}`);
+            }
+        }
+        if (options.topicPrefix) {
+            try {
+                const topic = await intent.getClient().getStateEvent(roomId, "m.room.topic");
+                topic.topic = options.topicPrefix+topic.topic;
+                await intent.getClient().setRoomTopic(roomId, topic.topic);
+            } catch (e) {
+                log.error("ChannelHandler", `Failed to set topic of room ${roomId} ${e}`);
+            }
+        }
+        
         if (plumbed !== true) {
+            if (options.unsetRoomAlias) {
+                try {
+                    const alias = "#_"+entry.remote.roomId+":"+this.config.bridge.domain;
+                    const canonical_alias = await intent.getClient().getStateEvent(roomId, "m.room.canonical_alias");
+                    if (canonical_alias.alias === alias) {
+                        await intent.getClient().sendStateEvent(roomId, "m.room.canonical_alias", {});
+                    }
+                    await intent.getClient().deleteAlias(alias);
+                } catch (e) {
+                    log.error("ChannelHandler", `Couldn't remove alias of ${roomId} ${e}`);
+                }
+            }
+
             if (options.unlistFromDirectory) {
                 try {
                     await intent.getClient().setRoomDirectoryVisibility(roomId, "private");
                 } catch (e) {
-                    log.error("ChannelHandler", `Couldn't remove ${roomId} from room directory`);
+                    log.error("ChannelHandler", `Couldn't remove ${roomId} from room directory ${e}`);
                 }
 
             }
 
             if (options.setInviteOnly) {
-                // await intent.sendStateEvent
+                try {
+                    await intent.getClient().sendStateEvent(roomId, "m.room.join_rules", {join_role: "invite"});
+                } catch (e) {
+                    log.error("ChannelHandler", `Couldn't set ${roomId} to private ${e}`);
+                }
+            }
+
+            if (options.disableMessaging) {
+                try {
+                    const state = await intent.getClient().getStateEvent(roomId, "m.room.power_levels");
+                    state.events_default = 50;
+                    await intent.getClient().sendStateEvent(roomId, "m.room.power_levels", state);
+                } catch (e) {
+                    log.error("ChannelHandler", `Couldn't disable messaging for ${roomId} ${e}`);
+                }
             }
         }
         // Unlist
 
         // Remove entry
-        await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
+        await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 }

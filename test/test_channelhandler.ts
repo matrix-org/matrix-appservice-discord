@@ -28,7 +28,7 @@ const config = new DiscordBridgeConfig();
 
 describe("ChannelHandler", () => {
     describe("HandleChannelDelete", () => {
-        it("will not delete non-text channels" () => {
+        it("will not delete non-text channels", () => {
 
         });
     });
