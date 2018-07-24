@@ -5,6 +5,8 @@ import {DiscordBot} from "./bot";
 import {DiscordBridgeConfig} from "./config";
 import { Bridge, RoomBridgeStore } from "matrix-appservice-bridge";
 
+const POWER_LEVEL_MESSAGE_TALK = 50;
+
 export class ChannelHandler {
 
     private roomStore: RoomBridgeStore;
@@ -58,7 +60,7 @@ export class ChannelHandler {
         log.info("ChannelHandler", `Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
         const options = this.config.channel.deleteOptions;
-        const plumbed = entry.remote.get('plumbed');
+        const plumbed = entry.remote.get("plumbed");
 
         this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
@@ -75,7 +77,7 @@ export class ChannelHandler {
         if (options.namePrefix) {
             try {
                 const name = await intent.getClient().getStateEvent(roomId, "m.room.name");
-                name.name = options.namePrefix+name.name;
+                name.name = options.namePrefix + name.name;
                 await intent.getClient().setRoomName(roomId, name.name);
             } catch (e) {
                 log.error("ChannelHandler", `Failed to set name of room ${roomId} ${e}`);
@@ -84,7 +86,7 @@ export class ChannelHandler {
         if (options.topicPrefix) {
             try {
                 const topic = await intent.getClient().getStateEvent(roomId, "m.room.topic");
-                topic.topic = options.topicPrefix+topic.topic;
+                topic.topic = options.topicPrefix + topic.topic;
                 await intent.getClient().setRoomTopic(roomId, topic.topic);
             } catch (e) {
                 log.error("ChannelHandler", `Failed to set topic of room ${roomId} ${e}`);
@@ -94,9 +96,9 @@ export class ChannelHandler {
         if (plumbed !== true) {
             if (options.unsetRoomAlias) {
                 try {
-                    const alias = "#_"+entry.remote.roomId+":"+this.config.bridge.domain;
-                    const canonical_alias = await intent.getClient().getStateEvent(roomId, "m.room.canonical_alias");
-                    if (canonical_alias.alias === alias) {
+                    const alias = "#_" + entry.remote.roomId + ":" + this.config.bridge.domain;
+                    const canonicalAlias = await intent.getClient().getStateEvent(roomId, "m.room.canonical_alias");
+                    if (canonicalAlias.alias === alias) {
                         await intent.getClient().sendStateEvent(roomId, "m.room.canonical_alias", {});
                     }
                     await intent.getClient().deleteAlias(alias);
@@ -125,7 +127,7 @@ export class ChannelHandler {
             if (options.disableMessaging) {
                 try {
                     const state = await intent.getClient().getStateEvent(roomId, "m.room.power_levels");
-                    state.events_default = 50;
+                    state.events_default = POWER_LEVEL_MESSAGE_TALK;
                     await intent.getClient().sendStateEvent(roomId, "m.room.power_levels", state);
                 } catch (e) {
                     log.error("ChannelHandler", `Couldn't disable messaging for ${roomId} ${e}`);

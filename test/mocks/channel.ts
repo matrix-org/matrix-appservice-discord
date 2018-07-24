@@ -7,7 +7,7 @@ export class MockChannel {
     constructor (
         public id: string = "",
         public guild: any = null,
-        public type: string = "text"
+        public type: string = "text",
     ) { }
     public send(data: any): Promise<any> {
         return Promise.resolve(data);
