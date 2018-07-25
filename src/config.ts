@@ -57,6 +57,7 @@ class DiscordBridgeConfigRoom {
 }
 
 class DiscordBridgeConfigChannel {
+  public namePattern: string = "[Discord] :guild :name";
   public deleteOptions = new DiscordBridgeConfigChannelDeleteOptions();
 }
 

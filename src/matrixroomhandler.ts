@@ -72,6 +72,7 @@ export class MatrixRoomHandler {
         roomId,
         "public",
     );
+    await this.discord.ChannelSyncroniser.OnUpdate(channel);
     let promiseChain: Bluebird<any> = Bluebird.resolve();
     /* We delay the joins to give some implementations a chance to breathe */
     // Join a whole bunch of users.
@@ -412,11 +413,10 @@ export class MatrixRoomHandler {
     remote.set("discord_channel", channel.id);
     remote.set("update_name", true);
     remote.set("update_topic", true);
+    remote.set("update_icon", true);
     const creationOpts = {
       visibility: this.config.room.defaultVisibility,
       room_alias_name: alias,
-      name: `[Discord] ${channel.guild.name} #${channel.name}`,
-      topic: channel.topic ? channel.topic : "",
       initial_state: [
         {
           type: "m.room.join_rules",

@@ -4,7 +4,7 @@ import * as log from "npmlog";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
-import { ChannelHandler } from "../src/channelhandler";
+import { ChannelSyncroniser } from "../src/channelsyncroniser";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
@@ -26,7 +26,7 @@ const bridge = {
 
 const config = new DiscordBridgeConfig();
 
-describe("ChannelHandler", () => {
+describe("ChannelSyncroniser", () => {
     describe("HandleChannelDelete", () => {
         it("will not delete non-text channels", () => {
 

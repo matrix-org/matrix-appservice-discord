@@ -10,7 +10,7 @@ import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventpro
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
 import { UserSyncroniser } from "./usersyncroniser";
-import { ChannelHandler } from "./channelhandler";
+import { ChannelSyncroniser } from "./channelsyncroniser";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
@@ -40,7 +40,7 @@ export class DiscordBot {
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
   private userSync: UserSyncroniser;
-  private channelHandler: ChannelHandler;
+  private channelSync: ChannelSyncroniser;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -68,6 +68,10 @@ export class DiscordBot {
     return this.userSync;
   }
 
+  get ChannelSyncroniser(): ChannelSyncroniser {
+    return this.channelSync;
+  }
+
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
@@ -85,9 +89,9 @@ export class DiscordBot {
           this.presenceHandler.EnqueueUser(newMember.user); 
         });
       }
-      this.channelHandler = new ChannelHandler(this.bridge, this.config, this);
-      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
-      client.on("channelDelete", (channel) => { this.channelHandler.HandleChannelDelete(channel); });
+      this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+      client.on("channelUpdate", (_, newChannel) => { this.channelSync.OnUpdate(newChannel); });
+      client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
@@ -346,7 +350,7 @@ export class DiscordBot {
     log.info("DiscordBot", `Updating ${discordChannel.id}`);
     const textChan = (<Discord.TextChannel> discordChannel);
     const roomStore = this.bridge.getRoomStore();
-    this.channelHandler.GetRoomIdsFromChannel(textChan).then((rooms) => {
+    this.channelSync.GetRoomIdsFromChannel(textChan).then((rooms) => {
       return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
         return Object.keys(entries).map((key) => entries[key]);
       });
@@ -389,7 +393,7 @@ export class DiscordBot {
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
                                   guild: Discord.Guild, author: Discord.User,
                                   msgID: string): Promise<boolean> {
-    const rooms = await this.channelHandler.GetRoomIdsFromChannel(chan);
+    const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
@@ -413,7 +417,7 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    this.channelHandler.GetRoomIdsFromChannel(channel).then((rooms) => {
+    this.channelSync.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.GetIntentFromDiscordMember(user);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
@@ -471,7 +475,7 @@ export class DiscordBot {
 
     // Update presence because sometimes discord misses people.
     this.userSync.OnUpdateUser(msg.author).then(() => {
-      return this.channelHandler.GetRoomIdsFromChannel(msg.channel).catch((err) => {
+      return this.channelSync.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;
       });
