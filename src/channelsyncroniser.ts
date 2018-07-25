@@ -10,6 +10,7 @@ const POWER_LEVEL_MESSAGE_TALK = 50;
 const DEFAULT_CHANNEL_STATE = {
     id: null,
     mxChannels: [],
+    iconMxcUrl: null,
 };
 
 const DEFAULT_SINGLECHANNEL_STATE = {
@@ -33,6 +34,7 @@ export interface ISingleChannelState {
 export interface IChannelState {
     id: string;
     mxChannels: ISingleChannelState[];
+    iconMxcUrl: string; // nullable
 };
 
 export class ChannelSyncroniser {
@@ -57,10 +59,36 @@ export class ChannelSyncroniser {
         }
     }
 
+    public async OnGuildUpdate(guild: Discord.Guild) {
+        log.verbose("ChannelSync", `Got guild update for guild ${guild.id}`);
+        const channelStates = [];
+        for (const [_, channel] of guild.channels) {
+            if (channel.type !== "text") {
+                continue; // not supported for now
+            }
+            try {
+                const channelState = await this.GetChannelUpdateState(channel as Discord.TextChannel);
+                channelStates.push(channelState);
+            } catch (e) {
+                log.error("ChannelSync", "Failed to get channel state", e);
+            }
+        }
+        
+        let iconMxcUrl = null;
+        for (const channelState of channelStates) {
+            channelState.iconMxcUrl = channelState.iconMxcUrl || iconMxcUrl;
+            try {
+                await this.ApplyStateToChannel(channelState);
+            } catch (e) {
+                log.error("ChannelSync", "Failed to update channels", e);
+            }
+            iconMxcUrl = channelState.iconMxcUrl;
+        };
+    }
+
     private async ApplyStateToChannel(channelsState: IChannelState) {
         const intent = this.bridge.getIntent();
-        let iconMxcUrl = null;
-        channelsState.mxChannels.forEach(async (channelState) => {
+        for (const channelState of channelsState.mxChannels) {
             let roomUpdated = false;
             const remoteRoom = (await this.roomStore.getEntriesByMatrixId(channelState.mxid))[0];
             
@@ -80,17 +108,17 @@ export class ChannelSyncroniser {
             
             if (channelState.iconUrl !== null) {
                 log.verbose("ChannelSync", `Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
-                if (iconMxcUrl === null) {
+                if (channelsState.iconMxcUrl === null) {
                     const iconMxc = await Util.UploadContentFromUrl(
                         channelState.iconUrl,
                         intent,
                         channelState.iconId,
                     );
-                    iconMxcUrl = iconMxc.mxcUrl;
+                    channelsState.iconMxcUrl = iconMxc.mxcUrl;
                 }
-                await intent.setRoomAvatar(channelState.mxid, iconMxcUrl);
+                await intent.setRoomAvatar(channelState.mxid, channelsState.iconMxcUrl);
                 remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
-                remoteRoom.remote.set("discord_iconurl_mxc", iconMxcUrl);
+                remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
                 roomUpdated = true;
             }
             
@@ -105,7 +133,7 @@ export class ChannelSyncroniser {
             if (roomUpdated) {
                 await this.roomStore.upsertEntry(remoteRoom);
             }
-        });
+        };
     }
 
     public async OnDelete(channel: Discord.Channel) {
@@ -132,6 +160,16 @@ export class ChannelSyncroniser {
         }
     }
 
+    public async OnGuildDelete(guild: Discord.Guild) {
+        for (const [_, channel] of guild.channels) {
+            try {
+                await this.OnDelete(channel);
+            } catch (e) {
+                log.error("ChannelSync", `Failed to delete guild channel`);
+            }
+        }
+    }
+
     public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
         return this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
@@ -150,6 +188,13 @@ export class ChannelSyncroniser {
             id: channel.id,
             mxChannels: [],
         });
+        
+        const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
+        if (remoteRooms.length === 0) {
+            log.verbose("ChannelSync", `Could not find any channels in room store.`);
+            return channelState;
+        }
+        
         const patternMap = {
             name: "#"+channel.name,
             guild: channel.guild.name,
@@ -163,12 +208,6 @@ export class ChannelSyncroniser {
         let iconUrl = null;
         if (icon) {
             iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.png`;
-        }
-        
-        const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
-        if (remoteRooms.length === 0) {
-            log.verbose("ChannelSync", `Could not find any channels in room store.`);
-            return channelState;
         }
         remoteRooms.forEach((remoteRoom) => {
             const mxid = remoteRoom.matrix.getId();

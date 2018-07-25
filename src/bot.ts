@@ -92,6 +92,9 @@ export class DiscordBot {
       this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
       client.on("channelUpdate", (_, newChannel) => { this.channelSync.OnUpdate(newChannel); });
       client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
+      client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
+      client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
+      
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
@@ -340,53 +343,6 @@ export class DiscordBot {
         return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => room.matrix.getId());
-    });
-}
-
-  private UpdateRooms(discordChannel: Discord.Channel) {
-    if (discordChannel.type !== "text") {
-      return; // Not supported for now.
-    }
-    log.info("DiscordBot", `Updating ${discordChannel.id}`);
-    const textChan = (<Discord.TextChannel> discordChannel);
-    const roomStore = this.bridge.getRoomStore();
-    this.channelSync.GetRoomIdsFromChannel(textChan).then((rooms) => {
-      return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
-        return Object.keys(entries).map((key) => entries[key]);
-      });
-    }).then((entries: any) => {
-      return Promise.all(entries.map((entry) => {
-        if (entry.length === 0) {
-          throw Error("Couldn't update room for channel, no assoicated entry in roomstore.");
-        }
-        return this.UpdateRoomEntry(entry[0], textChan);
-      }));
-    }).catch((err) => {
-      log.error("DiscordBot", "Error during room update %s", err);
-    });
-  }
-
-  private UpdateRoomEntry(entry: Entry, discordChannel: Discord.TextChannel): Promise<null> {
-    const intent = this.bridge.getIntent();
-    const roomStore = this.bridge.getRoomStore();
-    const roomId = entry.matrix.getId();
-    return new Promise(() => {
-      const name = `[Discord] ${discordChannel.guild.name} #${discordChannel.name}`;
-      if (entry.remote.get("update_name") && entry.remote.get("discord_name") !== name) {
-        return intent.setRoomName(roomId, name).then(() => {
-          log.info("DiscordBot", `Updated name for ${roomId}`);
-          entry.remote.set("discord_name", name);
-          return roomStore.upsertEntry(entry);
-        });
-      }
-    }).then(() => {
-      if ( entry.remote.get("update_topic") && entry.remote.get("discord_topic") !== discordChannel.topic) {
-        return intent.setRoomTopic(roomId, discordChannel.topic).then(() => {
-          entry.remote.set("discord_topic", discordChannel.topic);
-          log.info("DiscordBot", `Updated topic for ${roomId}`);
-          return roomStore.upsertEntry(entry);
-        });
-      }
     });
   }
 
