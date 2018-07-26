@@ -157,35 +157,6 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     return new ChannelSync(bridge as Bridge, config, discordbot);
 }
 
-function GetTestData() {
-    return [
-        new Entry({
-            id: "1",
-            matrix_id: "!1:localhost",
-            remote_id: "111",
-            remote: {
-                
-            },
-        }),
-        new Entry({
-            id: "2",
-            matrix_id: "!2:localhost",
-            remote_id: "222",
-            remote: {
-                
-            },
-        }),
-        new Entry({
-            id: "3",
-            matrix_id: "!3:localhost",
-            remote_id: "333",
-            remote: {
-                
-            },
-        }),
-    ];
-}
-
 describe("ChannelSyncroniser", () => {
     describe("HandleChannelDelete", () => {
         it("will not delete non-text channels", () => {
@@ -208,7 +179,7 @@ describe("ChannelSyncroniser", () => {
                 expect(REMOTECHANNEL_REMOVED).is.false;
             });
         });
-        it("will delete non-text channels", () => {
+        it("will delete text channels", () => {
             const chan = new MockChannel();
             chan.id = "blah";
             chan.type = "text";
