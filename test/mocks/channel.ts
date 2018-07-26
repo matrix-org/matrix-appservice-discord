@@ -8,6 +8,8 @@ export class MockChannel {
         public id: string = "",
         public guild: any = null,
         public type: string = "text",
+        public name: string = "",
+        public topic: string = "",
     ) { }
     public send(data: any): Promise<any> {
         return Promise.resolve(data);

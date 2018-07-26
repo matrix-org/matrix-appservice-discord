@@ -120,69 +120,18 @@ export class ChannelSyncroniser {
         }
     }
 
-    public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-        return this.roomStore.getEntriesByRemoteRoomData({
+    public async GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+        const rooms = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
-        }).then((rooms) => {
-            if (rooms.length === 0) {
-                log.verbose("ChannelSync", `Couldn't find room(s) for channel ${channel.id}.`);
-                return Promise.reject("Room(s) not found.");
-            }
-            return rooms.map((room) => room.matrix.getId() as string);
         });
-    }
-
-    private async ApplyStateToChannel(channelsState: IChannelState) {
-        const intent = this.bridge.getIntent();
-        for (const channelState of channelsState.mxChannels) {
-            let roomUpdated = false;
-            const remoteRoom = (await this.roomStore.getEntriesByMatrixId(channelState.mxid))[0];
-            
-            if (channelState.name !== null) {
-                log.verbose("ChannelSync", `Updating channelname for ${channelState.mxid} to "${channelState.name}"`);
-                await intent.setRoomName(channelState.mxid, channelState.name);
-                remoteRoom.remote.set("discord_name", channelState.name);
-                roomUpdated = true;
-            }
-            
-            if (channelState.topic !== null) {
-                log.verbose("ChannelSync", `Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
-                await intent.setRoomTopic(channelState.mxid, channelState.topic);
-                remoteRoom.remote.set("discord_topic", channelState.topic);
-                roomUpdated = true;
-            }
-            
-            if (channelState.iconUrl !== null) {
-                log.verbose("ChannelSync", `Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
-                if (channelsState.iconMxcUrl === null) {
-                    const iconMxc = await Util.UploadContentFromUrl(
-                        channelState.iconUrl,
-                        intent,
-                        channelState.iconId,
-                    );
-                    channelsState.iconMxcUrl = iconMxc.mxcUrl;
-                }
-                await intent.setRoomAvatar(channelState.mxid, channelsState.iconMxcUrl);
-                remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
-                remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
-                roomUpdated = true;
-            }
-            
-            if (channelState.removeIcon) {
-                log.verbose("ChannelSync", `Clearing icon_url for ${channelState.mxid}`);
-                await intent.setRoomAvatar(channelState.mxid, null);
-                remoteRoom.remote.set("discord_iconurl", null);
-                remoteRoom.remote.set("discord_iconurl_mxc", null);
-                roomUpdated = true;
-            }
-            
-            if (roomUpdated) {
-                await this.roomStore.upsertEntry(remoteRoom);
-            }
+        if (rooms.length === 0) {
+            log.verbose("ChannelSync", `Couldn't find room(s) for channel ${channel.id}.`);
+            return Promise.reject("Room(s) not found.");
         }
+        return rooms.map((room) => room.matrix.getId() as string);
     }
 
-    private async GetChannelUpdateState(channel: Discord.TextChannel): Promise<IChannelState> {
+    public async GetChannelUpdateState(channel: Discord.TextChannel): Promise<IChannelState> {
         log.verbose("ChannelSync", `State update request for ${channel.id}`);
         const channelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
             id: channel.id,
@@ -240,6 +189,55 @@ export class ChannelSyncroniser {
             channelState.mxChannels.push(singleChannelState);
         });
         return channelState;
+    }
+
+    private async ApplyStateToChannel(channelsState: IChannelState) {
+        const intent = this.bridge.getIntent();
+        for (const channelState of channelsState.mxChannels) {
+            let roomUpdated = false;
+            const remoteRoom = (await this.roomStore.getEntriesByMatrixId(channelState.mxid))[0];
+            if (channelState.name !== null) {
+                log.verbose("ChannelSync", `Updating channelname for ${channelState.mxid} to "${channelState.name}"`);
+                await intent.setRoomName(channelState.mxid, channelState.name);
+                remoteRoom.remote.set("discord_name", channelState.name);
+                roomUpdated = true;
+            }
+            
+            if (channelState.topic !== null) {
+                log.verbose("ChannelSync", `Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
+                await intent.setRoomTopic(channelState.mxid, channelState.topic);
+                remoteRoom.remote.set("discord_topic", channelState.topic);
+                roomUpdated = true;
+            }
+            
+            if (channelState.iconUrl !== null) {
+                log.verbose("ChannelSync", `Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
+                if (channelsState.iconMxcUrl === null) {
+                    const iconMxc = await Util.UploadContentFromUrl(
+                        channelState.iconUrl,
+                        intent,
+                        channelState.iconId,
+                    );
+                    channelsState.iconMxcUrl = iconMxc.mxcUrl;
+                }
+                await intent.setRoomAvatar(channelState.mxid, channelsState.iconMxcUrl);
+                remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
+                remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
+                roomUpdated = true;
+            }
+            
+            if (channelState.removeIcon) {
+                log.verbose("ChannelSync", `Clearing icon_url for ${channelState.mxid}`);
+                await intent.setRoomAvatar(channelState.mxid, null);
+                remoteRoom.remote.set("discord_iconurl", null);
+                remoteRoom.remote.set("discord_iconurl_mxc", null);
+                roomUpdated = true;
+            }
+            
+            if (roomUpdated) {
+                await this.roomStore.upsertEntry(remoteRoom);
+            }
+        }
     }
 
     private async handleChannelDeletionForRoom(
