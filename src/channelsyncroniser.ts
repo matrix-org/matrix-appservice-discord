@@ -83,7 +83,53 @@ export class ChannelSyncroniser {
                 log.error("ChannelSync", "Failed to update channels", e);
             }
             iconMxcUrl = channelState.iconMxcUrl;
-        };
+        }
+    }
+
+    public async OnDelete(channel: Discord.Channel) {
+        if (channel.type !== "text") {
+            log.info("ChannelSync", `Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
+            return;
+        }
+        log.info("ChannelSync", `Channel ${channel.id} has been deleted.`);
+        let roomids;
+        let entries;
+        try {
+            roomids = await this.GetRoomIdsFromChannel(channel);
+            entries = await this.roomStore.getEntriesByMatrixIds(roomids);
+        } catch (e) {
+            log.warn("ChannelSync", `Couldn't find roomids for deleted channel ${channel.id}`);
+            return;
+        }
+        for (const roomid of roomids){
+            try {
+                await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid][0]);
+            } catch (e) {
+                log.error("ChannelSync", `Failed to delete channel from room: ${e}`);
+            }
+        }
+    }
+
+    public async OnGuildDelete(guild: Discord.Guild) {
+        for (const [_, channel] of guild.channels) {
+            try {
+                await this.OnDelete(channel);
+            } catch (e) {
+                log.error("ChannelSync", `Failed to delete guild channel`);
+            }
+        }
+    }
+
+    public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+        return this.roomStore.getEntriesByRemoteRoomData({
+            discord_channel: channel.id,
+        }).then((rooms) => {
+            if (rooms.length === 0) {
+                log.verbose("ChannelSync", `Couldn't find room(s) for channel ${channel.id}.`);
+                return Promise.reject("Room(s) not found.");
+            }
+            return rooms.map((room) => room.matrix.getId() as string);
+        });
     }
 
     private async ApplyStateToChannel(channelsState: IChannelState) {
@@ -133,53 +179,7 @@ export class ChannelSyncroniser {
             if (roomUpdated) {
                 await this.roomStore.upsertEntry(remoteRoom);
             }
-        };
-    }
-
-    public async OnDelete(channel: Discord.Channel) {
-        if (channel.type !== "text") {
-            log.info("ChannelSync", `Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
-            return;
         }
-        log.info("ChannelSync", `Channel ${channel.id} has been deleted.`);
-        let roomids;
-        let entries;
-        try {
-            roomids = await this.GetRoomIdsFromChannel(channel);
-            entries = await this.roomStore.getEntriesByMatrixIds(roomids);
-        } catch (e) {
-            log.warn("ChannelSync", `Couldn't find roomids for deleted channel ${channel.id}`);
-            return;
-        }
-        for (const roomid of roomids){
-            try {
-                await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid][0]);
-            } catch (e) {
-                log.error("ChannelSync", `Failed to delete channel from room: ${e}`);
-            }
-        }
-    }
-
-    public async OnGuildDelete(guild: Discord.Guild) {
-        for (const [_, channel] of guild.channels) {
-            try {
-                await this.OnDelete(channel);
-            } catch (e) {
-                log.error("ChannelSync", `Failed to delete guild channel`);
-            }
-        }
-    }
-
-    public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-        return this.roomStore.getEntriesByRemoteRoomData({
-            discord_channel: channel.id,
-        }).then((rooms) => {
-            if (rooms.length === 0) {
-                log.verbose("ChannelSync", `Couldn't find room(s) for channel ${channel.id}.`);
-                return Promise.reject("Room(s) not found.");
-            }
-            return rooms.map((room) => room.matrix.getId() as string);
-        });
     }
 
     private async GetChannelUpdateState(channel: Discord.TextChannel): Promise<IChannelState> {
@@ -196,12 +196,12 @@ export class ChannelSyncroniser {
         }
         
         const patternMap = {
-            name: "#"+channel.name,
+            name: "#" + channel.name,
             guild: channel.guild.name,
         };
         let name = this.config.channel.namePattern;
-        for (const p in patternMap) {
-            name = name.replace(new RegExp(":"+p, "g"), patternMap[p]);
+        for (const p of Object.keys(patternMap)) {
+            name = name.replace(new RegExp(":" + p, "g"), patternMap[p]);
         }
         const topic = channel.topic;
         const icon = channel.guild.icon;
@@ -212,7 +212,7 @@ export class ChannelSyncroniser {
         remoteRooms.forEach((remoteRoom) => {
             const mxid = remoteRoom.matrix.getId();
             const singleChannelState = Object.assign({}, DEFAULT_SINGLECHANNEL_STATE, {
-                mxid: mxid,
+                mxid,
             });
             
             const oldName = remoteRoom.remote.get("discord_name");

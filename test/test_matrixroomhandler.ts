@@ -62,6 +62,9 @@ function createRH(opts: any = {}) {
         OnMemberState: () => Promise.resolve("user_sync_handled"),
         OnUpdateUser: () => Promise.resolve(),
     };
+    const cs = {
+        OnUpdate: () => Promise.resolve(),
+    };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
@@ -98,6 +101,7 @@ function createRH(opts: any = {}) {
             return bridge.getIntent();
         },
         UserSyncroniser: us,
+        ChannelSyncroniser: cs,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
