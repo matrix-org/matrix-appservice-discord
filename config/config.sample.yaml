@@ -6,6 +6,7 @@ bridge:
   disableTypingNotifications: false
   disableDiscordMentions: false
   disableDeletionForwarding: false
+  enableSelfServiceBridging: false
 auth:
   clientID: "12345" # Get from discord
   secret: "blah"
@@ -14,5 +15,7 @@ logging:
   level: "warn" #silly, verbose, info, http, warn, error
 database:
   filename: "discord.db"
+  userStorePath: "user-store.db"
+  roomStorePath: "room-store.db"
 room:
   defaultVisibility: "public"

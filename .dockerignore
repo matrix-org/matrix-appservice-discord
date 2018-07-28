@@ -1,0 +1,15 @@
+.git
+node_modules
+
+# This is just stuff we don't need
+.travis.yml
+.gitignore
+build
+*.db
+discord-registration.yaml
+*.png
+README.md
+test
+docs
+config.yaml
+tools

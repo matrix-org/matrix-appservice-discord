@@ -1,4 +1,4 @@
-import * as Discord from "discord.js";
+import {User, Presence} from "discord.js";
 import * as log from "npmlog";
 import { DiscordBot } from "./bot";
 
@@ -11,11 +11,11 @@ export class PresenceHandlerStatus {
 
 export class PresenceHandler {
     private readonly bot: DiscordBot;
-    private presenceQueue: Discord.GuildMember[];
+    private presenceQueue: User[];
     private interval: number;
     constructor (bot: DiscordBot) {
         this.bot = bot;
-        this.presenceQueue = new Array();
+        this.presenceQueue = [];
     }
 
     get QueueCount (): number {
@@ -40,45 +40,45 @@ export class PresenceHandler {
         this.interval = null;
     }
 
-    public EnqueueMember(member: Discord.GuildMember) {
-        if (!this.presenceQueue.includes(member)) {
-            log.info("PresenceHandler", `Adding ${member.id} (${member.user.username}) to the presence queue`);
-            this.presenceQueue.push(member);
+    public EnqueueUser(user: User) {
+        if (this.presenceQueue.find((u) => u.id === user.id) === undefined) {
+            log.info("PresenceHandler", `Adding ${user.id} (${user.username}) to the presence queue`);
+            this.presenceQueue.push(user);
         }
     }
 
-    public DequeueMember(member: Discord.GuildMember) {
+    public DequeueUser(user: User) {
         const index = this.presenceQueue.findIndex((item) => {
-            return member === item;
+            return user.id === item.id;
         });
         if (index !== -1) {
             this.presenceQueue.splice(index, 1);
         } else {
             log.warn(
                 "PresenceHandler",
-                `Tried to remove ${member.id} from the presence queue but it could not be found`,
+                `Tried to remove ${user.id} from the presence queue but it could not be found`,
             );
         }
     }
 
-    public ProcessMember(member: Discord.GuildMember): boolean {
-        const status = this.getUserPresence(member.presence);
-        this.setMatrixPresence(member, status);
+    public ProcessUser(user: User): boolean {
+        const status = this.getUserPresence(user.presence);
+        this.setMatrixPresence(user, status);
         return status.ShouldDrop;
     }
 
     private processIntervalThread() {
-        const member = this.presenceQueue.shift();
-        if (member) {
-            if (!this.ProcessMember(member)) {
-                this.presenceQueue.push(member);
+        const user = this.presenceQueue.shift();
+        if (user) {
+            if (!this.ProcessUser(user)) {
+                this.presenceQueue.push(user);
             } else {
-                log.info("PresenceHandler", `Dropping ${member.id} from the presence queue.`);
+                log.info("PresenceHandler", `Dropping ${user.id} from the presence queue.`);
             }
         }
     }
 
-    private getUserPresence(presence: Discord.Presence): PresenceHandlerStatus {
+    private getUserPresence(presence: Presence): PresenceHandlerStatus {
         const status = new PresenceHandlerStatus();
 
         if (presence.game) {
@@ -102,14 +102,14 @@ export class PresenceHandler {
         return status;
     }
 
-    private setMatrixPresence(guildMember: Discord.GuildMember, status: PresenceHandlerStatus) {
-        const intent = this.bot.GetIntentFromDiscordMember(guildMember);
+    private setMatrixPresence(user: User, status: PresenceHandlerStatus) {
+        const intent = this.bot.GetIntentFromDiscordMember(user);
         const statusObj: any = {presence: status.Presence};
         if (status.StatusMsg) {
             statusObj.status_msg = status.StatusMsg;
         }
         intent.getClient().setPresence(statusObj).catch((ex) => {
-            log.warn("PresenceHandler", `Could not update Matrix presence for ${guildMember.id}`);
+            log.warn("PresenceHandler", `Could not update Matrix presence for ${user.id}`);
         });
     }
 }

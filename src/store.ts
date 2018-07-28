@@ -4,7 +4,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 6;
+const CURRENT_SCHEMA = 7;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -20,7 +20,7 @@ export class DiscordStore {
     this.filepath = filepath;
   }
 
-  public backup_database(): Promise<null> {
+  public backup_database(): Promise<void|{}> {
     if (this.filepath === ":memory:") {
       log.info("DiscordStore", "Can't backup a :memory: database.");
       return Promise.resolve();
@@ -37,7 +37,6 @@ export class DiscordStore {
         if (!result) {
           log.warn("DiscordStore", "NOT backing up database while a file already exists");
           resolve(true);
-          return;
         }
         const rd = fs.createReadStream(this.filepath);
         rd.on("error", reject);
@@ -52,7 +51,7 @@ export class DiscordStore {
   /**
    * Checks the database has all the tables needed.
    */
-  public async init (overrideSchema: number = 0) {
+  public async init (overrideSchema: number = 0): Promise<void> {
     log.info("DiscordStore", "Starting DB Init");
     await this.open_database();
     let version = await this.getSchemaVersion();
@@ -95,12 +94,12 @@ export class DiscordStore {
     });
   }
 
-  public add_user_token(userId: string, discordId: string, token: string): Promise<null> {
+  public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
     log.silly("SQL", "add_user_token => %s", userId);
     return Promise.all([
         this.db.runAsync(
           `
-          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($userId,$discordId);
+          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
             $userId: userId,
@@ -122,7 +121,7 @@ export class DiscordStore {
 
   public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => %s", discordId);
-    return this.db.execAsync(
+    return this.db.runAsync(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
       DELETE FROM discord_id_token WHERE discord_id = $id;
@@ -137,22 +136,22 @@ export class DiscordStore {
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => %s", userId);
-    return this.db.getAsync(
+    return this.db.allAsync(
       `
       SELECT discord_id
       FROM user_id_discord_id
-      WHERE user_id = $userId
+      WHERE user_id = $userId;
       `, {
         $userId: userId,
       },
     ).then( (rows) => {
       if (rows !== undefined) {
-        rows.map((row) => row.discord_id);
+        return rows.map((row) => row.discord_id);
       } else {
         return [];
       }
     }).catch( (err) => {
-      log.error("DiscordStore", "Error getting discord ids  %s", err.Error);
+      log.error("DiscordStore", "Error getting discord ids: %s", err.Error);
       throw err;
     });
   }
@@ -227,7 +226,7 @@ export class DiscordStore {
     });
   }
 
-  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T> {
+  public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
       const dType = new dbType();
       log.silly("DiscordStore", `get <${dType.constructor.name} with params ${params}>`);
       return dType.RunQuery(this, params).then(() => {
@@ -235,20 +234,21 @@ export class DiscordStore {
           return dType;
       }).catch((ex) => {
           log.warn("DiscordStore", `get <${dType.constructor.name} with params ${params} FAILED with exception ${ex}>`);
+          return null;
       });
   }
 
-  public Insert<T extends IDbData>(data: T): Promise<null> {
+  public Insert<T extends IDbData>(data: T): Promise<Error> {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Insert(this);
   }
 
-  public Update<T extends IDbData>(data: T): Promise<null>  {
+  public Update<T extends IDbData>(data: T): Promise<Error>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Update(this);
   }
 
-  public Delete<T extends IDbData>(data: T): Promise<null>  {
+  public Delete<T extends IDbData>(data: T): Promise<Error>  {
       log.silly("DiscordStore", `insert <${data.constructor.name}>`);
       return data.Delete(this);
   }

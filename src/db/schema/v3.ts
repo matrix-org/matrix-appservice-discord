@@ -34,12 +34,14 @@ export class Schema implements IDbSchema {
     });
   }
 
-  public rollBack(store: DiscordStore): Promise <null> {
+  public rollBack(store: DiscordStore): Promise <void> {
     return Promise.all([store.db.execAsync(
       `DROP TABLE IF EXISTS user_id_discord_id;`,
     ), store.db.execAsync(
       `DROP TABLE IF EXISTS discord_id_token;`,
-    )]);
+    )]).then(() => {
+
+    });
   }
 
   private async moveUserIds(store: DiscordStore): Promise <null> {
