@@ -236,7 +236,7 @@ export class DiscordBot {
     if (!Array.isArray(msg)) {
       msg = [msg];
     }
-    await Bluebird.each(msg, (m: Discord.Message) => {
+    for (const m of msg) {
       log.verbose("DiscordBot", "Sent ", m);
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
@@ -245,8 +245,8 @@ export class DiscordBot {
       // Webhooks don't send guild info.
       evt.GuildId = guildId;
       evt.ChannelId = channelId;
-      return this.store.Insert(evt);
-    });
+      await this.store.Insert(evt);
+    }
     return;
   }
 
