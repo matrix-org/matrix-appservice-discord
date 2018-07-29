@@ -155,20 +155,40 @@ export class Provisioner {
         if (name[0] === "@" && name.includes(":")) {
             return name;
         }
-        const bot = this.bridge.getBot();
+        const client = this.bridge.getIntent().getClient();
         const matrixUsers = {};
         let matches = 0;
         await Bluebird.all(channels.map((c) => {
-            return bot.getJoinedMembers(c).then((members) => {
-                for (const mxid of Object.keys(members)) {
-                    if (mxid.startsWith("@_discord_")) {
-                        continue;
+            // we would use this.bridge.getBot().getJoinedMembers()
+            // but we also want to be able to search through banned members
+            // so we gotta roll our own thing
+            return client._http.authedRequestWithPrefix(
+                undefined, "GET", "/rooms/" + encodeURIComponent(c) + "/members",
+                undefined, undefined, "/_matrix/client/r0"
+            ).then((res) => {
+                res.chunk.forEach((member) => {
+                    if (member.membership !== "join" && member.membership !== "ban") {
+                        return;
                     }
-                    if (name.toLowerCase() === members[mxid].display_name.toLowerCase() || name === mxid) {
-                        matrixUsers[mxid] = members[mxid].display_name;
+                    const mxid = member.state_key;
+                    if (mxid.startsWith("@_discord_")) {
+                        return;
+                    }
+                    let displayName = member.content.displayname;
+                    console.log("=====");
+                    console.log(displayName);
+                    if (!displayName && member.unsigned && member.unsigned.prev_content && member.unsigned.prev_content.displayname) {
+                        displayName = member.unsigned.prev_content.displayname;
+                    }
+                    console.log(displayName);
+                    if (!displayName) {
+                        displayName = mxid.substring(1, mxid.indexOf(":"));
+                    }
+                    if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
+                        matrixUsers[mxid] = displayName;
                         matches++;
                     }
-                }
+                });
             });
         }));
         if (matches === 0) {
