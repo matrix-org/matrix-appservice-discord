@@ -147,9 +147,9 @@ export class Provisioner {
         switch (command) {
             case "help":
                 replyMessage = "Available Messages:\n" +
-                    " - `kick <name>`: Kicks a user on the matrix side\n" +
-                    " - `ban <name>`: Bans a user on the matrix side\n" +
-                    " - `unban <name>`: Unbans a user on the matrix side\n\n" +
+                    " - `!matrix kick <name>`: Kicks a user on the matrix side\n" +
+                    " - `!matrix ban <name>`: Bans a user on the matrix side\n" +
+                    " - `!matrix unban <name>`: Unbans a user on the matrix side\n\n" +
                     "The name must be the display name or the mxid of the user to perform the action on.";
                 break;
             case "kick":
