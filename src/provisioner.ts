@@ -131,8 +131,8 @@ export class Provisioner {
                 let errorMsg = "";
                 await Bluebird.all(allChannels.map((c) => {
                     return intent[funcKey](c, userMxid).catch((e) => {
-                        // maybe we don't have permission to kick...?
-                        errorMsg += `\nCouldn't kick ${userMxid} from ${c}`;
+                        // maybe we don't have permission to kick/ban/unban...?
+                        errorMsg += `\nCouldn't ${funcKey} ${userMxid} from ${c}`;
                     });
                 }));
                 if (errorMsg) {
