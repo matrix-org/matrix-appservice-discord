@@ -97,6 +97,9 @@ export class Provisioner {
             msg.channel.sendMessage("**ERROR:** insufficiant permissions to use matrix commands");
             return;
         }
+        if (!(<Discord.TextChannel> msg.channel).guild) {
+            msg.channel.sendMessage("**ERROR:** only available for guild channels");
+        }
         const prefix = "!matrix ";
         let command = "help";
         let args = [];
@@ -117,14 +120,26 @@ export class Provisioner {
             const channels = await this.discord.GetRoomIdsFromChannel(msg.channel);
             try {
                 const userMxid = await this.GetMxidFromName(name, channels);
-                await Bluebird.all(channels.map((c) => {
-                    console.log(c);
-                    console.log(userMxid);
-                    return intent[funcKey](c, userMxid);
+                let allChannels = [];
+                await Bluebird.all((<Discord.TextChannel> msg.channel).guild.channels.map((c) => {
+                    return this.discord.GetRoomIdsFromChannel(c).then((chans) => {
+                        allChannels = allChannels.concat(chans);
+                    }).catch((e) => {
+                        // pass, non-text-channel
+                    });
                 }));
+                let errorMsg = "";
+                await Bluebird.all(allChannels.map((c) => {
+                    return intent[funcKey](c, userMxid).catch((e) => {
+                        // maybe we don't have permission to kick...?
+                        errorMsg += `\nCouldn't kick ${userMxid} from ${c}`;
+                    });
+                }));
+                if (errorMsg) {
+                    throw Error(errorMsg);
+                }
                 replyMessage = `${action} ${userMxid}`;
             } catch (e) {
-                console.log(e);
                 replyMessage = "**Error:** " + e.message;
             }
         };
@@ -146,6 +161,8 @@ export class Provisioner {
             case "unban":
                 await doAction("unban", "Unbanned");
                 break;
+            default:
+                break;
         }
         
         msg.channel.send(replyMessage);
@@ -164,7 +181,7 @@ export class Provisioner {
             // so we gotta roll our own thing
             return client._http.authedRequestWithPrefix(
                 undefined, "GET", "/rooms/" + encodeURIComponent(c) + "/members",
-                undefined, undefined, "/_matrix/client/r0"
+                undefined, undefined, "/_matrix/client/r0",
             ).then((res) => {
                 res.chunk.forEach((member) => {
                     if (member.membership !== "join" && member.membership !== "ban") {
@@ -175,12 +192,10 @@ export class Provisioner {
                         return;
                     }
                     let displayName = member.content.displayname;
-                    console.log("=====");
-                    console.log(displayName);
-                    if (!displayName && member.unsigned && member.unsigned.prev_content && member.unsigned.prev_content.displayname) {
+                    if (!displayName && member.unsigned && member.unsigned.prev_content &&
+                        member.unsigned.prev_content.displayname) {
                         displayName = member.unsigned.prev_content.displayname;
                     }
-                    console.log(displayName);
                     if (!displayName) {
                         displayName = mxid.substring(1, mxid.indexOf(":"));
                     }
