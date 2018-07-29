@@ -236,7 +236,7 @@ export class DiscordBot {
     if (!Array.isArray(msg)) {
       msg = [msg];
     }
-    for (const m of msg) {
+    await Promise.all(msg.map((m) => {
       log.verbose("DiscordBot", "Sent ", m);
       this.sentMessages.push(m.id);
       const evt = new DbEvent();
@@ -245,8 +245,8 @@ export class DiscordBot {
       // Webhooks don't send guild info.
       evt.GuildId = guildId;
       evt.ChannelId = channelId;
-      await this.store.Insert(evt);
-    }
+      return this.store.Insert(evt);
+    }));
     return;
   }
 
