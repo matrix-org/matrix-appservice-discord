@@ -335,7 +335,7 @@ export class DiscordBot {
     });
   }
 
-  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+  public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
         discord_channel: channel.id,
     }).then((rooms) => {
@@ -475,6 +475,12 @@ export class DiscordBot {
       }
 
       return; // stop processing - we're approving/declining the bridge request
+    }
+
+    // check if it is a command to process by the bot itself
+    if (msg.content.startsWith("!matrix")) {
+      await this.provisioner.HandleDiscordCommand(msg);
+      return;
     }
 
     // Update presence because sometimes discord misses people.

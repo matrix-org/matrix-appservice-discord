@@ -4,17 +4,24 @@ import {
     MatrixRoom,
 } from "matrix-appservice-bridge";
 import * as Discord from "discord.js";
+import * as Bluebird from "bluebird";
 import { Permissions } from "discord.js";
+import { DiscordBot } from "./bot";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
 export class Provisioner {
 
     private bridge: Bridge;
+    private discord: DiscordBot;
     private pendingRequests: { [channelId: string]: (approved: boolean) => void } = {}; // [channelId]: resolver fn
 
     public SetBridge(bridge: Bridge): void {
         this.bridge = bridge;
+    }
+
+    public SetDiscordbot(discord: DiscordBot): void {
+        this.discord = discord;
     }
 
     public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
@@ -83,5 +90,97 @@ export class Provisioner {
 
         this.pendingRequests[channelId](allow);
         return Promise.resolve(true); // replied, so true
+    }
+
+    public async HandleDiscordCommand(msg: Discord.Message) {
+        if (!msg.member.hasPermission("ADMINISTRATOR")) {
+            msg.channel.sendMessage("**ERROR:** insufficiant permissions to use matrix commands");
+            return;
+        }
+        const prefix = "!matrix ";
+        let command = "help";
+        let args = [];
+        if (msg.content.length >= prefix.length) {
+            const allArgs = msg.content.substring(prefix.length).split(" ");
+            if (allArgs.length && allArgs[0] !== "") {
+                command = allArgs[0];
+                allArgs.splice(0, 1);
+                args = allArgs;
+            }
+        }
+        
+        let replyMessage = "Error, unkown command. Try `!matrix help` to see all commands";
+        
+        const intent = this.bridge.getIntent();
+        const doAction = async (funcKey, action) => {
+            const name = args.join(" ");
+            const channels = await this.discord.GetRoomIdsFromChannel(msg.channel);
+            try {
+                const userMxid = await this.GetMxidFromName(name, channels);
+                await Bluebird.all(channels.map((c) => {
+                    console.log(c);
+                    console.log(userMxid);
+                    return intent[funcKey](c, userMxid);
+                }));
+                replyMessage = `${action} ${userMxid}`;
+            } catch (e) {
+                console.log(e);
+                replyMessage = "**Error:** " + e.message;
+            }
+        };
+        
+        switch (command) {
+            case "help":
+                replyMessage = "Available Messages:\n" +
+                    " - `kick <name>`: Kicks a user on the matrix side\n" +
+                    " - `ban <name>`: Bans a user on the matrix side\n" +
+                    " - `unban <name>`: Unbans a user on the matrix side\n\n" +
+                    "The name must be the display name or the mxid of the user to perform the action on.";
+                break;
+            case "kick":
+                await doAction("kick", "Kicked");
+                break;
+            case "ban":
+                await doAction("ban", "Banned");
+                break;
+            case "unban":
+                await doAction("unban", "Unbanned");
+                break;
+        }
+        
+        msg.channel.send(replyMessage);
+    }
+
+    private async GetMxidFromName(name: string, channels: string[]) {
+        if (name[0] === "@" && name.includes(":")) {
+            return name;
+        }
+        const bot = this.bridge.getBot();
+        const matrixUsers = {};
+        let matches = 0;
+        await Bluebird.all(channels.map((c) => {
+            return bot.getJoinedMembers(c).then((members) => {
+                for (const mxid of Object.keys(members)) {
+                    if (mxid.startsWith("@_discord_")) {
+                        continue;
+                    }
+                    if (name.toLowerCase() === members[mxid].display_name.toLowerCase() || name === mxid) {
+                        matrixUsers[mxid] = members[mxid].display_name;
+                        matches++;
+                    }
+                }
+            });
+        }));
+        if (matches === 0) {
+            throw Error(`No users matching ${name} found`);
+        }
+        if (matches > 1) {
+            let errStr = "Multiple matching users found:\n";
+            for (const mxid of Object.keys(matrixUsers)) {
+                errStr += `${matrixUsers[mxid]} (\`${mxid}\`)\n`;
+            }
+            throw Error(errStr);
+        }
+        return Object.keys(matrixUsers)[0];
     }
 }

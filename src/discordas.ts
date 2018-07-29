@@ -85,6 +85,7 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
   provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
+  provisioner.SetDiscordbot(discordbot);
   log.info("discordas", "Initing bridge.");
   log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
   bridge.run(port, config).then(() => {
