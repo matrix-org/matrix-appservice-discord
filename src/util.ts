@@ -10,8 +10,8 @@ const HTTP_OK = 200;
 
 export interface ICommandAction {
   params: string[];
-  description: string;
-  permission: string;
+  description?: string;
+  permission?: string;
   run(params: any): Promise<any>;
 };
 
@@ -20,7 +20,7 @@ export interface ICommandActions {
 };
 
 export interface ICommandParameter {
-  description: string;
+  description?: string;
   get(param: string): Promise<any>;
 };
 
@@ -206,7 +206,6 @@ export class Util {
     return Object.keys(matrixUsers)[0];
   }
 
-  
   public static async ParseCommand(action: ICommandAction, parameters: ICommandParameters, args: string[]) {
     if (action.params.length === 1) {
       args[0] = args.join(" ");
