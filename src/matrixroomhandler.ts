@@ -386,7 +386,6 @@ export class MatrixRoomHandler {
     return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
 
-  
   public async HandleDiscordCommand(msg: Discord.Message) {
     if (!msg.member.hasPermission("ADMINISTRATOR")) {
       msg.channel.sendMessage("**ERROR:** insufficiant permissions to use matrix commands");

@@ -4,7 +4,6 @@ import {
     MatrixRoom,
 } from "matrix-appservice-bridge";
 import * as Discord from "discord.js";
-import * as Bluebird from "bluebird";
 import { Permissions } from "discord.js";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
