@@ -297,7 +297,10 @@ describe("MatrixEventProcessor", () => {
                 },
             })];
             Chai.assert.equal(processor.FindTabCompletionMention("TestNickname: Hello", members), "<@!12345>: Hello");
-            Chai.assert.equal(processor.FindTabCompletionMention("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊: Hello", members), "<@!66666>: Hello");
+            Chai.assert.equal(
+                processor.FindTabCompletionMention("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊: Hello", members),
+                "<@!66666>: Hello",
+            );
             Chai.assert.equal(processor.FindTabCompletionMention("Test: Hello", members), "<@!54321>: Hello");
         });
     });
