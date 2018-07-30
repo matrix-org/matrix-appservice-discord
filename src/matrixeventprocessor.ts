@@ -88,6 +88,22 @@ export class MatrixEventProcessor {
         });
     }
 
+    public FindTabCompletionMention(body: string, members: Discord.GuildMember[]): string {
+        const colonIndex = body.indexOf(": ");
+        if (colonIndex == -1) {
+            return body;
+        }
+
+        const subjectName = body.substring(0, colonIndex);
+        for (const member of members) {
+            if (subjectName === member.displayName || subjectName === `${member.user.username}#${member.user.discriminator}`) {
+                return `<@!${member.id}>:${body.substring(colonIndex + 1)}`;
+            }
+        }
+
+        return body;
+    }
+
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {

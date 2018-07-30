@@ -254,6 +254,53 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(evt.description, "*eats pizza*");
         });
     });
+    describe("FindTabCompletionMention", () => {
+        it("processes mentioned username correctly", async () => {
+            const processor = createMatrixEventProcessor();
+            const guild: any = new MockGuild("123", []);
+            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                user: {
+                    username: "TestUsername",
+                    id: "12345",
+                    discriminator: "54321",
+                },
+            })];
+            Chai.assert.equal(
+                processor.FindTabCompletionMention("TestUsername: Hello", members),
+                "<@!12345>: Hello",
+            );
+            Chai.assert.equal(
+                processor.FindTabCompletionMention("TestUsername#54321: Hello", members),
+                "<@!12345>: Hello",
+            );
+        });
+        it("processes mentioned nickname correctly", async () => {
+            const processor = createMatrixEventProcessor();
+            const guild: any = new MockGuild("123", []);
+            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
+                nick: "Test",
+                user: {
+                    username: "Test",
+                    id: "54321",
+                },
+            }), new Discord.GuildMember(guild, {
+                nick: "TestNickname",
+                user: {
+                    username: "TestUsername",
+                    id: "12345",
+                },
+            }), new Discord.GuildMember(guild, {
+                nick: "𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊",
+                user: {
+                    username: "SomeFancyNickname",
+                    id: "66666",
+                },
+            })];
+            Chai.assert.equal(processor.FindTabCompletionMention("TestNickname: Hello", members), "<@!12345>: Hello");
+            Chai.assert.equal(processor.FindTabCompletionMention("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊: Hello", members), "<@!66666>: Hello");
+            Chai.assert.equal(processor.FindTabCompletionMention("Test: Hello", members), "<@!54321>: Hello");
+        });
+    });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {
             const processor = createMatrixEventProcessor();
