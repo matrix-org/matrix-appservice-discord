@@ -38,6 +38,11 @@ export class MatrixEventProcessor {
                 channel.members.array(),
             );
 
+        // Replace tab-completion mentions
+        if (this.config.bridge.disableTabCompletionMentions) {
+            body = this.FindTabCompletionMention(body, channel.members.array());
+        }
+
         // Replace @everyone
         if (this.config.bridge.disableEveryoneMention) {
             body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
