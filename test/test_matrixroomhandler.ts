@@ -36,7 +36,7 @@ const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
 
 let USERSJOINED = 0;
 let USERSKICKED = 0;
-let USERSBANNED= 0;
+let USERSBANNED = 0;
 let USERSUNBANNED = 0;
 
 function buildRequest(eventData) {
@@ -52,7 +52,7 @@ function createRH(opts: any = {}) {
     log.level = "silent";
     USERSJOINED = 0;
     USERSKICKED = 0;
-    USERSBANNED= 0;
+    USERSBANNED = 0;
     USERSUNBANNED = 0;
     const bridge = {
         getIntent: () => {
