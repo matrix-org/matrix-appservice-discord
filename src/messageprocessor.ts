@@ -73,11 +73,7 @@ export class MessageProcessor {
     public async FormatDiscordMessage(msg: Discord.Message, intent: any = null): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
         let content = msg.content;
-        // embeds are markdown formatted, thus inserted before
-        // for both plaintext and markdown
-        if (this.opts.bot !== null) {
-            content = this.InsertEmbeds(content, msg);
-        }
+        
         
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
@@ -170,7 +166,7 @@ export class MessageProcessor {
             return new Discord.Collection<Snowflake, Discord.User>();
         }
     }
-    
+
     public InsertEmbedsPostmark(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
             if (embed.title === undefined && embed.description === undefined) {
