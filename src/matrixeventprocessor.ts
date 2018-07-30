@@ -48,6 +48,19 @@ export class MatrixEventProcessor {
             body = body.replace(new RegExp(`@here`, "g"), "@ here");
         }
 
+        /* See issue #82
+        const isMarkdown = (event.content.format === "org.matrix.custom.html");
+        if (!isMarkdown) {
+          body = "\\" + body;
+        }*/
+
+        if (event.content.msgtype === "m.emote") {
+            body = `*${body}*`;
+        }
+
+        // replace <del>blah</del> with ~~blah~~
+        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
+
         // Handle discord custom emoji
         body = this.ReplaceDiscordEmoji(body, channel.guild);
 
@@ -64,15 +77,6 @@ export class MatrixEventProcessor {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
                 avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
             }
-            /* See issue #82
-            const isMarkdown = (event.content.format === "org.matrix.custom.html");
-            if (!isMarkdown) {
-              body = "\\" + body;
-            }
-            if (event.content.msgtype === "m.emote") {
-              body = `*${body}*`;
-            }
-            */
         }
         return new Discord.RichEmbed({
             author: {

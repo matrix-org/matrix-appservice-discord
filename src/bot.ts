@@ -13,6 +13,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { Provisioner } from "./provisioner";
+import {UserSyncroniser} from "./usersyncroniser";
 
 // Due to messages often arriving before we get a response from the send call,
 // messages get delayed from discord.
@@ -37,6 +38,7 @@ export class DiscordBot {
   private msgProcessor: MessageProcessor;
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
+  private userSync: UserSyncroniser;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -60,6 +62,10 @@ export class DiscordBot {
      return this.clientFactory;
   }
 
+  get UserSyncroniser(): UserSyncroniser {
+    return this.userSync;
+  }
+
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
@@ -73,19 +79,23 @@ export class DiscordBot {
         client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
       }
       if (!this.config.bridge.disablePresence) {
-        client.on("presenceUpdate", (_, newMember) => { this.presenceHandler.EnqueueMember(newMember); });
+        client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
+          this.presenceHandler.EnqueueUser(newMember.user); 
+        });
       }
-      client.on("userUpdate", (_, newUser) => { this.UpdateUser(newUser); });
       client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
-      client.on("guildMemberAdd", (newMember) => { this.AddGuildMember(newMember); });
-      client.on("guildMemberRemove", (oldMember) => { this.RemoveGuildMember(oldMember); });
-      client.on("guildMemberUpdate", (_, newMember) => { this.UpdateGuildMember(newMember); });
-      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
+      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
           this.OnMessage(msg);
         });
       });
+      
+      this.userSync = new UserSyncroniser(this.bridge, this.config, this);
+      client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
+      client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
+      client.on("guildMemberRemove", (user) =>  this.userSync.OnRemoveGuildMember(user));
+      client.on("guildMemberUpdate", (oldUser, newUser) =>  this.userSync.OnUpdateGuildMember(oldUser, newUser));
       client.on("debug", (msg) => { log.verbose("discord.js", msg); });
       client.on("error", (msg) => { log.error("discord.js", msg); });
       client.on("warn", (msg) => { log.warn("discord.js", msg); });
@@ -98,7 +108,7 @@ export class DiscordBot {
         }
         this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
-                this.presenceHandler.EnqueueMember(member);
+                this.presenceHandler.EnqueueUser(member.user);
             });
         });
         this.presenceHandler.Start(
@@ -295,15 +305,6 @@ export class DiscordBot {
     });
   }
 
-  public InitJoinUser(member: Discord.GuildMember, roomIds: string[]): Promise<any> {
-    const intent = this.GetIntentFromDiscordMember(member);
-    return this.UpdateUser(member.user).then(() => {
-      return Bluebird.each(roomIds, (roomId) => intent.join(roomId));
-    }).then(() => {
-      return this.UpdateGuildMember(member, roomIds);
-    });
-  }
-
   public async GetEmoji(name: string, animated: boolean, id: string): Promise<string> {
     if (!id.match(/^\d+$/)) {
       throw new Error("Non-numerical ID");
@@ -322,19 +323,7 @@ export class DiscordBot {
     return dbEmoji.MxcUrl;
   }
 
-  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-      discord_channel: channel.id,
-    }).then((rooms) => {
-      if (rooms.length === 0) {
-        log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
-        return Promise.reject("Room(s) not found.");
-      }
-      return rooms.map((room) => room.matrix.getId() as string);
-    });
-  }
-
-  private GetRoomIdsFromGuild(guild: String): Promise<string[]> {
+  public GetRoomIdsFromGuild(guild: String): Promise<string[]> {
     return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
       discord_guild: guild,
     }).then((rooms) => {
@@ -343,6 +332,18 @@ export class DiscordBot {
         return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => room.matrix.getId());
+    });
+  }
+
+  private GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+        discord_channel: channel.id,
+    }).then((rooms) => {
+        if (rooms.length === 0) {
+            log.verbose("DiscordBot", `Couldn"t find room(s) for channel ${channel.id}.`);
+            return Promise.reject("Room(s) not found.");
+        }
+        return rooms.map((room) => room.matrix.getId() as string);
     });
   }
 
@@ -393,48 +394,6 @@ export class DiscordBot {
     });
   }
 
-  private UpdateUser(discordUser: Discord.User) {
-    let remoteUser: RemoteUser;
-    const displayName = discordUser.username + "#" + discordUser.discriminator;
-    const id = `_discord_${discordUser.id}:${this.config.bridge.domain}`;
-    const intent = this.bridge.getIntent("@" + id);
-    const userStore = this.bridge.getUserStore();
-
-    return userStore.getRemoteUser(discordUser.id).then((u) => {
-      remoteUser = u;
-      if (remoteUser === null) {
-        remoteUser = new RemoteUser(discordUser.id);
-        return userStore.linkUsers(
-          new MatrixUser(id),
-          remoteUser,
-        );
-      }
-      return Promise.resolve();
-    }).then(() => {
-      if (remoteUser.get("displayname") !== displayName) {
-        return intent.setDisplayName(displayName).then(() => {
-          remoteUser.set("displayname", displayName);
-          return userStore.setRemoteUser(remoteUser);
-        });
-      }
-      return true;
-    }).then(() => {
-      if (remoteUser.get("avatarurl") !== discordUser.avatarURL && discordUser.avatarURL !== null) {
-        return Util.UploadContentFromUrl(
-          discordUser.avatarURL,
-          intent,
-          discordUser.avatar,
-        ).then((avatar) => {
-          intent.setAvatarUrl(avatar.mxcUrl).then(() => {
-            remoteUser.set("avatarurl", discordUser.avatarURL);
-            return userStore.setRemoteUser(remoteUser);
-          });
-        });
-      }
-      return true;
-    });
-  }
-
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
                                   guild: Discord.Guild, author: Discord.User,
                                   msgID: string): Promise<boolean> {
@@ -459,48 +418,6 @@ export class DiscordBot {
 
     // Sending was a success
     return true;
-  }
-
-  private AddGuildMember(guildMember: Discord.GuildMember) {
-    return this.GetRoomIdsFromGuild(guildMember.guild.id).then((roomIds) => {
-      return this.InitJoinUser(guildMember, roomIds);
-    });
-  }
-
-  private RemoveGuildMember(guildMember: Discord.GuildMember) {
-    const intent = this.GetIntentFromDiscordMember(guildMember);
-    return Bluebird.each(this.GetRoomIdsFromGuild(guildMember.guild.id), (roomId) => {
-        this.presenceHandler.DequeueMember(guildMember);
-        return intent.leave(roomId);
-    });
-  }
-
-  private UpdateGuildMember(guildMember: Discord.GuildMember, roomIds?: string[]) {
-    const client = this.GetIntentFromDiscordMember(guildMember).getClient();
-    const userId = client.credentials.userId;
-    let avatar = null;
-    log.info(`Updating nick for ${guildMember.user.username}`);
-    Bluebird.each(client.getProfileInfo(userId, "avatar_url").then((avatarUrl) => {
-      avatar = avatarUrl.avatar_url;
-      return roomIds || this.GetRoomIdsFromGuild(guildMember.guild.id);
-    }), (room) => {
-      log.verbose(`Updating ${room}`);
-      client.sendStateEvent(room, "m.room.member", {
-        "membership": "join",
-        "avatar_url": avatar,
-        "displayname": guildMember.displayName,
-        "uk.half-shot.discord.member": {
-          id: guildMember.id,
-          roles: guildMember.roles.map((role) => { return {
-            name: role.name,
-            color: role.color,
-            position: role.position,
-          }; }),
-        },
-      }, userId);
-    }).catch((err) => {
-      log.error("DiscordBot", "Failed to update guild member %s", err);
-    });
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
@@ -561,7 +478,7 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.UpdateUser(msg.author).then(() => {
+    this.userSync.OnUpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("DiscordBot", "No bridged rooms to send message to. Oh well.");
         return null;
@@ -607,19 +524,27 @@ export class DiscordBot {
       if (msg.content !== null && msg.content !== "") {
         this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
             rooms.forEach((room) => {
-              intent.sendMessage(room, {
+              const trySend = () => intent.sendMessage(room, {
                 body: result.body,
                 msgtype: "m.text",
                 formatted_body: result.formattedBody,
                 format: "org.matrix.custom.html",
-            }).then((res) => {
-                    const evt = new DbEvent();
-                    evt.MatrixId = res.event_id + ";" + room;
-                    evt.DiscordId = msg.id;
-                    evt.ChannelId = msg.channel.id;
-                    evt.GuildId = msg.guild.id;
-                    return this.store.Insert(evt);
-                });
+              });
+              const afterSend = (res) => {
+                const evt = new DbEvent();
+                evt.MatrixId = res.event_id + ";" + room;
+                evt.DiscordId = msg.id;
+                evt.ChannelId = msg.channel.id;
+                evt.GuildId = msg.guild.id;
+                return this.store.Insert(evt);
+              };
+              trySend().then(afterSend).catch((e) => {
+                if (e.errcode !== "M_FORBIDDEN") {
+                  log.error("DiscordBot", "Failed to send message into room.", e);
+                  return;
+                }
+                return this.userSync.EnsureJoin(msg.member, room).then(() => trySend()).then(afterSend);
+              });
             });
         });
       }

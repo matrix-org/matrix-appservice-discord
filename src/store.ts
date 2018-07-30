@@ -99,7 +99,7 @@ export class DiscordStore {
     return Promise.all([
         this.db.runAsync(
           `
-          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($userId,$discordId);
+          INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
             $userId: userId,
@@ -121,7 +121,7 @@ export class DiscordStore {
 
   public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => %s", discordId);
-    return this.db.execAsync(
+    return this.db.runAsync(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
       DELETE FROM discord_id_token WHERE discord_id = $id;

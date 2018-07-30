@@ -34,27 +34,49 @@ function buildRequest(eventData) {
 function createRH(opts: any = {}) {
     log.level = "silent";
     USERSJOINED = 0;
+    const bridge = {
+        getIntent: () => {
+            return {
+                sendMessage: (roomId, content) => Promise.resolve(content),
+                getClient: () => mxClient,
+                join: () => { USERSJOINED++; },
+                leave: () => { },
+            }; 
+        },
+        getBot: () => {
+            return {
+                _isRemoteUser: (id) => {
+                    return id !== undefined && id.startsWith("@_discord_");
+                },
+            };
+        },
+        getRoomStore: () => {
+            return {
+                removeEntriesByMatrixRoomId: () => {
+
+                },
+            };
+        },
+    };
+    const us = {
+        OnMemberState: () => Promise.resolve("user_sync_handled"),
+        OnUpdateUser: () => Promise.resolve(),
+    };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
-                const chan = new MockChannel();
+                const guild = new MockGuild("666666");
+                const chan = new MockChannel("777777", guild);
                 if (opts.createMembers) {
                     chan.members.set("12345", new MockMember("12345", "testuser1"));
                     chan.members.set("54321", new MockMember("54321", "testuser2"));
                     chan.members.set("bot12345", new MockMember("bot12345", "botuser"));
                 }
+                guild.members = chan.members;
                 return Promise.resolve(chan);
             } else {
                 return Promise.reject("Roomid not found");
             }
-        },
-        InitJoinUser: (member: MockMember, roomids: string[]) => {
-                if (opts.failUser) {
-                    return Promise.reject("test is rejecting joins");
-                }
-                USERSJOINED++;
-                return Promise.resolve();
-
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
@@ -72,6 +94,10 @@ function createRH(opts: any = {}) {
         ThirdpartySearchForChannels: () => {
             return [];
         },
+        GetIntentFromDiscordMember: () => {
+            return bridge.getIntent();
+        },
+        UserSyncroniser: us,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -81,8 +107,15 @@ function createRH(opts: any = {}) {
         config.bridge.enableSelfServiceBridging = true;
     }
     const mxClient = {
+        joinRoom: () => {
+            USERSJOINED++;
+            return Promise.resolve();
+        },
         getStateEvent: () => {
             return Promise.resolve(opts.powerLevels || {});
+        },
+        setRoomDirectoryVisibilityAppService: () => {
+            return Promise.resolve();
         },
     };
     const provisioner = {
@@ -101,21 +134,7 @@ function createRH(opts: any = {}) {
         },
     };
     const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge({
-            getIntent: () => {
-                return {
-                    sendMessage: (roomId, content) => Promise.resolve(content),
-                    leave: (roomId) => Promise.resolve(roomId),
-                    getClient: () => mxClient,
-                };
-            },
-            getRoomStore: () => {
-                return {
-                    removeEntriesByMatrixRoomId: (roomId) => Promise.resolve(roomId),
-                };
-            },
-        },
-    );
+    handler.setBridge(bridge);
     return handler;
 }
 
@@ -127,14 +146,9 @@ describe("MatrixRoomHandler", () => {
         });
         it("should join successfully and create ghosts", () => {
             const EXPECTEDUSERS = 2;
-            const TESTDELAY = 50;
             const handler = createRH({createMembers: true});
-            return  handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
-                return Bluebird.delay(TESTDELAY);
-            }).then(() => {
-                    expect(USERSJOINED).to.equal(EXPECTEDUSERS);
-                    // test for something
-                    return true;
+            return handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
+                expect(USERSJOINED).to.equal(EXPECTEDUSERS);
             });
         });
         it("should not join successfully", () => {
@@ -165,11 +179,19 @@ describe("MatrixRoomHandler", () => {
                 content: {membership: "invite"},
                 type: "m.room.member"}), null)).to.eventually.equal("invited");
         });
+        it("should handle own state updates", () => {
+            const handler = createRH();
+            return expect(handler.OnEvent(buildRequest({
+                content: {membership: "join"},
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null)).to.eventually.equal("user_sync_handled");
+        });
         it("should ignore other member types", () => {
             const handler = createRH();
             handler.HandleInvite = (ev) => Promise.resolve("invited");
             return expect(handler.OnEvent(buildRequest({
                 content: {membership: "join"},
+                state_key: "@bacon:localhost",
                 type: "m.room.member"}), null)).to.be.rejectedWith("Event not processed by bridge");
         });
         it("should handle redactions with existing rooms", () => {
