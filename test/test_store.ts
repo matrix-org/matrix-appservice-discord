@@ -2,13 +2,12 @@ import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 // import * as Proxyquire from "proxyquire";
 import { DiscordStore } from "../src/store";
-import * as log from "npmlog";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { DbEvent } from "../src/db/dbdataevent";
-
+import { Log } from "../src/log";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
-log.level = "warn";
+Log.level = "warn";
 
 const TEST_SCHEMA = 6;
 
