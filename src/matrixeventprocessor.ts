@@ -39,7 +39,7 @@ export class MatrixEventProcessor {
             );
 
         // Replace tab-completion mentions
-        if (this.config.bridge.disableTabCompletionMentions) {
+        if (!this.config.bridge.disableTabCompletionMentions) {
             body = this.FindTabCompletionMention(body, channel.members.array());
         }
 
