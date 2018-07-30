@@ -362,6 +362,33 @@ describe("UserSyncroniser", () => {
                expect(SEV_KEY).is.null;
            });
        });
+       it("Will apply roles", () => {
+           const userSync = CreateUserSync([new RemoteUser("123456")]);
+           const TESTROLE_NAME = "testrole";
+           const TESTROLE_COLOR = 1337;
+           const TESTROLE_POSITION = 42;
+           const state: IGuildMemberState = {
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
+               displayName: "Good Boy",
+               roles: [
+                   {
+                       name: TESTROLE_NAME,
+                       color: TESTROLE_COLOR,
+                       position: TESTROLE_POSITION,
+                   },
+               ],
+           };
+           return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
+               const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+               const roles = custKey.roles;
+               expect(custKey.id).is.equal("123456");
+               expect(roles.length).is.equal(1);
+               expect(roles[0].name).is.equal(TESTROLE_NAME);
+               expect(roles[0].color).is.equal(TESTROLE_COLOR);
+               expect(roles[0].position).is.equal(TESTROLE_POSITION);
+           });
+       });
    });
    describe("GetUserStateForGuildMember", () => {
        it("Will apply a new nick", () => {
@@ -388,6 +415,32 @@ describe("UserSyncroniser", () => {
                "BestDog");
            return userSync.GetUserStateForGuildMember(member as any, "BestDog").then((state) => {
                expect(state.displayName).is.null;
+           });
+       });
+       it("Will correctly add roles", () => {
+           const userSync = CreateUserSync([new RemoteUser("123456")]);
+           const guild = new MockGuild(
+               "654321");
+           const member = new MockMember(
+               "123456",
+               "username",
+               guild,
+               "BestDog");
+           const TESTROLE_NAME = "testrole";
+           const TESTROLE_COLOR = 1337;
+           const TESTROLE_POSITION = 42;
+           member.roles = [
+               {
+                   name: TESTROLE_NAME,
+                   color: TESTROLE_COLOR,
+                   position: TESTROLE_POSITION,
+               },
+           ];
+           return userSync.GetUserStateForGuildMember(member as any, null).then((state) => {
+               expect(state.roles.length).to.be.equal(1);
+               expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
+               expect(state.roles[0].color).to.be.equal(TESTROLE_COLOR);
+               expect(state.roles[0].position).to.be.equal(TESTROLE_POSITION);
            });
        });
    });
