@@ -49,6 +49,7 @@ describe("MessageProcessor", () => {
       it("processes non-discord markdown correctly.", async() => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         msg.embeds = [];
         msg.content = "> inb4 tests";
         let result = await processor.FormatDiscordMessage(msg);
@@ -64,6 +65,7 @@ describe("MessageProcessor", () => {
       it("processes discord-specific markdown correctly.", async() => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         msg.embeds = [];
         msg.content = "_ italic _";
         const result = await processor.FormatDiscordMessage(msg);
@@ -97,6 +99,7 @@ describe("MessageProcessor", () => {
             },
         ];
         msg.content = "message";
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
         Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
