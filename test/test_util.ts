@@ -6,6 +6,32 @@ import { Util, ICommandAction, ICommandParameters } from "../src/util";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
+function CreateMockIntent(members) {
+    return {
+        getClient: () => {
+            return {
+                _http: {
+                    authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
+                        const ret = [];
+                        for (const member of members[url]) {
+                            ret.push({
+                                membership: member.membership,
+                                state_key: member.mxid,
+                                content: {
+                                    displayname: member.displayname,
+                                },
+                            });
+                        }
+                        return {
+                            chunk: ret,
+                        };
+                    },
+                },
+            };
+        },
+    };
+}
+
 describe("Util", () => {
     describe("MsgToArgs", () => {
         it("parses arguments", () => {
@@ -40,6 +66,54 @@ describe("Util", () => {
             return Util.ParseCommand(action, parameters, ["hello", "world"]).then((retStr) => {
                 expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
             });
+        });
+    });
+    describe("GetMxidFromName", () => {
+        it("Finds a single member", () => {
+            const mockRooms = {
+                "/rooms/abc/members": [
+                    {
+                        membership: "join",
+                        mxid: "@123:localhost",
+                        displayname: "GoodBoy",
+                    },
+                ],
+            };
+            const intent = CreateMockIntent(mockRooms);
+            return Util.GetMxidFromName(intent, "goodboy", ["abc"]).then((mxid) => {
+                expect(mxid).equal("@123:localhost");
+            });
+        });
+        it("Errors on multiple members", () => {
+            const mockRooms = {
+                "/rooms/abc/members": [
+                    {
+                        membership: "join",
+                        mxid: "@123:localhost",
+                        displayname: "GoodBoy",
+                    },
+                    {
+                        membership: "join",
+                        mxid: "@456:localhost",
+                        displayname: "GoodBoy",
+                    },
+                ],
+            };
+            const intent = CreateMockIntent(mockRooms);
+            expect(Util.GetMxidFromName(intent, "goodboy", ["abc"])).to.eventually.be.rejected;
+        });
+        it("Errors on no member", () => {
+            const mockRooms = {
+                "/rooms/abc/members": [
+                    {
+                        membership: "join",
+                        mxid: "@123:localhost",
+                        displayname: "GoodBoy",
+                    },
+                ],
+            };
+            const intent = CreateMockIntent(mockRooms);
+            expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
         });
     });
 });
