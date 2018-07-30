@@ -113,21 +113,25 @@ export class DMRoom {
             return; // Drop echo
         }
         log.info(`Got discord message for ${this.dbroom.ChannelId}`);
-        const intent = this.handler.GetIntentForUser(msg.author);
-        const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
-        await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
-            return intent.sendMessage((this.dbroom.RoomId), evt);
-        }));
-
-        if (matrixMsg.body === "") {
-            return;
+        try {
+            const intent = this.handler.GetIntentForUser(msg.author);
+            const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
+            await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
+                return intent.sendMessage((this.dbroom.RoomId), evt);
+            }));
+    
+            if (matrixMsg.body === "") {
+                return;
+            }
+            await intent.sendMessage(this.dbroom.RoomId, {
+                msgtype: "m.text",
+                format: "org.matrix.custom.html",
+                body: matrixMsg.body,
+                formatted_body: matrixMsg.formattedBody,
+            });
+        } catch (e) {
+            log.error("Failed to handle discord message", e);
         }
-        return intent.sendMessage(this.dbroom.RoomId, {
-            msgtype: "m.text",
-            format: "org.matrix.custom.html",
-            body: matrixMsg.body,
-            formatted_body: matrixMsg.formattedBody,
-        });
     }
 
     public async OnDiscordTyping(user: User, typing: Boolean) {
