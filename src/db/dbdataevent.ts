@@ -1,6 +1,5 @@
 import { DiscordStore } from "../store";
-import { IDbData, IDbDataMany } from "./dbdatainterface";
-import * as log from "npmlog";
+import { IDbDataMany } from "./dbdatainterface";
 
 export class DbEvent implements IDbDataMany {
     public MatrixId: string;

@@ -1,10 +1,12 @@
 import {User, GuildMember, GuildChannel} from "discord.js";
-import * as log from "npmlog";
 import { DiscordBot } from "./bot";
 import {Util} from "./util";
 import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
 import {DiscordBridgeConfig} from "./config";
 import * as Bluebird from "bluebird";
+import {Log} from "./log";
+
+const log = new Log("UserSync");
 
 const DEFAULT_USER_STATE = {
     id: null,
@@ -79,7 +81,7 @@ export class UserSyncroniser {
         try {
             await this.ApplyStateToProfile(userState);
         } catch (e) {
-            log.error("UserSync", "Failed to update user's profile", e);
+            log.error("Failed to update user's profile", e);
         }
     }
 
@@ -89,7 +91,7 @@ export class UserSyncroniser {
         let remoteUser = null;
         if (userState.createUser) {
             /* NOTE: Setting the displayname/avatar will register the user if they don't exist */
-            log.info("UserSync", `Creating new user ${userState.mxUserId}`);
+            log.info(`Creating new user ${userState.mxUserId}`);
             remoteUser = new RemoteUser(userState.id);
             await this.userStore.linkUsers(
                 new MatrixUser(userState.mxUserId.substr("@".length)),
@@ -101,14 +103,14 @@ export class UserSyncroniser {
         }
 
         if (userState.displayName !== null) {
-            log.verbose("UserSync", `Updating displayname for ${userState.mxUserId} to "${userState.displayName}"`);
+            log.verbose(`Updating displayname for ${userState.mxUserId} to "${userState.displayName}"`);
             await intent.setDisplayName(userState.displayName);
             remoteUser.set("displayname", userState.displayName);
             userUpdated = true;
         }
 
         if (userState.avatarUrl !== null) {
-            log.verbose("UserSync", `Updating avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
+            log.verbose(`Updating avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
             const avatarMxc = await Util.UploadContentFromUrl(
                 userState.avatarUrl,
                 intent,
@@ -121,7 +123,7 @@ export class UserSyncroniser {
         }
 
         if (userState.removeAvatar) {
-            log.verbose("UserSync", `Clearing avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
+            log.verbose(`Clearing avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
             await intent.setAvatarUrl(null);
             remoteUser.set("avatarurl", null);
             remoteUser.set("avatarurl_mxc", null);
@@ -136,12 +138,12 @@ export class UserSyncroniser {
 
     public async EnsureJoin(member: GuildMember, roomId: string) {
         const state = await this.GetUserStateForGuildMember(member, "");
-        log.info("UserSync", `Ensuring ${state.id} is joined to ${roomId}`);
+        log.info(`Ensuring ${state.id} is joined to ${roomId}`);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
     public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
-        log.info("UserSync", `Applying new room state for ${memberState.mxUserId} to ${roomId}`);
+        log.info(`Applying new room state for ${memberState.mxUserId} to ${roomId}`);
         if (memberState.displayName === null) {
             // Nothing to do. Quitting
             return;
@@ -164,14 +166,14 @@ export class UserSyncroniser {
             await tryState();
         } catch (e) {
             if (e.errorcode !== "M_FORBIDDEN") {
-                log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+                log.warn(`Failed to send state to ${roomId}`, e);
             } else {
-                log.warn("UserSync", `User not in room ${roomId}, inviting`);
+                log.warn(`User not in room ${roomId}, inviting`);
                 try {
                     await this.bridge.getIntent().invite(roomId, memberState.mxUserId);
                     await tryState();
                 } catch (e) {
-                    log.warn("UserSync", `Failed to send state to ${roomId}`, e);
+                    log.warn(`Failed to send state to ${roomId}`, e);
                 }
             }
         }
@@ -181,7 +183,7 @@ export class UserSyncroniser {
     }
 
     public async GetUserUpdateState(discordUser: User): Promise<IUserState> {
-        log.verbose("UserSync", `State update requested for ${discordUser.id}`);
+        log.verbose(`State update requested for ${discordUser.id}`);
         const userState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
             mxUserId: `@_discord_${discordUser.id}:${this.config.bridge.domain}`,
@@ -190,7 +192,7 @@ export class UserSyncroniser {
         // Determine if the user exists.
         const remoteUser = await this.userStore.getRemoteUser(discordUser.id);
         if (remoteUser === null) {
-            log.verbose("UserSync", `Could not find user in remote user store.`);
+            log.verbose(`Could not find user in remote user store.`);
             userState.createUser = true;
             userState.displayName = displayName;
             userState.avatarUrl = discordUser.avatarURL;
@@ -200,13 +202,13 @@ export class UserSyncroniser {
 
         const oldDisplayName = remoteUser.get("displayname");
         if (oldDisplayName !== displayName) {
-            log.verbose("UserSync", `User ${discordUser.id} displayname should be updated`);
+            log.verbose(`User ${discordUser.id} displayname should be updated`);
             userState.displayName = displayName;
         }
 
         const oldAvatarUrl = remoteUser.get("avatarurl");
         if (oldAvatarUrl !== discordUser.avatarURL) {
-            log.verbose("UserSync", `User ${discordUser.id} avatarurl should be updated`);
+            log.verbose(`User ${discordUser.id} avatarurl should be updated`);
             if (discordUser.avatarURL !== null) {
                 userState.avatarUrl = discordUser.avatarURL;
                 userState.avatarId = discordUser.avatar;
@@ -240,7 +242,7 @@ export class UserSyncroniser {
     }
 
     public async OnAddGuildMember(member: GuildMember) {
-        log.info("UserSync", `Joining ${member.id} to all rooms for guild ${member.guild.id}`);
+        log.info(`Joining ${member.id} to all rooms for guild ${member.guild.id}`);
         const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         await this.OnUpdateUser(member.user);
@@ -253,7 +255,7 @@ export class UserSyncroniser {
 
     public async OnRemoveGuildMember(member: GuildMember) {
         /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
-        log.info("UserSync", `Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
+        log.info(`Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
         const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
@@ -264,7 +266,7 @@ export class UserSyncroniser {
     }
 
     public async OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember) {
-        log.info("UserSync", `Got update for ${oldMember.id}.`);
+        log.info(`Got update for ${oldMember.id}.`);
         const state = await this.GetUserStateForGuildMember(newMember, oldMember.displayName);
         const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
         return Promise.all(
@@ -276,11 +278,11 @@ export class UserSyncroniser {
 
     public async UpdateStateForGuilds(remoteUser: any) {
         const id = remoteUser.getId();
-        log.info("UserSync", `Got update for ${id}.`);
+        log.info(`Got update for ${id}.`);
 
         return this.discord.GetGuilds().map(async (guild) => {
             if (guild.members.has(id)) {
-                log.info("UserSync", `Updating user ${id} in guild ${guild.id}.`);
+                log.info(`Updating user ${id} in guild ${guild.id}.`);
                 const member = guild.members.get(id);
                 const state = await this.GetUserStateForGuildMember(member, remoteUser.get("displayname"));
                 const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
@@ -299,7 +301,7 @@ export class UserSyncroniser {
             // We're igorning this update because we have a newer one.
             return UserSyncroniser.ERR_NEWER_EVENT;
         }
-        log.verbose("UserSync", `m.room.member was updated for ${ev.state_key}, checking if nickname needs updating.`);
+        log.verbose(`m.room.member was updated for ${ev.state_key}, checking if nickname needs updating.`);
         const roomId = ev.room_id;
         let discordId;
         try {
@@ -309,7 +311,7 @@ export class UserSyncroniser {
             }
             discordId = remoteUsers[0].getId();
         } catch (e) {
-            log.warn("UserSync", `Got member update for ${ev.state_key}, but no user is linked in the store`);
+            log.warn(`Got member update for ${ev.state_key}, but no user is linked in the store`);
             return UserSyncroniser.ERR_USER_NOT_FOUND;
         }
 
@@ -319,7 +321,7 @@ export class UserSyncroniser {
             const channel = await this.discord.GetChannelFromRoomId(roomId) as GuildChannel;
             member = await channel.guild.fetchMember(discordId);
         } catch (e) {
-            log.warn("UserSync", `Got member update for ${roomId}, but no channel or guild member could be found.`);
+            log.warn(`Got member update for ${roomId}, but no channel or guild member could be found.`);
             return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
         const state = await this.GetUserStateForGuildMember(member, ev.content.displayname);
