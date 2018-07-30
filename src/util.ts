@@ -2,11 +2,13 @@ import * as http from "http";
 import * as https from "https";
 import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
-import * as log from "npmlog";
 import * as mime from "mime";
 import { Permissions } from "discord.js";
 
 const HTTP_OK = 200;
+
+import { Log } from "./log";
+const log = new Log("Util");
 
 export class Util {
 
@@ -62,7 +64,7 @@ export class Util {
         if (res.headers.hasOwnProperty("content-type")) {
           contenttype = res.headers["content-type"];
         } else {
-          log.verbose("UploadContent", "No content-type given by server, guessing based on file name.");
+          log.verbose("No content-type given by server, guessing based on file name.");
           contenttype = mime.lookup(url);
         }
 
@@ -91,13 +93,13 @@ export class Util {
         rawResponse: false,
       });
     }).then((contentUri) => {
-      log.verbose("UploadContent", "Media uploaded to %s", contentUri);
+      log.verbose("Media uploaded to %s", contentUri);
       return {
         mxcUrl: contentUri,
         size,
       };
     }).catch((reason) => {
-      log.error("UploadContent", "Failed to upload content:\n%s", reason);
+      log.error("Failed to upload content:\n%s", reason);
       throw reason;
     });
   }

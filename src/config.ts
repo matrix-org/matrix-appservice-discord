@@ -48,8 +48,11 @@ export class DiscordBridgeConfigAuth {
   public secret: string;
   public botToken: string;
 }
-class DiscordBridgeConfigLogging {
-  public level: string;
+
+export class DiscordBridgeConfigLogging {
+  public console: string = "info";
+  public lineDateFormat: string = "MMM-D HH:mm:ss.SSS";
+  public files: LoggingFile[] = [];
 }
 
 class DiscordBridgeConfigRoom {
@@ -73,4 +76,14 @@ class DiscordBridgeConfigChannelDeleteOptions {
 
 class DiscordBridgeConfigLimits {
   public roomGhostJoinDelay: number = 6000;
+}
+
+export class LoggingFile {
+  public file: string;
+  public level: string = "info";
+  public maxFiles: string = "14d";
+  public maxSize: string|number = "50m";
+  public datePattern: string = "YYYY-MM-DD";
+  public enabled: string[] = [];
+  public disabled: string[] = [];
 }

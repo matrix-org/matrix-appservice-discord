@@ -26,6 +26,9 @@ const bot = {
             },
         };
     },
+    GetBotId: () => {
+        return "1234";
+    },
 };
 
 describe("PresenceHandler", () => {
@@ -60,6 +63,11 @@ describe("PresenceHandler", () => {
             handler.EnqueueUser(<any> new MockUser("abc", "def"));
             handler.EnqueueUser(<any> new MockUser("abc", "def"));
             Chai.assert.equal(handler.QueueCount, 1);
+        });
+        it("does not add the bot user", () => {
+            const handler = new PresenceHandler(<DiscordBot> bot);
+            handler.EnqueueUser(<any> new MockUser("1234", "def"));
+            Chai.assert.equal(handler.QueueCount, 0);
         });
     });
     describe("DequeueUser", () => {
