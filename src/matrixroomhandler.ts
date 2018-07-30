@@ -378,7 +378,7 @@ export class MatrixRoomHandler {
 
   public async HandleDiscordCommand(msg: Discord.Message) {
     if (!(<Discord.TextChannel> msg.channel).guild) {
-      msg.channel.sendMessage("**ERROR:** only available for guild channels");
+      msg.channel.send("**ERROR:** only available for guild channels");
     }
     
     const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
@@ -445,7 +445,7 @@ export class MatrixRoomHandler {
     }
     
     if (!msg.member.hasPermission(actions[command].permission as any)) {
-      msg.channel.sendMessage("**ERROR:** insufficiant permissions to use this matrix command");
+      msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
       return;
     }
     
