@@ -1,9 +1,11 @@
 import * as Discord from "discord.js";
-import * as log from "npmlog";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig } from "./config";
 import { Bridge, RoomBridgeStore } from "matrix-appservice-bridge";
+import { Log } from "./log";
+
+const log = new Log("ChannelSync");
 
 const POWER_LEVEL_MESSAGE_TALK = 50;
 
@@ -55,12 +57,12 @@ export class ChannelSyncroniser {
         try {
             await this.ApplyStateToChannel(channelState);
         } catch (e) {
-            log.error("ChannelSync", "Failed to update channels", e);
+            log.error("Failed to update channels", e);
         }
     }
 
     public async OnGuildUpdate(guild: Discord.Guild) {
-        log.verbose("ChannelSync", `Got guild update for guild ${guild.id}`);
+        log.verbose(`Got guild update for guild ${guild.id}`);
         const channelStates = [];
         for (const [_, channel] of guild.channels) {
             if (channel.type !== "text") {
@@ -70,7 +72,7 @@ export class ChannelSyncroniser {
                 const channelState = await this.GetChannelUpdateState(channel as Discord.TextChannel);
                 channelStates.push(channelState);
             } catch (e) {
-                log.error("ChannelSync", "Failed to get channel state", e);
+                log.error("Failed to get channel state", e);
             }
         }
         
@@ -80,7 +82,7 @@ export class ChannelSyncroniser {
             try {
                 await this.ApplyStateToChannel(channelState);
             } catch (e) {
-                log.error("ChannelSync", "Failed to update channels", e);
+                log.error("Failed to update channels", e);
             }
             iconMxcUrl = channelState.iconMxcUrl;
         }
@@ -88,24 +90,24 @@ export class ChannelSyncroniser {
 
     public async OnDelete(channel: Discord.Channel) {
         if (channel.type !== "text") {
-            log.info("ChannelSync", `Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
+            log.info(`Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
             return;
         }
-        log.info("ChannelSync", `Channel ${channel.id} has been deleted.`);
+        log.info(`Channel ${channel.id} has been deleted.`);
         let roomids;
         let entries;
         try {
             roomids = await this.GetRoomIdsFromChannel(channel);
             entries = await this.roomStore.getEntriesByMatrixIds(roomids);
         } catch (e) {
-            log.warn("ChannelSync", `Couldn't find roomids for deleted channel ${channel.id}`);
+            log.warn(`Couldn't find roomids for deleted channel ${channel.id}`);
             return;
         }
         for (const roomid of roomids){
             try {
                 await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid][0]);
             } catch (e) {
-                log.error("ChannelSync", `Failed to delete channel from room: ${e}`);
+                log.error(`Failed to delete channel from room: ${e}`);
             }
         }
     }
@@ -115,7 +117,7 @@ export class ChannelSyncroniser {
             try {
                 await this.OnDelete(channel);
             } catch (e) {
-                log.error("ChannelSync", `Failed to delete guild channel`);
+                log.error(`Failed to delete guild channel`);
             }
         }
     }
@@ -125,14 +127,14 @@ export class ChannelSyncroniser {
             discord_channel: channel.id,
         });
         if (rooms.length === 0) {
-            log.verbose("ChannelSync", `Couldn't find room(s) for channel ${channel.id}.`);
+            log.verbose(`Couldn't find room(s) for channel ${channel.id}.`);
             return Promise.reject("Room(s) not found.");
         }
         return rooms.map((room) => room.matrix.getId() as string);
     }
 
     public async GetChannelUpdateState(channel: Discord.TextChannel): Promise<IChannelState> {
-        log.verbose("ChannelSync", `State update request for ${channel.id}`);
+        log.verbose(`State update request for ${channel.id}`);
         const channelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
             id: channel.id,
             mxChannels: [],
@@ -140,7 +142,7 @@ export class ChannelSyncroniser {
         
         const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
         if (remoteRooms.length === 0) {
-            log.verbose("ChannelSync", `Could not find any channels in room store.`);
+            log.verbose(`Could not find any channels in room store.`);
             return channelState;
         }
         
@@ -166,19 +168,19 @@ export class ChannelSyncroniser {
             
             const oldName = remoteRoom.remote.get("discord_name");
             if (remoteRoom.remote.get("update_name") && oldName !== name) {
-                log.verbose("ChannelSync", `Channel ${mxid} name should be updated`);
+                log.verbose(`Channel ${mxid} name should be updated`);
                 singleChannelState.name = name;
             }
             
             const oldTopic = remoteRoom.remote.get("discord_topic");
             if (remoteRoom.remote.get("update_topic") && oldTopic !== topic) {
-                log.verbose("ChannelSync", `Channel ${mxid} topic should be updated`);
+                log.verbose(`Channel ${mxid} topic should be updated`);
                 singleChannelState.topic = topic;
             }
             
             const oldIconUrl = remoteRoom.remote.get("discord_iconurl");
             if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) {
-                log.verbose("ChannelSync", `Channel ${mxid} icon should be updated`);
+                log.verbose(`Channel ${mxid} icon should be updated`);
                 if (iconUrl !== null) {
                     singleChannelState.iconUrl = iconUrl;
                     singleChannelState.iconId = icon;
@@ -197,21 +199,21 @@ export class ChannelSyncroniser {
             let roomUpdated = false;
             const remoteRoom = (await this.roomStore.getEntriesByMatrixId(channelState.mxid))[0];
             if (channelState.name !== null) {
-                log.verbose("ChannelSync", `Updating channelname for ${channelState.mxid} to "${channelState.name}"`);
+                log.verbose(`Updating channelname for ${channelState.mxid} to "${channelState.name}"`);
                 await intent.setRoomName(channelState.mxid, channelState.name);
                 remoteRoom.remote.set("discord_name", channelState.name);
                 roomUpdated = true;
             }
             
             if (channelState.topic !== null) {
-                log.verbose("ChannelSync", `Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
+                log.verbose(`Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
                 await intent.setRoomTopic(channelState.mxid, channelState.topic);
                 remoteRoom.remote.set("discord_topic", channelState.topic);
                 roomUpdated = true;
             }
             
             if (channelState.iconUrl !== null) {
-                log.verbose("ChannelSync", `Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
+                log.verbose(`Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
                 if (channelsState.iconMxcUrl === null) {
                     const iconMxc = await Util.UploadContentFromUrl(
                         channelState.iconUrl,
@@ -227,7 +229,7 @@ export class ChannelSyncroniser {
             }
             
             if (channelState.removeIcon) {
-                log.verbose("ChannelSync", `Clearing icon_url for ${channelState.mxid}`);
+                log.verbose(`Clearing icon_url for ${channelState.mxid}`);
                 await intent.setRoomAvatar(channelState.mxid, null);
                 remoteRoom.remote.set("discord_iconurl", null);
                 remoteRoom.remote.set("discord_iconurl_mxc", null);
@@ -244,7 +246,7 @@ export class ChannelSyncroniser {
         channel: Discord.TextChannel,
         roomId: string,
         entry: any): Promise<void> {
-        log.info("ChannelSync", `Deleting ${channel.id} from ${roomId}.`);
+        log.info(`Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
         const options = this.config.channel.deleteOptions;
         const plumbed = entry.remote.get("plumbed");
@@ -255,9 +257,9 @@ export class ChannelSyncroniser {
                 try {
                     const mIntent = await this.bot.GetIntentFromDiscordMember(member);
                     mIntent.leave(roomId);
-                    log.info("ChannelSync", `${member.id} left ${roomId}.`);
+                    log.info(`${member.id} left ${roomId}.`);
                 } catch (e) {
-                    log.warn("ChannelSync", `Failed to make ${member.id} leave `);
+                    log.warn(`Failed to make ${member.id} leave `);
                 }
             }
         }
@@ -267,7 +269,7 @@ export class ChannelSyncroniser {
                 name.name = options.namePrefix + name.name;
                 await intent.getClient().setRoomName(roomId, name.name);
             } catch (e) {
-                log.error("ChannelSync", `Failed to set name of room ${roomId} ${e}`);
+                log.error(`Failed to set name of room ${roomId} ${e}`);
             }
         }
         if (options.topicPrefix) {
@@ -276,7 +278,7 @@ export class ChannelSyncroniser {
                 topic.topic = options.topicPrefix + topic.topic;
                 await intent.getClient().setRoomTopic(roomId, topic.topic);
             } catch (e) {
-                log.error("ChannelSync", `Failed to set topic of room ${roomId} ${e}`);
+                log.error(`Failed to set topic of room ${roomId} ${e}`);
             }
         }
         
@@ -290,7 +292,7 @@ export class ChannelSyncroniser {
                     }
                     await intent.getClient().deleteAlias(alias);
                 } catch (e) {
-                    log.error("ChannelSync", `Couldn't remove alias of ${roomId} ${e}`);
+                    log.error(`Couldn't remove alias of ${roomId} ${e}`);
                 }
             }
 
@@ -298,7 +300,7 @@ export class ChannelSyncroniser {
                 try {
                     await intent.getClient().setRoomDirectoryVisibility(roomId, "private");
                 } catch (e) {
-                    log.error("ChannelSync", `Couldn't remove ${roomId} from room directory ${e}`);
+                    log.error(`Couldn't remove ${roomId} from room directory ${e}`);
                 }
 
             }
@@ -307,7 +309,7 @@ export class ChannelSyncroniser {
                 try {
                     await intent.getClient().sendStateEvent(roomId, "m.room.join_rules", {join_role: "invite"});
                 } catch (e) {
-                    log.error("ChannelSync", `Couldn't set ${roomId} to private ${e}`);
+                    log.error(`Couldn't set ${roomId} to private ${e}`);
                 }
             }
 
@@ -317,7 +319,7 @@ export class ChannelSyncroniser {
                     state.events_default = POWER_LEVEL_MESSAGE_TALK;
                     await intent.getClient().sendStateEvent(roomId, "m.room.power_levels", state);
                 } catch (e) {
-                    log.error("ChannelSync", `Couldn't disable messaging for ${roomId} ${e}`);
+                    log.error(`Couldn't disable messaging for ${roomId} ${e}`);
                 }
             }
         }
