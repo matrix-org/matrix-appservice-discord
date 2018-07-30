@@ -92,7 +92,9 @@ export class DMHandler {
         await Promise.all(users.map(({discord_id, user_id}) => {
             return this.clientFactory.getClient(user_id).then((client) => {
                 this.discordToUserIdMap.set(client.user.id, user_id);
-                client.on("message", (msg) => { this.onDiscordMessage(msg); });
+                client.on("message", (msg) => { this.onDiscordMessage(msg).catch((err) => {
+                    log.error("Got error on message:", err);
+                }); });
                 client.on("typingStart", (channel, user) => { this.onDiscordTyping(channel, user, true); } );
                 client.on("typingStop", (channel, user) => { this.onDiscordTyping(channel, user, false); } );
             }).catch((e) => {
@@ -220,7 +222,7 @@ export class DMHandler {
                 } catch (e) {
                     log.warn(`Failed to sync ${mentioned.id}`);
                 }
-                dmRoom.KickFromRoom(msg.author, mentioned);
+                dmRoom.KickFromRoom(msg.author, msg.mentions.users.first());
             }
             return;
         }
