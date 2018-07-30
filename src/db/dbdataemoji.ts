@@ -1,6 +1,5 @@
 import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
-import * as log from "npmlog";
 
 export class DbEmoji implements IDbData {
     public EmojiId: string;

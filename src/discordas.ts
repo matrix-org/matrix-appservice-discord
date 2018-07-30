@@ -1,5 +1,4 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
-import * as log from "npmlog";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -7,6 +6,9 @@ import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
 import { Provisioner } from "./provisioner";
+import { Log } from "./log";
+
+const log = new Log("DiscordAS");
 
 const cli = new Cli({
   bridgeConfig: {
@@ -21,8 +23,8 @@ const cli = new Cli({
 try {
   cli.run();
 } catch (err) {
-  console.error("Init", "Failed to start bridge."); // eslint-disable-line no-console
-  console.error("Init", err); // eslint-disable-line no-console
+  log.error("Failed to start bridge.");
+  log.error(err);
 }
 
 function generateRegistration(reg, callback)  {
@@ -37,15 +39,16 @@ function generateRegistration(reg, callback)  {
   callback(reg);
 }
 
-function run (port: number, config: DiscordBridgeConfig) {
-  config = Object.assign(new DiscordBridgeConfig(), config);
-  log.level = config.logging ? (config.logging.level || "warn") : "warn";
-  log.info("discordas", "Starting Discord AS");
-  const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
+function run (port: number, fileConfig: DiscordBridgeConfig) {
+  const config = new DiscordBridgeConfig();
+  config.ApplyConfig(fileConfig);
+  log.info("Starting Discord AS");
+  const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
   const registration = AppServiceRegistration.fromObject(yamlConfig);
   if (registration === null) {
     throw new Error("Failed to parse registration file");
   }
+
   const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
   const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
@@ -69,26 +72,33 @@ function run (port: number, config: DiscordBridgeConfig) {
         log.verbose("matrix-appservice-bridge", line);
       },
     },
+    intentOptions: {
+      clients: {
+        dontJoin: true, // handled manually
+      },
+    },
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
+    userStore: config.database.userStorePath,
+    roomStore: config.database.roomStorePath,
   });
   provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
-  log.info("discordas", "Initing bridge.");
-  log.info("AppServ", "Started listening on port %s at %s", port, new Date().toUTCString() );
+  log.info("Initing bridge.");
+  log.info("Started listening on port %s.", port);
   bridge.run(port, config).then(() => {
-    log.info("discordas", "Initing store.");
+    log.info("Initing store.");
     return discordstore.init();
   }).then(() => {
-    log.info("discordas", "Initing bot.");
+    log.info("Initing bot.");
     return discordbot.run().then(() => {
-      log.info("discordas", "Discordbot started successfully.");
+      log.info("Discordbot started successfully.");
     });
   }).catch((err) => {
-    log.error("discordas", err);
-    log.error("discordas", "Failure during startup. Exiting.");
+    log.error(err);
+    log.error("Failure during startup. Exiting.");
     process.exit(1);
   });
 }

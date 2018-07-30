@@ -1,8 +1,8 @@
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
-import {DiscordClientFactory} from "../../clientfactory";
-import * as log from "npmlog";
-import * as Bluebird from "bluebird";
+import { Log } from "../../log";
+
+const log = new Log("SchemaV7");
 
 export class Schema implements IDbSchema {
   public description = "create guild emoji table";
@@ -24,7 +24,7 @@ export class Schema implements IDbSchema {
         SELECT emoji_id, name, 0 AS animated, mxc_url, created_at, updated_at FROM guild_emoji;
       `).error(() => {
         // ignore errors
-        log.warning("DiscordSchema", "Failed to migrate old data to new table");
+        log.warning("Failed to migrate old data to new table");
       });
     });
   }

@@ -6,7 +6,9 @@ import * as escapeStringRegexp from "escape-string-regexp";
 import {Util} from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import * as log from "npmlog";
+
+import { Log } from "./log";
+const log = new Log("MatrixEventProcessor");
 
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
@@ -71,6 +73,9 @@ export class MatrixEventProcessor {
         if (event.content.msgtype === "m.emote") {
             body = `*${body}*`;
         }
+
+        // replace <del>blah</del> with ~~blah~~
+        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
 
         // Handle discord custom emoji
         if (channel.type === "text") {

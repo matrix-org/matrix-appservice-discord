@@ -2,7 +2,6 @@ import { DiscordBot } from "./bot";
 import {
   Bridge,
   RemoteRoom,
-  MatrixRoom,
   thirdPartyLookup,
   thirdPartyProtocolResult,
   thirdPartyUserResult,
@@ -11,10 +10,11 @@ import {
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
-import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import { Util } from "./util";
 import { Provisioner } from "./provisioner";
+import { Log } from "./log";
+const log = new Log("MatrixRoomHandler");
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 const HTTP_UNSUPPORTED = 501;
@@ -22,6 +22,7 @@ const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
 const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
+const USERSYNC_STATE_DELAY_MS = 5000;
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
 /* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
@@ -67,15 +68,17 @@ export class MatrixRoomHandler {
   }
 
   public async OnAliasQueried (alias: string, roomId: string) {
+    log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
     const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
+    
     // Fire and forget RoomDirectory mapping
     this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
         channel.guild.id,
         roomId,
         "public",
     );
-    let promiseChain: any = Bluebird.resolve();
-
+    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    /* We delay the joins to give some implementations a chance to breathe */
     // Join a whole bunch of users.
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
@@ -84,10 +87,16 @@ export class MatrixRoomHandler {
           continue;
         }
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-          return this.discord.InitJoinUser(member, [roomId]);
+            log.info("OnAliasQueried", `UserSyncing ${member.id}`);
+            // Ensure the profile is up to date.
+            return this.discord.UserSyncroniser.OnUpdateUser(member.user);
+        }).then(() => {
+            log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
+            return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
         }));
         delay += this.config.limits.roomGhostJoinDelay;
     }
+    // tslint:disable-next-line:await-promise
     await promiseChain;
   }
 
@@ -98,7 +107,11 @@ export class MatrixRoomHandler {
       return Promise.reject("Event too old");
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
-      return this.HandleInvite(event);
+        return this.HandleInvite(event);
+    } else if (event.type === "m.room.member" && event.content.membership === "join") {
+        if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+            return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
+        }
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message") {

@@ -1,8 +1,9 @@
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 import {DiscordClientFactory} from "../../clientfactory";
-import * as log from "npmlog";
-import * as Bluebird from "bluebird";
+import { Log } from "../../log";
+
+const log = new Log("SchemaV3");
 
 export class Schema implements IDbSchema {
   public description = "user_tokens split into user_id_discord_id";
@@ -45,7 +46,7 @@ export class Schema implements IDbSchema {
   }
 
   private async moveUserIds(store: DiscordStore): Promise <null> {
-  log.info("SchemaV3", "Performing one time moving of tokens to new table. Please wait.");
+  log.info("Performing one time moving of tokens to new table. Please wait.");
   let rows;
   try {
     rows = await store.db.allAsync(`SELECT * FROM user_tokens`);
@@ -61,13 +62,13 @@ directory.`);
   const promises = [];
   const clientFactory = new DiscordClientFactory(store);
   for (const row of rows) {
-    log.info("SchemaV3", "Moving %s.", row.userId);
+    log.info("Moving ", row.userId);
     try {
       const dId = clientFactory.getDiscordId(row.token);
       if (dId === null) {
         continue;
       }
-      log.verbose("SchemaV3", "INSERT INTO discord_id_token.");
+      log.verbose("INSERT INTO discord_id_token.");
       await store.db.runAsync(
         `
             INSERT INTO discord_id_token (discord_id,token)
@@ -77,7 +78,7 @@ directory.`);
           $discordId: dId,
           $token: row.token,
         });
-      log.verbose("SchemaV3", "INSERT INTO user_id_discord_id.");
+      log.verbose("INSERT INTO user_id_discord_id.");
       await store.db.runAsync(
         `
             INSERT INTO user_id_discord_id (discord_id,user_id)
@@ -88,8 +89,8 @@ directory.`);
           $userId: row.userId,
         });
     } catch (err) {
-      log.error("SchemaV3", `Couldn't move ${row.userId}'s token into new table.`);
-      log.error("SchemaV3", err);
+      log.error(`Couldn't move ${row.userId}'s token into new table.`);
+      log.error(err);
     }
   }
 }
