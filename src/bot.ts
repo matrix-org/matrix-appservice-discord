@@ -108,7 +108,9 @@ export class DiscordBot {
         }
         this.bot.guilds.forEach((guild) => {
             guild.members.forEach((member) => {
-                this.presenceHandler.EnqueueUser(member.user);
+                if (member.id !== this.GetBotId()) {
+                  this.presenceHandler.EnqueueUser(member.user);
+                }
             });
         });
         this.presenceHandler.Start(
