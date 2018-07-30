@@ -40,11 +40,11 @@ export class MatrixEventProcessor {
 
         let members: UserMemberArray = [];
         if (channel.type === "text") {
-            members = (<Discord.TextChannel>channel).members.array();
+            members = (<Discord.TextChannel> channel).members.array();
         } else if (channel.type === "group") {
-            members = (<Discord.GroupDMChannel>channel).recipients.array();
+            members = (<Discord.GroupDMChannel> channel).recipients.array();
         } else {
-            const dm = <Discord.DMChannel>channel;
+            const dm = <Discord.DMChannel> channel;
             members = [dm.recipient, dm.client.user];
         }
 
@@ -79,7 +79,7 @@ export class MatrixEventProcessor {
 
         // Handle discord custom emoji
         if (channel.type === "text") {
-            body = this.ReplaceDiscordEmoji(body, (<Discord.TextChannel>channel).guild);
+            body = this.ReplaceDiscordEmoji(body, (<Discord.TextChannel> channel).guild);
         }
 
         let displayName = event.sender;
@@ -108,12 +108,12 @@ export class MatrixEventProcessor {
 
     public FindMentionsInPlainBody(body: string, members: UserMemberArray): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
-        for (const member of members) {
-            const user = member["user"] !== undefined ? member["user"] : member;
+        for (const member of members as any[]) { // XXX: We have effectively disabled type checking here :(
+            const user = member.user !== undefined ? member.user : member;
             let matcher = escapeStringRegexp(user.username + "#" + user.discriminator) +
             "|" + escapeStringRegexp(user.username);
-            if (typeof(member["nickname"]) === "string") {
-                matcher = matcher + "|" + escapeStringRegexp(member["nickname"]);
+            if (typeof(member.nickname) === "string") {
+                matcher = matcher + "|" + escapeStringRegexp(member.nickname);
             }
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`

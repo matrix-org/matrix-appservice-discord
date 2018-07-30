@@ -11,7 +11,7 @@ export class DbDmRoom implements IDbData {
 
     public RunQuery(store: DiscordStore, params: any): Promise<null> {
         let selectStatement = "";
-        if(params.room_id !== undefined) {
+        if (params.room_id !== undefined) {
             selectStatement = "WHERE room_id = $room_id";
         } else if (params.chan_id !== undefined) {
             selectStatement = "WHERE chan_id = $chan_id";

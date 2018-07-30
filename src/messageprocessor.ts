@@ -74,7 +74,6 @@ export class MessageProcessor {
         const result = new MessageProcessorMatrixResult();
         let content = msg.content;
         
-        
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
@@ -99,7 +98,7 @@ export class MessageProcessor {
         }
 
         result.attachmentEvents = await Promise.all(msg.attachments.map((attachment) => {
-            return Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
+            return Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((res) => {
                 const fileMime = mime.lookup(attachment.filename);
                 const msgtype = attachment.height ? "m.image" : "m.file";
                 const info = {
@@ -116,9 +115,9 @@ export class MessageProcessor {
                     body: attachment.filename,
                     info,
                     msgtype,
-                    url: content.mxcUrl,
+                    url: res.mxcUrl,
                     external_url: attachment.url,
-                }
+                };
             });
         }));
 
@@ -147,24 +146,6 @@ export class MessageProcessor {
             content += embedContent;
         }
         return content;
-    }
-
-    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User> {
-        if(msg.channel.type === "text") {
-            const channel = msg.channel as Discord.TextChannel;
-            let users = new Discord.Collection<Snowflake, Discord.User>();
-            channel.guild.members.forEach((u) => users.set(u.id, u.user));
-            return users;
-        } else if(msg.channel.type === "dm") {
-            return new Discord.Collection<Snowflake, Discord.User>([
-                ["asc", msg.author],
-                ["asc", (<DMChannel>msg.channel).recipient],
-            ]);
-        } else if (msg.channel.type === "group") {
-            return (<GroupDMChannel>msg.channel).recipients;
-        } else {
-            return new Discord.Collection<Snowflake, Discord.User>();
-        }
     }
 
     public InsertEmbedsPostmark(content: string, msg: Discord.Message): string {
@@ -286,6 +267,24 @@ export class MessageProcessor {
             results = EMOJI_REGEX_POSTMARK.exec(content);
         }
         return content;
+    }
+
+    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User> {
+        if (msg.channel.type === "text") {
+            const channel = msg.channel as Discord.TextChannel;
+            const users = new Discord.Collection<Snowflake, Discord.User>();
+            channel.guild.members.forEach((u) => users.set(u.id, u.user));
+            return users;
+        } else if (msg.channel.type === "dm") {
+            return new Discord.Collection<Snowflake, Discord.User>([
+                ["asc", msg.author],
+                ["asc", (<DMChannel> msg.channel).recipient],
+            ]);
+        } else if (msg.channel.type === "group") {
+            return (<GroupDMChannel> msg.channel).recipients;
+        } else {
+            return new Discord.Collection<Snowflake, Discord.User>();
+        }
     }
 }
 

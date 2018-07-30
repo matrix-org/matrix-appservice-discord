@@ -43,7 +43,7 @@ interface InviteResult {
  */
 export class DMHandler {
     private dmRooms: DMRoom[];
-    private discordToUserIdMap: Map<string,string>;
+    private discordToUserIdMap: Map<string, string>;
     private messageProcessor: MessageProcessor;
     private matrixEventProcessor: MatrixEventProcessor;
     constructor (
@@ -55,11 +55,11 @@ export class DMHandler {
         this.dmRooms = [];
         this.messageProcessor = new MessageProcessor({
             domain: bridge.opts.domain,
-            bot: null // No emoji support.
+            bot: null, // No emoji support.
         });
         this.matrixEventProcessor = new MatrixEventProcessor({
-            bridge: bridge,
-            config: config
+            bridge,
+            config,
         });
         this.discordToUserIdMap = new Map();
     }
@@ -91,8 +91,8 @@ export class DMHandler {
             return this.clientFactory.getClient(user_id).then((client) => {
                 this.discordToUserIdMap.set(client.user.id, user_id);
                 client.on("message", (msg) => { this.onDiscordMessage(msg); });
-                client.on("typingStart", (channel, user,) => { this.onDiscordTyping(channel, user, true); } )
-                client.on("typingStop", (channel, user,) => { this.onDiscordTyping(channel, user, false); } )
+                client.on("typingStart", (channel, user) => { this.onDiscordTyping(channel, user, true); } );
+                client.on("typingStop", (channel, user) => { this.onDiscordTyping(channel, user, false); } );
             }).catch((e) => {
                 log.error("Failed to start client", e);
             });
@@ -151,8 +151,6 @@ export class DMHandler {
         // const newDMRoom = new DbDmRoom();
         // newDMRoom.RoomId = event.room_id;
         // await newDMRoom.Insert(this.store);
-
-        //TODO: Start client if not active.
     }
 
     /**
@@ -165,7 +163,7 @@ export class DMHandler {
         try {
             const dmRoom = await this.GetDMRoomByRoomId(event);
             dmRoom.OnMatrixEvent(event);
-        } catch(e) {
+        } catch (e) {
             log.error(`"Failed to get DM room, dropping message! ${event.room_id}`, e);
         }
     }
@@ -217,12 +215,14 @@ export class DMHandler {
         if (msg.type === "CHANNEL_ICON_CHANGE") {
             const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
             if (dmRoom) {
-                dmRoom.UpdateAvatar(msg.author, (<GroupDMChannel>msg.channel)["iconUrl"]);
+                // TODO: For whatever reason, iconUrl has no types in this version.
+                const chan = msg.channel as any;
+                dmRoom.UpdateAvatar(msg.author, chan.iconUrl);
             }
             return;
         }
 
-        if (msg.type !== "DEFAULT"){ 
+        if (msg.type !== "DEFAULT") { 
             log.verbose(`Ignoring unknown message type ${msg.type}`);
             return;
         }
@@ -231,7 +231,7 @@ export class DMHandler {
         try {
             const dmRoom = await this.GetDMRoomByDiscordMessage(msg, true);
             dmRoom.OnDiscordMessage(msg);
-        } catch(e) {
+        } catch (e) {
             log.error(`"Failed to get DM room, dropping message! ${msg.id}`, e);
         }
     }
@@ -249,13 +249,13 @@ export class DMHandler {
 
     private async GetDMRoomByDiscordChannel(chan: Channel): Promise<DMRoom|null> {
         let room = this.dmRooms.find(
-            (dmRoom) => dmRoom.DiscordChannelId === chan.id
+            (dmRoom) => dmRoom.DiscordChannelId === chan.id,
         );
         if (room === undefined) {
             log.info(`DmRoom ${chan.id} not in memory, trying DB`);
             // Try to fetch one from the DB.
-            let dbRoom = await this.store.Get(DbDmRoom,{
-                chan_id: chan.id
+            const dbRoom = await this.store.Get(DbDmRoom, {
+                chan_id: chan.id,
             });
             if (!dbRoom.Result) {
                 return null;
@@ -275,23 +275,23 @@ export class DMHandler {
             const dbRoom = new DbDmRoom();
             dbRoom.ChannelId = msg.channel.id;
             let inviter: User = null;
-            let recipients = [
-                this.discordToUserIdMap.get(msg.client.user.id)
+            const recipients = [
+                this.discordToUserIdMap.get(msg.client.user.id),
             ]; // Always add the real matrix user.
             let name;
             if (msg.channel.type === "dm") {
-                inviter = (<DMChannel>msg.channel).recipient;
+                inviter = (<DMChannel> msg.channel).recipient;
                 recipients.push(
-                    `@_discord_${msg.client.user.id}:${this.bridge.opts.domain}`
+                    `@_discord_${msg.client.user.id}:${this.bridge.opts.domain}`,
                 );
-            } else { //Group
+            } else { // Group
                 inviter = msg.client.user;
-                (<GroupDMChannel>msg.channel).recipients.forEach((user) => {
+                (<GroupDMChannel> msg.channel).recipients.forEach((user) => {
                     recipients.push(
-                        `@_discord_${user.id}:${this.bridge.opts.domain}`
+                        `@_discord_${user.id}:${this.bridge.opts.domain}`,
                     );
                 });
-                name = (<GroupDMChannel>msg.channel).name;
+                name = (<GroupDMChannel> msg.channel).name;
             }
 
             dbRoom.RoomId = await this.CreateMatrixRoomForDM(inviter, recipients, name);
@@ -312,15 +312,15 @@ export class DMHandler {
     private async GetDMRoomByRoomId(event: any) {
         // Check if we have a hydrated one ready for use?
         let room = this.dmRooms.find(
-            (dmRoom) => dmRoom.RoomId === event.room_id
+            (dmRoom) => dmRoom.RoomId === event.room_id,
         );
         if (room !== undefined) {
             return room;
         }
         log.info(`DmRoom ${event.room_id} not in memory, trying DB`);
         // Try to fetch one from the DB.
-        let dbRoom = await this.store.Get(DbDmRoom,{
-            room_id: event.room_id
+        const dbRoom = await this.store.Get(DbDmRoom, {
+            room_id: event.room_id,
         });
         if (dbRoom.Result) {
             room = new DMRoom(dbRoom, this);
@@ -360,11 +360,9 @@ export class DMHandler {
             preset: "trusted_private_chat",
             is_direct: true,
             visibility: "private",
-            invite: recipients
-        }
-        if (name) {
-            options["name"] = name;
-        }
+            invite: recipients,
+            name,
+        };
         return intent.createRoom({
             createAsClient: true,
             options,

@@ -96,7 +96,7 @@ function createRH(opts: any = {}) {
         },
         DMHandler: {
             OnMatrixMessage: () => Promise.resolve("DMMessageHandled"),
-            HandleInvite: () => Promise.resolve("DMInviteHandled")
+            HandleInvite: () => Promise.resolve("DMInviteHandled"),
         },
         GetIntentFromDiscordMember: () => {
             return bridge.getIntent();

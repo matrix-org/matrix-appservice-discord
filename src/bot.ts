@@ -115,7 +115,7 @@ export class DiscordBot {
           this.config,
           this.bridge,
           this.clientFactory,
-          this.store
+          this.store,
       );
 
       this.dmHandler.StartPuppetedClients().catch(() => {
@@ -416,24 +416,24 @@ export class DiscordBot {
     });
   }
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult,
-    chan: Discord.GuildChannel,
-    author: Discord.User,
-    msgID: string): Promise<boolean> {
+                                  chan: Discord.GuildChannel,
+                                  author: Discord.User,
+                                  msgID: string): Promise<boolean> {
     const rooms = await this.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
       matrixMsg.attachmentEvents.forEach((evt) => {
         intent.sendMessage(room, evt).then((res) => {
-          const evt = new DbEvent();
-          evt.MatrixId = res.event_id + ";" + room;
-          evt.DiscordId = msgID;
-          evt.ChannelId = chan.id;
-          evt.GuildId = chan.guild.id;
-          return this.store.Insert(evt);
-        })
+          const dbEvt = new DbEvent();
+          dbEvt.MatrixId = res.event_id + ";" + room;
+          dbEvt.DiscordId = msgID;
+          dbEvt.ChannelId = chan.id;
+          dbEvt.GuildId = chan.guild.id;
+          return this.store.Insert(dbEvt);
+        });
       });
-      if(matrixMsg.body === "") {
+      if (matrixMsg.body === "") {
         return;
       }
       intent.sendMessage(room, {
@@ -517,8 +517,7 @@ export class DiscordBot {
     let rooms;
     try {
       rooms = await this.GetRoomIdsFromChannel(msg.channel);
-    }
-    catch (e) {
+    } catch (e) {
       log.verbose("No bridged rooms to send message to. Oh well.");
     }
     if (rooms === null) {
@@ -527,7 +526,7 @@ export class DiscordBot {
     const intent = this.GetIntentFromDiscordMember(msg.author);
     const result = await this.msgProcessor.FormatDiscordMessage(msg, intent);
     try {
-      await this.SendMatrixMessage(result, <Discord.GuildChannel>msg.channel, msg.author, msg.id);
+      await this.SendMatrixMessage(result, <Discord.GuildChannel> msg.channel, msg.author, msg.id);
     } catch (e) {
       log.verbose("Failed to send message into room.", e);
     }
@@ -543,7 +542,7 @@ export class DiscordBot {
     const editedMsg = await this.msgProcessor.FormatEdit(oldMsg, newMsg);
 
     // Send the message to all bridged matrix rooms
-    if (!await this.SendMatrixMessage(editedMsg, <Discord.GuildChannel>newMsg.channel, newMsg.author, newMsg.id)) {
+    if (!await this.SendMatrixMessage(editedMsg, <Discord.GuildChannel> newMsg.channel, newMsg.author, newMsg.id)) {
       log.error("Unable to announce message edit for msg id:", newMsg.id);
     }
   }

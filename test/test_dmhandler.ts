@@ -13,7 +13,7 @@ import { MockMember } from "./mocks/member";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 const INTERVAL = 250;
-let lastStatus = null;
+const lastStatus = null;
 // const assert = Chai.assert;
 const bot = {
 

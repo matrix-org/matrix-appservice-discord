@@ -1,8 +1,7 @@
-import { Snowflake, Client, TextChannel, Collection, GuildMember, Channel, DMChannel, GroupDMChannel, Message, FileOptions, User } from "discord.js";
-import { MatrixRoom , Intent} from "matrix-appservice-bridge";
+import { Client, DMChannel, GroupDMChannel, Message, User } from "discord.js";
+import { Intent} from "matrix-appservice-bridge";
 import { DbDmRoom } from "./db/dbdatadmroom";
 import { DMHandler } from "./dmhandler";
-import { MessageProcessor } from "./messageprocessor";
 import { Util } from "./util";
 import { Log } from "./log";
 
@@ -32,10 +31,10 @@ export class DMRoom {
 
     get discordUserIDs() {
         if (this.channel.type === "dm") {
-            const c = (<DMChannel>this.channel);
+            const c = (<DMChannel> this.channel);
             return [c.client.user.id, c.recipient.id];
         } else if (this.channel.type === "group") {
-            return (<GroupDMChannel>this.channel).recipients.keyArray();
+            return (<GroupDMChannel> this.channel).recipients.keyArray();
         }
     };
 
@@ -53,9 +52,9 @@ export class DMRoom {
         log.verbose(`${this.dbroom.ChannelId} has ${this.discordUserIDs.length} discord members`);
     }
 
-    public async HydrateRoomWithMatrix(matrixClient: Intent): Promise<void>{
+    public async HydrateRoomWithMatrix(matrixClient: Intent): Promise<void> {
         const roomState: any[] = await matrixClient.roomState(this.dbroom.RoomId);
-        roomState.forEach(element => {
+        roomState.forEach((element) => {
             if (element.type === "m.room.member" &&
                 element.content.membership === "join") {
                 this.matrixMembers.add(element.sender);
@@ -78,7 +77,7 @@ export class DMRoom {
         const intent = this.handler.GetIntentForUser(channel.client.user);
         const file = await this.handler.EventProcessor.HandleAttachment(
             event,
-            intent.client
+            intent.client,
         );
         let payload: any;
         if (typeof(file) === "string") {
@@ -92,7 +91,7 @@ export class DMRoom {
         this.deferLock = new Promise((resolve, _) => {
             return channel.send(payload).then((message) => {
                 if (Array.isArray(message)) {
-                    message.forEach((msg) => this.sentMessages.add(msg.id));
+                    message.forEach((sentMessage) => this.sentMessages.add(sentMessage.id));
                     return;
                 }
                 this.sentMessages.add(message.id);
@@ -110,24 +109,24 @@ export class DMRoom {
 
     public async OnDiscordMessage (msg: Message) {
         await this.deferLock;
-        if(this.sentMessages.has(msg.id)) {
+        if (this.sentMessages.has(msg.id)) {
             return; // Drop echo
         }
         log.info(`Got discord message for ${this.dbroom.ChannelId}`);
         const intent = this.handler.GetIntentForUser(msg.author);
         const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
-        await matrixMsg.attachmentEvents.map((evt) => {
+        await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
             return intent.sendMessage((this.dbroom.RoomId), evt);
-        });
+        }));
 
-        if(matrixMsg.body === "") {
+        if (matrixMsg.body === "") {
             return;
         }
         return intent.sendMessage(this.dbroom.RoomId, {
             msgtype: "m.text",
             format: "org.matrix.custom.html",
             body: matrixMsg.body,
-            formatted_body: matrixMsg.formattedBody
+            formatted_body: matrixMsg.formattedBody,
         });
     }
 

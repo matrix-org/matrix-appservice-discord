@@ -16,7 +16,7 @@ const assert = Chai.assert;
 
 const mockBridge = {
   opts: {
-    domain: "localhost"
+    domain: "localhost",
   },
   getRoomStore: () => {
     return {
