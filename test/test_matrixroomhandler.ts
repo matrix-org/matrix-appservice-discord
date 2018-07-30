@@ -45,7 +45,7 @@ function createRH(opts: any = {}) {
         },
         getBot: () => {
             return {
-                _isRemoteUser: (id) => {
+                isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
             };
@@ -272,7 +272,7 @@ describe("MatrixRoomHandler", () => {
         it("should accept invite for virtual users (DMs)", () => {
             const handler: any = createRH();
             return expect(handler.HandleInvite({
-                state_key: "_discord_123:localhost",
+                state_key: "@_discord_123:localhost",
             })).to.eventually.be.equal("DMInviteHandled");
         });
         it("should deny invite for other users", () => {

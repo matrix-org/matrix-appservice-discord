@@ -109,7 +109,7 @@ export class MatrixRoomHandler {
     if (event.type === "m.room.member" && event.content.membership === "invite") {
         return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
-        if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+        if (this.bridge.getBot().isRemoteUser(event.state_key)) {
             return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
         }
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
@@ -161,7 +161,7 @@ export class MatrixRoomHandler {
     if (event.state_key === this.botUserId) {
       log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
-    } else if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+    } else if (this.bridge.getBot().isRemoteUser(event.state_key)) {
       return await this.discord.DMHandler.HandleInvite(event);
     }
     log.warn("MatrixRoomHandler", `Ignoring invite for ${event.room_id}, ${event.sender} => ${event.state_key}`);
