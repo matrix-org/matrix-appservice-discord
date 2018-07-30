@@ -36,6 +36,9 @@ const mockBridge = {
       },
     };
   },
+  getUserStore: () => {
+    return {};
+  },
 };
 
 const modDiscordBot = Proxyquire("../src/bot", {
@@ -55,8 +58,9 @@ describe("DiscordBot", () => {
     it("should resolve when ready.", () => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
+        null,
       );
+      discordBot.setBridge(mockBridge);
       return discordBot.run();
     });
   });
@@ -65,8 +69,9 @@ describe("DiscordBot", () => {
     beforeEach(() => {
       discordBot = new modDiscordBot.DiscordBot(
         config,
-        mockBridge,
+        null,
       );
+      discordBot.setBridge(mockBridge);
       return discordBot.run();
     });
     it("should reject a missing guild.", () => {

@@ -26,5 +26,7 @@ logging:
         - "DiscordBot" 
 database:
   filename: "discord.db"
+  userStorePath: "user-store.db"
+  roomStorePath: "room-store.db"
 room:
   defaultVisibility: "public"
