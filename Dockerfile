@@ -19,4 +19,3 @@ CMD node /build/src/discordas.js -p 9005 -c /data/config.yaml -f /data/discord-r
 
 EXPOSE 9005
 VOLUME ["/data"]
-WORKDIR "/data"
