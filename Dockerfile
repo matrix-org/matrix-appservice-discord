@@ -11,7 +11,7 @@ RUN apk add --no-cache -t build-deps make gcc g++ python ca-certificates libc-de
     && cd / \
     && rm -rf /tmp/* \
     && apk del build-deps \
-    && sh -c 'cd /build/tools; for TOOL in *.js; do LINK="/usr/bin/$(basename $TOOL .js)"; echo -e "#!/bin/sh\nnode /build/tools/$TOOL \$@" > $LINK; chmod +x $LINK; done'
+    && sh -c 'cd /build/tools; for TOOL in *.js; do LINK="/usr/bin/$(basename $TOOL .js)"; echo -e "#!/bin/sh\ncd /data;\nnode /build/tools/$TOOL \$@" > $LINK; chmod +x $LINK; done'
 
 ENV NODE_ENV=production
 
