@@ -1,10 +1,12 @@
 import { Snowflake, Client, TextChannel, Collection, GuildMember, Channel, DMChannel, GroupDMChannel, Message, FileOptions, User } from "discord.js";
 import { MatrixRoom , Intent} from "matrix-appservice-bridge";
-import * as log from "npmlog";
 import { DbDmRoom } from "./db/dbdatadmroom";
 import { DMHandler } from "./dmhandler";
 import { MessageProcessor } from "./messageprocessor";
 import { Util } from "./util";
+import { Log } from "./log";
+
+const log = new Log("DMRoom");
 
 export class DMRoom {
     private matrixMembers: Set<string>;
@@ -40,15 +42,15 @@ export class DMRoom {
     public HydrateRoomWithDiscord(discordClient: Client) {
         const channel = discordClient.channels.get(this.dbroom.ChannelId);
         if (channel === undefined) {
-            log.warn("DMRoom", "HydrateRoomWithDiscord was given a client that didn't have the channel.");
+            log.warn("HydrateRoomWithDiscord was given a client that didn't have the channel.");
             throw new Error("Channel not found for client!");
         }
         if (!["dm", "group"].includes(channel.type)) {
-            log.warn("DMRoom", "HydrateRoomWithDiscord was given a channel that was not a dm|group.");
+            log.warn("HydrateRoomWithDiscord was given a channel that was not a dm|group.");
             throw new Error("Channel is not a dm|group");
         }
         this.channel = <DMChannel|GroupDMChannel> channel;
-        log.verbose("DMRoom", `${this.dbroom.ChannelId} has ${this.discordUserIDs.length} discord members`);
+        log.verbose(`${this.dbroom.ChannelId} has ${this.discordUserIDs.length} discord members`);
     }
 
     public async HydrateRoomWithMatrix(matrixClient: Intent): Promise<void>{
@@ -59,16 +61,16 @@ export class DMRoom {
                 this.matrixMembers.add(element.sender);
             }
         });
-        log.info("DMRoom", `${this.dbroom.RoomId} has ${this.matrixMembers.size} matrix members (including virtual users)`);
+        log.info(`${this.dbroom.RoomId} has ${this.matrixMembers.size} matrix members (including virtual users)`);
     }
 
     public async OnMatrixEvent(event: any) {
-        log.info("DMRoom", `Got matrix message for ${this.dbroom.ChannelId}`);
+        log.info(`Got matrix message for ${this.dbroom.ChannelId}`);
         let client: Client;
         try {
             client = await this.handler.ClientFactory.getClient(event.sender);
         } catch (e) {
-            log.error("DMRoom", `Could not get client for ${event.sender}. Discarding event :(`, e);
+            log.error(`Could not get client for ${event.sender}. Discarding event :(`, e);
             return;
         }
         const channel = <DMChannel|GroupDMChannel> client.channels.get(this.dbroom.ChannelId);
@@ -80,10 +82,10 @@ export class DMRoom {
         );
         let payload: any;
         if (typeof(file) === "string") {
-            log.verbose("DMRoom", "Sending plaintext message");
+            log.verbose("Sending plaintext message");
             payload = msg.description += " " + file;
         } else {
-            log.verbose("DMRoom", "Sending a file");
+            log.verbose("Sending a file");
             payload = {files: [file]};
         }
         await this.deferLock;
@@ -96,7 +98,7 @@ export class DMRoom {
                 this.sentMessages.add(message.id);
                 resolve();
             }).catch((e) => {
-                log.warn("DMRoom", "Failed to sent message", e);
+                log.warn("Failed to sent message", e);
                 resolve();
             });
         });
@@ -111,7 +113,7 @@ export class DMRoom {
         if(this.sentMessages.has(msg.id)) {
             return; // Drop echo
         }
-        log.info("DMRoom", `Got discord message for ${this.dbroom.ChannelId}`);
+        log.info(`Got discord message for ${this.dbroom.ChannelId}`);
         const intent = this.handler.GetIntentForUser(msg.author);
         const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
         await matrixMsg.attachmentEvents.map((evt) => {
@@ -130,26 +132,26 @@ export class DMRoom {
     }
 
     public async OnDiscordTyping(user: User, typing: Boolean) {
-        log.verbose("DMRoom", `Got typing for ${this.dbroom.ChannelId} ${typing}`);
+        log.verbose(`Got typing for ${this.dbroom.ChannelId} ${typing}`);
         const intent = this.handler.GetIntentForUser(user);
         intent.sendTyping(this.RoomId, typing);
     }
 
     public UpdateName(user: User, name: string) {
-        log.info("DMRoom", `Updating name for ${this.RoomId}`);
+        log.info(`Updating name for ${this.RoomId}`);
         const intent = this.handler.GetIntentForUser(user);
         intent.setRoomName(this.RoomId, name);
     }
 
     public async UpdateAvatar(user: User, url: string) {
-        log.info("DMRoom", `Updating avatar for ${this.RoomId}`);
+        log.info(`Updating avatar for ${this.RoomId}`);
         const intent = this.handler.GetIntentForUser(user);
         const mxc = await Util.UploadContentFromUrl(url, intent, null);
         intent.setRoomAvatar(this.RoomId, mxc.mxcUrl);
     }
 
     public async AddToRoom(user: User, newUser: User) {
-        log.info("DMRoom", `Adding ${newUser.id} to ${this.RoomId}`);
+        log.info(`Adding ${newUser.id} to ${this.RoomId}`);
         const intent = this.handler.GetIntentForUser(user);
         const intentNew = this.handler.GetIntentForUser(newUser);
         await intent.invite(this.RoomId, this.handler.GetMatrixIdForUser(newUser));
@@ -157,7 +159,7 @@ export class DMRoom {
     }
 
     public KickFromRoom(user: User, kickee: User) {
-        log.info("DMRoom", `Kicking ${kickee.id} from ${this.RoomId}`);
+        log.info(`Kicking ${kickee.id} from ${this.RoomId}`);
         const intent = this.handler.GetIntentForUser(user);
         const intentKicked = this.handler.GetIntentForUser(kickee);
         intent.sendMessage(this.RoomId, {msgtype: "m.notice", body: "Kicking user from room."});

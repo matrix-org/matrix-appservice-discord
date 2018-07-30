@@ -3,13 +3,15 @@ import {DiscordClientFactory} from "./clientfactory";
 import {
     Bridge,
 } from "matrix-appservice-bridge";
-import * as log from "npmlog";
 import {DiscordStore} from "./store";
 import {DbDmRoom} from "./db/dbdatadmroom";
 import { Message, Client, User, DMChannel, Channel, GroupDMChannel, Util } from "discord.js";
 import { DMRoom } from "./dmroom";
 import { MessageProcessor } from "./messageprocessor";
 import { MatrixEventProcessor } from "./matrixeventprocessor";
+import { Log } from "./log";
+
+const log = new Log("DMHandler");
 
 const NOT_ENABLED_ERROR =
 `
@@ -81,9 +83,9 @@ export class DMHandler {
      * This uses clientFactory so any clients that are already started will be retrived instead.
      */
     public async StartPuppetedClients() {
-        log.info("DMHandler", "Starting puppeted clients to hook into DMs.");
+        log.info("Starting puppeted clients to hook into DMs.");
         const users = await this.store.get_all_user_discord_ids();
-        log.info("DMHandler", `Starting ${users.length} clients`);
+        log.info(`Starting ${users.length} clients`);
         // TODO: How do we recover if the client dies for some reason?
         await Promise.all(users.map(({discord_id, user_id}) => {
             return this.clientFactory.getClient(user_id).then((client) => {
@@ -92,17 +94,17 @@ export class DMHandler {
                 client.on("typingStart", (channel, user,) => { this.onDiscordTyping(channel, user, true); } )
                 client.on("typingStop", (channel, user,) => { this.onDiscordTyping(channel, user, false); } )
             }).catch((e) => {
-                log.error("DMHandler", "Failed to start client", e);
+                log.error("Failed to start client", e);
             });
         }));
     }
 
     public async HandleInvite(event: any) {
         // if (!this.bridge.getBot()._isRemoteUser(event.state_key)) {
-        //     log.verbose("DMHandler", `Ignoring invite for ${event.room_id} (${event.sender} invited ${event.state_key})`);
+        //     log.verbose(`Ignoring invite for ${event.room_id} (${event.sender} invited ${event.state_key})`);
         //     return;
         // }
-        // log.info("DMHandler", `Got invite for ${event.room_id} (${event.sender} invited ${event.state_key})`);
+        // log.info(`Got invite for ${event.room_id} (${event.sender} invited ${event.state_key})`);
 
         // let discordUserId = null;
         // try {
@@ -110,12 +112,12 @@ export class DMHandler {
         //         event.state_key.substr("@".length),
         //     );
         //     if ( discordUsers.length === 0) {
-        //         log.warn("DMHandler", "Got an invite for a virtual user the bridge doesn't know about!");
+        //         log.warn("Got an invite for a virtual user the bridge doesn't know about!");
         //         return;
         //     }
         //     discordUserId = discordUsers[0].getId();
         // } catch (e) {
-        //     log.warn("DMHandler", "There was an error trying to fetch a remote user from the store!", e);
+        //     log.warn("There was an error trying to fetch a remote user from the store!", e);
         //     return;
         // }
 
@@ -136,13 +138,13 @@ export class DMHandler {
         // const existingDMRoom = new DbDmRoom();
         // await existingDMRoom.RunQuery(this.store, {user_id: event.sender, discord_id: discordUserId});
         // if (existingDMRoom.Result === true) {
-        //     log.info("DMHandler", "User already has a DM room with this user, dropping the old one.");
+        //     log.info("User already has a DM room with this user, dropping the old one.");
         //     const userIntent = this.bridge.getIntent(event.state_key);
         //     await existingDMRoom.Delete(this.store);
         //     try {
         //         await userIntent.kick(existingDMRoom.RoomId, event.state_key, "New DM Room created.");
         //     } catch (e) {
-        //         log.warn("DMHandler", "Failed to kick self from old DM room.", e);
+        //         log.warn("Failed to kick self from old DM room.", e);
         //     }
         // }
 
@@ -159,12 +161,12 @@ export class DMHandler {
      * @param event A matrix event
      */
     public async OnMatrixMessage(event): Promise<void> {
-        log.verbose("DMHandler", `Got DM message from ${event.room_id}`);
+        log.verbose(`Got DM message from ${event.room_id}`);
         try {
             const dmRoom = await this.GetDMRoomByRoomId(event);
             dmRoom.OnMatrixEvent(event);
         } catch(e) {
-            log.error("DMHandler", `"Failed to get DM room, dropping message! ${event.room_id}`, e);
+            log.error(`"Failed to get DM room, dropping message! ${event.room_id}`, e);
         }
     }
 
@@ -179,7 +181,7 @@ export class DMHandler {
      */
     public GetIntentForUser(user: User): any {
         const userId = this.GetMatrixIdForUser(user);
-        log.verbose("DMHandler", `Creating intent for ${userId}`);
+        log.verbose(`Creating intent for ${userId}`);
         return this.bridge.getIntent(userId);
     }
 
@@ -221,16 +223,16 @@ export class DMHandler {
         }
 
         if (msg.type !== "DEFAULT"){ 
-            log.verbose("DMHandler", `Ignoring unknown message type ${msg.type}`);
+            log.verbose(`Ignoring unknown message type ${msg.type}`);
             return;
         }
 
-        log.verbose("DMHandler", `Got DM message from ${msg.channel.id}`);
+        log.verbose(`Got DM message from ${msg.channel.id}`);
         try {
             const dmRoom = await this.GetDMRoomByDiscordMessage(msg, true);
             dmRoom.OnDiscordMessage(msg);
         } catch(e) {
-            log.error("DMHandler", `"Failed to get DM room, dropping message! ${msg.id}`, e);
+            log.error(`"Failed to get DM room, dropping message! ${msg.id}`, e);
         }
     }
 
@@ -238,7 +240,7 @@ export class DMHandler {
         if (!["group", "dm"].includes(channel.type)) {
             return;
         }
-        log.verbose("DMHandler", `Got typing from ${channel.id} ${user.id} ${user.username}`);
+        log.verbose(`Got typing from ${channel.id} ${user.id} ${user.username}`);
         const dmRoom = await this.GetDMRoomByDiscordChannel(channel);
         if (dmRoom !== null) {
             dmRoom.OnDiscordTyping(user, typing);
@@ -250,7 +252,7 @@ export class DMHandler {
             (dmRoom) => dmRoom.DiscordChannelId === chan.id
         );
         if (room === undefined) {
-            log.info("DMHandler", `DmRoom ${chan.id} not in memory, trying DB`);
+            log.info(`DmRoom ${chan.id} not in memory, trying DB`);
             // Try to fetch one from the DB.
             let dbRoom = await this.store.Get(DbDmRoom,{
                 chan_id: chan.id
@@ -268,7 +270,7 @@ export class DMHandler {
         // Check if we have a hydrated one ready for use?
         let room = await this.GetDMRoomByDiscordChannel(msg.channel);
         if (create && room === null) {
-            log.info("DMHandler", `DmRoom ${msg.channel.id} not DB, creating new room!`);
+            log.info(`DmRoom ${msg.channel.id} not DB, creating new room!`);
             // We need to create a room!
             const dbRoom = new DbDmRoom();
             dbRoom.ChannelId = msg.channel.id;
@@ -293,11 +295,11 @@ export class DMHandler {
             }
 
             dbRoom.RoomId = await this.CreateMatrixRoomForDM(inviter, recipients, name);
-            log.info("DMHandler", `DmRoom ${msg.channel.id} is linked to ${dbRoom.RoomId}`);
+            log.info(`DmRoom ${msg.channel.id} is linked to ${dbRoom.RoomId}`);
             try {
                 await this.store.Insert(dbRoom);
             } catch (e) {
-                log.error("DMHandler", "Failed to insert DM room into database!", e);
+                log.error("Failed to insert DM room into database!", e);
             }
             room = new DMRoom(dbRoom, this);
             this.dmRooms.push(room);
@@ -315,7 +317,7 @@ export class DMHandler {
         if (room !== undefined) {
             return room;
         }
-        log.info("DMHandler", `DmRoom ${event.room_id} not in memory, trying DB`);
+        log.info(`DmRoom ${event.room_id} not in memory, trying DB`);
         // Try to fetch one from the DB.
         let dbRoom = await this.store.Get(DbDmRoom,{
             room_id: event.room_id
@@ -369,7 +371,7 @@ export class DMHandler {
         }).then((res) => {
             return res.room_id;
         }).catch((e) => {
-            log.error("DMHandler", `createRoom failed`, e);
+            log.error(`createRoom failed`, e);
             throw new Error("Failed to create DM room");
         });
     }
