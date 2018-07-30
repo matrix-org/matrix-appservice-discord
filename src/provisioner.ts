@@ -6,22 +6,16 @@ import {
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import { Permissions } from "discord.js";
-import { DiscordBot } from "./bot";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
 export class Provisioner {
 
     private bridge: Bridge;
-    private discord: DiscordBot;
     private pendingRequests: { [channelId: string]: (approved: boolean) => void } = {}; // [channelId]: resolver fn
 
     public SetBridge(bridge: Bridge): void {
         this.bridge = bridge;
-    }
-
-    public SetDiscordbot(discord: DiscordBot): void {
-        this.discord = discord;
     }
 
     public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
@@ -90,132 +84,5 @@ export class Provisioner {
 
         this.pendingRequests[channelId](allow);
         return Promise.resolve(true); // replied, so true
-    }
-
-    public async HandleDiscordCommand(msg: Discord.Message) {
-        if (!msg.member.hasPermission("ADMINISTRATOR")) {
-            msg.channel.sendMessage("**ERROR:** insufficiant permissions to use matrix commands");
-            return;
-        }
-        if (!(<Discord.TextChannel> msg.channel).guild) {
-            msg.channel.sendMessage("**ERROR:** only available for guild channels");
-        }
-        const prefix = "!matrix ";
-        let command = "help";
-        let args = [];
-        if (msg.content.length >= prefix.length) {
-            const allArgs = msg.content.substring(prefix.length).split(" ");
-            if (allArgs.length && allArgs[0] !== "") {
-                command = allArgs[0];
-                allArgs.splice(0, 1);
-                args = allArgs;
-            }
-        }
-        
-        let replyMessage = "Error, unkown command. Try `!matrix help` to see all commands";
-        
-        const intent = this.bridge.getIntent();
-        const doAction = async (funcKey, action) => {
-            const name = args.join(" ");
-            const channels = await this.discord.GetRoomIdsFromChannel(msg.channel);
-            try {
-                const userMxid = await this.GetMxidFromName(name, channels);
-                let allChannels = [];
-                await Bluebird.all((<Discord.TextChannel> msg.channel).guild.channels.map((c) => {
-                    return this.discord.GetRoomIdsFromChannel(c).then((chans) => {
-                        allChannels = allChannels.concat(chans);
-                    }).catch((e) => {
-                        // pass, non-text-channel
-                    });
-                }));
-                let errorMsg = "";
-                await Bluebird.all(allChannels.map((c) => {
-                    return intent[funcKey](c, userMxid).catch((e) => {
-                        // maybe we don't have permission to kick/ban/unban...?
-                        errorMsg += `\nCouldn't ${funcKey} ${userMxid} from ${c}`;
-                    });
-                }));
-                if (errorMsg) {
-                    throw Error(errorMsg);
-                }
-                replyMessage = `${action} ${userMxid}`;
-            } catch (e) {
-                replyMessage = "**Error:** " + e.message;
-            }
-        };
-        
-        switch (command) {
-            case "help":
-                replyMessage = "Available Messages:\n" +
-                    " - `!matrix kick <name>`: Kicks a user on the matrix side\n" +
-                    " - `!matrix ban <name>`: Bans a user on the matrix side\n" +
-                    " - `!matrix unban <name>`: Unbans a user on the matrix side\n\n" +
-                    "The name must be the display name or the mxid of the user to perform the action on.";
-                break;
-            case "kick":
-                await doAction("kick", "Kicked");
-                break;
-            case "ban":
-                await doAction("ban", "Banned");
-                break;
-            case "unban":
-                await doAction("unban", "Unbanned");
-                break;
-            default:
-                break;
-        }
-        
-        msg.channel.send(replyMessage);
-    }
-
-    private async GetMxidFromName(name: string, channels: string[]) {
-        if (name[0] === "@" && name.includes(":")) {
-            return name;
-        }
-        const client = this.bridge.getIntent().getClient();
-        const matrixUsers = {};
-        let matches = 0;
-        await Bluebird.all(channels.map((c) => {
-            // we would use this.bridge.getBot().getJoinedMembers()
-            // but we also want to be able to search through banned members
-            // so we gotta roll our own thing
-            return client._http.authedRequestWithPrefix(
-                undefined, "GET", "/rooms/" + encodeURIComponent(c) + "/members",
-                undefined, undefined, "/_matrix/client/r0",
-            ).then((res) => {
-                res.chunk.forEach((member) => {
-                    if (member.membership !== "join" && member.membership !== "ban") {
-                        return;
-                    }
-                    const mxid = member.state_key;
-                    if (mxid.startsWith("@_discord_")) {
-                        return;
-                    }
-                    let displayName = member.content.displayname;
-                    if (!displayName && member.unsigned && member.unsigned.prev_content &&
-                        member.unsigned.prev_content.displayname) {
-                        displayName = member.unsigned.prev_content.displayname;
-                    }
-                    if (!displayName) {
-                        displayName = mxid.substring(1, mxid.indexOf(":"));
-                    }
-                    if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
-                        matrixUsers[mxid] = displayName;
-                        matches++;
-                    }
-                });
-            });
-        }));
-        if (matches === 0) {
-            throw Error(`No users matching ${name} found`);
-        }
-        if (matches > 1) {
-            let errStr = "Multiple matching users found:\n";
-            for (const mxid of Object.keys(matrixUsers)) {
-                errStr += `${matrixUsers[mxid]} (\`${mxid}\`)\n`;
-            }
-            throw Error(errStr);
-        }
-        return Object.keys(matrixUsers)[0];
     }
 }

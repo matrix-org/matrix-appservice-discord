@@ -13,6 +13,7 @@ import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { Provisioner } from "./provisioner";
+import { MatrixRoomHandler } from "./matrixroomhandler";
 import {UserSyncroniser} from "./usersyncroniser";
 
 // Due to messages often arriving before we get a response from the send call,
@@ -39,6 +40,7 @@ export class DiscordBot {
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
   private userSync: UserSyncroniser;
+  private roomHandler: MatrixRoomHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -56,6 +58,10 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+  }
+
+  public setRoomHandler(roomHandler: MatrixRoomHandler) {
+    this.roomHandler = roomHandler;
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -479,7 +485,7 @@ export class DiscordBot {
 
     // check if it is a command to process by the bot itself
     if (msg.content.startsWith("!matrix")) {
-      await this.provisioner.HandleDiscordCommand(msg);
+      await this.roomHandler.HandleDiscordCommand(msg);
       return;
     }
 
