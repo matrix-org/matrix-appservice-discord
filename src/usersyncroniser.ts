@@ -156,7 +156,7 @@ export class UserSyncroniser {
             "avatar_url": remoteUser.get("avatarurl_mxc"),
             "displayname": memberState.displayName,
             "uk.half-shot.discord.member": {
-                id: guildId,
+                id: memberState.id,
                 roles: memberState.roles,
             },
         }, memberState.mxUserId);

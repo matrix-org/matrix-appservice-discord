@@ -379,7 +379,7 @@ describe("UserSyncroniser", () => {
                    },
                ],
            };
-           return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
+           return userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678").then(() => {
                const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
                const roles = custKey.roles;
                expect(custKey.id).is.equal("123456");
