@@ -10,6 +10,7 @@ import { DMRoom } from "./dmroom";
 import { MessageProcessor } from "./messageprocessor";
 import { MatrixEventProcessor } from "./matrixeventprocessor";
 import { Log } from "./log";
+import { UserSyncroniser } from "./usersyncroniser";
 
 const log = new Log("DMHandler");
 
@@ -51,6 +52,7 @@ export class DMHandler {
         private bridge: Bridge,
         private clientFactory: DiscordClientFactory,
         private store: DiscordStore,
+        private userSync: UserSyncroniser
         ) {
         this.dmRooms = [];
         this.messageProcessor = new MessageProcessor({
@@ -187,11 +189,24 @@ export class DMHandler {
         if (!["group", "dm"].includes(msg.channel.type)) {
             return;
         }
+    
+        try {
+            await this.userSync.OnUpdateUser(msg.author);
+        } catch (e) {
+            log.warn(`Failed to sync ${msg.author.id}`);
+        }
+        
 
         if (msg.type === "RECIPIENT_ADD") {
             const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
             if (dmRoom) {
-                dmRoom.AddToRoom(msg.author, msg.mentions.users.first());
+                const mentioned = msg.mentions.users.first();
+                try {
+                    await this.userSync.OnUpdateUser(mentioned);
+                } catch (e) {
+                    log.warn(`Failed to sync ${mentioned.id}`);
+                }
+                dmRoom.AddToRoom(msg.author, mentioned);
             }
             return;
         }
@@ -199,7 +214,13 @@ export class DMHandler {
         if (msg.type === "RECIPIENT_REMOVE") {
             const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
             if (dmRoom) {
-                dmRoom.KickFromRoom(msg.author, msg.mentions.users.first());
+                const mentioned = msg.mentions.users.first();
+                try {
+                    await this.userSync.OnUpdateUser(mentioned);
+                } catch (e) {
+                    log.warn(`Failed to sync ${mentioned.id}`);
+                }
+                dmRoom.KickFromRoom(msg.author, mentioned);
             }
             return;
         }

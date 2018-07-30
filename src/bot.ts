@@ -116,6 +116,7 @@ export class DiscordBot {
           this.bridge,
           this.clientFactory,
           this.store,
+          this.userSync,
       );
 
       this.dmHandler.StartPuppetedClients().catch(() => {
