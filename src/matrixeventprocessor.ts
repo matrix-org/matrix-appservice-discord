@@ -38,6 +38,11 @@ export class MatrixEventProcessor {
                 channel.members.array(),
             );
 
+        // Replace tab-completion mentions
+        if (!this.config.bridge.disableTabCompletionMentions) {
+            body = this.FindTabCompletionMention(body, channel.members.array());
+        }
+
         // Replace @everyone
         if (this.config.bridge.disableEveryoneMention) {
             body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
@@ -86,6 +91,23 @@ export class MatrixEventProcessor {
             },
             description: body,
         });
+    }
+
+    public FindTabCompletionMention(body: string, members: Discord.GuildMember[]): string {
+        const colonIndex = body.indexOf(": ");
+        if (colonIndex === -1) {
+            return body;
+        }
+
+        const subjectName = body.substring(0, colonIndex);
+        for (const member of members) {
+            if (subjectName === member.displayName ||
+                subjectName === `${member.user.username}#${member.user.discriminator}`) {
+                return `<@!${member.id}>:${body.substring(colonIndex + 1)}`;
+            }
+        }
+
+        return body;
     }
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {

@@ -17,7 +17,7 @@ export class DiscordBridgeConfig {
       if (typeof(configLayer[key]) === "object")  {
         this.ApplyConfig(newConfig[key], this[key]);
         return;
-      } 
+      }
       configLayer[key] = newConfig[key];
     });
   }
@@ -30,6 +30,7 @@ class DiscordBridgeConfigBridge {
   public disablePresence: boolean;
   public disableTypingNotifications: boolean;
   public disableDiscordMentions: boolean;
+  public disableTabCompletionMentions: boolean;
   public disableDeletionForwarding: boolean;
   public enableSelfServiceBridging: boolean;
   public disableEveryoneMention: boolean = false;
