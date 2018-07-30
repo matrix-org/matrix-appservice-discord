@@ -20,6 +20,7 @@ const DEFAULT_GUILD_STATE = {
     id: null,
     mxUserId: null,
     displayName: null,
+    roles: [],
 };
 
 export interface IUserState {
@@ -32,10 +33,17 @@ export interface IUserState {
     removeAvatar: boolean; // If the avatar has been removed from the user.
 };
 
+export interface IGuildMemberRole {
+    name: string;
+    color: number;
+    position: number;
+};
+
 export interface IGuildMemberState {
     id: string;
     mxUserId: string;
     displayName: string;
+    roles: IGuildMemberRole[];
 }
 
 /**
@@ -127,13 +135,8 @@ export class UserSyncroniser {
     }
 
     public async EnsureJoin(member: GuildMember, roomId: string) {
-        const mxUserId = `@_discord_${member.id}:${this.config.bridge.domain}`;
-        log.info("UserSync", `Ensuring ${mxUserId} is joined to ${roomId}`);
-        const state = <IGuildMemberState> {
-            id: member.id,
-            mxUserId,
-            displayName: member.displayName,
-        };
+        const state = await this.GetUserStateForGuildMember(member, "");
+        log.info("UserSync", `Ensuring ${state.id} is joined to ${roomId}`);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
@@ -149,9 +152,13 @@ export class UserSyncroniser {
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         const tryState = () => intent.getClient().sendStateEvent(roomId, "m.room.member", {
-            membership: "join",
-            avatar_url: remoteUser.get("avatarurl_mxc"),
-            displayname: memberState.displayName,
+            "membership": "join",
+            "avatar_url": remoteUser.get("avatarurl_mxc"),
+            "displayname": memberState.displayName,
+            "uk.half-shot.discord.member": {
+                id: memberState.id,
+                roles: memberState.roles,
+            },
         }, memberState.mxUserId);
         try {
             await tryState();
@@ -218,6 +225,11 @@ export class UserSyncroniser {
         const guildState = Object.assign({}, DEFAULT_GUILD_STATE, {
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
+            roles: newMember.roles.map((role) => { return {
+                name: role.name,
+                color: role.color,
+                position: role.position,
+            }; }),
         });
 
         // Check guild nick.
