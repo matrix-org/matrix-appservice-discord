@@ -3,7 +3,9 @@ import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import {DiscordBridgeConfigAuth} from "../src/config";
 import {MockDiscordClient} from "./mocks/discordclient";
-import * as log from "npmlog";
+import { Log } from "../src/log";
+
+Log.ForceSilent();
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
@@ -40,12 +42,10 @@ describe("ClientFactory", () => {
            return expect(cf.init()).to.eventually.be.fulfilled;
        });
        it ("should fail if a config is not supplied", () => {
-           log.level = "silent";
            const cf = new DiscordClientFactory(null);
            return expect(cf.init()).to.eventually.be.rejected;
        });
        it ("should fail if the bot fails to connect", () => {
-           log.level = "silent";
            const config = new DiscordBridgeConfigAuth();
            config.botToken = "failme";
            const cf = new DiscordClientFactory(null, config);
@@ -59,7 +59,6 @@ describe("ClientFactory", () => {
             return expect(cf.getDiscordId("passme")).to.eventually.equal("12345");
         });
         it("should fail if the token is not recognised", () => {
-            log.level = "silent";
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(null);
             return expect(cf.getDiscordId("failme")).to.eventually.be.rejected;
@@ -74,21 +73,18 @@ describe("ClientFactory", () => {
             return expect(cf.getClient()).to.eventually.equal(cf.botClient);
         });
         it("should return cached client", () => {
-            log.level = "silent";
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(null);
             cf.clients.set("@user:localhost", "testclient");
             return expect(cf.getClient("@user:localhost")).to.eventually.equal("testclient");
         });
         it("should fetch bot client if userid doesn't match", () => {
-            log.level = "silent";
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
             cf.botClient = 1;
             return expect(cf.getClient("@user:localhost")).to.eventually.equal(cf.botClient);
         });
         it("should fetch user client if userid matches", () => {
-            log.level = "silent";
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
             return cf.getClient("@valid:localhost").then((client) => {
@@ -97,7 +93,6 @@ describe("ClientFactory", () => {
             });
         });
         it("should fail if the user client cannot log in", () => {
-            log.level = "silent";
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
             cf.botClient = 1;
