@@ -13,7 +13,7 @@ import { DiscordBridgeConfig } from "./config";
 import * as Discord from "discord.js";
 import * as log from "npmlog";
 import * as Bluebird from "bluebird";
-import { Util } from "./util";
+import { Util, ICommandActions, ICommandParameters } from "./util";
 import { Provisioner } from "./provisioner";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
@@ -188,17 +188,7 @@ export class MatrixRoomHandler {
           });
       }
 
-      const prefix = "!discord ";
-      let command = "help";
-      let args = [];
-      if (event.content.body.length >= prefix.length) {
-          const allArgs = event.content.body.substring(prefix.length).split(" ");
-          if (allArgs.length && allArgs[0] !== "") {
-              command = allArgs[0];
-              allArgs.splice(0, 1);
-              args = allArgs;
-          }
-      }
+      const {command, args} = Util.MsgToArgs(event.content.body, "!discord");
 
       if (command === "help" && args[0] === "bridge") {
           const link = Util.GetBotLink(this.config);
@@ -387,136 +377,111 @@ export class MatrixRoomHandler {
   }
 
   public async HandleDiscordCommand(msg: Discord.Message) {
-    if (!msg.member.hasPermission("ADMINISTRATOR")) {
-      msg.channel.sendMessage("**ERROR:** insufficiant permissions to use matrix commands");
-      return;
-    }
     if (!(<Discord.TextChannel> msg.channel).guild) {
       msg.channel.sendMessage("**ERROR:** only available for guild channels");
     }
-    const prefix = "!matrix ";
-    let command = "help";
-    let args = [];
-    if (msg.content.length >= prefix.length) {
-      const allArgs = msg.content.substring(prefix.length).split(" ");
-      if (allArgs.length && allArgs[0] !== "") {
-        command = allArgs[0];
-        allArgs.splice(0, 1);
-        args = allArgs;
-      }
-    }
     
-    let replyMessage = "Error, unkown command. Try `!matrix help` to see all commands";
+    const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
     
     const intent = this.bridge.getIntent();
-    const doAction = async (funcKey, action) => {
-      const name = args.join(" ");
-      const channels = await this.discord.GetRoomIdsFromChannel(msg.channel);
-      try {
-        const userMxid = await this.GetMxidFromName(name, channels);
-        let allChannels = [];
-        /* tslint:disable:await-promise */
-        await Bluebird.all((<Discord.TextChannel> msg.channel).guild.channels.map((c) => {
-        /* tslint:enable:await-promise */
-          return this.discord.GetRoomIdsFromChannel(c).then((chans) => {
-            allChannels = allChannels.concat(chans);
-          }).catch((e) => {
-            // pass, non-text-channel
-          });
-        }));
-        let errorMsg = "";
-        /* tslint:disable:await-promise */
-        await Bluebird.all(allChannels.map((c) => {
-        /* tslint:enable:await-promise */
-          return intent[funcKey](c, userMxid).catch((e) => {
-            // maybe we don't have permission to kick/ban/unban...?
-            errorMsg += `\nCouldn't ${funcKey} ${userMxid} from ${c}`;
-          });
-        }));
-        if (errorMsg) {
-          throw Error(errorMsg);
-        }
-        replyMessage = `${action} ${userMxid}`;
-      } catch (e) {
-        replyMessage = "**Error:** " + e.message;
-      }
+    
+    const actions: ICommandActions = {
+      kick: {
+        params: ["name"],
+        description: "Kicks a user on the matrix side",
+        permission: "KICK_MEMBERS",
+        run: this.DiscordModerationActionGenerator(msg.channel as Discord.TextChannel, "kick", "Kicked"),
+      },
+      ban: {
+        params: ["name"],
+        description: "Bans a user on the matrix side",
+        permission: "BAN_MEMBERS",
+        run: this.DiscordModerationActionGenerator(msg.channel as Discord.TextChannel, "ban", "Banned"),
+      },
+      unban: {
+        params: ["name"],
+        description: "Unbans a user on the matrix side",
+        permission: "BAN_MEMBERS",
+        run: this.DiscordModerationActionGenerator(msg.channel as Discord.TextChannel, "unban", "Unbanned"),
+      },
     };
     
-    switch (command) {
-      case "help":
-        replyMessage = "Available Messages:\n" +
-            " - `!matrix kick <name>`: Kicks a user on the matrix side\n" +
-            " - `!matrix ban <name>`: Bans a user on the matrix side\n" +
-            " - `!matrix unban <name>`: Unbans a user on the matrix side\n\n" +
-            "The name must be the display name or the mxid of the user to perform the action on.";
-        break;
-      case "kick":
-        await doAction("kick", "Kicked");
-        break;
-      case "ban":
-        await doAction("ban", "Banned");
-        break;
-      case "unban":
-        await doAction("unban", "Unbanned");
-        break;
-      default:
-        break;
+    const parameters: ICommandParameters = {
+      name: {
+        description: "The display name or mxid of a matrix user",
+        get: async (name) => {
+          const channelMxids = await this.discord.GetRoomIdsFromChannel(msg.channel);
+          const mxUserId = await Util.GetMxidFromName(intent, name, channelMxids);
+          return mxUserId;
+        },
+      },
+    };
+    
+    if (command === "help") {
+      let replyMessage = "Available Commands:\n";
+      for (const actionKey of Object.keys(actions)) {
+        const action = actions[actionKey];
+        if (!msg.member.hasPermission(action.permission as any)) {
+          continue;
+        }
+        replyMessage += " - `!matrix " + actionKey;
+        for (const param of action.params) {
+          replyMessage += ` <${param}>`;
+        }
+        replyMessage += "`: " + action.description + "\n";
+      }
+      replyMessage += "\nParameters:\n";
+      for (const parameterKey of Object.keys(parameters)) {
+        const parameter = parameters[parameterKey];
+        replyMessage += " - `<" + parameterKey + ">`: " + parameter.description + "\n";
+      }
+      msg.channel.send(replyMessage);
+      return;
+    }
+    
+    if (!actions[command]) {
+      msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
+      return;
+    }
+    
+    if (!msg.member.hasPermission(actions[command].permission as any)) {
+      msg.channel.sendMessage("**ERROR:** insufficiant permissions to use this matrix command");
+      return;
+    }
+    
+    let replyMessage = "";
+    try {
+      replyMessage = await Util.ParseCommand(actions[command], parameters, args);
+    } catch (e) {
+      replyMessage = "**ERROR:** " + e.message;
     }
     
     msg.channel.send(replyMessage);
   }
 
-  private async GetMxidFromName(name: string, channels: string[]) {
-    if (name[0] === "@" && name.includes(":")) {
-        return name;
-    }
-    const client = this.bridge.getIntent().getClient();
-    const matrixUsers = {};
-    let matches = 0;
-    /* tslint:disable:await-promise */
-    await Bluebird.all(channels.map((c) => {
-    /* tslint:enable:await-promise */
-      // we would use this.bridge.getBot().getJoinedMembers()
-      // but we also want to be able to search through banned members
-      // so we gotta roll our own thing
-      return client._http.authedRequestWithPrefix(
-        undefined, "GET", "/rooms/" + encodeURIComponent(c) + "/members",
-        undefined, undefined, "/_matrix/client/r0",
-      ).then((res) => {
-        res.chunk.forEach((member) => {
-          if (member.membership !== "join" && member.membership !== "ban") {
-            return;
-          }
-          const mxid = member.state_key;
-          if (mxid.startsWith("@_discord_")) {
-            return;
-          }
-          let displayName = member.content.displayname;
-          if (!displayName && member.unsigned && member.unsigned.prev_content &&
-            member.unsigned.prev_content.displayname) {
-            displayName = member.unsigned.prev_content.displayname;
-          }
-          if (!displayName) {
-            displayName = mxid.substring(1, mxid.indexOf(":"));
-          }
-          if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
-            matrixUsers[mxid] = displayName;
-            matches++;
-          }
+  private DiscordModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {
+    return async ({name}) => {
+      let allChannelMxids = [];
+      await Promise.all(discordChannel.guild.channels.map((chan) => {
+        return this.discord.GetRoomIdsFromChannel(chan).then((chanMxids) => {
+          allChannelMxids = allChannelMxids.concat(chanMxids);
+        }).catch((e) => {
+          // pass, non-text-channel
         });
-      });
-    }));
-    if (matches === 0) {
-      throw Error(`No users matching ${name} found`);
-    }
-    if (matches > 1) {
-      let errStr = "Multiple matching users found:\n";
-      for (const mxid of Object.keys(matrixUsers)) {
-        errStr += `${matrixUsers[mxid]} (\`${mxid}\`)\n`;
+      }));
+      let errorMsg = "";
+      await Promise.all(allChannelMxids.map((chanMxid) => {
+        const intent = this.bridge.getIntent();
+        return intent[funcKey](chanMxid, name).catch((e) => {
+          // maybe we don't have permission to kick/ban/unban...?
+          errorMsg += `\nCouldn't ${funcKey} ${name} from ${chanMxid}`;
+        });
+      }));
+      if (errorMsg) {
+        throw Error(errorMsg);
       }
-      throw Error(errStr);
-    }
-    return Object.keys(matrixUsers)[0];
+      return `${action} ${name}`;
+    };
   }
 
   private joinRoom(intent: any, roomIdOrAlias: string): Promise<string> {
