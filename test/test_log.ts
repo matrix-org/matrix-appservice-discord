@@ -5,36 +5,36 @@ import * as RealLog from "../src/log";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
-let created_logger = null;
-let logger_closed = false;
-let logged_messages = [];
+let createdLogger = null;
+let loggerClosed = false;
+let loggedMessages = [];
 
 const WinstonMock = {
     createLogger: (format, transports) => {
-        return created_logger = {
+        return createdLogger = {
             format,
             transports,
             close: () => {
-                logger_closed = true;
+                loggerClosed = true;
             },
             silent: false,
             log: (type, ...msg) => {
-                logged_messages = logged_messages.concat(msg);
-            }
+                loggedMessages = loggedMessages.concat(msg);
+            },
         };
     },
 };
 
 const Log = (Proxyquire("../src/log", {
-    "winston": WinstonMock,
+    winston: WinstonMock,
 }).Log);
 
 describe("Log", () => {
 
     beforeEach(() => {
-        logger_closed = false;
-        logged_messages = [];
-    })
+        loggerClosed = false;
+        loggedMessages = [];
+    });
 
     describe("ConfigureBridge", () => {
         it("should pass if config is empty", () => {
@@ -43,7 +43,7 @@ describe("Log", () => {
         it("should set basic log options", () => {
             Log.ConfigureBridge({
                 console: "warn",
-                lineDateFormat: "HH:mm:ss"
+                lineDateFormat: "HH:mm:ss",
             });
             expect(Log.config.console).to.equal("warn");
             expect(Log.config.lineDateFormat).to.equal("HH:mm:ss");
@@ -53,9 +53,9 @@ describe("Log", () => {
             Log.ConfigureBridge({
                 files: [
                     {
-                        file: "./logfile.log"
-                    }
-                ]
+                        file: "./logfile.log",
+                    },
+                ],
             });
             expect(Log.config.files).to.not.be.empty;
             expect(Log.config.files[0].file).to.equal("./logfile.log");
@@ -64,14 +64,14 @@ describe("Log", () => {
     describe("ForceSilent", () => {
         it("should be silent", () => {
             Log.ForceSilent();
-            expect(created_logger.silent).to.be.true;
-            expect(logged_messages).to.contain("Log set to silent");
+            expect(createdLogger.silent).to.be.true;
+            expect(loggedMessages).to.contain("Log set to silent");
         });
     });
     describe("instance", () => {
         it("should log without configuring", () => {
             new Log("test").info("hi");
-            expect(logged_messages).to.contain("hi");
+            expect(loggedMessages).to.contain("hi");
         });
     });
-})
+});
