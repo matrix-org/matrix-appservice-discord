@@ -658,5 +658,41 @@ describe("MatrixRoomHandler", () => {
                 expect(USERSKICKED).equals(0);
             });
         });
+        it("will ban a member", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix ban someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSBANNED).equals(1);
+            });
+        });
+        it("will unban a member", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix unban someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSUNBANNED).equals(1);
+            });
+        });
     });
 });
