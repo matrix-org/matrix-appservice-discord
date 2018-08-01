@@ -1,7 +1,7 @@
 # Matrix Discord Bridge
 
 A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
-Currently the bridge is in **Beta** and quite usable for everyday 
+Currently the bridge is in **Beta** and quite usable for everyday
 bridging, with one or two bugs cropping up.
 
 ![Screenshot of Riot and Discord working together](screenshot.png)
@@ -47,14 +47,37 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 
   * Copy ``discord-registration.yaml`` to your Synapse's directory.
 
+#### Docker
+
+Following the instructions above, generate a registration file. The file may also be hand-crafted if you're familiar with the layout. You'll need this file to use the Docker image.
+
+```
+# Create the volume where we'll keep the bridge's files
+mkdir -p /matrix-appservice-discord
+
+# Create the configuration file. Use the sample configuration file as a template.
+# Be sure to set the database paths to something like this:
+#  database:
+#    filename: "/data/discord.db"
+#    userStorePath: "/data/user-store.db"
+#    roomStorePath: "/data/room-store.db"
+nano /matrix-appservice-discord/config.yaml
+
+# Copy the registration file to the volume
+cp discord-registration.yaml /matrix-appservice-discord/discord-registration.yaml
+
+# Optional: Build the container yourself (requires a git clone, and to be in the root of the project)
+docker build -t halfshot/matrix-appservice-discord .
+
+# Run the container
+docker run -v /matrix-appservice-discord:/data -p 9005:9005 halfshot/matrix-appservice-discord
+```
+
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system
-used in clients like [Riot](https://riot.im). However, it requires a small
-manual change to your registration file. Change the end of
-`discord-registration.yaml` to `protocols: ["discord"]`` and restart both your
-bridge and synapse. Any new servers/guilds you bridge should show up in the
-network list on Riot and other clients.
+used in clients like [Riot](https://riot.im). Any new servers/guilds you bridge
+should show up in the network list on Riot and other clients.
 
 ### Setting up Discord
 
