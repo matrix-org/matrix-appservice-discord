@@ -3,14 +3,16 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import * as log from "npmlog";
 import * as Bluebird from "bluebird";
 import { DiscordBridgeConfig } from "../src/config";
 import { DiscordBot } from "../src/bot";
 import { DiscordStore } from "../src/store";
 import { Provisioner } from "../src/provisioner";
 import { UserSyncroniser } from "../src/usersyncroniser";
+import { Log } from "../src/log";
 import { Util } from "../src/util";
+
+const log = new Log("GhostFix");
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
 /* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
@@ -127,11 +129,11 @@ bridge.loadDatabases().catch((e) => {
                             userSync.EnsureJoin(member, room);
                         });
                         const errorHandler = (err) => {
-                            log.error("Ghostfix", `Error joining room ${room} as ${member.id}`);
-                            log.error("Ghostfix", err);
+                            log.error(`Error joining room ${room} as ${member.id}`);
+                            log.error(err);
                             const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
                             if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                                log.warn("Ghostfix", `Cannot join ${room} as ${member.id}`);
+                                log.warn(`Cannot join ${room} as ${member.id}`);
                                 return Promise.reject(err);
                             } else {
                                 currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
@@ -140,7 +142,7 @@ bridge.loadDatabases().catch((e) => {
                         };
                         return doJoin().catch(errorHandler);
                     }).catch((err) => {
-                        log.warn("Ghostfix", `No associated matrix rooms for discord room ${channel.id}`);
+                        log.warn(`No associated matrix rooms for discord room ${channel.id}`);
                     });
                 }));
                 delay += config.limits.roomGhostJoinDelay;
@@ -149,7 +151,7 @@ bridge.loadDatabases().catch((e) => {
     });
     return promiseChain;
 }).catch((err) => {
-    log.error("Ghostfix", err);
+    log.error(err);
 }).then(() => {
     process.exit(0);
 });
