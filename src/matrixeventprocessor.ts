@@ -172,12 +172,12 @@ export class MatrixEventProcessor {
         }
 
         if (event.content.info == null) {
-            log.info("MatrixEventProcessor", "Event was an attachment type but was missing a content.info");
+            log.info("Event was an attachment type but was missing a content.info");
             return "";
         }
 
         if (event.content.url == null) {
-            log.info("MatrixEventProcessor", "Event was an attachment type but was missing a content.url");
+            log.info("Event was an attachment type but was missing a content.url");
             return "";
         }
 
