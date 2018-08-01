@@ -44,12 +44,15 @@
     "escape-string-regexp": "^1.0.5",
     "js-yaml": "^3.10.0",
     "marked": "^0.3.15",
-    "matrix-appservice-bridge": "^1.4.0",
+    "matrix-appservice-bridge": "^1.5.0a",
     "mime": "^1.6.0",
+    "moment": "^2.22.2",
     "npmlog": "^4.0.2",
     "sqlite3": "^4.0.0",
     "tslint": "^4.4.2",
-    "typescript": "2.3.4"
+    "typescript": "2.3.4",
+    "winston": "^3.0.0",
+    "winston-daily-rotate-file": "^3.3.0"
   },
   "devDependencies": {
     "@types/chai": "^3.4.35",

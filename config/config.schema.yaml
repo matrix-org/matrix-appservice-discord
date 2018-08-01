@@ -34,10 +34,38 @@ properties:
             type: "string"
     logging:
         type: "object"
-        required: ["level"]
+        required: []
         properties:
-          level:
+          console:
             type: "string"
+            enum: ["error", "warn", "info", "verbose", "silly", "silent"]
+          lineDateFormat:
+            type: "string"
+          files:
+            type: "array"
+            items:
+              type: "object"
+              required: ["file"]
+              properties:
+                file:
+                  type: "string"
+                level:
+                  type: "string"
+                  enum: ["error", "warn", "info", "verbose", "silly"]
+                maxFiles:
+                  type: "string"
+                maxSize:
+                  type: ["number", "string"]
+                datePattern:
+                  type: "string"
+                enabled:
+                  type: "array"
+                  items:
+                    type: "string"
+                disabled:
+                  type: "array"
+                  items:
+                    type: "string"
     database:
         type: "object"
         required: ["filename"]

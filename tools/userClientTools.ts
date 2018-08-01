@@ -54,11 +54,11 @@ if (options.help || (options.add && options.remove) || !(options.add || options.
 const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
 const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
 discordstore.init().then(() => {
-  log.info("tool", "Loaded database.");
+  log.info("Loaded database.");
   handleUI();
 }).catch((err) => {
-  log.info("tool", "Couldn't load database. Cannot continue.");
-  log.info("tool", "Ensure the bridge is not running while using this command.");
+  log.info("Couldn't load database. Cannot continue.");
+  log.info("Ensure the bridge is not running while using this command.");
   process.exit(1);
 });
 
@@ -79,20 +79,20 @@ Please enter your Discord Token
         token = answert;
         rl.close();
         addUserToken(userid, token).then(() => {
-          log.info("tool", "Completed successfully");
+          log.info("Completed successfully");
           process.exit(0);
         }).catch((err) => {
-          log.info("tool", "Failed to add, $s", err);
+          log.info("Failed to add, $s", err);
           process.exit(1);
         });
       });
     } else if (options.remove) {
       rl.close();
       discordstore.delete_user_token(userid).then(() => {
-        log.info("tool", "Completed successfully");
+        log.info("Completed successfully");
         process.exit(0);
       }).catch((err) => {
-        log.info("tool", "Failed to delete, $s", err);
+        log.info("Failed to delete, $s", err);
         process.exit(1);
       });
     }
