@@ -118,7 +118,7 @@ export class MatrixRoomHandler {
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message" || event.type === "m.sticker") {
-        log.verbose("Got m.room.message / m.sticker event");
+        log.verbose(`Got ${event.type} event`);
         if (event.type === "m.room.message" && event.content.body && event.content.body.startsWith("!discord")) {
             return this.ProcessCommand(event, context);
         } else if (context.rooms.remote) {
