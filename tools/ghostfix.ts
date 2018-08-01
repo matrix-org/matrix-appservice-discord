@@ -59,7 +59,8 @@ if (options.help) {
 
 const yamlConfig = yaml.safeLoad(fs.readFileSync("./discord-registration.yaml", "utf8"));
 const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig;
+const config = new DiscordBridgeConfig();
+config.ApplyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
 
 if (registration === null) {
     throw new Error("Failed to parse registration file");
@@ -107,7 +108,9 @@ bridge.loadDatabases().catch((e) => {
     });
 }).then((clientTmp: any) => {
     client = clientTmp;
-    const promiseList = [];
+    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    
+    let delay = config.limits.roomGhostJoinDelay;
     client.guilds.forEach((guild) => {
         guild.channels.forEach((channel) => {
             if (channel.type !== "text") {
@@ -117,29 +120,36 @@ bridge.loadDatabases().catch((e) => {
                 if (member.id === client.user.id) {
                     return;
                 }
-                promiseList.push(Bluebird.each(discordbot.GetRoomIdsFromChannel(channel), (room) => {
-                    let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-                    const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
-                        userSync.EnsureJoin(member, room);
+                promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+                    return Bluebird.each(discordbot.GetRoomIdsFromChannel(channel), (room) => {
+                        let currentSchedule = JOIN_ROOM_SCHEDULE[0];
+                        const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
+                            userSync.EnsureJoin(member, room);
+                        });
+                        const errorHandler = (err) => {
+                            log.error("Ghostfix", `Error joining room ${room} as ${member.id}`);
+                            log.error("Ghostfix", err);
+                            const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
+                            if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
+                                log.warn("Ghostfix", `Cannot join ${room} as ${member.id}`);
+                                return Promise.reject(err);
+                            } else {
+                                currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
+                                return doJoin().catch(errorHandler);
+                            }
+                        };
+                        return doJoin().catch(errorHandler);
+                    }).catch((err) => {
+                        log.warn("Ghostfix", `No associated matrix rooms for discord room ${channel.id}`);
                     });
-                    const errorHandler = (err) => {
-                        log.error("Ghostfix", `Error joining room ${room} as ${member.id}`);
-                        log.error("Ghostfix", err);
-                        const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
-                        if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                            log.warn("Ghostfix", `Cannot join ${room} as ${member.id}`);
-                            return Promise.reject(err);
-                        } else {
-                            currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
-                            return doJoin().catch(errorHandler);
-                        }
-                    };
-                    return doJoin().catch(errorHandler);
                 }));
+                delay += config.limits.roomGhostJoinDelay;
             });
         });
     });
-    return Bluebird.all(promiseList);
+    return promiseChain;
+}).catch((err) => {
+    log.error("Ghostfix", err);
 }).then(() => {
     process.exit(0);
 });
