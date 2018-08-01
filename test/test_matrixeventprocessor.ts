@@ -102,7 +102,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, undefined);
         });
-        it("Should set name changes", () => {
+        it("Should echo name changes", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -115,7 +115,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the name to `Test Name` on Matrix.");
         });
-        it("Should set topic changes", () => {
+        it("Should echo topic changes", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -128,7 +128,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the topic to `Test Topic` on Matrix.");
         });
-        it("Should set joins", () => {
+        it("Should echo joins", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -142,7 +142,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` joined the room on Matrix.");
         });
-        it("Should set invites", () => {
+        it("Should echo invites", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -157,7 +157,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
         });
-        it("Should set kicks", () => {
+        it("Should echo kicks", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -172,7 +172,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
         });
-        it("Should set leaves", () => {
+        it("Should echo leaves", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
@@ -187,7 +187,7 @@ describe("MatrixEventProcessor", () => {
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` left the room on Matrix.");
         });
-        it("Should set bans", () => {
+        it("Should echo bans", () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@user:localhost",
