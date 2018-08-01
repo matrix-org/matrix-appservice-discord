@@ -46,6 +46,17 @@ function createMatrixEventProcessor
                 },
             };
         },
+        getIntent: () => {
+            return {
+                getClient: () => {
+                    return {
+                        getUserId: () => {
+                            return "@botuser:localhost";
+                        },
+                    };
+                },
+            };
+        },
     };
     const config = new DiscordBridgeConfig();
     config.bridge.disableDiscordMentions = disableMentions;
@@ -70,6 +81,128 @@ const mockChannel = new MockChannel();
 mockChannel.members.set("12345", new MockMember("12345", "testuser2"));
 
 describe("MatrixEventProcessor", () => {
+    describe("StateEventToMessage", () => {
+        it("Should ignore unhandled states", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.nonexistant",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, undefined);
+        });
+        it("Should ignore bot user states", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@botuser:localhost",
+                type: "m.room.member",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, undefined);
+        });
+        it("Should set name changes", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.name",
+                content: {
+                    name: "Test Name",
+                },
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` set the name to `Test Name` on Matrix.");
+        });
+        it("Should set topic changes", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.topic",
+                content: {
+                    topic: "Test Topic",
+                },
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` set the topic to `Test Topic` on Matrix.");
+        });
+        it("Should set joins", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.member",
+                content: {
+                    membership: "join",
+                },
+                unsigned: {},
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` joined the room on Matrix.");
+        });
+        it("Should set invites", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.member",
+                content: {
+                    membership: "invite",
+                },
+                unsigned: {},
+                state_key: "@user2:localhost",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
+        });
+        it("Should set kicks", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.member",
+                content: {
+                    membership: "leave",
+                },
+                unsigned: {},
+                state_key: "@user2:localhost",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
+        });
+        it("Should set leaves", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.member",
+                content: {
+                    membership: "leave",
+                },
+                unsigned: {},
+                state_key: "@user:localhost",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` left the room on Matrix.");
+        });
+        it("Should set bans", () => {
+            const processor = createMatrixEventProcessor();
+            const event = {
+                sender: "@user:localhost",
+                type: "m.room.member",
+                content: {
+                    membership: "ban",
+                },
+                unsigned: {},
+                state_key: "@user2:localhost",
+            };
+            const channel = new MockChannel("123456");
+            const msg = processor.StateEventToMessage(event, channel as any);
+            Chai.assert.equal(msg, "`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
+        });
+    });
     describe("EventToEmbed", () => {
         it("Should contain a profile.", () => {
             const processor = createMatrixEventProcessor();
