@@ -266,6 +266,7 @@ export class DiscordBot {
     }
     log.info(`Redact event matched ${storeEvent.ResultCount} entries`);
     while (storeEvent.Next()) {
+      log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
       const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
       const chan = result.channel;
       
