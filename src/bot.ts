@@ -182,22 +182,26 @@ export class DiscordBot {
   }
 
   public async ProcessMatrixStateEvent(event: any): Promise<void> {
-      log.verbose("DiscordBot", `Got state event from ${roomId} ${event.type}`);
-      const channel = await this.GetChannelFromRoomId(event.room_id);
+      log.verbose(`Got state event from ${event.room_id} ${event.type}`);
+      const channel = <Discord.TextChannel> await this.GetChannelFromRoomId(event.room_id);
       const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
-      if (msg == undefined) {
+      if (!msg) {
           return;
       }
-      res = await chan.send(msg);
-      log.verbose("DiscordBot", "Sent (state msg) ", res);
-      this.sentMessages.push(res.id);
-      const evt = new DbEvent();
-      evt.MatrixId = event.event_id + ";" + event.room_id;
-      evt.DiscordId = res.id;
-      evt.GuildId = channel.guild.id;
-      evt.ChannelId = channel.id;
-      await this.store.Insert(evt);
-      return;
+      let res = await channel.send(msg);
+      if (!Array.isArray(res)) {
+        res = [res];
+      }
+      res.forEach((m: Discord.Message) => {
+        log.verbose("Sent (state msg) ", m);
+        this.sentMessages.push(m.id);
+        const evt = new DbEvent();
+        evt.MatrixId = event.event_id + ";" + event.room_id;
+        evt.DiscordId = m.id;
+        evt.GuildId = channel.guild.id;
+        evt.ChannelId = channel.id;
+        return this.store.Insert(evt);
+      });
   }
 
   public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
