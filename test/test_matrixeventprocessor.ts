@@ -253,6 +253,18 @@ describe("MatrixEventProcessor", () => {
             }, null, mockChannel as any);
             Chai.assert.equal(evt.description, "*eats pizza*");
         });
+        it("Should handle stickers.", () => {
+            const processor = createMatrixEventProcessor();
+            const evt = processor.EventToEmbed({
+                sender: "@test:localhost",
+                type: "m.sticker",
+                content: {
+                    body: "Bunnies",
+                    url: "mxc://bunny",
+                },
+            }, {avatar_url: "test"}, mockChannel as any);
+            Chai.assert.equal(evt.description, "");
+        });
     });
     describe("FindMentionsInPlainBody", () => {
         it("processes mentioned username correctly", async () => {
@@ -432,6 +444,23 @@ describe("MatrixEventProcessor", () => {
                     url: "mxc://localhost/8000000",
                 },
             }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+        });
+        it("Should handle stickers.", () => {
+            const processor = createMatrixEventProcessor();
+            return expect(processor.HandleAttachment({
+                sender: "@test:localhost",
+                type: "m.sticker",
+                content: {
+                    body: "Bunnies",
+                    url: "mxc://bunny",
+                    info: {
+                        mimetype: "image/png",
+                    },
+                },
+            }, mxClient)).to.eventually.satisfy((attachment) => {
+                expect(attachment.name).to.eq("Bunnies.png");
+                return true;
+            });
         });
     });
 });
