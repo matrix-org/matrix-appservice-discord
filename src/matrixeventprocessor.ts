@@ -170,9 +170,9 @@ export class MatrixEventProcessor {
             "m.video",
             "m.file",
             "m.sticker",
-        ].indexOf(event.content.msgtype) !== -1 || [
+        ].includes(event.content.msgtype) || [
             "m.sticker",
-        ].indexOf(event.type) !== -1;
+        ].includes(event.type);
         if (!hasAttachment) {
             return "";
         }
