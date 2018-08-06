@@ -93,13 +93,13 @@ export class Util {
         rawResponse: false,
       });
     }).then((contentUri) => {
-      log.verbose("Media uploaded to %s", contentUri);
+      log.verbose("Media uploaded to ", contentUri);
       return {
         mxcUrl: contentUri,
         size,
       };
     }).catch((reason) => {
-      log.error("Failed to upload content:\n%s", reason);
+      log.error("Failed to upload content:\n", reason);
       throw reason;
     });
   }

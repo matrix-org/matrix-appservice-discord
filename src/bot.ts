@@ -394,7 +394,7 @@ export class DiscordBot {
         return this.UpdateRoomEntry(entry[0], textChan);
       }));
     }).catch((err) => {
-      log.error("Error during room update %s", err);
+      log.error(`Error during room update ${err}.`);
     });
   }
 
@@ -600,7 +600,7 @@ export class DiscordBot {
         log.info(`Got delete event for ${msg.id}`);
         const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
         if (!storeEvent.Result) {
-          log.warn(`Could not redact because the event was in the store.`);
+          log.warn(`Could not redact because the event was not in the store.`);
           return;
         }
         while (storeEvent.Next()) {
