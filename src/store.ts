@@ -65,11 +65,11 @@ export class DiscordStore {
       log.info(`Updating database to v${version}, "${schema.description}"`);
       try {
         await schema.run(this);
-        log.info("Updated database to version %s", version);
+        log.info("Updated database to version ", version);
       } catch (ex) {
-        log.error("Couldn't update database to schema %s", version);
+        log.error("Couldn't update database to schema ", version);
         log.error(ex);
-        log.info("Rolling back to version %s", version - 1);
+        log.info("Rolling back to version ", version - 1);
         try {
           await schema.rollBack(this);
         } catch (ex) {
@@ -97,7 +97,7 @@ export class DiscordStore {
   }
 
   public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
-    log.silly("SQL", "add_user_token => %s", userId);
+    log.silly("SQL", "add_user_token => ", userId);
     return Promise.all([
         this.db.runAsync(
           `
@@ -116,13 +116,13 @@ export class DiscordStore {
             $token: token,
         }),
     ]).catch( (err) => {
-      log.error("Error storing user token %s", err);
+      log.error("Error storing user token ", err);
       throw err;
     });
   }
 
   public delete_user_token(discordId: string): Promise<null> {
-    log.silly("SQL", "delete_user_token => %s", discordId);
+    log.silly("SQL", "delete_user_token => ", discordId);
     return this.db.runAsync(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
@@ -131,13 +131,13 @@ export class DiscordStore {
     , {
       $id: discordId,
     }).catch( (err) => {
-      log.error("Error deleting user token %s", err);
+      log.error("Error deleting user token ", err);
       throw err;
     });
   }
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
-    log.silly("SQL", "get_user_discord_ids => %s", userId);
+    log.silly("SQL", "get_user_discord_ids => ", userId);
     return this.db.allAsync(
       `
       SELECT discord_id
@@ -153,13 +153,13 @@ export class DiscordStore {
         return [];
       }
     }).catch( (err) => {
-      log.error("Error getting discord ids: %s", err.Error);
+      log.error("Error getting discord ids: ", err.Error);
       throw err;
     });
   }
 
   public get_token(discordId: string): Promise<string> {
-    log.silly("SQL", "discord_id_token => %s", discordId);
+    log.silly("SQL", "discord_id_token => ", discordId);
     return this.db.getAsync(
       `
       SELECT token
@@ -171,13 +171,13 @@ export class DiscordStore {
     ).then( (row) => {
       return row !== undefined ? row.token : null;
     }).catch( (err) => {
-      log.error("Error getting discord ids  %s", err.Error);
+      log.error("Error getting discord ids ", err.Error);
       throw err;
     });
   }
 
   public get_dm_room(discordId, discordChannel): Promise<string> {
-    log.silly("SQL", "get_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
+    log.silly("SQL", "get_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
     return this.db.getAsync(
       `
       SELECT room_id
@@ -191,13 +191,13 @@ export class DiscordStore {
     }).then( (row) => {
       return row !== undefined ? row.room_id : null;
     }).catch( (err) => {
-      log.error("Error getting room_id  %s", err.Error);
+      log.error("Error getting room_id ", err.Error);
       throw err;
     });
   }
 
   public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
-    log.silly("SQL", "set_dm_room => %s", discordChannel); // Don't show discordId for privacy reasons
+    log.silly("SQL", "set_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
     return this.db.runAsync(
       `
       REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
@@ -208,7 +208,7 @@ export class DiscordStore {
       $discordChannel: discordChannel,
       $roomId: roomId,
     }).catch( (err) => {
-      log.error("Error executing set_dm_room query  %s", err.Error);
+      log.error("Error executing set_dm_room query  ", err.Error);
       throw err;
     });
   }
@@ -223,7 +223,7 @@ export class DiscordStore {
     ).then( (rows) => {
       return rows;
     }).catch( (err) => {
-      log.error("Error getting user token  %s", err.Error);
+      log.error("Error getting user token  ", err.Error);
       throw err;
     });
   }
@@ -265,7 +265,7 @@ export class DiscordStore {
   }
 
   private setSchemaVersion (ver: number): Promise<any> {
-    log.silly("_set_schema_version => %s", ver);
+    log.silly("_set_schema_version => ", ver);
     return this.db.getAsync(
       `
       UPDATE schema
@@ -275,11 +275,11 @@ export class DiscordStore {
   }
 
   private open_database(): Promise<null|Error> {
-    log.info("Opening SQLITE database %s", this.filepath);
+    log.info("Opening SQLITE database ", this.filepath);
     return new Promise((resolve, reject) => {
       this.db = new SQLite3.Database(this.filepath, (err) => {
         if (err) {
-          log.error("Error opening database, %s");
+          log.error("Error opening database");
           reject(new Error("Couldn't open database. The appservice won't be able to continue."));
           return;
         }
