@@ -78,6 +78,10 @@ export class MatrixEventProcessor {
                 channel.members.array(),
             );
 
+        if (event.type === "m.sticker") {
+            body = "";
+        }
+
         // Replace @everyone
         if (this.config.bridge.disableEveryoneMention) {
             body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
@@ -166,7 +170,9 @@ export class MatrixEventProcessor {
             "m.video",
             "m.file",
             "m.sticker",
-        ].indexOf(event.content.msgtype) !== -1;
+        ].includes(event.content.msgtype) || [
+            "m.sticker",
+        ].includes(event.type);
         if (!hasAttachment) {
             return "";
         }

@@ -257,6 +257,23 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.message", content: {body: "abc"}}), context))
                 .to.be.rejectedWith("Event not processed by bridge");
         });
+        it("should process stickers", () => {
+            const handler = createRH();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            return expect(handler.OnEvent(buildRequest({
+                type: "m.sticker",
+                content: {
+                    body: "abc",
+                    url: "mxc://abc",
+                },
+            }), context)).to.eventually.equal("processed");
+        });
     });
     describe("HandleInvite", () => {
         it("should accept invite for bot user", () => {

@@ -117,9 +117,9 @@ export class MatrixRoomHandler {
       return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
-    } else if (event.type === "m.room.message") {
-        log.verbose("Got m.room.message event");
-        if (event.content.body && event.content.body.startsWith("!discord")) {
+    } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+        log.verbose(`Got ${event.type} event`);
+        if (event.type === "m.room.message" && event.content.body && event.content.body.startsWith("!discord")) {
             return this.ProcessCommand(event, context);
         } else if (context.rooms.remote) {
             const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
