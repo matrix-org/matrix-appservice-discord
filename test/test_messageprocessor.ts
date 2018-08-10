@@ -168,6 +168,16 @@ describe("MessageProcessor", () => {
             content = processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello TestUsername");
         });
+        it("processes members with nickname correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello <@!12345>";
+            content = processor.ReplaceMembers(content, msg);
+            Chai.assert.equal(content, "Hello TestNickname");
+        });
     });
     describe("ReplaceMembersPostmark", () => {
         it("processes members missing from the guild correctly", () => {

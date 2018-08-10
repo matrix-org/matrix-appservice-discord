@@ -165,7 +165,7 @@ export class UserSyncroniser {
         try {
             await tryState();
         } catch (e) {
-            if (e.errorcode !== "M_FORBIDDEN") {
+            if (e.errcode !== "M_FORBIDDEN") {
                 log.warn(`Failed to send state to ${roomId}`, e);
             } else {
                 log.warn(`User not in room ${roomId}, inviting`);

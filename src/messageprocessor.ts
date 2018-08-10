@@ -176,7 +176,7 @@ export class MessageProcessor {
             const id = results[1];
             const user = users.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = user ? user.username : memberId;
+            const memberStr = user ? (this.GetDisplayNameForUser(user)) : memberId;
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
         }
@@ -192,7 +192,7 @@ export class MessageProcessor {
             const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
             let memberName = memberId;
             if (user) {
-                memberName = escapeHtml(user.username);
+                memberName = escapeHtml(this.GetDisplayNameForUser(user));
             }
             const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);
@@ -269,11 +269,11 @@ export class MessageProcessor {
         return content;
     }
 
-    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User> {
+    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User|Discord.GuildMember> {
         if (msg.channel.type === "text") {
             const channel = msg.channel as Discord.TextChannel;
-            const users = new Discord.Collection<Snowflake, Discord.User>();
-            channel.guild.members.forEach((u) => users.set(u.id, u.user));
+            const users = new Discord.Collection<Snowflake, Discord.User|Discord.GuildMember>();
+            channel.guild.members.forEach((m) => users.set(m.id, m));
             return users;
         } else if (msg.channel.type === "dm") {
             return new Discord.Collection<Snowflake, Discord.User>([
@@ -284,6 +284,14 @@ export class MessageProcessor {
             return (<GroupDMChannel> msg.channel).recipients;
         } else {
             return new Discord.Collection<Snowflake, Discord.User>();
+        }
+    }
+
+    private GetDisplayNameForUser(user: Discord.User|Discord.GuildMember) {
+        if ((user as any)["displayName"] !== undefined) {
+            return (user as Discord.GuildMember).displayName;
+        } else {
+            return (user as Discord.User).username;
         }
     }
 }

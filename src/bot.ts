@@ -10,7 +10,6 @@ import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventpro
 import { PresenceHandler } from "./presencehandler";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
-import * as mime from "mime";
 import { Provisioner } from "./provisioner";
 import {DMHandler} from "./dmhandler";
 import { Log } from "./log";
@@ -197,6 +196,29 @@ export class DiscordBot {
       }
       throw err;
     });
+  }
+
+  public async ProcessMatrixStateEvent(event: any): Promise<void> {
+      log.verbose(`Got state event from ${event.room_id} ${event.type}`);
+      const channel = <Discord.TextChannel> await this.GetChannelFromRoomId(event.room_id);
+      const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
+      if (!msg) {
+          return;
+      }
+      let res = await channel.send(msg);
+      if (!Array.isArray(res)) {
+        res = [res];
+      }
+      res.forEach((m: Discord.Message) => {
+        log.verbose("Sent (state msg) ", m);
+        this.sentMessages.push(m.id);
+        const evt = new DbEvent();
+        evt.MatrixId = event.event_id + ";" + event.room_id;
+        evt.DiscordId = m.id;
+        evt.GuildId = channel.guild.id;
+        evt.ChannelId = channel.id;
+        return this.store.Insert(evt);
+      });
   }
 
   public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
@@ -389,7 +411,7 @@ export class DiscordBot {
         return this.UpdateRoomEntry(entry[0], textChan);
       }));
     }).catch((err) => {
-      log.error("Error during room update %s", err);
+      log.error(`Error during room update ${err}.`);
     });
   }
 
@@ -548,18 +570,18 @@ export class DiscordBot {
     }
   }
 
-  private async DeleteDiscordMessage(msg: Discord.Message) {
-      log.info(`Got delete event for ${msg.id}`);
-      const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-      if (!storeEvent.Result) {
-        log.warn(`Could not redact because the event was in the store.`);
-        return;
-      }
-      while (storeEvent.Next()) {
-        log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-        const intent = this.GetIntentFromDiscordMember(msg.author);
-        const matrixIds = storeEvent.MatrixId.split(";");
-        await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
-      }
-  }
+    private async DeleteDiscordMessage(msg: Discord.Message) {
+        log.info(`Got delete event for ${msg.id}`);
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+        if (!storeEvent.Result) {
+          log.warn(`Could not redact because the event was not in the store.`);
+          return;
+        }
+        while (storeEvent.Next()) {
+          log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
+          const intent = this.GetIntentFromDiscordMember(msg.author);
+          const matrixIds = storeEvent.MatrixId.split(";");
+          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+        }
+    }
 }
