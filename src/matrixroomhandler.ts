@@ -174,7 +174,6 @@ export class MatrixRoomHandler {
     } else {
       return this.discord.ProcessMatrixStateEvent(event);
     }
-    log.warn("MatrixRoomHandler", `Ignoring invite for ${event.room_id}, ${event.sender} => ${event.state_key}`);
   }
 
   public async ProcessCommand(event: any, context: any) {
