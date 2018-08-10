@@ -42,6 +42,7 @@ function generateRegistration(reg, callback)  {
 function run (port: number, fileConfig: DiscordBridgeConfig) {
   const config = new DiscordBridgeConfig();
   config.ApplyConfig(fileConfig);
+  Log.Configure(config.logging);
   log.info("Starting Discord AS");
   const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
   const registration = AppServiceRegistration.fromObject(yamlConfig);
@@ -87,7 +88,7 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
   log.info("Initing bridge.");
-  log.info("Started listening on port %s.", port);
+  log.info(`Started listening on port ${port}.`);
   bridge.run(port, config).then(() => {
     log.info("Initing store.");
     return discordstore.init();

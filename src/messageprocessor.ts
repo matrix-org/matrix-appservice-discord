@@ -143,7 +143,7 @@ export class MessageProcessor {
             const id = results[1];
             const member = msg.guild.members.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? member.user.username : memberId;
+            const memberStr = member ? (member.displayName) : memberId;
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
         }
@@ -158,7 +158,7 @@ export class MessageProcessor {
             const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
             let memberName = memberId;
             if (member) {
-                memberName = escapeHtml(member.user.username);
+                memberName = escapeHtml(member.displayName);
             }
             const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);

@@ -61,6 +61,7 @@ function createRH(opts: any = {}) {
     const us = {
         OnMemberState: () => Promise.resolve("user_sync_handled"),
         OnUpdateUser: () => Promise.resolve(),
+        EnsureJoin: () => Promise.resolve(),
     };
     const cs = {
         OnUpdate: () => Promise.resolve(),
@@ -84,6 +85,7 @@ function createRH(opts: any = {}) {
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
         ProcessMatrixMsgEvent: () => Promise.resolve("processed"),
+        ProcessMatrixStateEvent: () => Promise.resolve("stateevent"),
         LookupRoom: (guildid, discordid) => {
             if (guildid !== "123") {
                 return Promise.reject("Guild not found");
@@ -190,13 +192,13 @@ describe("MatrixRoomHandler", () => {
                 state_key: "@_discord_12345:localhost",
                 type: "m.room.member"}), null)).to.eventually.equal("user_sync_handled");
         });
-        it("should ignore other member types", () => {
+        it("should pass other member types to state event", () => {
             const handler = createRH();
             handler.HandleInvite = (ev) => Promise.resolve("invited");
             return expect(handler.OnEvent(buildRequest({
                 content: {membership: "join"},
                 state_key: "@bacon:localhost",
-                type: "m.room.member"}), null)).to.be.rejectedWith("Event not processed by bridge");
+                type: "m.room.member"}), null)).to.eventually.equal("stateevent");
         });
         it("should handle redactions with existing rooms", () => {
             const handler = createRH();
@@ -260,6 +262,23 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.message", content: {body: "abc"}}), context))
                 .to.be.rejectedWith("Event not processed by bridge");
         });
+        it("should process stickers", () => {
+            const handler = createRH();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            return expect(handler.OnEvent(buildRequest({
+                type: "m.sticker",
+                content: {
+                    body: "abc",
+                    url: "mxc://abc",
+                },
+            }), context)).to.eventually.equal("processed");
+        });
     });
     describe("HandleInvite", () => {
         it("should accept invite for bot user", () => {
@@ -274,7 +293,7 @@ describe("MatrixRoomHandler", () => {
             handler.joinRoom = () => Promise.resolve("joinedroom");
             return expect(handler.HandleInvite({
                 state_key: "@user:localhost",
-            })).to.be.undefined;
+            })).to.eventually.be.equal("stateevent");
         });
     });
     describe("ProcessCommand", () => {

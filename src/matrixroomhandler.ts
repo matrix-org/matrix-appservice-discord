@@ -88,7 +88,11 @@ export class MatrixRoomHandler {
             return this.discord.UserSyncroniser.OnUpdateUser(member.user);
         }).then(() => {
             log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-            return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
+            return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId)
+                .then(() => {
+                  // set the correct discord guild name
+                  this.discord.UserSyncroniser.EnsureJoin(member, roomId);
+                });
         }));
         delay += this.config.limits.roomGhostJoinDelay;
     }
@@ -99,25 +103,33 @@ export class MatrixRoomHandler {
   public OnEvent (request, context): Promise<any> {
     const event = request.getData();
     if (event.unsigned.age > AGE_LIMIT) {
-      log.warn("MatrixRoomHandler", "Skipping event due to age %s > %s", event.unsigned.age, AGE_LIMIT);
+      log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
       return Promise.reject("Event too old");
     }
     if (event.type === "m.room.member" && event.content.membership === "invite") {
-        return this.HandleInvite(event);
+      return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
         if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
             return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
+        } else {
+          return this.discord.ProcessMatrixStateEvent(event);
         }
+    } else if (event.type === "m.room.member") {
+      return this.discord.ProcessMatrixStateEvent(event);
+    } else if (event.type === "m.room.name") {    
+      return this.discord.ProcessMatrixStateEvent(event);
+    } else if (event.type === "m.room.topic") {
+      return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
-    } else if (event.type === "m.room.message") {
-        log.verbose("MatrixRoomHandler", "Got m.room.message event");
-        if (event.content.body && event.content.body.startsWith("!discord")) {
+    } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+        log.verbose(`Got ${event.type} event`);
+        if (event.type === "m.room.message" && event.content.body && event.content.body.startsWith("!discord")) {
             return this.ProcessCommand(event, context);
         } else if (context.rooms.remote) {
             const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
             return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
-                log.warn("MatrixRoomHandler", "There was an error sending a matrix event", err);
+                log.warn("There was an error sending a matrix event", err);
             });
         }
     } else if (event.type === "m.room.encryption" && context.rooms.remote) {
@@ -125,14 +137,14 @@ export class MatrixRoomHandler {
             return Promise.reject(`Failed to handle encrypted room, ${err}`);
         });
     } else {
-      log.verbose("MatrixRoomHandler", "Got non m.room.message event");
+      log.verbose("Got non m.room.message event");
     }
     return Promise.reject("Event not processed by bridge");
   }
 
   public async HandleEncryptionWarning(roomId: string): Promise<void> {
       const intent = this.bridge.getIntent();
-      log.info("MatrixRoomHandler", `User has turned on encryption in ${roomId}, so leaving.`);
+      log.info(`User has turned on encryption in ${roomId}, so leaving.`);
       /* N.B 'status' is not specced but https://github.com/matrix-org/matrix-doc/pull/828
        has been open for over a year with no resolution. */
       const sendPromise = intent.sendMessage(roomId, {
@@ -150,10 +162,12 @@ export class MatrixRoomHandler {
   }
 
   public HandleInvite(event: any) {
-    log.info("MatrixRoomHandler", "Received invite for " + event.state_key + " in room " + event.room_id);
+    log.info("Received invite for " + event.state_key + " in room " + event.room_id);
     if (event.state_key === this.botUserId) {
-      log.info("MatrixRoomHandler", "Accepting invite for bridge bot");
+      log.info("Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
+    } else {
+      return this.discord.ProcessMatrixStateEvent(event);
     }
   }
 
@@ -237,7 +251,7 @@ export class MatrixRoomHandler {
               const discordResult = await this.discord.LookupRoom(guildId, channelId);
               const channel = <Discord.TextChannel> discordResult.channel;
 
-              log.info("MatrixRoomHandler", `Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
+              log.info(`Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
               this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "I'm asking permission from the guild administrators to make this bridge.",
@@ -258,8 +272,8 @@ export class MatrixRoomHandler {
                   });
               }
 
-              log.error("MatrixRoomHandler", `Error bridging ${event.room_id} to ${guildId}/${channelId}`);
-              log.error("MatrixRoomHandler", err);
+              log.error(`Error bridging ${event.room_id} to ${guildId}/${channelId}`);
+              log.error(err);
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "There was a problem bridging that channel - has the guild owner approved the bridge?",
@@ -289,8 +303,8 @@ export class MatrixRoomHandler {
                   body: "This room has been unbridged",
               });
           } catch (err) {
-              log.error("MatrixRoomHandler", "Error while unbridging room " + event.room_id);
-              log.error("MatrixRoomHandler", err);
+              log.error("Error while unbridging room " + event.room_id);
+              log.error(err);
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "There was an error unbridging this room. " +
@@ -310,17 +324,17 @@ export class MatrixRoomHandler {
   }
 
   public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
-    log.info("MatrixRoomHandler", "Got request for #", aliasLocalpart);
+    log.info("Got request for #", aliasLocalpart);
     const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
     if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
-      log.warn("MatrixRoomHandler", `Alias '${aliasLocalpart}' was missing a server and/or a channel`);
+      log.warn(`Alias '${aliasLocalpart}' was missing a server and/or a channel`);
       return;
     }
     return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
-      log.info("MatrixRoomHandler", "Creating #", aliasLocalpart);
+      log.info("Creating #", aliasLocalpart);
       return this.createMatrixRoom(result.channel, aliasLocalpart);
     }).catch((err) => {
-      log.error("MatrixRoomHandler", `Couldn't find discord room '${aliasLocalpart}'.`, err);
+      log.error(`Couldn't find discord room '${aliasLocalpart}'.`, err);
     });
   }
 
@@ -369,7 +383,7 @@ export class MatrixRoomHandler {
   }
 
   public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
-    log.info("MatrixRoomHandler", "Got location request ", protocol, fields);
+    log.info("Got location request ", protocol, fields);
     const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
     return Promise.resolve(chans);
   }
@@ -379,7 +393,7 @@ export class MatrixRoomHandler {
   }
 
   public tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
-    log.info("MatrixRoomHandler", "Got user request ", protocol, fields);
+    log.info("Got user request ", protocol, fields);
     return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
   }
 
@@ -391,11 +405,11 @@ export class MatrixRoomHandler {
       let currentSchedule = JOIN_ROOM_SCHEDULE[0];
       const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => intent.getClient().joinRoom(roomIdOrAlias));
       const errorHandler = (err) => {
-          log.error("MatrixRoomHandler", `Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
-          log.error("MatrixRoomHandler", err);
+          log.error(`Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+          log.error(err);
           const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
           if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-              log.warn("MatrixRoomHandler", `Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+              log.warn(`Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
               return Promise.reject(err);
           } else {
               currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];

@@ -15,10 +15,11 @@ export class DiscordBridgeConfig {
    */
   public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
     Object.keys(newConfig).forEach((key) => {
-      if (typeof(configLayer[key]) === "object")  {
+      if ( typeof(configLayer[key]) === "object" &&
+           !Array.isArray(configLayer[key])) {
         this.ApplyConfig(newConfig[key], this[key]);
         return;
-      } 
+      }
       configLayer[key] = newConfig[key];
     });
   }
