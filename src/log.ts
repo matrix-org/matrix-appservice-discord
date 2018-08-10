@@ -17,7 +17,7 @@ export class Log {
         this.logger.level = level;
     }
 
-    public static ConfigureBridge(config: DiscordBridgeConfigLogging) {
+    public static Configure(config: DiscordBridgeConfigLogging) {
         // Merge defaults.
         Log.config = Object.assign(new DiscordBridgeConfigLogging(), config);
         Log.setupLogger();
