@@ -36,12 +36,12 @@ describe("Log", () => {
         loggedMessages = [];
     });
 
-    describe("ConfigureBridge", () => {
+    describe("Configure", () => {
         it("should pass if config is empty", () => {
-            Log.ConfigureBridge({});
+            Log.Configure({});
         });
         it("should set basic log options", () => {
-            Log.ConfigureBridge({
+            Log.Configure({
                 console: "warn",
                 lineDateFormat: "HH:mm:ss",
             });
@@ -50,7 +50,7 @@ describe("Log", () => {
             expect(Log.config.files).to.be.empty;
         });
         it("should setup file logging", () => {
-            Log.ConfigureBridge({
+            Log.Configure({
                 files: [
                     {
                         file: "./logfile.log",
