@@ -280,7 +280,9 @@ export class DiscordBot {
     }
     log.info(`Got redact request for ${event.redacts}`);
     log.verbose(`Event:`, event);
+    
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
+    
     if (!storeEvent.Result) {
       log.warn(`Could not redact because the event was not in the store.`);
       return;
@@ -288,17 +290,10 @@ export class DiscordBot {
     log.info(`Redact event matched ${storeEvent.ResultCount} entries`);
     while (storeEvent.Next()) {
       log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-      if (!this.bot.guilds.has(storeEvent.GuildId)) {
-        log.warn(`Could not redact because the guild could not be found.`);
-        return;
-      }
-      if (!this.bot.guilds.get(storeEvent.GuildId).channels.has(storeEvent.ChannelId)) {
-        log.warn(`Could not redact because the guild could not be found.`);
-        return;
-      }
-      const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
-                      .channels.get(storeEvent.ChannelId);
-      const msg = await channel.fetchMessage(storeEvent.DiscordId);
+      const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
+      const chan = result.channel;
+      
+      const msg = await chan.fetchMessage(storeEvent.DiscordId);
       try {
         await msg.delete();
         log.info(`Deleted message`);
