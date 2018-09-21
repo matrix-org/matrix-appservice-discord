@@ -100,7 +100,7 @@ describe("Util", () => {
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            expect(Util.GetMxidFromName(intent, "goodboy", ["abc"])).to.eventually.be.rejected;
+            return expect(Util.GetMxidFromName(intent, "goodboy", ["abc"])).to.eventually.be.rejected;
         });
         it("Errors on no member", () => {
             const mockRooms = {
@@ -113,7 +113,7 @@ describe("Util", () => {
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
+            return expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
         });
     });
 });
