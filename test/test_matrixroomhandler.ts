@@ -12,6 +12,7 @@ import {MockMember} from "./mocks/member";
 import * as Bluebird from "bluebird";
 import {MockGuild} from "./mocks/guild";
 import {Guild} from "discord.js";
+import { Util } from "../src/util";
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
@@ -20,7 +21,23 @@ const expect = Chai.expect;
 //     "discord.js": { Client: require("./mocks/discordclient").MockDiscordClient },
 // }).DiscordClientFactory;
 
+const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
+    "./util": {
+        Util: {
+            DelayedPromise: Util.DelayedPromise,
+            MsgToArgs: Util.MsgToArgs,
+            ParseCommand: Util.ParseCommand,
+            GetMxidFromName: () => {
+                return "@123456:localhost";
+            },
+        },
+    },
+})).MatrixRoomHandler;
+
 let USERSJOINED = 0;
+let USERSKICKED = 0;
+let USERSBANNED = 0;
+let USERSUNBANNED = 0;
 
 function buildRequest(eventData) {
     if (eventData.unsigned === undefined) {
@@ -34,6 +51,9 @@ function buildRequest(eventData) {
 function createRH(opts: any = {}) {
     log.level = "silent";
     USERSJOINED = 0;
+    USERSKICKED = 0;
+    USERSBANNED = 0;
+    USERSUNBANNED = 0;
     const bridge = {
         getIntent: () => {
             return {
@@ -41,6 +61,9 @@ function createRH(opts: any = {}) {
                 getClient: () => mxClient,
                 join: () => { USERSJOINED++; },
                 leave: () => { },
+                kick: () => { USERSKICKED++; return Promise.resolve(); },
+                ban: () => { USERSBANNED++; return Promise.resolve(); },
+                unban: () => { USERSUNBANNED++; return Promise.resolve(); },
             }; 
         },
         getBot: () => {
@@ -78,6 +101,9 @@ function createRH(opts: any = {}) {
             } else {
                 return Promise.reject("Roomid not found");
             }
+        },
+        GetRoomIdsFromChannel: (chan) => {
+            return Promise.resolve(["#" + chan.id + ":localhost"]);
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
@@ -135,7 +161,7 @@ function createRH(opts: any = {}) {
                 Promise.reject(new Error("Test failed unbridge")) : Promise.resolve();
         },
     };
-    const handler = new MatrixRoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
+    const handler = new RoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
     handler.setBridge(bridge);
     return handler;
 }
@@ -593,6 +619,99 @@ describe("MatrixRoomHandler", () => {
             const roomOpts = handler.createMatrixRoom(channel, "#test:localhost");
             expect(roomOpts.creationOpts).to.exist;
             expect(roomOpts.remote).to.exist;
+        });
+    });
+    describe("HandleDiscordCommand", () => {
+        it("will kick a member", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix kick someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSKICKED).equals(1);
+            });
+        });
+        it("will kick a member in all guild rooms", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel, (new MockChannel("456"))]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix kick someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                // tslint:disable-next-line:no-magic-numbers
+                expect(USERSKICKED).equals(2);
+            });
+        });
+        it("will deny permission", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return false;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix kick someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSKICKED).equals(0);
+            });
+        });
+        it("will ban a member", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix ban someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSBANNED).equals(1);
+            });
+        });
+        it("will unban a member", () => {
+            const handler: any = createRH({});
+            const channel = new MockChannel("123");
+            const guild = new MockGuild("456", [channel]);
+            channel.guild = guild;
+            const member: any = new MockMember("123456", "blah");
+            member.hasPermission = () => {
+                return true;
+            };
+            const message = {
+                channel,
+                member,
+                content: "!matrix unban someuser",
+            };
+            return handler.HandleDiscordCommand(message).then(() => {
+                expect(USERSUNBANNED).equals(1);
+            });
         });
     });
 });

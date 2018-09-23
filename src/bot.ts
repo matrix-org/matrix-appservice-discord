@@ -12,6 +12,7 @@ import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { Provisioner } from "./provisioner";
+import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
 import {UserSyncroniser} from "./usersyncroniser";
 
@@ -41,6 +42,7 @@ export class DiscordBot {
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
   private userSync: UserSyncroniser;
+  private roomHandler: MatrixRoomHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -58,6 +60,10 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+  }
+
+  public setRoomHandler(roomHandler: MatrixRoomHandler) {
+    this.roomHandler = roomHandler;
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -498,6 +504,12 @@ export class DiscordBot {
       }
 
       return; // stop processing - we're approving/declining the bridge request
+    }
+
+    // check if it is a command to process by the bot itself
+    if (msg.content.startsWith("!matrix")) {
+      await this.roomHandler.HandleDiscordCommand(msg);
+      return;
     }
 
     // Update presence because sometimes discord misses people.
