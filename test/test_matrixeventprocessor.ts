@@ -375,12 +375,12 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(evt.description, "I like :lamecake:");
         });
-        it("Should replace /me with * displayname", () => {
+        it("Should replace /me with * displayname, and italicize message", () => {
             const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
                 content: {
-                    body: "/me likes puppies",
+                    body: "likes puppies",
                     msgtype: "m.emote",
                 },
             }, {
