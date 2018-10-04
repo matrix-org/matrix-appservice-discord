@@ -386,7 +386,7 @@ describe("MatrixEventProcessor", () => {
             }, {
                 displayname: "displayname",
             }, mockChannel as any);
-            Chai.assert.equal(evt.description, "*\\* displayname likes puppies*");
+            Chai.assert.equal(evt.description, "*displayname likes puppies*");
         });
         it("Should handle stickers.", () => {
             const processor = createMatrixEventProcessor();
