@@ -13,7 +13,7 @@ import * as Bluebird from "bluebird";
 import {MockGuild} from "./mocks/guild";
 import {Guild} from "discord.js";
 import { Util } from "../src/util";
-
+import { RoomLinkValidatorStatus } from "matrix-appservice-bridge";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -64,7 +64,7 @@ function createRH(opts: any = {}) {
                 kick: () => { USERSKICKED++; return Promise.resolve(); },
                 ban: () => { USERSBANNED++; return Promise.resolve(); },
                 unban: () => { USERSUNBANNED++; return Promise.resolve(); },
-            }; 
+            };
         },
         getBot: () => {
             return {
@@ -79,6 +79,9 @@ function createRH(opts: any = {}) {
 
                 },
             };
+        },
+        canProvisionRoom: () => {
+            return Promise.resolve(RoomLinkValidatorStatus.PASSED);
         },
     };
     const us = {
