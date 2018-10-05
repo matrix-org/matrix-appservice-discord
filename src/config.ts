@@ -15,7 +15,8 @@ export class DiscordBridgeConfig {
    */
   public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
     Object.keys(newConfig).forEach((key) => {
-      if (typeof(configLayer[key]) === "object")  {
+      if ( typeof(configLayer[key]) === "object" &&
+           !Array.isArray(configLayer[key])) {
         this.ApplyConfig(newConfig[key], this[key]);
         return;
       }
@@ -39,6 +40,8 @@ class DiscordBridgeConfigBridge {
 
 class DiscordBridgeConfigDatabase {
   public filename: string;
+  public userStorePath: string;
+  public roomStorePath: string;
 }
 
 export class DiscordBridgeConfigAuth {
@@ -46,8 +49,11 @@ export class DiscordBridgeConfigAuth {
   public secret: string;
   public botToken: string;
 }
-class DiscordBridgeConfigLogging {
-  public level: string;
+
+export class DiscordBridgeConfigLogging {
+  public console: string = "info";
+  public lineDateFormat: string = "MMM-D HH:mm:ss.SSS";
+  public files: LoggingFile[] = [];
 }
 
 class DiscordBridgeConfigRoom {
@@ -58,8 +64,19 @@ class DiscordBridgeConfigLimits {
   public roomGhostJoinDelay: number = 6000;
 }
 
+
 class DiscordBridgConfigProvisioning {
   public enableRules: boolean = false;
   public ruleFile: string;
   public enableReload: boolean = false;
+}
+
+export class LoggingFile {
+  public file: string;
+  public level: string = "info";
+  public maxFiles: string = "14d";
+  public maxSize: string|number = "50m";
+  public datePattern: string = "YYYY-MM-DD";
+  public enabled: string[] = [];
+  public disabled: string[] = [];
 }

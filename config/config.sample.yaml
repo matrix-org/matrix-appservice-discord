@@ -12,9 +12,22 @@ auth:
   secret: "blah"
   botToken: "foobar"
 logging:
-  level: "warn" #silly, verbose, info, http, warn, error
+  console: "warn" #silly, verbose, info, http, warn, error, silent
+  lineDateFormat: "MMM-D HH:mm:ss.SSS" # This is in moment.js format
+  files:
+    - file: "debug.log"
+      disable:
+        - "PresenceHandler" # Will not capture presence logging
+    - file: "warn.log" # Will capture warnings
+      level: "warn"
+    - file: "botlogs.log" # Will capture logs from DiscordBot
+      level: "info"
+      enable: 
+        - "DiscordBot" 
 database:
   filename: "discord.db"
+  userStorePath: "user-store.db"
+  roomStorePath: "room-store.db"
 room:
   defaultVisibility: "public"
 provisioning:

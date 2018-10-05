@@ -41,7 +41,63 @@ describe("MessageProcessor", () => {
         msg.content = "Hello *World*!";
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "Hello *World*!");
-        Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>\n");
+        Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
+      });
+      it("processes non-discord markdown correctly.", async() => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
+        msg.content = "> inb4 tests";
+        let result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "> inb4 tests");
+        Chai.assert.equal(result.formattedBody, "<p>&gt; inb4 tests</p>");
+
+        msg.embeds = [];
+        msg.content = "[test](http://example.com)";
+        result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "[test](http://example.com)");
+        Chai.assert.equal(result.formattedBody, "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
+      });
+      it("processes discord-specific markdown correctly.", async() => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [];
+        msg.content = "_ italic _";
+        const result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "_ italic _");
+        Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
+      });
+    });
+    describe("FormatEmbeds", () => {
+      it("should format embeds correctly", async () => {
+        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+        const msg = new Discord.Message(null, null, null);
+        msg.embeds = [
+            {
+                author: null,
+                client: null,
+                color: null,
+                createdAt: null,
+                createdTimestamp: null,
+                fields: null,
+                footer: null,
+                hexColor: null,
+                image: null,
+                message: null,
+                provider: null,
+                thumbnail: null,
+                type: null,
+                video: null,
+                title: "Title",
+                description: "Description",
+                url: "http://example.com",
+            },
+        ];
+        msg.content = "message";
+        const result = await processor.FormatDiscordMessage(msg);
+        Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
+        Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
+            "</h5><p>Description</p>");
       });
     });
     describe("FormatEdit", () => {
@@ -58,7 +114,7 @@ describe("MessageProcessor", () => {
 
         const result = await processor.FormatEdit(oldMsg, newMsg);
         Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
-        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>\n");
+        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>");
       });
 
       it("should format markdown heavy edits apropriately", async () => {
@@ -75,7 +131,7 @@ describe("MessageProcessor", () => {
         const result = await processor.FormatEdit(oldMsg, newMsg);
         Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
         Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
-          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>\n");
+          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>");
       });
 
     });
@@ -99,6 +155,16 @@ describe("MessageProcessor", () => {
             let content = "Hello <@!12345>";
             content = processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello TestUsername");
+        });
+        it("processes members with nickname correctly", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
+            const guild: any = new MockGuild("123", []);
+            guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
+            const channel = new Discord.TextChannel(guild, null);
+            const msg = new Discord.Message(channel, null, null);
+            let content = "Hello <@!12345>";
+            content = processor.ReplaceMembers(content, msg);
+            Chai.assert.equal(content, "Hello TestNickname");
         });
     });
     describe("ReplaceMembersPostmark", () => {
@@ -207,7 +273,7 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello &lt;:hello:3333333&gt;";
             content = await processor.ReplaceEmojiPostmark(content, msg);
-            Chai.assert.equal(content, "Hello <img alt=\"hello\" src=\"mxc://image\" style=\"height: 1em;\"/>");
+            Chai.assert.equal(content, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertEmbeds", () => {

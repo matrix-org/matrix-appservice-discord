@@ -1,8 +1,10 @@
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
 import { Client } from "discord.js";
-import * as log from "npmlog";
 import * as Bluebird from "bluebird";
+import { Log } from "./log";
+
+const log = new Log("ClientFactory");
 
 const READY_TIMEOUT = 5000;
 
@@ -32,7 +34,7 @@ export class DiscordClientFactory {
         this.botClient.onAsync("ready").timeout(READY_TIMEOUT, "Bot timed out waiting for ready."),
         this.botClient.login(this.config.botToken),
     ]).then(() => { return; }).catch((err) => {
-        log.error("ClientFactory", "Could not login as the bot user. This is bad!", err);
+        log.error("Could not login as the bot user. This is bad!", err);
         throw err;
     });
   }
@@ -51,7 +53,7 @@ export class DiscordClientFactory {
       });
       client.login(token).catch(reject);
     }).timeout(READY_TIMEOUT).catch((err: Error) => {
-      log.warn("ClientFactory", "Could not login as a normal user. '%s'", err.message);
+      log.warn("Could not login as a normal user.", err.message);
       throw Error("Could not retrieve ID");
     });
   }
@@ -61,7 +63,7 @@ export class DiscordClientFactory {
       return this.botClient;
     }
     if (this.clients.has(userId)) {
-      log.verbose("ClientFactory", "Returning cached user client for %s.", userId);
+      log.verbose("Returning cached user client for", userId);
       return this.clients.get(userId);
     }
     const discordIds = await this.store.get_user_discord_ids(userId);
@@ -75,16 +77,17 @@ export class DiscordClientFactory {
       sync: true,
       messageCacheLifetime: 5,
     }));
-    client.on("debug", (msg) => { log.verbose("discord.js-ptp", msg); });
-    client.on("error", (msg) => { log.error("discord.js-ptp", msg); });
-    client.on("warn", (msg) => { log.warn("discord.js-ptp", msg); });
+    const jsLog = new Log("discord.js-ppt");
+    client.on("debug", (msg) => { jsLog.verbose(msg); });
+    client.on("error", (msg) => { jsLog.error(msg); });
+    client.on("warn", (msg) => { jsLog.warn(msg); });
     try {
       await client.login(token);
-      log.verbose("ClientFactory", "Logged in. Storing ", userId);
+      log.verbose("Logged in. Storing ", userId);
       this.clients.set(userId, client);
       return client;
     } catch (err) {
-      log.warn("ClientFactory", `Could not log ${userId} in. Returning bot user for now.`, err);
+      log.warn(`Could not log ${userId} in. Returning bot user for now.`, err);
       return this.botClient;
     }
   }
