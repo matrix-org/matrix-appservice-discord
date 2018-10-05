@@ -242,10 +242,9 @@ export class MatrixRoomHandler {
               validationStatus = await this.bridge.canProvisionRoom(event.room_id);
           } catch (error) {
               log.error("Got error while trying to validate room link request:", error);
-              // NOTE: This usually happens if the bot couldn't get into the room to
-              // check the rules, so we will have to play it safe.
-              validationStatus = "CAUGHT";
+              validationStatus = error;
           }
+          log.info(`canProvisionRoom returned ${validationStatus} for ${event.room_id}`);
 
           if (validationStatus !== RVLStatus.PASSED) {
               let failureReason = "";
