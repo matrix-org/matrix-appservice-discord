@@ -17,3 +17,7 @@ database:
   filename: "discord.db"
 room:
   defaultVisibility: "public"
+provisioning:
+  enableRules: true
+  ruleFile: "./provisioner-rules.yaml"
+  enableReload: true

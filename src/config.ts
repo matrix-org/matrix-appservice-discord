@@ -6,6 +6,7 @@ export class DiscordBridgeConfig {
   public database: DiscordBridgeConfigDatabase = new DiscordBridgeConfigDatabase();
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
   public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
+  public provisioning: DiscordBridgConfigProvisioning = new DiscordBridgConfigProvisioning();
 
   /**
    * Apply a set of keys and values over the default config.
@@ -17,7 +18,7 @@ export class DiscordBridgeConfig {
       if (typeof(configLayer[key]) === "object")  {
         this.ApplyConfig(newConfig[key], this[key]);
         return;
-      } 
+      }
       configLayer[key] = newConfig[key];
     });
   }
@@ -55,4 +56,10 @@ class DiscordBridgeConfigRoom {
 
 class DiscordBridgeConfigLimits {
   public roomGhostJoinDelay: number = 6000;
+}
+
+class DiscordBridgConfigProvisioning {
+  public enableRules: boolean = false;
+  public ruleFile: string;
+  public enableReload: boolean = false;
 }
