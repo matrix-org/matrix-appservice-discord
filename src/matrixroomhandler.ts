@@ -118,7 +118,7 @@ export class MatrixRoomHandler {
         }
     } else if (event.type === "m.room.member") {
       return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.name") {    
+    } else if (event.type === "m.room.name") {
       return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.topic") {
       return this.discord.ProcessMatrixStateEvent(event);
@@ -236,12 +236,39 @@ export class MatrixRoomHandler {
                   body: "Invalid syntax. For more information try !discord help bridge",
               });
           }
+          let validationStatus: string = "";
+          try {
+              // If no rule files are in use, this just passes.
+              validationStatus = await this.bridge.canProvisionRoom(event.room_id);
+          } catch (error) {
+              log.error("Got error while trying to validate room link request:", error);
+              // NOTE: This usually happens if the bot couldn't get into the room to
+              // check the rules, so we will have to play it safe.
+              validationStatus = "CAUGHT";
+          }
 
-          let validationStatus = this.bridge.canProvisionRoom(event.room_id);
           if (validationStatus !== RVLStatus.PASSED) {
-              this.bridge.getIntent().sendMessage(event.room_id, {
+              let failureReason = "";
+              switch (validationStatus) {
+                  case RVLStatus.ERROR_USER_CONFLICT:
+                      failureReason = "User's in this room prevent the room from being bridged.";
+                      break;
+                  case RVLStatus.ERROR_CACHED:
+                      failureReason = "The room was recently attempted to be bridged and failed." +
+                                      " Please wait a while before trying again.";
+                      break;
+                  case RVLStatus.ERROR:
+                      failureReason = "An unknown error occured while validating the room."
+                      break;
+                  case "CAUGHT":
+                  default:
+                      // If we don't have a fancy string, just send the error code.
+                      failureReason = validationStatus;
+                      break;
+              }
+              return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
-                  body: "I'm asking permission from the guild administrators to make this bridge.",
+                  body: `Room cannot be linked due to: ${failureReason}`,
               });
           }
 
@@ -405,11 +432,11 @@ export class MatrixRoomHandler {
     if (!(<Discord.TextChannel> msg.channel).guild) {
       msg.channel.send("**ERROR:** only available for guild channels");
     }
-    
+
     const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
-    
+
     const intent = this.bridge.getIntent();
-    
+
     const actions: ICommandActions = {
       kick: {
         params: ["name"],
@@ -430,7 +457,7 @@ export class MatrixRoomHandler {
         run: this.DiscordModerationActionGenerator(msg.channel as Discord.TextChannel, "unban", "Unbanned"),
       },
     };
-    
+
     const parameters: ICommandParameters = {
       name: {
         description: "The display name or mxid of a matrix user",
@@ -441,7 +468,7 @@ export class MatrixRoomHandler {
         },
       },
     };
-    
+
     if (command === "help") {
       let replyMessage = "Available Commands:\n";
       for (const actionKey of Object.keys(actions)) {
@@ -463,24 +490,24 @@ export class MatrixRoomHandler {
       msg.channel.send(replyMessage);
       return;
     }
-    
+
     if (!actions[command]) {
       msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
       return;
     }
-    
+
     if (!msg.member.hasPermission(actions[command].permission as any)) {
       msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
       return;
     }
-    
+
     let replyMessage = "";
     try {
       replyMessage = await Util.ParseCommand(actions[command], parameters, args);
     } catch (e) {
       replyMessage = "**ERROR:** " + e.message;
     }
-    
+
     msg.channel.send(replyMessage);
   }
 
