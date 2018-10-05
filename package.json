@@ -44,11 +44,7 @@
     "escape-string-regexp": "^1.0.5",
     "js-yaml": "^3.10.0",
     "marked": "^0.3.15",
-<<<<<<< HEAD
     "matrix-appservice-bridge": "matrix-org/matrix-appservice-bridge#3b342fe8c601a5aedb19fd4b300116a5b18c1449",
-=======
-    "matrix-appservice-bridge": "^1.5.0a",
->>>>>>> origin/develop
     "mime": "^1.6.0",
     "moment": "^2.22.2",
     "npmlog": "^4.0.2",
