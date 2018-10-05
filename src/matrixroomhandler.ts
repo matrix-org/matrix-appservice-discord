@@ -7,8 +7,11 @@ import {
   thirdPartyProtocolResult,
   thirdPartyUserResult,
   thirdPartyLocationResult,
+  RoomLinkValidatorStatus,
  } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
+
+const RVLStatus = RoomLinkValidatorStatus;
 
 import * as Discord from "discord.js";
 import * as log from "npmlog";
@@ -65,7 +68,7 @@ export class MatrixRoomHandler {
   public async OnAliasQueried (alias: string, roomId: string) {
     log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
     const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
-    
+
     // Fire and forget RoomDirectory mapping
     this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
         channel.guild.id,
@@ -227,6 +230,14 @@ export class MatrixRoomHandler {
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
                   body: "Invalid syntax. For more information try !discord help bridge",
+              });
+          }
+
+          let validationStatus = this.bridge.canProvisionRoom(event.room_id);
+          if (validationStatus !== RVLStatus.PASSED) {
+              this.bridge.getIntent().sendMessage(event.room_id, {
+                  msgtype: "m.notice",
+                  body: "I'm asking permission from the guild administrators to make this bridge.",
               });
           }
 
