@@ -60,9 +60,10 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
   const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
   const discordbot = new DiscordBot(config, discordstore, provisioner);
   const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
-  let roomLinkValidator: any = undefined;
+  let roomLinkValidation: any = undefined;
   if (config.provisioning.enableRules) {
-      roomLinkValidator = {
+      log.info(`Provisoning rules enabled, using ${config.provisioning.ruleFile}`);
+      roomLinkValidation = {
           ruleFile: config.provisioning.ruleFile,
           triggerEndpoint: config.provisioning.enableReload,
       };
@@ -87,7 +88,7 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
     domain: config.bridge.domain,
     homeserverUrl: config.bridge.homeserverUrl,
     registration,
-    roomLinkValidator,
+    roomLinkValidation,
     userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
   });
