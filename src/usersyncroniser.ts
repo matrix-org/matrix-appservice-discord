@@ -1,7 +1,7 @@
 import {User, GuildMember, GuildChannel} from "discord.js";
 import { DiscordBot } from "./bot";
 import {Util} from "./util";
-import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore, MembershipCache } from "matrix-appservice-bridge";
 import {DiscordBridgeConfig} from "./config";
 import * as Bluebird from "bluebird";
 import {Log} from "./log";
@@ -61,12 +61,17 @@ export class UserSyncroniser {
     // roomId+userId => ev
     public userStateHold: Map<string, any>;
     private userStore: UserBridgeStore;
+    private membershipCache: MembershipCache;
     constructor(
         private bridge: Bridge,
         private config: DiscordBridgeConfig,
         private discord: DiscordBot) {
         this.userStore = this.bridge.getUserStore();
         this.userStateHold = new Map<string, any>();
+    }
+
+    public setMemberCache(membershipCache: any) {
+        this.membershipCache = membershipCache;
     }
 
     /**
@@ -139,6 +144,11 @@ export class UserSyncroniser {
     public async EnsureJoin(member: GuildMember, roomId: string) {
         const state = await this.GetUserStateForGuildMember(member, "");
         log.info(`Ensuring ${state.id} is joined to ${roomId}`);
+        if (this.membershipCache && this.membershipCache.getMemberEntry(
+            roomId, state.mxUserId) === "join") {
+            log.verbose(`${state.mxUserId} is cached as joined, leaving alone`);
+            return;
+        }
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
@@ -174,6 +184,7 @@ export class UserSyncroniser {
                     await tryState();
                 } catch (e) {
                     log.warn(`Failed to send state to ${roomId}`, e);
+                    throw e;
                 }
             }
         }

@@ -1,4 +1,4 @@
-import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, ClientFactory, MembershipCache } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -49,7 +49,7 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
   if (registration === null) {
     throw new Error("Failed to parse registration file");
   }
-
+  const membershipCache = new MembershipCache();
   const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
   const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
@@ -60,7 +60,6 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
   const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
   const discordbot = new DiscordBot(config, discordstore, provisioner);
   const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
-
   const bridge = new Bridge({
     clientFactory,
     controller: {
@@ -83,10 +82,12 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
     registration,
     userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
+    membershipCache,
   });
   provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
   discordbot.setBridge(bridge);
+  discordbot.UserSyncroniser.setMemberCache(membershipCache);
   discordbot.setRoomHandler(roomhandler);
   log.info("Initing bridge.");
   log.info(`Started listening on port ${port}.`);
