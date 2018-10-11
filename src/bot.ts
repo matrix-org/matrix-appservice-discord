@@ -439,42 +439,73 @@ export class DiscordBot {
       }
     });
   }
+
+  private async StoreMatrixEvent(res: any, room: string, chan: Discord.GuildChannel, msgID: string) {
+      const dbEvt = new DbEvent();
+      dbEvt.MatrixId = res.event_id + ";" + room;
+      dbEvt.DiscordId = msgID;
+      dbEvt.ChannelId = chan.id;
+      dbEvt.GuildId = chan.guild.id;
+      return this.store.Insert(dbEvt).catch((err) => {
+          log.warn("Failed to insert sent event into the database", err);
+      });
+  }
+
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult,
                                   chan: Discord.GuildChannel,
-                                  author: Discord.User,
+                                  author: Discord.User|Discord.GuildMember,
                                   msgID: string): Promise<boolean> {
     const rooms = await this.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
-    rooms.forEach((room) => {
-      matrixMsg.attachmentEvents.forEach((evt) => {
-        intent.sendMessage(room, evt).then((res) => {
-          const dbEvt = new DbEvent();
-          dbEvt.MatrixId = res.event_id + ";" + room;
-          dbEvt.DiscordId = msgID;
-          dbEvt.ChannelId = chan.id;
-          dbEvt.GuildId = chan.guild.id;
-          return this.store.Insert(dbEvt);
-        });
-      });
-      if (matrixMsg.body === "") {
-        return;
-      }
-      intent.sendMessage(room, {
-        body: matrixMsg.body,
-        msgtype: "m.text",
-        formatted_body: matrixMsg.formattedBody,
-        format: "org.matrix.custom.html",
-      }).then((res) => {
-        const evt = new DbEvent();
-        evt.MatrixId = res.event_id + ";" + room;
-        evt.DiscordId = msgID;
-        evt.ChannelId = chan.id;
-        evt.GuildId = chan.guild.id;
-        return this.store.Insert(evt);
-      });
-    });
+    /** Algorithm:
+        Send an event into the room and see if it works.
+    */
 
+    const textEvt = {
+      body: matrixMsg.body,
+      msgtype: "m.text",
+      formatted_body: matrixMsg.formattedBody,
+      format: "org.matrix.custom.html",
+    };
+    while(rooms.length > 0) {
+        const room = rooms[0];
+        // Send an event into the room. If multiple event's are to be sent,
+        // then we should check we have perms to do so.
+        const firstEvt = matrixMsg.attachmentEvents[0] || textEvt;
+        try {
+            await intent.sendMessage(room, firstEvt).then((res) => {
+                this.StoreMatrixEvent(res, room, chan, msgID);
+            });
+            if (firstEvt === textEvt) {
+                return true;
+            }
+            matrixMsg.attachmentEvents.splice(0, 1);
+            for (let evt of matrixMsg.attachmentEvents) {
+                await intent.sendMessage(room, evt).then((res) => {
+                    this.StoreMatrixEvent(res, room, chan, msgID);
+                });
+            }
+            await intent.sendMessage(room, textEvt).then((res) => {
+                this.StoreMatrixEvent(res, room, chan, msgID);
+            });
+        } catch(e) {
+            log.warn(`Failed to send: ${author.id} -> ${room}`);
+            if (e.errcode !== "M_FORBIDDEN") {
+              log.error("DiscordBot", "Failed to send message into room.", e);
+              return;
+            }
+            // TODO: Should we ensure that the MembershipCache knows, to avoid no-oping this?
+            //
+            if (author instanceof Discord.GuildMember) {
+                log.info(`Ensuring ${author.id} is joined to ${room}.`);
+                await this.userSync.EnsureJoin(author, room);
+                // Retry it again.
+                rooms.push(room);
+            }
+        }
+        rooms.splice(0, 1);
+    }
     // Sending was a success
     return true;
   }
