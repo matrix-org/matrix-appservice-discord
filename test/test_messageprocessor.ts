@@ -285,7 +285,7 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(channel, null, null);
             let content = "Hello &lt;:hello:3333333&gt;";
             content = await processor.ReplaceEmojiPostmark(content, msg);
-            Chai.assert.equal(content, "Hello <img alt=\"hello\" src=\"mxc://image\" style=\"height: 1em;\"/>");
+            Chai.assert.equal(content, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertEmbeds", () => {

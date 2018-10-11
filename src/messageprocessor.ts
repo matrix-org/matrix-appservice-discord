@@ -13,7 +13,7 @@ const USER_REGEX = /<@!?([0-9]*)>/g;
 const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
 const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
-const EMOJI_SIZE = "1em";
+const EMOJI_SIZE = 32;
 const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
 const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
@@ -258,7 +258,7 @@ export class MessageProcessor {
             try {
                 const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
                 content = content.replace(results[0],
-                    `<img alt="${name}" src="${mxcUrl}" style="height: ${EMOJI_SIZE};"/>`);
+                    `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`);
             } catch (ex) {
                 log.warn(
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,

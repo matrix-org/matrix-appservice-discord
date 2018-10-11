@@ -74,8 +74,16 @@ export class MatrixEventProcessor {
           body = "\\" + body;
         }*/
 
+        // Replace /me with * username ...
         if (event.content.msgtype === "m.emote") {
-            body = `*${body}*`;
+            if (profile &&
+                profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                body = `*${profile.displayname} ${body}*`;
+            } else {
+                body = `*${body}*`;
+            }
         }
 
         // replace <del>blah</del> with ~~blah~~
