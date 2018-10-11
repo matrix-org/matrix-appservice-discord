@@ -60,6 +60,7 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+    this.userSync = new UserSyncroniser(this.bridge, this.config, this);
   }
 
   public setRoomHandler(roomHandler: MatrixRoomHandler) {
@@ -99,8 +100,6 @@ export class DiscordBot {
         });
       });
       const jsLog = new Log("discord.js");
-      
-      this.userSync = new UserSyncroniser(this.bridge, this.config, this);
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
       client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
       client.on("guildMemberRemove", (user) =>  this.userSync.OnRemoveGuildMember(user));
