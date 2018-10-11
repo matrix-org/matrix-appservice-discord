@@ -15,7 +15,7 @@ export class DMRoom {
     the two chan types which means we will be doing a lot of
     if elseing between them.*/
     private channel: DMChannel|GroupDMChannel;
-    
+
     constructor(private dbroom: DbDmRoom, private handler: DMHandler) {
         this.deferLock = Promise.resolve();
         this.sentMessages = new Set();
@@ -119,10 +119,11 @@ export class DMRoom {
             await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
                 return intent.sendMessage((this.dbroom.RoomId), evt);
             }));
-    
+
             if (matrixMsg.body === "") {
                 return;
             }
+            await intent.join(this.dbroom.RoomId);
             await intent.sendMessage(this.dbroom.RoomId, {
                 msgtype: "m.text",
                 format: "org.matrix.custom.html",
