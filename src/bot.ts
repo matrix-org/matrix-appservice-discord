@@ -587,7 +587,7 @@ export class DiscordBot {
     const intent = this.GetIntentFromDiscordMember(msg.author);
     const result = await this.msgProcessor.FormatDiscordMessage(msg, intent);
     try {
-      await this.SendMatrixMessage(result, <Discord.GuildChannel> msg.channel, msg.author, msg.id);
+      await this.SendMatrixMessage(result, <Discord.GuildChannel> msg.channel, msg.member, msg.id);
     } catch (e) {
       log.verbose("Failed to send message into room.", e);
     }
