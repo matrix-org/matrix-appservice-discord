@@ -17,7 +17,7 @@ const log = new Log("DMHandler");
 const NOT_ENABLED_ERROR =
 `
 The Discord bridge is not enabled for DM support, so you cannot message this Discord user.
-You may leave this room. 
+You may leave this room.
 `;
 
 const NOT_DM_ROOM =
@@ -28,7 +28,7 @@ Inviting Discord user's to rooms is not supported (this room contains more than 
 const NOT_PUPPETED =
 `
 Your account is not puppeted, so you cannot talk to Discord user's privately.
-You may leave this room. 
+You may leave this room.
 `;
 
 const MAX_MEMBERS_FOR_DM = 9;
@@ -39,7 +39,7 @@ interface InviteResult {
 }
 /**
  * Handler class that forwards memberstate and messages between Matrix and Discord DMs.
- * This class does not handle direct messaging rules or message formatting which 
+ * This class does not handle direct messaging rules or message formatting which
  * should be handled in DMRoom.
  */
 export class DMHandler {
@@ -52,7 +52,7 @@ export class DMHandler {
         private bridge: Bridge,
         private clientFactory: DiscordClientFactory,
         private store: DiscordStore,
-        private userSync: UserSyncroniser
+        private userSync: UserSyncroniser,
         ) {
         this.dmRooms = [];
         this.messageProcessor = new MessageProcessor({
@@ -191,13 +191,12 @@ export class DMHandler {
         if (!["group", "dm"].includes(msg.channel.type)) {
             return;
         }
-    
+
         try {
             await this.userSync.OnUpdateUser(msg.author);
         } catch (e) {
             log.warn(`Failed to sync ${msg.author.id}`);
         }
-        
 
         if (msg.type === "RECIPIENT_ADD") {
             const dmRoom = await this.GetDMRoomByDiscordChannel(msg.channel);
@@ -245,7 +244,7 @@ export class DMHandler {
             return;
         }
 
-        if (msg.type !== "DEFAULT") { 
+        if (msg.type !== "DEFAULT") {
             log.verbose(`Ignoring unknown message type ${msg.type}`);
             return;
         }

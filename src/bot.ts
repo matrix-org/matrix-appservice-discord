@@ -457,22 +457,19 @@ export class DiscordBot {
                                   msgID: string): Promise<boolean> {
     const rooms = await this.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
-
-    /** Algorithm:
-        Send an event into the room and see if it works.
-    */
-
     const textEvt = {
       body: matrixMsg.body,
       msgtype: "m.text",
       formatted_body: matrixMsg.formattedBody,
       format: "org.matrix.custom.html",
     };
-    while(rooms.length > 0) {
+
+    while (rooms.length > 0) {
+        const attachments = Array.from(matrixMsg.attachmentEvents);
         const room = rooms[0];
         // Send an event into the room. If multiple event's are to be sent,
         // then we should check we have perms to do so.
-        const firstEvt = matrixMsg.attachmentEvents[0] || textEvt;
+        const firstEvt = attachments[0] || textEvt;
         try {
             await intent.sendMessage(room, firstEvt).then((res) => {
                 this.StoreMatrixEvent(res, room, chan, msgID);
@@ -480,8 +477,8 @@ export class DiscordBot {
             if (firstEvt === textEvt) {
                 return true;
             }
-            matrixMsg.attachmentEvents.splice(0, 1);
-            for (let evt of matrixMsg.attachmentEvents) {
+            attachments.splice(0, 1);
+            for (const evt of attachments) {
                 await intent.sendMessage(room, evt).then((res) => {
                     this.StoreMatrixEvent(res, room, chan, msgID);
                 });
@@ -489,7 +486,7 @@ export class DiscordBot {
             await intent.sendMessage(room, textEvt).then((res) => {
                 this.StoreMatrixEvent(res, room, chan, msgID);
             });
-        } catch(e) {
+        } catch (e) {
             log.warn(`Failed to send: ${author.id} -> ${room}`);
             if (e.errcode !== "M_FORBIDDEN") {
               log.error("DiscordBot", "Failed to send message into room.", e);

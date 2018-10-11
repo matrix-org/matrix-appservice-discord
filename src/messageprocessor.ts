@@ -27,7 +27,7 @@ function _setupMarked() {
         sanitize: true,
         tables: false,
     });
-    
+
     const markedLexer = new marked.Lexer();
     // as discord doesn't support these markdown rules
     // we want to disable them by setting their regexes to non-matchable ones
@@ -37,7 +37,7 @@ function _setupMarked() {
     }
     // paragraph-end matching is different, as we don't have headers and thelike
     markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
-    
+
     const markedInlineLexer = new marked.InlineLexer(true);
     // same again, remove tags discord doesn't support
     for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
@@ -73,23 +73,23 @@ export class MessageProcessor {
     public async FormatDiscordMessage(msg: Discord.Message, intent: any = null): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
         let content = msg.content;
-        
+
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
-        
+
         // parse the plain text stuff
         content = this.InsertEmbeds(content, msg);
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
         content = await this.ReplaceEmoji(content, msg);
-        
+
         // parse postmark stuff
         contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
-        
+
         result.body = content;
         result.formattedBody = contentPostmark;
 
@@ -288,10 +288,10 @@ export class MessageProcessor {
     }
 
     private GetDisplayNameForUser(user: Discord.User|Discord.GuildMember) {
-        if ((user as any)["displayName"] !== undefined) {
-            return (user as Discord.GuildMember).displayName;
+        if (user instanceof Discord.GuildMember) {
+            return user.displayName;
         } else {
-            return (user as Discord.User).username;
+            return user.username;
         }
     }
 }
