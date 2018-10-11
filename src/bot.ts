@@ -511,7 +511,7 @@ export class DiscordBot {
       return;
     }
 
-    // Update presence because sometimes discord misses people.
+    // Ensure we have the latest profile for the user.
     this.userSync.OnUpdateUser(msg.author).then(() => {
       return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("No bridged rooms to send message to. Oh well.");
