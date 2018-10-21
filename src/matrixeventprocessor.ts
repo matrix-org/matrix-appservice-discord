@@ -186,8 +186,9 @@ export class MatrixEventProcessor {
         }
 
         if (event.content.info == null) {
-            log.info("Event was an attachment type but was missing a content.info");
-            return "";
+            // Fractal sends images without an info, which is technically allowed
+            // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
+            event.content.info = {size: 0};
         }
 
         if (event.content.url == null) {
