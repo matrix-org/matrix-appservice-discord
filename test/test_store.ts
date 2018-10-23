@@ -7,7 +7,6 @@ import { DbEvent } from "../src/db/dbdataevent";
 import { Log } from "../src/log";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
-Log.level = "warn";
 
 const TEST_SCHEMA = CURRENT_SCHEMA;
 

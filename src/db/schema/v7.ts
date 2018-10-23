@@ -18,11 +18,11 @@ export class Schema implements IDbSchema {
         PRIMARY KEY(emoji_id)
     );`, "emoji").then(() => {
       // migrate existing emoji
-      return store.db.execAsync(`
+      return store.db.Run(`
         INSERT INTO emoji
           (emoji_id, name, animated, mxc_url, created_at, updated_at)
         SELECT emoji_id, name, 0 AS animated, mxc_url, created_at, updated_at FROM guild_emoji;
-      `).error(() => {
+      `).catch(() => {
         // ignore errors
         log.warning("Failed to migrate old data to new table");
       });
@@ -30,7 +30,7 @@ export class Schema implements IDbSchema {
   }
 
   public rollBack(store: DiscordStore): Promise <null> {
-    return store.db.execAsync(
+    return store.db.Run(
       `DROP TABLE IF EXISTS emoji;`,
     );
   }

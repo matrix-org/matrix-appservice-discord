@@ -9,7 +9,6 @@ import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 
 Chai.use(ChaiAsPromised);
-Log.ForceSilent();
 
 const assert = Chai.assert;
 // const should = Chai.should as any;
