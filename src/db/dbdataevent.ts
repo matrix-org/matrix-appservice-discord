@@ -17,18 +17,18 @@ export class DbEvent implements IDbDataMany {
         this.rows = [];
         let rowsM = null;
         if (params.matrix_id) {
-            rowsM = await store.db.allAsync(`
+            rowsM = await store.db.All(`
                 SELECT *
                 FROM event_store
                 WHERE matrix_id = $id`, {
-                    $id: params.matrix_id,
+                    id: params.matrix_id,
             });
         } else if (params.discord_id) {
-            rowsM = await store.db.allAsync(`
+            rowsM = await store.db.All(`
                 SELECT *
                 FROM event_store
                 WHERE discord_id = $id`, {
-                    $id: params.discord_id,
+                    id: params.discord_id,
             });
         } else {
             throw new Error("Unknown/incorrect id given as a param");
@@ -39,11 +39,11 @@ export class DbEvent implements IDbDataMany {
                 matrix_id: rowM.matrix_id,
                 discord_id: rowM.discord_id,
             };
-            for (const rowD of await store.db.allAsync(`
+            for (const rowD of await store.db.All(`
                     SELECT *
                     FROM discord_msg_store
                     WHERE msg_id = $id`, {
-                        $id: rowM.discord_id,
+                        id: rowM.discord_id,
             })) {
                 const insertRow: any = Object.assign({}, row);
                 insertRow.guild_id = rowD.guild_id;
@@ -68,30 +68,30 @@ export class DbEvent implements IDbDataMany {
     }
 
     public async Insert(store: DiscordStore): Promise<null> {
-        await store.db.runAsync(`
+        await store.db.Run(`
             INSERT INTO event_store
             (matrix_id,discord_id)
             VALUES ($matrix_id,$discord_id);`, {
-                $matrix_id: this.MatrixId,
-                $discord_id: this.DiscordId,
+                matrix_id: this.MatrixId,
+                discord_id: this.DiscordId,
         });
         // Check if the discord item exists?
-        const msgExists = await store.db.getAsync(`
+        const msgExists = await store.db.Get(`
                 SELECT *
                 FROM discord_msg_store
                 WHERE msg_id = $id`, {
-                    $id: this.DiscordId,
+                    id: this.DiscordId,
         }) !== undefined;
         if (msgExists) {
             return;
         }
-        return store.db.runAsync(`
+        return store.db.Run(`
             INSERT INTO discord_msg_store
             (msg_id, guild_id, channel_id)
             VALUES ($msg_id, $guild_id, $channel_id);`, {
-                $msg_id: this.DiscordId,
-                $guild_id: this.GuildId,
-                $channel_id: this.ChannelId,
+                msg_id: this.DiscordId,
+                guild_id: this.GuildId,
+                channel_id: this.ChannelId,
         });
     }
 
@@ -100,17 +100,17 @@ export class DbEvent implements IDbDataMany {
     }
 
     public async Delete(store: DiscordStore): Promise<null> {
-        await store.db.runAsync(`
+        await store.db.Run(`
             DELETE FROM event_store
             WHERE matrix_id = $matrix_id
             AND discord_id = $discord_id;`, {
-                $matrix_id: this.MatrixId,
-                $discord_id: this.DiscordId,
+                matrix_id: this.MatrixId,
+                discord_id: this.DiscordId,
         });
-        return store.db.runAsync(`
+        return store.db.Run(`
             DELETE FROM discord_msg_store
             WHERE msg_id = $discord_id;`, {
-                $discord_id: this.DiscordId,
+                discord_id: this.DiscordId,
         });
     }
 }

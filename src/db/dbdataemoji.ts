@@ -11,17 +11,18 @@ export class DbEmoji implements IDbData {
     public Result: boolean;
 
     public RunQuery(store: DiscordStore, params: any): Promise<null> {
-        return store.db.getAsync(`
+        return store.db.Get(`
             SELECT *
             FROM emoji
             WHERE emoji_id = $id`, {
-                $id: params.emoji_id,
+                id: params.emoji_id,
             }).then((row) => {
+                console.log("EmoiGet:", row);
                 this.Result = row !== undefined;
                 if (this.Result) {
                     this.EmojiId = row.emoji_id;
                     this.Name = row.name;
-                    this.Animated = row.animated;
+                    this.Animated = Boolean(row.animated);
                     this.MxcUrl = row.mxc_url;
                     this.CreatedAt = row.created_at;
                     this.UpdatedAt = row.updated_at;
@@ -32,23 +33,23 @@ export class DbEmoji implements IDbData {
     public Insert(store: DiscordStore): Promise<null> {
         this.CreatedAt = new Date().getTime();
         this.UpdatedAt = this.CreatedAt;
-        return store.db.runAsync(`
+        return store.db.Run(`
             INSERT INTO emoji
             (emoji_id,name,animated,mxc_url,created_at,updated_at)
             VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
-                $emoji_id: this.EmojiId,
-                $name: this.Name,
-                $animated: this.Animated,
-                $mxc_url: this.MxcUrl,
-                $created_at: this.CreatedAt,
-                $updated_at: this.UpdatedAt,
+                emoji_id: this.EmojiId,
+                name: this.Name,
+                animated: Number(this.Animated),
+                mxc_url: this.MxcUrl,
+                created_at: this.CreatedAt,
+                updated_at: this.UpdatedAt,
         });
     }
 
     public Update(store: DiscordStore) {
         // Ensure this has incremented by 1 for Insert+Update operations.
         this.UpdatedAt = new Date().getTime() + 1;
-        return store.db.runAsync(`
+        return store.db.Run(`
             UPDATE emoji
             SET name = $name,
             animated = $animated,
@@ -56,11 +57,11 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
-                $emoji_id: this.EmojiId,
-                $name: this.Name,
-                $animated: this.Animated,
-                $mxc_url: this.MxcUrl,
-                $updated_at: this.UpdatedAt,
+                emoji_id: this.EmojiId,
+                name: this.Name,
+                animated: Number(this.Animated),
+                mxc_url: this.MxcUrl,
+                updated_at: this.UpdatedAt,
         });
     }
 

@@ -1,8 +1,7 @@
-import * as SQLite3 from "sqlite3";
-import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
+import { SQLite3 } from "./db/sqlite3";
 export const CURRENT_SCHEMA = 7;
 
 import { Log } from "./log";
@@ -14,7 +13,7 @@ export class DiscordStore {
   /**
    * @param  {string} filepath Location of the SQLite database file.
    */
-  public db: any;
+  public db: SQLite3;
   private version: number;
   private filepath: string;
   constructor (filepath: string) {
@@ -85,11 +84,11 @@ export class DiscordStore {
   }
 
   public close () {
-    this.db.close();
+    this.db.Close();
   }
 
-  public create_table (statement: string, tablename: string): Promise<null|Error> {
-    return this.db.runAsync(statement).then(() => {
+  public create_table (statement: string, tablename: string): Promise<void|Error> {
+    return this.db.Exec(statement).then(() => {
       log.info("Created table", tablename);
     }).catch((err) => {
       throw new Error(`Error creating '${tablename}': ${err}`);
@@ -99,21 +98,21 @@ export class DiscordStore {
   public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
     log.silly("SQL", "add_user_token => ", userId);
     return Promise.all([
-        this.db.runAsync(
+        this.db.Run(
           `
           INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
-            $userId: userId,
-            $discordId: discordId,
+            userId: userId,
+            discordId: discordId,
         }),
-        this.db.runAsync(
+        this.db.Run(
           `
           INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
           `
         , {
-            $discordId: discordId,
-            $token: token,
+            discordId: discordId,
+            token: token,
         }),
     ]).catch( (err) => {
       log.error("Error storing user token ", err);
@@ -123,7 +122,7 @@ export class DiscordStore {
 
   public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => ", discordId);
-    return this.db.runAsync(
+    return this.db.Run(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
       DELETE FROM discord_id_token WHERE discord_id = $id;
@@ -138,13 +137,13 @@ export class DiscordStore {
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => ", userId);
-    return this.db.allAsync(
+    return this.db.All(
       `
       SELECT discord_id
       FROM user_id_discord_id
       WHERE user_id = $userId;
       `, {
-        $userId: userId,
+        userId: userId,
       },
     ).then( (rows) => {
       if (rows !== undefined) {
@@ -160,13 +159,13 @@ export class DiscordStore {
 
   public get_token(discordId: string): Promise<string> {
     log.silly("SQL", "discord_id_token => ", discordId);
-    return this.db.getAsync(
+    return this.db.Get(
       `
       SELECT token
       FROM discord_id_token
       WHERE discord_id = $discordId
       `, {
-        $discordId: discordId,
+        discordId: discordId,
       },
     ).then( (row) => {
       return row !== undefined ? row.token : null;
@@ -178,7 +177,7 @@ export class DiscordStore {
 
   public get_dm_room(discordId, discordChannel): Promise<string> {
     log.silly("SQL", "get_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.getAsync(
+    return this.db.Get(
       `
       SELECT room_id
       FROM dm_rooms
@@ -186,8 +185,8 @@ export class DiscordStore {
       AND dm_rooms.discord_channel = $discordChannel;
       `
     , {
-      $discordId: discordId,
-      $discordChannel: discordChannel,
+      discordId: discordId,
+      discordChannel: discordChannel,
     }).then( (row) => {
       return row !== undefined ? row.room_id : null;
     }).catch( (err) => {
@@ -198,15 +197,15 @@ export class DiscordStore {
 
   public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
     log.silly("SQL", "set_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.runAsync(
+    return this.db.Run(
       `
       REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
       VALUES ($discordId,$discordChannel,$roomId);
       `
     , {
-      $discordId: discordId,
-      $discordChannel: discordChannel,
-      $roomId: roomId,
+      discordId: discordId,
+      discordChannel: discordChannel,
+      roomId: roomId,
     }).catch( (err) => {
       log.error("Error executing set_dm_room query  ", err.Error);
       throw err;
@@ -215,7 +214,7 @@ export class DiscordStore {
 
   public get_all_user_discord_ids(): Promise<any> {
     log.silly("SQL", "get_users_tokens");
-    return this.db.allAsync(
+    return this.db.All(
       `
       SELECT *
       FROM get_user_discord_ids
@@ -255,37 +254,35 @@ export class DiscordStore {
       return data.Delete(this);
   }
 
-  private getSchemaVersion ( ): Promise<number> {
+  private async getSchemaVersion ( ): Promise<number> {
     log.silly("_get_schema_version");
-    return this.db.getAsync(`SELECT version FROM schema`).then((row) => {
-      return row === undefined ? 0 : row.version;
-    }).catch( ()  => {
-      return 0;
-    });
+    let version = 0;
+    try {
+        version = await this.db.Get(`SELECT version FROM schema`);
+    } catch (er) {
+        log.warn("Couldn't fetch schema version, defaulting to 0");
+    }
+    return version;
   }
 
   private setSchemaVersion (ver: number): Promise<any> {
     log.silly("_set_schema_version => ", ver);
-    return this.db.getAsync(
+    return this.db.Run(
       `
       UPDATE schema
       SET version = $ver
-      `, {$ver: ver},
+      `, {ver},
     );
   }
 
-  private open_database(): Promise<null|Error> {
-    log.info("Opening SQLITE database ", this.filepath);
-    return new Promise((resolve, reject) => {
-      this.db = new SQLite3.Database(this.filepath, (err) => {
-        if (err) {
-          log.error("Error opening database");
-          reject(new Error("Couldn't open database. The appservice won't be able to continue."));
-          return;
-        }
-        this.db = Bluebird.promisifyAll(this.db);
-        resolve();
-      });
-    });
+  private async open_database(): Promise<void|Error> {
+    log.info("Opening database ", this.filepath);
+    this.db = new SQLite3(this.filepath);
+    try {
+        await this.db.Open();
+    } catch (ex) {
+      log.error("Error opening database:", ex);
+      throw new Error("Couldn't open database. The appservice won't be able to continue.");
+    }
   }
 }
