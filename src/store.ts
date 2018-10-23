@@ -7,7 +7,7 @@ export const CURRENT_SCHEMA = 7;
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
-import { DatabaseConnector } from "./db/connector";
+import { IDatabaseConnector } from "./db/connector";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -16,11 +16,11 @@ export class DiscordStore {
   /**
    * @param  {string} filepath Location of the SQLite database file.
    */
-  public db: DatabaseConnector;
+  public db: IDatabaseConnector;
   private version: number;
   private config: DiscordBridgeConfigDatabase;
   constructor (private configOrFile: DiscordBridgeConfigDatabase|string) {
-    if (typeof(configOrFile) === "string"){
+    if (typeof(configOrFile) === "string") {
         this.config = new DiscordBridgeConfigDatabase();
         this.config.filename = configOrFile;
     } else {
@@ -296,7 +296,7 @@ export class DiscordStore {
         this.db = new Postgres(this.config.connString);
     }
     try {
-        await this.db.Open();
+        this.db.Open();
     } catch (ex) {
       log.error("Error opening database:", ex);
       throw new Error("Couldn't open database. The appservice won't be able to continue.");

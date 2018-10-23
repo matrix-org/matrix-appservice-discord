@@ -1,4 +1,4 @@
-export interface DatabaseConnector {
+export interface IDatabaseConnector {
     Open(): void;
     Get(sql: string, parameters?: any): Promise<any>;
     All(sql: string, parameters?: any): Promise<any[]>;
