@@ -65,7 +65,7 @@ export class MatrixRoomHandler {
   public async OnAliasQueried (alias: string, roomId: string) {
     log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
     const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
-    
+
     // Fire and forget RoomDirectory mapping
     this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
         channel.guild.id,
@@ -116,7 +116,7 @@ export class MatrixRoomHandler {
         }
     } else if (event.type === "m.room.member") {
       return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.name") {    
+    } else if (event.type === "m.room.name") {
       return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.topic") {
       return this.discord.ProcessMatrixStateEvent(event);
@@ -395,11 +395,11 @@ export class MatrixRoomHandler {
     if (!(<Discord.TextChannel> msg.channel).guild) {
       msg.channel.send("**ERROR:** only available for guild channels");
     }
-    
+
     const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
-    
+
     const intent = this.bridge.getIntent();
-    
+
     const actions: ICommandActions = {
       kick: {
         params: ["name"],
@@ -420,18 +420,18 @@ export class MatrixRoomHandler {
         run: this.DiscordModerationActionGenerator(msg.channel as Discord.TextChannel, "unban", "Unbanned"),
       },
     };
-    
+
     const parameters: ICommandParameters = {
       name: {
         description: "The display name or mxid of a matrix user",
         get: async (name) => {
-          const channelMxids = await this.discord.GetRoomIdsFromChannel(msg.channel);
+          const channelMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(msg.channel);
           const mxUserId = await Util.GetMxidFromName(intent, name, channelMxids);
           return mxUserId;
         },
       },
     };
-    
+
     if (command === "help") {
       let replyMessage = "Available Commands:\n";
       for (const actionKey of Object.keys(actions)) {
@@ -453,24 +453,24 @@ export class MatrixRoomHandler {
       msg.channel.send(replyMessage);
       return;
     }
-    
+
     if (!actions[command]) {
       msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
       return;
     }
-    
+
     if (!msg.member.hasPermission(actions[command].permission as any)) {
       msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
       return;
     }
-    
+
     let replyMessage = "";
     try {
       replyMessage = await Util.ParseCommand(actions[command], parameters, args);
     } catch (e) {
       replyMessage = "**ERROR:** " + e.message;
     }
-    
+
     msg.channel.send(replyMessage);
   }
 
@@ -478,7 +478,7 @@ export class MatrixRoomHandler {
     return async ({name}) => {
       let allChannelMxids = [];
       await Promise.all(discordChannel.guild.channels.map((chan) => {
-        return this.discord.GetRoomIdsFromChannel(chan).then((chanMxids) => {
+        return this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(chan).then((chanMxids) => {
           allChannelMxids = allChannelMxids.concat(chanMxids);
         }).catch((e) => {
           // pass, non-text-channel

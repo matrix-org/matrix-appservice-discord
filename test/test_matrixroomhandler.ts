@@ -64,7 +64,7 @@ function createRH(opts: any = {}) {
                 kick: () => { USERSKICKED++; return Promise.resolve(); },
                 ban: () => { USERSBANNED++; return Promise.resolve(); },
                 unban: () => { USERSUNBANNED++; return Promise.resolve(); },
-            }; 
+            };
         },
         getBot: () => {
             return {
@@ -88,6 +88,9 @@ function createRH(opts: any = {}) {
     };
     const cs = {
         OnUpdate: () => Promise.resolve(),
+        GetRoomIdsFromChannel: (chan) => {
+            return Promise.resolve(["#" + chan.id + ":localhost"]);
+        },
     };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
@@ -104,9 +107,6 @@ function createRH(opts: any = {}) {
             } else {
                 return Promise.reject("Roomid not found");
             }
-        },
-        GetRoomIdsFromChannel: (chan) => {
-            return Promise.resolve(["#" + chan.id + ":localhost"]);
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
