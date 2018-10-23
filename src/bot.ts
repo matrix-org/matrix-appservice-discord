@@ -11,6 +11,7 @@ import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
 import { UserSyncroniser } from "./usersyncroniser";
 import { ChannelSyncroniser } from "./channelsyncroniser";
+import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
@@ -43,6 +44,7 @@ export class DiscordBot {
   private presenceHandler: PresenceHandler;
   private userSync: UserSyncroniser;
   private channelSync: ChannelSyncroniser;
+  private roomHandler: MatrixRoomHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
@@ -60,6 +62,10 @@ export class DiscordBot {
     this.mxEventProcessor = new MatrixEventProcessor(
         new MatrixEventProcessorOpts(this.config, bridge),
     );
+  }
+
+  public setRoomHandler(roomHandler: MatrixRoomHandler) {
+    this.roomHandler = roomHandler;
   }
 
   get ClientFactory(): DiscordClientFactory {
@@ -88,7 +94,7 @@ export class DiscordBot {
       }
       if (!this.config.bridge.disablePresence) {
         client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
-          this.presenceHandler.EnqueueUser(newMember.user); 
+          this.presenceHandler.EnqueueUser(newMember.user);
         });
       }
       this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
@@ -96,7 +102,7 @@ export class DiscordBot {
       client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
       client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
       client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
-      
+
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
@@ -104,7 +110,7 @@ export class DiscordBot {
         });
       });
       const jsLog = new Log("discord.js");
-      
+
       this.userSync = new UserSyncroniser(this.bridge, this.config, this);
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
       client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
@@ -291,7 +297,9 @@ export class DiscordBot {
     }
     log.info(`Got redact request for ${event.redacts}`);
     log.verbose(`Event:`, event);
+
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
+
     if (!storeEvent.Result) {
       log.warn(`Could not redact because the event was not in the store.`);
       return;
@@ -299,17 +307,10 @@ export class DiscordBot {
     log.info(`Redact event matched ${storeEvent.ResultCount} entries`);
     while (storeEvent.Next()) {
       log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-      if (!this.bot.guilds.has(storeEvent.GuildId)) {
-        log.warn(`Could not redact because the guild could not be found.`);
-        return;
-      }
-      if (!this.bot.guilds.get(storeEvent.GuildId).channels.has(storeEvent.ChannelId)) {
-        log.warn(`Could not redact because the guild could not be found.`);
-        return;
-      }
-      const channel = <Discord.TextChannel> this.bot.guilds.get(storeEvent.GuildId)
-                      .channels.get(storeEvent.ChannelId);
-      const msg = await channel.fetchMessage(storeEvent.DiscordId);
+      const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
+      const chan = result.channel;
+
+      const msg = await chan.fetchMessage(storeEvent.DiscordId);
       try {
         await msg.delete();
         log.info(`Deleted message`);
@@ -455,6 +456,12 @@ export class DiscordBot {
       }
 
       return; // stop processing - we're approving/declining the bridge request
+    }
+
+    // check if it is a command to process by the bot itself
+    if (msg.content.startsWith("!matrix")) {
+      await this.roomHandler.HandleDiscordCommand(msg);
+      return;
     }
 
     // Update presence because sometimes discord misses people.

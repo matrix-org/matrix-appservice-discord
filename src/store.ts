@@ -3,7 +3,7 @@ import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-const CURRENT_SCHEMA = 7;
+export const CURRENT_SCHEMA = 7;
 
 import { Log } from "./log";
 const log = new Log("DiscordStore");

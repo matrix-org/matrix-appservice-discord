@@ -375,16 +375,18 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(evt.description, "I like :lamecake:");
         });
-        it("Should show emotes with italics.", () => {
-            const processor = createMatrixEventProcessor(false, false, true);
+        it("Should replace /me with * displayname, and italicize message", () => {
+            const processor = createMatrixEventProcessor();
             const evt = processor.EventToEmbed({
                 sender: "@test:localhost",
                 content: {
-                    body: "eats pizza",
+                    body: "likes puppies",
                     msgtype: "m.emote",
                 },
-            }, null, mockChannel as any);
-            Chai.assert.equal(evt.description, "*eats pizza*");
+            }, {
+                displayname: "displayname",
+            }, mockChannel as any);
+            Chai.assert.equal(evt.description, "*displayname likes puppies*");
         });
         it("Should handle stickers.", () => {
             const processor = createMatrixEventProcessor();
