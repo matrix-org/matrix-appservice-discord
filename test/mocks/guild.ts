@@ -9,6 +9,7 @@ export class MockGuild {
   public emojis = new MockCollection<string, MockEmoji>();
   public id: string;
   public name: string;
+  public icon: string;
   constructor(id: string, channels: any[] = [], name: string = null) {
     this.id = id;
     this.name = name || id;

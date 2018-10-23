@@ -64,7 +64,7 @@ function createRH(opts: any = {}) {
                 kick: () => { USERSKICKED++; return Promise.resolve(); },
                 ban: () => { USERSBANNED++; return Promise.resolve(); },
                 unban: () => { USERSUNBANNED++; return Promise.resolve(); },
-            }; 
+            };
         },
         getBot: () => {
             return {
@@ -86,6 +86,12 @@ function createRH(opts: any = {}) {
         OnUpdateUser: () => Promise.resolve(),
         EnsureJoin: () => Promise.resolve(),
     };
+    const cs = {
+        OnUpdate: () => Promise.resolve(),
+        GetRoomIdsFromChannel: (chan) => {
+            return Promise.resolve(["#" + chan.id + ":localhost"]);
+        },
+    };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
@@ -101,9 +107,6 @@ function createRH(opts: any = {}) {
             } else {
                 return Promise.reject("Roomid not found");
             }
-        },
-        GetRoomIdsFromChannel: (chan) => {
-            return Promise.resolve(["#" + chan.id + ":localhost"]);
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
@@ -126,6 +129,7 @@ function createRH(opts: any = {}) {
             return bridge.getIntent();
         },
         UserSyncroniser: us,
+        ChannelSyncroniser: cs,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;

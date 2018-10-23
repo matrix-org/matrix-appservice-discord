@@ -8,13 +8,14 @@ import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
+import { Provisioner } from "./provisioner";
+import { UserSyncroniser } from "./usersyncroniser";
+import { ChannelSyncroniser } from "./channelsyncroniser";
+import { MatrixRoomHandler } from "./matrixroomhandler";
+import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import { Provisioner } from "./provisioner";
-import { MatrixRoomHandler } from "./matrixroomhandler";
-import { Log } from "./log";
-import {UserSyncroniser} from "./usersyncroniser";
 
 const log = new Log("DiscordBot");
 
@@ -42,6 +43,7 @@ export class DiscordBot {
   private mxEventProcessor: MatrixEventProcessor;
   private presenceHandler: PresenceHandler;
   private userSync: UserSyncroniser;
+  private channelSync: ChannelSyncroniser;
   private roomHandler: MatrixRoomHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
@@ -74,6 +76,10 @@ export class DiscordBot {
     return this.userSync;
   }
 
+  get ChannelSyncroniser(): ChannelSyncroniser {
+    return this.channelSync;
+  }
+
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
@@ -88,10 +94,15 @@ export class DiscordBot {
       }
       if (!this.config.bridge.disablePresence) {
         client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
-          this.presenceHandler.EnqueueUser(newMember.user); 
+          this.presenceHandler.EnqueueUser(newMember.user);
         });
       }
-      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
+      this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+      client.on("channelUpdate", (_, newChannel) => { this.channelSync.OnUpdate(newChannel); });
+      client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
+      client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
+      client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
+
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
@@ -99,7 +110,7 @@ export class DiscordBot {
         });
       });
       const jsLog = new Log("discord.js");
-      
+
       this.userSync = new UserSyncroniser(this.bridge, this.config, this);
       client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
       client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
@@ -286,9 +297,9 @@ export class DiscordBot {
     }
     log.info(`Got redact request for ${event.redacts}`);
     log.verbose(`Event:`, event);
-    
+
     const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
-    
+
     if (!storeEvent.Result) {
       log.warn(`Could not redact because the event was not in the store.`);
       return;
@@ -298,7 +309,7 @@ export class DiscordBot {
       log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
       const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
       const chan = result.channel;
-      
+
       const msg = await chan.fetchMessage(storeEvent.DiscordId);
       try {
         await msg.delete();
@@ -357,76 +368,17 @@ export class DiscordBot {
       discord_guild: guild,
     }).then((rooms) => {
       if (rooms.length === 0) {
-        log.verbose(`Couldn"t find room(s) for guild id:${guild}.`);
+        log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
         return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => room.matrix.getId());
     });
   }
 
-  public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-        discord_channel: channel.id,
-    }).then((rooms) => {
-        if (rooms.length === 0) {
-            log.verbose(`Couldn"t find room(s) for channel ${channel.id}.`);
-            return Promise.reject("Room(s) not found.");
-        }
-        return rooms.map((room) => room.matrix.getId() as string);
-    });
-  }
-
-  private UpdateRooms(discordChannel: Discord.Channel) {
-    if (discordChannel.type !== "text") {
-      return; // Not supported for now.
-    }
-    log.info(`Updating ${discordChannel.id}`);
-    const textChan = (<Discord.TextChannel> discordChannel);
-    const roomStore = this.bridge.getRoomStore();
-    this.GetRoomIdsFromChannel(textChan).then((rooms) => {
-      return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
-        return Object.keys(entries).map((key) => entries[key]);
-      });
-    }).then((entries: any) => {
-      return Promise.all(entries.map((entry) => {
-        if (entry.length === 0) {
-          throw Error("Couldn't update room for channel, no assoicated entry in roomstore.");
-        }
-        return this.UpdateRoomEntry(entry[0], textChan);
-      }));
-    }).catch((err) => {
-      log.error(`Error during room update ${err}.`);
-    });
-  }
-
-  private UpdateRoomEntry(entry: Entry, discordChannel: Discord.TextChannel): Promise<null> {
-    const intent = this.bridge.getIntent();
-    const roomStore = this.bridge.getRoomStore();
-    const roomId = entry.matrix.getId();
-    return new Promise(() => {
-      const name = `[Discord] ${discordChannel.guild.name} #${discordChannel.name}`;
-      if (entry.remote.get("update_name") && entry.remote.get("discord_name") !== name) {
-        return intent.setRoomName(roomId, name).then(() => {
-          log.info(`Updated name for ${roomId}`);
-          entry.remote.set("discord_name", name);
-          return roomStore.upsertEntry(entry);
-        });
-      }
-    }).then(() => {
-      if ( entry.remote.get("update_topic") && entry.remote.get("discord_topic") !== discordChannel.topic) {
-        return intent.setRoomTopic(roomId, discordChannel.topic).then(() => {
-          entry.remote.set("discord_topic", discordChannel.topic);
-          log.info(`Updated topic for ${roomId}`);
-          return roomStore.upsertEntry(entry);
-        });
-      }
-    });
-  }
-
   private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
                                   guild: Discord.Guild, author: Discord.User,
                                   msgID: string): Promise<boolean> {
-    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
 
     rooms.forEach((room) => {
@@ -450,7 +402,7 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    this.GetRoomIdsFromChannel(channel).then((rooms) => {
+    this.channelSync.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.GetIntentFromDiscordMember(user);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
@@ -514,7 +466,7 @@ export class DiscordBot {
 
     // Update presence because sometimes discord misses people.
     this.userSync.OnUpdateUser(msg.author).then(() => {
-      return this.GetRoomIdsFromChannel(msg.channel).catch((err) => {
+      return this.channelSync.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("No bridged rooms to send message to. Oh well.");
         return null;
       });
@@ -617,4 +569,4 @@ export class DiscordBot {
           await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
         }
     }
-  }
+}
