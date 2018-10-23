@@ -1,6 +1,5 @@
 import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
-import * as log from "npmlog";
 
 export class DbDmRoom implements IDbData {
     public RoomId: string;
@@ -19,7 +18,7 @@ export class DbDmRoom implements IDbData {
             throw Error("Missing room_id|chan_id");
         }
 
-        return store.db.getAsync(`
+        return store.db.Get(`
             SELECT *
             FROM dm_room
             ${selectStatement}`, {
@@ -40,7 +39,7 @@ export class DbDmRoom implements IDbData {
     public Insert(store: DiscordStore): Promise<null> {
         this.CreatedAt = new Date().getTime();
         this.UpdatedAt = this.CreatedAt;
-        return store.db.runAsync(`
+        return store.db.Run(`
             INSERT INTO dm_room
             (room_id,chan_id,created_at,updated_at)
             VALUES ($room_id,$chan_id, $created_at, $updated_at);`, {
@@ -56,7 +55,7 @@ export class DbDmRoom implements IDbData {
     }
 
     public Delete(store: DiscordStore): Promise<null> {
-        return store.db.runAsync(`
+        return store.db.Run(`
             DELETE FROM dm_room
             WHERE room_id = $room_id`, {
             $room_id: this.RoomId,
