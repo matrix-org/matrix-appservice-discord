@@ -17,7 +17,6 @@ export class DbEmoji implements IDbData {
             WHERE emoji_id = $id`, {
                 id: params.emoji_id,
             }).then((row) => {
-                console.log("EmoiGet:", row);
                 this.Result = row !== undefined;
                 if (this.Result) {
                     this.EmojiId = row.emoji_id;
