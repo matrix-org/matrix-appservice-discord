@@ -22,8 +22,8 @@ export class DbDmRoom implements IDbData {
             SELECT *
             FROM dm_room
             ${selectStatement}`, {
-            $room_id: params.room_id,
-            $chan_id: params.chan_id,
+            room_id: params.room_id,
+            chan_id: params.chan_id,
         }).then((row) => {
             this.Result = row !== undefined;
             if (this.Result) {
@@ -43,10 +43,10 @@ export class DbDmRoom implements IDbData {
             INSERT INTO dm_room
             (room_id,chan_id,created_at,updated_at)
             VALUES ($room_id,$chan_id, $created_at, $updated_at);`, {
-            $room_id: this.RoomId,
-            $chan_id: this.ChannelId,
-            $created_at: this.CreatedAt,
-            $updated_at: this.UpdatedAt,
+            room_id: this.RoomId,
+            chan_id: this.ChannelId,
+            created_at: this.CreatedAt,
+            updated_at: this.UpdatedAt,
         });
     }
 
@@ -58,7 +58,7 @@ export class DbDmRoom implements IDbData {
         return store.db.Run(`
             DELETE FROM dm_room
             WHERE room_id = $room_id`, {
-            $room_id: this.RoomId,
+            room_id: this.RoomId,
         });
     }
 }
