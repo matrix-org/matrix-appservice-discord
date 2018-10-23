@@ -1,6 +1,5 @@
 import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
-import * as log from "npmlog";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 

@@ -7,7 +7,7 @@ export class Schema implements IDbSchema {
     CREATE TABLE schema (
       version	INTEGER UNIQUE NOT NULL
     );`, "schema").then(() => {
-      return store.db.runAsync("INSERT INTO schema VALUES (0);");
+      return store.db.Exec("INSERT INTO schema VALUES (0);");
     }).then(() => {
       return store.create_table(`
       CREATE TABLE user_tokens (
@@ -17,7 +17,7 @@ export class Schema implements IDbSchema {
     });
   }
   public rollBack(store: DiscordStore): Promise<Error> {
-    return store.db.execAsync(
+    return store.db.Exec(
       `DROP TABLE IF EXISTS schema;
       DROP TABLE IF EXISTS user_tokens`,
     );

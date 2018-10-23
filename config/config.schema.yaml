@@ -68,8 +68,10 @@ properties:
                     type: "string"
     database:
         type: "object"
-        required: ["filename"]
+        required: []
         properties:
+          connString:
+            type: "string"
           filename:
             type: "string"
           userStorePath:

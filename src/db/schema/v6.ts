@@ -3,8 +3,8 @@ import {DiscordStore} from "../../store";
 
 export class Schema implements IDbSchema {
   public description = "create event_store and discord_msg_store tables";
-  public async run(store: DiscordStore): Promise<Error> {
-    await store.db.execAsync(
+  public async run(store: DiscordStore): Promise<void|Error> {
+    await store.db.Run(
         `DROP TABLE IF EXISTS event_store;`,
     );
     await store.create_table(`
@@ -23,8 +23,8 @@ export class Schema implements IDbSchema {
   }
 
   public rollBack(store: DiscordStore): Promise <null> {
-    return store.db.execAsync(
-      `DROP TABLE IF EXISTS event_store;`,
+    return store.db.Exec(
+      `DROP TABLE IF EXISTS event_store;` +
       `DROP TABLE IF EXISTS discord_msg_store;`,
     );
   }

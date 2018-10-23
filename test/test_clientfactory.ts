@@ -5,7 +5,7 @@ import {DiscordBridgeConfigAuth} from "../src/config";
 import {MockDiscordClient} from "./mocks/discordclient";
 import { Log } from "../src/log";
 
-Log.ForceSilent();
+Log.Configure({console: "silly", lineDateFormat: undefined, files: []});
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;

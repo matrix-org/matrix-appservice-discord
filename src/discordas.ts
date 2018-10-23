@@ -57,7 +57,8 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
     url: config.bridge.homeserverUrl,
   });
   const provisioner = new Provisioner();
-  const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
+  // Warn and deprecate old config options.
+  const discordstore = new DiscordStore(config.database);
   const discordbot = new DiscordBot(config, discordstore, provisioner);
   const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
 

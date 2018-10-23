@@ -18,7 +18,7 @@ export class Schema implements IDbSchema {
     )]);
   }
   public rollBack(store: DiscordStore): Promise<Error> {
-    return store.db.execAsync(
+    return store.db.Exec(
       `DROP TABLE IF EXISTS dm_rooms;
       DROP TABLE IF EXISTS client_options;`,
     );

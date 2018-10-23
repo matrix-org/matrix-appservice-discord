@@ -29,16 +29,16 @@ export class Schema implements IDbSchema {
       return this.moveUserIds(store);
     }).then(() => {
       // Drop old table.
-      return store.db.execAsync(
+      return store.db.Run(
         `DROP TABLE IF EXISTS user_tokens;`,
       );
     });
   }
 
   public rollBack(store: DiscordStore): Promise <void> {
-    return Promise.all([store.db.execAsync(
+    return Promise.all([store.db.Run(
       `DROP TABLE IF EXISTS user_id_discord_id;`,
-    ), store.db.execAsync(
+    ), store.db.Run(
       `DROP TABLE IF EXISTS discord_id_token;`,
     )]).then(() => {
 
@@ -49,7 +49,7 @@ export class Schema implements IDbSchema {
   log.info("Performing one time moving of tokens to new table. Please wait.");
   let rows;
   try {
-    rows = await store.db.allAsync(`SELECT * FROM user_tokens`);
+    rows = await store.db.All(`SELECT * FROM user_tokens`);
   } catch (err) {
     log.error(`
 Could not select users from 'user_tokens'.It is possible that the table does
@@ -69,7 +69,7 @@ directory.`);
         continue;
       }
       log.verbose("INSERT INTO discord_id_token.");
-      await store.db.runAsync(
+      await store.db.Run(
         `
             INSERT INTO discord_id_token (discord_id,token)
             VALUES ($discordId,$token);
@@ -79,7 +79,7 @@ directory.`);
           $token: row.token,
         });
       log.verbose("INSERT INTO user_id_discord_id.");
-      await store.db.runAsync(
+      await store.db.Run(
         `
             INSERT INTO user_id_discord_id (discord_id,user_id)
             VALUES ($discordId,$userId);

@@ -49,7 +49,6 @@ function buildRequest(eventData) {
 }
 
 function createRH(opts: any = {}) {
-    Log.ForceSilent();
     USERSJOINED = 0;
     USERSKICKED = 0;
     USERSBANNED = 0;
@@ -596,7 +595,6 @@ describe("MatrixRoomHandler", () => {
             });
         });
         it("will fail first, join after", () => {
-            Log.level = "error";
             const handler: any = createRH({});
             let shouldFail = true;
             const intent = {
