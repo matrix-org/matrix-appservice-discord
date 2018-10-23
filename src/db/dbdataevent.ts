@@ -81,7 +81,7 @@ export class DbEvent implements IDbDataMany {
                 FROM discord_msg_store
                 WHERE msg_id = $id`, {
                     id: this.DiscordId,
-        }) !== undefined;
+        }) != null;
         if (msgExists) {
             return;
         }

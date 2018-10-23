@@ -5,6 +5,9 @@ import { SQLite3 } from "./db/sqlite3";
 export const CURRENT_SCHEMA = 7;
 
 import { Log } from "./log";
+import { DiscordBridgeConfigDatabase } from "./config";
+import { Postgres } from "./db/postgres";
+import { DatabaseConnector } from "./db/connector";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -13,20 +16,29 @@ export class DiscordStore {
   /**
    * @param  {string} filepath Location of the SQLite database file.
    */
-  public db: SQLite3;
+  public db: DatabaseConnector;
   private version: number;
-  private filepath: string;
-  constructor (filepath: string) {
+  private config: DiscordBridgeConfigDatabase;
+  constructor (private configOrFile: DiscordBridgeConfigDatabase|string) {
+    if (typeof(configOrFile) === "string"){
+        this.config = new DiscordBridgeConfigDatabase();
+        this.config.filename = configOrFile;
+    } else {
+        this.config = configOrFile;
+    }
     this.version = null;
-    this.filepath = filepath;
   }
 
   public backup_database(): Promise<void|{}> {
-    if (this.filepath === ":memory:") {
+    if (this.config.filename == null) {
+        log.warn("Backups not supported on non-sqlite connector");
+        return;
+    }
+    if (this.config.filename === ":memory:") {
       log.info("Can't backup a :memory: database.");
       return Promise.resolve();
     }
-    const BACKUP_NAME = this.filepath + ".backup";
+    const BACKUP_NAME = this.config.filename + ".backup";
 
     return new Promise((resolve, reject) => {
       // Check to see if a backup file already exists.
@@ -39,7 +51,7 @@ export class DiscordStore {
           log.warn("NOT backing up database while a file already exists");
           resolve(true);
         }
-        const rd = fs.createReadStream(this.filepath);
+        const rd = fs.createReadStream(this.config.filename);
         rd.on("error", reject);
         const wr = fs.createWriteStream(BACKUP_NAME);
         wr.on("error", reject);
@@ -146,7 +158,7 @@ export class DiscordStore {
         userId,
       },
     ).then( (rows) => {
-      if (rows !== undefined) {
+      if (rows != null) {
         return rows.map((row) => row.discord_id);
       } else {
         return [];
@@ -168,7 +180,7 @@ export class DiscordStore {
         discordId,
       },
     ).then( (row) => {
-      return row !== undefined ? row.token : null;
+      return row != null ? row.token : null;
     }).catch( (err) => {
       log.error("Error getting discord ids ", err.Error);
       throw err;
@@ -188,7 +200,7 @@ export class DiscordStore {
       discordId,
       discordChannel,
     }).then( (row) => {
-      return row !== undefined ? row.room_id : null;
+      return row != null ? row.room_id : null;
     }).catch( (err) => {
       log.error("Error getting room_id ", err.Error);
       throw err;
@@ -276,8 +288,13 @@ export class DiscordStore {
   }
 
   private async open_database(): Promise<void|Error> {
-    log.info("Opening database ", this.filepath);
-    this.db = new SQLite3(this.filepath);
+    if (this.config.filename) {
+        log.info("Filename present in config, using sqlite");
+        this.db = new SQLite3(this.config.filename);
+    } else if (this.config.connString) {
+        log.info("connString present in config, using postgres");
+        this.db = new Postgres(this.config.connString);
+    }
     try {
         await this.db.Open();
     } catch (ex) {

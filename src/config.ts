@@ -37,7 +37,8 @@ class DiscordBridgeConfigBridge {
   public disableHereMention: boolean = false;
 }
 
-class DiscordBridgeConfigDatabase {
+export class DiscordBridgeConfigDatabase {
+  public connString: string;
   public filename: string;
   public userStorePath: string;
   public roomStorePath: string;

@@ -1,8 +1,9 @@
 import * as Database from "better-sqlite3";
 import { Log } from "../log";
+import { DatabaseConnector } from "./connector";
 const log = new Log("SQLite3");
 
-export class SQLite3 {
+export class SQLite3 implements DatabaseConnector {
     private db: Database;
     constructor (private filename: string) {
 
