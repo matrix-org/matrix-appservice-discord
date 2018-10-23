@@ -8,9 +8,9 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import * as log from "npmlog";
 import { DiscordBridgeConfig } from "../src/config";
-
+import { Log } from "../src/log";
+const log = new Log("AddRoomsToDirectory");
 const optionDefinitions = [
     {
         name: "help",

@@ -1,4 +1,3 @@
-import * as log from "npmlog";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
@@ -6,11 +5,12 @@ import * as usage from "command-line-usage";
 import * as readline from "readline";
 import * as Bluebird from "bluebird";
 import * as process from "process";
-import {DiscordClientFactory} from "../src/clientfactory";
 
+import { DiscordClientFactory } from "../src/clientfactory";
 import { DiscordBridgeConfig } from "../src/config";
 import { DiscordStore } from "../src/store";
-
+import { Log } from "../src/log";
+const log = new Log("UserClientTools");
 const PUPPETING_DOC_URL = "https://github.com/Half-Shot/matrix-appservice-discord/blob/develop/docs/puppeting.md";
 
 const optionDefinitions = [

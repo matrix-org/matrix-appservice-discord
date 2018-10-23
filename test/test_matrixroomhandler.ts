@@ -3,7 +3,6 @@ import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import {DiscordBridgeConfig} from "../src/config";
 import {MockDiscordClient} from "./mocks/discordclient";
-import * as log from "npmlog";
 import {PresenceHandler} from "../src/presencehandler";
 import {DiscordBot} from "../src/bot";
 import {MatrixRoomHandler} from "../src/matrixroomhandler";
@@ -49,7 +48,6 @@ function buildRequest(eventData) {
 }
 
 function createRH(opts: any = {}) {
-    log.level = "silent";
     USERSJOINED = 0;
     USERSKICKED = 0;
     USERSBANNED = 0;
@@ -64,7 +62,7 @@ function createRH(opts: any = {}) {
                 kick: () => { USERSKICKED++; return Promise.resolve(); },
                 ban: () => { USERSBANNED++; return Promise.resolve(); },
                 unban: () => { USERSUNBANNED++; return Promise.resolve(); },
-            }; 
+            };
         },
         getBot: () => {
             return {
@@ -587,7 +585,6 @@ describe("MatrixRoomHandler", () => {
             });
         });
         it("will fail first, join after", () => {
-            log.level = "error";
             const handler: any = createRH({});
             let shouldFail = true;
             const intent = {
