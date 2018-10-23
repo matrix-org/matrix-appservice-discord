@@ -4,7 +4,7 @@
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
   "scripts": {
-    "test": "npm run-script build && mocha --opts test/mocha.opts build/test",
+    "test": "npm run-script build && mocha --opts test/mocha.opts build/test/config.js build/test",
     "lint": "tslint --project ./tsconfig.json --type-check -t stylish",
     "coverage": "istanbul --include-all-sources cover -x build/src/discordas.js _mocha -- build/test/ -R spec",
     "build": "tsc",

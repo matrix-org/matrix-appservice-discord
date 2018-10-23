@@ -3,9 +3,6 @@ import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import {DiscordBridgeConfigAuth} from "../src/config";
 import {MockDiscordClient} from "./mocks/discordclient";
-import { Log } from "../src/log";
-
-Log.Configure({console: "silly", lineDateFormat: undefined, files: []});
 
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
