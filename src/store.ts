@@ -103,16 +103,16 @@ export class DiscordStore {
           INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
-            userId: userId,
-            discordId: discordId,
+            userId,
+            discordId,
         }),
         this.db.Run(
           `
           INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
           `
         , {
-            discordId: discordId,
-            token: token,
+            discordId,
+            token,
         }),
     ]).catch( (err) => {
       log.error("Error storing user token ", err);
@@ -143,7 +143,7 @@ export class DiscordStore {
       FROM user_id_discord_id
       WHERE user_id = $userId;
       `, {
-        userId: userId,
+        userId,
       },
     ).then( (rows) => {
       if (rows !== undefined) {
@@ -165,7 +165,7 @@ export class DiscordStore {
       FROM discord_id_token
       WHERE discord_id = $discordId
       `, {
-        discordId: discordId,
+        discordId,
       },
     ).then( (row) => {
       return row !== undefined ? row.token : null;
@@ -185,8 +185,8 @@ export class DiscordStore {
       AND dm_rooms.discord_channel = $discordChannel;
       `
     , {
-      discordId: discordId,
-      discordChannel: discordChannel,
+      discordId,
+      discordChannel,
     }).then( (row) => {
       return row !== undefined ? row.room_id : null;
     }).catch( (err) => {
@@ -203,9 +203,9 @@ export class DiscordStore {
       VALUES ($discordId,$discordChannel,$roomId);
       `
     , {
-      discordId: discordId,
-      discordChannel: discordChannel,
-      roomId: roomId,
+      discordId,
+      discordChannel,
+      roomId,
     }).catch( (err) => {
       log.error("Error executing set_dm_room query  ", err.Error);
       throw err;
