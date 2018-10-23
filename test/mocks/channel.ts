@@ -5,8 +5,13 @@ import { MockGuild } from "./guild";
 // Mocking TextChannel
 export class MockChannel {
     public members = new MockCollection<string, MockMember>();
-    public type = "text";
-    constructor (public id: string = "", public guild: MockGuild = null) { }
+    constructor (
+        public id: string = "",
+        public guild: MockGuild = null,
+        public type: string = "text",
+        public name: string = "",
+        public topic: string = "",
+    ) { }
     public send(data: any): Promise<any> {
         return Promise.resolve(data);
     }

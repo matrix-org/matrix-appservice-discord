@@ -8,13 +8,15 @@ import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
-import * as Discord from "discord.js";
-import * as Bluebird from "bluebird";
 import { Provisioner } from "./provisioner";
-import {DMHandler} from "./dmhandler";
+import { UserSyncroniser } from "./usersyncroniser";
+import { ChannelSyncroniser } from "./channelsyncroniser";
+import { DMHandler } from "./dmhandler";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
-import {UserSyncroniser} from "./usersyncroniser";
+import * as Discord from "discord.js";
+import * as Bluebird from "bluebird";
+import * as mime from "mime";
 
 const log = new Log("DiscordBot");
 
@@ -43,6 +45,7 @@ export class DiscordBot {
   private presenceHandler: PresenceHandler;
   private dmHandler: DMHandler;
   private userSync: UserSyncroniser;
+  private channelSync: ChannelSyncroniser;
   private roomHandler: MatrixRoomHandler;
 
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
@@ -79,6 +82,10 @@ export class DiscordBot {
     return this.userSync;
   }
 
+  get ChannelSyncroniser(): ChannelSyncroniser {
+    return this.channelSync;
+  }
+
   public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
@@ -96,7 +103,12 @@ export class DiscordBot {
           this.presenceHandler.EnqueueUser(newMember.user);
         });
       }
-      client.on("channelUpdate", (_, newChannel) => { this.UpdateRooms(newChannel); });
+      this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+      client.on("channelUpdate", (_, newChannel) => { this.channelSync.OnUpdate(newChannel); });
+      client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
+      client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
+      client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
+
       client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
       client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
       client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
@@ -374,69 +386,10 @@ export class DiscordBot {
       discord_guild: guild,
     }).then((rooms) => {
       if (rooms.length === 0) {
-        log.verbose(`Couldn"t find room(s) for guild id:${guild}.`);
+        log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
         return Promise.reject("Room(s) not found.");
       }
       return rooms.map((room) => room.matrix.getId());
-    });
-  }
-
-  public GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-    return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-        discord_channel: channel.id,
-    }).then((rooms) => {
-        if (rooms.length === 0) {
-            log.verbose(`Couldn"t find room(s) for channel ${channel.id}.`);
-            return Promise.reject("Room(s) not found.");
-        }
-        return rooms.map((room) => room.matrix.getId() as string);
-    });
-  }
-
-  private UpdateRooms(discordChannel: Discord.Channel) {
-    if (discordChannel.type !== "text") {
-      return; // Not supported for now.
-    }
-    log.info(`Updating ${discordChannel.id}`);
-    const textChan = (<Discord.TextChannel> discordChannel);
-    const roomStore = this.bridge.getRoomStore();
-    this.GetRoomIdsFromChannel(textChan).then((rooms) => {
-      return roomStore.getEntriesByMatrixIds(rooms).then( (entries) => {
-        return Object.keys(entries).map((key) => entries[key]);
-      });
-    }).then((entries: any) => {
-      return Promise.all(entries.map((entry) => {
-        if (entry.length === 0) {
-          throw Error("Couldn't update room for channel, no assoicated entry in roomstore.");
-        }
-        return this.UpdateRoomEntry(entry[0], textChan);
-      }));
-    }).catch((err) => {
-      log.error(`Error during room update ${err}.`);
-    });
-  }
-
-  private UpdateRoomEntry(entry: Entry, discordChannel: Discord.TextChannel): Promise<null> {
-    const intent = this.bridge.getIntent();
-    const roomStore = this.bridge.getRoomStore();
-    const roomId = entry.matrix.getId();
-    return new Promise(() => {
-      const name = `[Discord] ${discordChannel.guild.name} #${discordChannel.name}`;
-      if (entry.remote.get("update_name") && entry.remote.get("discord_name") !== name) {
-        return intent.setRoomName(roomId, name).then(() => {
-          log.info(`Updated name for ${roomId}`);
-          entry.remote.set("discord_name", name);
-          return roomStore.upsertEntry(entry);
-        });
-      }
-    }).then(() => {
-      if ( entry.remote.get("update_topic") && entry.remote.get("discord_topic") !== discordChannel.topic) {
-        return intent.setRoomTopic(roomId, discordChannel.topic).then(() => {
-          entry.remote.set("discord_topic", discordChannel.topic);
-          log.info(`Updated topic for ${roomId}`);
-          return roomStore.upsertEntry(entry);
-        });
-      }
     });
   }
 
@@ -451,11 +404,10 @@ export class DiscordBot {
       });
   }
 
-  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult,
-                                  chan: Discord.GuildChannel,
+  private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.GuildChannel,
                                   author: Discord.User|Discord.GuildMember,
                                   msgID: string): Promise<boolean> {
-    const rooms = await this.GetRoomIdsFromChannel(chan);
+    const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
     const intent = this.GetIntentFromDiscordMember(author);
     const textEvt = {
       body: matrixMsg.body,
@@ -508,7 +460,7 @@ export class DiscordBot {
   }
 
   private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-    this.GetRoomIdsFromChannel(channel).then((rooms) => {
+    this.channelSync.GetRoomIdsFromChannel(channel).then((rooms) => {
       const intent = this.GetIntentFromDiscordMember(user);
       return Promise.all(rooms.map((room) => {
         return intent.sendTyping(room, isTyping);
@@ -574,7 +526,7 @@ export class DiscordBot {
     await this.userSync.OnUpdateUser(msg.author);
     let rooms;
     try {
-      rooms = await this.GetRoomIdsFromChannel(msg.channel);
+      rooms = await this.ChannelSyncroniser.GetRoomIdsFromChannel(msg.channel);
     } catch (e) {
       log.verbose("No bridged rooms to send message to. Oh well.");
     }

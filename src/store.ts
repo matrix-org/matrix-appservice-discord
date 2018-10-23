@@ -1,11 +1,13 @@
-import * as SQLite3 from "sqlite3";
-import * as Bluebird from "bluebird";
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
+import { SQLite3 } from "./db/sqlite3";
 import { Log } from "./log";
+import { DiscordBridgeConfigDatabase } from "./config";
+import { Postgres } from "./db/postgres";
+import { IDatabaseConnector } from "./db/connector";
+export const CURRENT_SCHEMA = 7;
 
-const CURRENT_SCHEMA = 8;
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -14,20 +16,29 @@ export class DiscordStore {
   /**
    * @param  {string} filepath Location of the SQLite database file.
    */
-  public db: any;
+  public db: IDatabaseConnector;
   private version: number;
-  private filepath: string;
-  constructor (filepath: string) {
+  private config: DiscordBridgeConfigDatabase;
+  constructor (private configOrFile: DiscordBridgeConfigDatabase|string) {
+    if (typeof(configOrFile) === "string") {
+        this.config = new DiscordBridgeConfigDatabase();
+        this.config.filename = configOrFile;
+    } else {
+        this.config = configOrFile;
+    }
     this.version = null;
-    this.filepath = filepath;
   }
 
   public backup_database(): Promise<void|{}> {
-    if (this.filepath === ":memory:") {
+    if (this.config.filename == null) {
+        log.warn("Backups not supported on non-sqlite connector");
+        return;
+    }
+    if (this.config.filename === ":memory:") {
       log.info("Can't backup a :memory: database.");
       return Promise.resolve();
     }
-    const BACKUP_NAME = this.filepath + ".backup";
+    const BACKUP_NAME = this.config.filename + ".backup";
 
     return new Promise((resolve, reject) => {
       // Check to see if a backup file already exists.
@@ -40,7 +51,7 @@ export class DiscordStore {
           log.warn("NOT backing up database while a file already exists");
           resolve(true);
         }
-        const rd = fs.createReadStream(this.filepath);
+        const rd = fs.createReadStream(this.config.filename);
         rd.on("error", reject);
         const wr = fs.createWriteStream(BACKUP_NAME);
         wr.on("error", reject);
@@ -85,11 +96,11 @@ export class DiscordStore {
   }
 
   public close () {
-    this.db.close();
+    this.db.Close();
   }
 
-  public create_table (statement: string, tablename: string): Promise<null|Error> {
-    return this.db.runAsync(statement).then(() => {
+  public create_table (statement: string, tablename: string): Promise<void|Error> {
+    return this.db.Exec(statement).then(() => {
       log.info("Created table", tablename);
     }).catch((err) => {
       throw new Error(`Error creating '${tablename}': ${err}`);
@@ -99,21 +110,21 @@ export class DiscordStore {
   public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
     log.silly("SQL", "add_user_token => ", userId);
     return Promise.all([
-        this.db.runAsync(
+        this.db.Run(
           `
           INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
           `
         , {
-            $userId: userId,
-            $discordId: discordId,
+            userId,
+            discordId,
         }),
-        this.db.runAsync(
+        this.db.Run(
           `
           INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
           `
         , {
-            $discordId: discordId,
-            $token: token,
+            discordId,
+            token,
         }),
     ]).catch( (err) => {
       log.error("Error storing user token ", err);
@@ -123,7 +134,7 @@ export class DiscordStore {
 
   public delete_user_token(discordId: string): Promise<null> {
     log.silly("SQL", "delete_user_token => ", discordId);
-    return this.db.runAsync(
+    return this.db.Run(
       `
       DELETE FROM user_id_discord_id WHERE discord_id = $id;
       DELETE FROM discord_id_token WHERE discord_id = $id;
@@ -138,16 +149,16 @@ export class DiscordStore {
 
   public get_user_discord_ids(userId: string): Promise<string[]> {
     log.silly("SQL", "get_user_discord_ids => ", userId);
-    return this.db.allAsync(
+    return this.db.All(
       `
       SELECT discord_id
       FROM user_id_discord_id
       WHERE user_id = $userId;
       `, {
-        $userId: userId,
+        userId,
       },
     ).then( (rows) => {
-      if (rows !== undefined) {
+      if (rows != null) {
         return rows.map((row) => row.discord_id);
       } else {
         return [];
@@ -160,16 +171,16 @@ export class DiscordStore {
 
   public get_token(discordId: string): Promise<string> {
     log.silly("SQL", "discord_id_token => ", discordId);
-    return this.db.getAsync(
+    return this.db.Get(
       `
       SELECT token
       FROM discord_id_token
       WHERE discord_id = $discordId
       `, {
-        $discordId: discordId,
+        discordId,
       },
     ).then( (row) => {
-      return row !== undefined ? row.token : null;
+      return row != null ? row.token : null;
     }).catch( (err) => {
       log.error("Error getting discord ids ", err.Error);
       throw err;
@@ -178,7 +189,7 @@ export class DiscordStore {
 
   public get_all_user_discord_ids(): Promise<any> {
     log.silly("SQL", "get_users_tokens");
-    return this.db.allAsync(
+    return this.db.All(
       `
       SELECT *
       FROM user_id_discord_id
@@ -218,37 +229,40 @@ export class DiscordStore {
       return data.Delete(this);
   }
 
-  private getSchemaVersion ( ): Promise<number> {
+  private async getSchemaVersion ( ): Promise<number> {
     log.silly("_get_schema_version");
-    return this.db.getAsync(`SELECT version FROM schema`).then((row) => {
-      return row === undefined ? 0 : row.version;
-    }).catch( ()  => {
-      return 0;
-    });
+    let version = 0;
+    try {
+        version = await this.db.Get(`SELECT version FROM schema`);
+    } catch (er) {
+        log.warn("Couldn't fetch schema version, defaulting to 0");
+    }
+    return version;
   }
 
   private setSchemaVersion (ver: number): Promise<any> {
     log.silly("_set_schema_version => ", ver);
-    return this.db.getAsync(
+    return this.db.Run(
       `
       UPDATE schema
       SET version = $ver
-      `, {$ver: ver},
+      `, {ver},
     );
   }
 
-  private open_database(): Promise<null|Error> {
-    log.info("Opening SQLITE database ", this.filepath);
-    return new Promise((resolve, reject) => {
-      this.db = new SQLite3.Database(this.filepath, (err) => {
-        if (err) {
-          log.error("Error opening database");
-          reject(new Error("Couldn't open database. The appservice won't be able to continue."));
-          return;
-        }
-        this.db = Bluebird.promisifyAll(this.db);
-        resolve();
-      });
-    });
+  private async open_database(): Promise<void|Error> {
+    if (this.config.filename) {
+        log.info("Filename present in config, using sqlite");
+        this.db = new SQLite3(this.config.filename);
+    } else if (this.config.connString) {
+        log.info("connString present in config, using postgres");
+        this.db = new Postgres(this.config.connString);
+    }
+    try {
+        this.db.Open();
+    } catch (ex) {
+      log.error("Error opening database:", ex);
+      throw new Error("Couldn't open database. The appservice won't be able to continue.");
+    }
   }
 }

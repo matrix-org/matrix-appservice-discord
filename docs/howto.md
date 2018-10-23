@@ -17,3 +17,17 @@ is formatted as https://discordapp.com/channels/``guildid``/``channelid``
 * e.g. To set Alice to Admin on her ``example.com`` HS on default config. (``config.yaml``)
   * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
   * Run ``npm run adminme -- -h`` for usage.
+
+### Migrate to postgres from sqlite
+* Stop the bridge.
+* Create a new database on postgres and create a user for it with a password.
+    * We will call the database `discord_bridge` and the the user `discord`.
+* Install `pgloader` if you do not have it.
+* Run `pgloader ./discord.db postgresql://discord:password@localhost/discord_bridge`
+* Change the config so that the config contains:
+
+```yaml
+database:
+    connString: "postgresql://discord:password@localhost/discord_bridge"
+```
+* All done!

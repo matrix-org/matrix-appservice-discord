@@ -1,6 +1,5 @@
 import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
-import * as log from "npmlog";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
@@ -507,6 +506,7 @@ describe("MatrixEventProcessor", () => {
         });
     });
     describe("HandleAttachment", () => {
+        const SMALL_FILE = 200;
         it("message without an attachment", () => {
             const processor = createMatrixEventProcessor();
             return expect(processor.HandleAttachment({
@@ -520,8 +520,14 @@ describe("MatrixEventProcessor", () => {
             return expect(processor.HandleAttachment({
                 content: {
                     msgtype: "m.video",
+                    body: "filename.webm",
+                    url: "mxc://localhost/200",
                 },
-            }, mxClient)).to.eventually.eq("");
+            }, mxClient)).to.eventually.satisfy((attachment) => {
+                expect(attachment.name).to.eq("filename.webm");
+                expect(attachment.attachment.length).to.eq(SMALL_FILE);
+                return true;
+            });
         });
         it("message without a url", () => {
             const processor = createMatrixEventProcessor();
@@ -549,7 +555,6 @@ describe("MatrixEventProcessor", () => {
             }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
         it("message with a small info.size", () => {
-            const SMALL_FILE = 200;
             const processor = createMatrixEventProcessor();
             return expect(processor.HandleAttachment({
                 content: {

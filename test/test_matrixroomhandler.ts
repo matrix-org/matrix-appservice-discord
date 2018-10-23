@@ -49,7 +49,6 @@ function buildRequest(eventData) {
 }
 
 function createRH(opts: any = {}) {
-    Log.ForceSilent();
     USERSJOINED = 0;
     USERSKICKED = 0;
     USERSBANNED = 0;
@@ -86,6 +85,12 @@ function createRH(opts: any = {}) {
         OnUpdateUser: () => Promise.resolve(),
         EnsureJoin: () => Promise.resolve(),
     };
+    const cs = {
+        OnUpdate: () => Promise.resolve(),
+        GetRoomIdsFromChannel: (chan) => {
+            return Promise.resolve(["#" + chan.id + ":localhost"]);
+        },
+    };
     const bot = {
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
@@ -101,9 +106,6 @@ function createRH(opts: any = {}) {
             } else {
                 return Promise.reject("Roomid not found");
             }
-        },
-        GetRoomIdsFromChannel: (chan) => {
-            return Promise.resolve(["#" + chan.id + ":localhost"]);
         },
         GetBotId: () => "bot12345",
         ProcessMatrixRedact: () => Promise.resolve("redacted"),
@@ -130,6 +132,7 @@ function createRH(opts: any = {}) {
             return bridge.getIntent();
         },
         UserSyncroniser: us,
+        ChannelSyncroniser: cs,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -596,7 +599,6 @@ describe("MatrixRoomHandler", () => {
             });
         });
         it("will fail first, join after", () => {
-            Log.level = "error";
             const handler: any = createRH({});
             let shouldFail = true;
             const intent = {

@@ -123,7 +123,7 @@ bridge.loadDatabases().catch((e) => {
                     return;
                 }
                 promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-                    return Bluebird.each(discordbot.GetRoomIdsFromChannel(channel), (room) => {
+                    return Bluebird.each(discordbot.ChannelSyncroniser.GetRoomIdsFromChannel(channel), (room) => {
                         let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                         const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
                             userSync.EnsureJoin(member, room);

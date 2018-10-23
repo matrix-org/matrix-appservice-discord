@@ -17,7 +17,7 @@ export class Schema implements IDbSchema {
   }
 
   public rollBack(store: DiscordStore): Promise <Error> {
-    return store.db.execAsync(
+    return store.db.Run(
       `DROP TABLE IF EXISTS guild_emoji;`,
     );
   }
