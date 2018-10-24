@@ -88,19 +88,18 @@ export class DMRoom {
             payload = {files: [file]};
         }
         await this.deferLock;
-        this.deferLock = new Promise((resolve, _) => {
-            return channel.send(payload).then((message) => {
+        this.deferLock = (async () => {
+            try {
+                const message = await channel.send(payload);
                 if (Array.isArray(message)) {
                     message.forEach((sentMessage) => this.sentMessages.add(sentMessage.id));
                     return;
                 }
                 this.sentMessages.add(message.id);
-                resolve();
-            }).catch((e) => {
+            } catch (e) {
                 log.warn("Failed to sent message", e);
-                resolve();
-            });
-        });
+            }
+        })();
     }
 
     public async OnInvite(event: any): Promise<void> {
