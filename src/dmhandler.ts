@@ -185,6 +185,10 @@ export class DMHandler {
         return this.bridge.getIntent(userId);
     }
 
+    public GetIntent(userId: string): any {
+        return this.bridge.getIntent(userId);
+    }
+
     private async onDiscordMessage(msg: Message): Promise<void> {
         if (!["group", "dm"].includes(msg.channel.type)) {
             return;

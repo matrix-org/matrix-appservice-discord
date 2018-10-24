@@ -7,6 +7,8 @@ import { Log } from "./log";
 
 const log = new Log("DMRoom");
 
+const MAX_JOIN_ATTEMPTS = 3;
+
 export class DMRoom {
     private matrixMembers: Set<string>;
     private sentMessages: Set<string>;
@@ -54,10 +56,10 @@ export class DMRoom {
 
     public async HydrateRoomWithMatrix(matrixClient: Intent): Promise<void> {
         const roomState: any[] = await matrixClient.roomState(this.dbroom.RoomId);
-        roomState.forEach((element) => {
-            if (element.type === "m.room.member" &&
-                element.content.membership === "join") {
-                this.matrixMembers.add(element.sender);
+        roomState.forEach((stateEvt) => {
+            if (stateEvt.type === "m.room.member" &&
+                stateEvt.content.membership === "join") {
+                this.matrixMembers.add(stateEvt.sender);
             }
         });
         log.info(`${this.dbroom.RoomId} has ${this.matrixMembers.size} matrix members (including virtual users)`);
@@ -112,26 +114,37 @@ export class DMRoom {
             return; // Drop echo
         }
         log.info(`Got discord message for ${this.dbroom.ChannelId}`);
-        try {
-            const intent = this.handler.GetIntentForUser(msg.author);
-            const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
-            await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
-                return intent.sendMessage((this.dbroom.RoomId), evt);
-            }));
+        let attempts = 0;
+        while(attempts < MAX_JOIN_ATTEMPTS) {
+            attempts++;
+            try {
+                const intent = this.handler.GetIntentForUser(msg.author);
+                const matrixMsg = await this.handler.MessageProcessor.FormatDiscordMessage(msg, intent);
+                await Promise.all(matrixMsg.attachmentEvents.map((evt) => {
+                    return intent.sendMessage((this.dbroom.RoomId), evt);
+                }));
 
-            if (matrixMsg.body === "") {
+                if (matrixMsg.body === "") {
+                    return;
+                }
+                await intent.sendMessage(this.dbroom.RoomId, {
+                    msgtype: "m.text",
+                    format: "org.matrix.custom.html",
+                    body: matrixMsg.body,
+                    formatted_body: matrixMsg.formattedBody,
+                });
                 return;
+            } catch (e) {
+                log.warn(`Failed to send: ${author.id} -> ${room} (${attempts}/${MAX_JOIN_ATTEMPTS})`);
+                if (e.errcode !== "M_FORBIDDEN") {
+                  log.error("DiscordBot", "Failed to send message into room.", e);
+                  return;
+                }
+                // Pick a random hero.
+                await this.InviteMatrixUserToRoom(this.handler.GetMatrixIdForUser(msg.author));
             }
-            await intent.join(this.dbroom.RoomId);
-            await intent.sendMessage(this.dbroom.RoomId, {
-                msgtype: "m.text",
-                format: "org.matrix.custom.html",
-                body: matrixMsg.body,
-                formatted_body: matrixMsg.formattedBody,
-            });
-        } catch (e) {
-            log.error("Failed to handle discord message", e);
         }
+        log.error(`Gave up trying to send.`);
     }
 
     public async OnDiscordTyping(user: User, typing: Boolean) {
@@ -167,6 +180,17 @@ export class DMRoom {
         const intentKicked = this.handler.GetIntentForUser(kickee);
         intent.sendMessage(this.RoomId, {msgtype: "m.notice", body: "Kicking user from room."});
         intentKicked.leave(this.RoomId);
+    }
+
+    private async InviteMatrixUserToRoom(invitee: string) {
+        const possibleInvitees = new Set(this.matrixMembers);
+        possibleInvitees.delete(invitee);
+        if (possibleInvitees.size === 0) {
+            throw new Error("Nobody else is in the room :|");
+        }
+        const inviter = [...possibleInvitees][Math.floor(Math.random() * possibleInvitees.size)];
+        await this.handler.GetIntent(inviter).invite(invitee);
+        await this.handler.GetIntent(invitee).join(invitee);
     }
 
 }
