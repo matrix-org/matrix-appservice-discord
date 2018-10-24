@@ -114,11 +114,7 @@ export class MatrixRoomHandler {
         } else {
           return this.discord.ProcessMatrixStateEvent(event);
         }
-    } else if (event.type === "m.room.member") {
-      return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.name") {
-      return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.topic") {
+    } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
       return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
