@@ -1,10 +1,8 @@
-import {DiscordBridgeConfig} from "./config";
-import {DiscordClientFactory} from "./clientfactory";
-import {
-    Bridge,
-} from "matrix-appservice-bridge";
-import {DiscordStore} from "./store";
-import {DbDmRoom} from "./db/dbdatadmroom";
+import { DiscordBridgeConfig } from "./config";
+import { DiscordClientFactory } from "./clientfactory";
+import { Bridge } from "matrix-appservice-bridge";
+import { DiscordStore } from "./store";
+import { DbDmRoom } from "./db/dbdatadmroom";
 import { Message, Client, User, DMChannel, Channel, GroupDMChannel, Util } from "discord.js";
 import { DMRoom } from "./dmroom";
 import { MessageProcessor } from "./messageprocessor";
