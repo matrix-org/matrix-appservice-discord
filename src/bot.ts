@@ -28,7 +28,7 @@ const MIN_PRESENCE_UPDATE_DELAY = 250;
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 class ChannelLookupResult {
-  public channel: Discord.TextChannel;
+  public channel: Discord.GuildChannel;
   public botUser: boolean;
 }
 
@@ -201,7 +201,7 @@ export class DiscordBot {
       const channel = guild.channels.get(room);
       if (channel) {
         const lookupResult = new ChannelLookupResult();
-        lookupResult.channel = channel as any;
+        lookupResult.channel = channel;
         lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
@@ -415,29 +415,18 @@ export class DiscordBot {
       formatted_body: matrixMsg.formattedBody,
       format: "org.matrix.custom.html",
     };
-
+    let res;
+    const msgsToSend = Array.from(matrixMsg.attachmentEvents);
+    msgsToSend.push(textEvt);
+    let failuresToSend = 0;
     while (rooms.length > 0) {
-        const attachments = Array.from(matrixMsg.attachmentEvents);
         const room = rooms[0];
-        // Send an event into the room. If multiple event's are to be sent,
-        // then we should check we have perms to do so.
-        const firstEvt = attachments[0] || textEvt;
         try {
-            await intent.sendMessage(room, firstEvt).then((res) => {
-                this.StoreMatrixEvent(res, room, chan, msgID);
-            });
-            if (firstEvt === textEvt) {
-                return true;
+            for (const evt of msgsToSend) {
+                res = await intent.sendMessage(room, evt);
+                await this.StoreMatrixEvent(res, room, chan, msgID);
             }
-            attachments.splice(0, 1);
-            for (const evt of attachments) {
-                await intent.sendMessage(room, evt).then((res) => {
-                    this.StoreMatrixEvent(res, room, chan, msgID);
-                });
-            }
-            await intent.sendMessage(room, textEvt).then((res) => {
-                this.StoreMatrixEvent(res, room, chan, msgID);
-            });
+            failuresToSend = 0;
         } catch (e) {
             log.warn(`Failed to send: ${author.id} -> ${room}`);
             if (e.errcode !== "M_FORBIDDEN") {
@@ -445,12 +434,16 @@ export class DiscordBot {
               return;
             }
             // TODO: Should we ensure that the MembershipCache knows, to avoid no-oping this?
-            //
             if (author instanceof Discord.GuildMember) {
                 log.info(`Ensuring ${author.id} is joined to ${room}.`);
-                await this.userSync.EnsureJoin(author, room);
-                // Retry it again.
-                rooms.push(room);
+                try {
+                    await this.userSync.EnsureJoin(author, room);
+                    rooms.push(room);
+                } catch (ex) {
+                    log.error(
+                        `Failed to join ${author.id} to ${room} after failure to send message. Giving up.`
+                    );
+                }
             }
         }
         rooms.splice(0, 1);
