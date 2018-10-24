@@ -235,7 +235,8 @@ export class DiscordBot {
           log.warn(`User ${event.sender} has no member state. That's odd.`);
         }
     }
-    const embed = this.mxEventProcessor.EventToEmbed(event, profile, chan);
+    const embedSet = await this.mxEventProcessor.EventToEmbed(event, profile, chan);
+    const embed = embedSet.messageEmbed;
     const opts: Discord.MessageOptions = {};
     const file = await this.mxEventProcessor.HandleAttachment(event, mxClient);
     if (typeof(file) === "string") {
@@ -260,14 +261,20 @@ export class DiscordBot {
     }
     try {
       if (!botUser) {
+        opts.embed = embedSet.replyEmbed;
         msg = await chan.send(embed.description, opts);
       } else if (hook) {
         msg = await hook.send(embed.description, {
             username: embed.author.name,
             avatarURL: embed.author.icon_url,
             file: opts.file,
-        });
+            embed: embedSet.replyEmbed,
+        } as Discord.WebhookMessageOptions);
       } else {
+          if (embedSet.replyEmbed) {
+              embed.addField("Replying to", embedSet.replyEmbed.author.name);
+              embed.addField("Reply text", embedSet.replyEmbed.description);
+          }
         opts.embed = embed;
         msg = await chan.send("", opts);
       }
