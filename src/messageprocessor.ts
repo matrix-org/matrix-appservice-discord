@@ -2,6 +2,9 @@ import * as Discord from "discord.js";
 import * as marked from "marked";
 import { DiscordBot } from "./bot";
 import * as escapeHtml from "escape-html";
+import { Util } from "./util";
+import * as mime from "mime";
+import { Snowflake, DMChannel, GroupDMChannel } from "discord.js";
 
 import { Log } from "./log";
 const log = new Log("MessageProcessor");
@@ -24,7 +27,7 @@ function _setupMarked() {
         sanitize: true,
         tables: false,
     });
-    
+
     const markedLexer = new marked.Lexer();
     // as discord doesn't support these markdown rules
     // we want to disable them by setting their regexes to non-matchable ones
@@ -34,7 +37,7 @@ function _setupMarked() {
     }
     // paragraph-end matching is different, as we don't have headers and thelike
     markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
-    
+
     const markedInlineLexer = new marked.InlineLexer(true);
     // same again, remove tags discord doesn't support
     for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
@@ -45,7 +48,7 @@ function _setupMarked() {
 }
 
 export class MessageProcessorOpts {
-    constructor (readonly domain: string, readonly bot: DiscordBot = null) {
+    constructor (readonly domain: string, readonly bot?: DiscordBot) {
 
     }
 }
@@ -53,11 +56,12 @@ export class MessageProcessorOpts {
 export class MessageProcessorMatrixResult {
     public formattedBody: string;
     public body: string;
+    public attachmentEvents: any[] = [];
 }
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    constructor (opts: MessageProcessorOpts, bot: DiscordBot = null) {
+    constructor (opts: MessageProcessorOpts, bot?: DiscordBot) {
         // Backwards compat
         if (bot != null) {
             this.opts = new MessageProcessorOpts(opts.domain, bot);
@@ -66,29 +70,57 @@ export class MessageProcessor {
         }
     }
 
-    public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
+    public async FormatDiscordMessage(msg: Discord.Message, intent: any = null): Promise<MessageProcessorMatrixResult> {
         const result = new MessageProcessorMatrixResult();
-
         let content = msg.content;
-        
+
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
-        
+
         // parse the plain text stuff
         content = this.InsertEmbeds(content, msg);
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
         content = await this.ReplaceEmoji(content, msg);
-        
+
         // parse postmark stuff
         contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
-        
+
         result.body = content;
         result.formattedBody = contentPostmark;
+
+        if (intent === null) {
+            return result;
+        }
+
+        result.attachmentEvents = await Promise.all(msg.attachments.map((attachment) => {
+            return Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((res) => {
+                const fileMime = mime.lookup(attachment.filename);
+                const msgtype = attachment.height ? "m.image" : "m.file";
+                const info = {
+                mimetype: fileMime,
+                size: attachment.filesize,
+                    w: null,
+                    h: null,
+                };
+                if (msgtype === "m.image") {
+                    info.w = attachment.width;
+                    info.h = attachment.height;
+                }
+                return {
+                    body: attachment.filename,
+                    info,
+                    msgtype,
+                    url: res.mxcUrl,
+                    external_url: attachment.url,
+                };
+            });
+        }));
+
         return result;
     }
 
@@ -139,11 +171,12 @@ export class MessageProcessor {
 
     public ReplaceMembers(content: string, msg: Discord.Message): string {
         let results = USER_REGEX.exec(content);
+        const users = this.GetUsers(msg);
         while (results !== null) {
             const id = results[1];
-            const member = msg.guild.members.get(id);
+            const user = users.get(id);
             const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? (member.displayName) : memberId;
+            const memberStr = user ? (this.GetDisplayNameForUser(user)) : memberId;
             content = content.replace(results[0], memberStr);
             results = USER_REGEX.exec(content);
         }
@@ -152,13 +185,14 @@ export class MessageProcessor {
 
     public ReplaceMembersPostmark(content: string, msg: Discord.Message): string {
         let results = USER_REGEX_POSTMARK.exec(content);
+        const users = this.GetUsers(msg);
         while (results !== null) {
             const id = results[1];
-            const member = msg.guild.members.get(id);
+            const user = users.get(id);
             const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
             let memberName = memberId;
-            if (member) {
-                memberName = escapeHtml(member.displayName);
+            if (user) {
+                memberName = escapeHtml(this.GetDisplayNameForUser(user));
             }
             const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
             content = content.replace(results[0], memberStr);
@@ -233,6 +267,32 @@ export class MessageProcessor {
             results = EMOJI_REGEX_POSTMARK.exec(content);
         }
         return content;
+    }
+
+    private GetUsers(msg: Discord.Message): Discord.Collection<Snowflake, Discord.User|Discord.GuildMember> {
+        if (msg.channel.type === "text") {
+            const channel = msg.channel as Discord.TextChannel;
+            const users = new Discord.Collection<Snowflake, Discord.User|Discord.GuildMember>();
+            channel.guild.members.forEach((m) => users.set(m.id, m));
+            return users;
+        } else if (msg.channel.type === "dm") {
+            return new Discord.Collection<Snowflake, Discord.User>([
+                ["asc", msg.author],
+                ["asc", (<DMChannel> msg.channel).recipient],
+            ]);
+        } else if (msg.channel.type === "group") {
+            return (<GroupDMChannel> msg.channel).recipients;
+        } else {
+            return new Discord.Collection<Snowflake, Discord.User>();
+        }
+    }
+
+    private GetDisplayNameForUser(user: Discord.User|Discord.GuildMember) {
+        if (user instanceof Discord.GuildMember) {
+            return user.displayName;
+        } else {
+            return user.username;
+        }
     }
 }
 

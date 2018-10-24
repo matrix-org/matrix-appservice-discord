@@ -41,7 +41,12 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
-  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
+  constructor (
+      discord: DiscordBot,
+      config: DiscordBridgeConfig,
+      botUserId: string,
+      private provisioner: Provisioner,
+  ) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
@@ -109,7 +114,7 @@ export class MatrixRoomHandler {
     if (event.type === "m.room.member" && event.content.membership === "invite") {
       return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
-        if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+        if (this.bridge.getBot().isRemoteUser(event.state_key)) {
             return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
         } else {
           return this.discord.ProcessMatrixStateEvent(event);
@@ -131,6 +136,9 @@ export class MatrixRoomHandler {
             return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
                 log.warn("There was an error sending a matrix event", err);
             });
+        } else {
+            // Might be a DM room.
+            return this.discord.DMHandler.OnMatrixMessage(event);
         }
     } else if (event.type === "m.room.encryption" && context.rooms.remote) {
         return this.HandleEncryptionWarning(event.room_id).catch((err) => {
@@ -161,11 +169,13 @@ export class MatrixRoomHandler {
       await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
   }
 
-  public HandleInvite(event: any) {
+  public HandleInvite(event: any): Promise<any> {
     log.info("Received invite for " + event.state_key + " in room " + event.room_id);
     if (event.state_key === this.botUserId) {
       log.info("Accepting invite for bridge bot");
       return this.joinRoom(this.bridge.getIntent(), event.room_id);
+    } else if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+      return this.discord.DMHandler.HandleInvite(event);
     } else {
       return this.discord.ProcessMatrixStateEvent(event);
     }

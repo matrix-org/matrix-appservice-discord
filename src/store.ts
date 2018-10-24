@@ -2,12 +2,12 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 7;
-
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
+export const CURRENT_SCHEMA = 7;
+
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -187,49 +187,12 @@ export class DiscordStore {
     });
   }
 
-  public get_dm_room(discordId, discordChannel): Promise<string> {
-    log.silly("SQL", "get_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.Get(
-      `
-      SELECT room_id
-      FROM dm_rooms
-      WHERE dm_rooms.discord_id = $discordId
-      AND dm_rooms.discord_channel = $discordChannel;
-      `
-    , {
-      discordId,
-      discordChannel,
-    }).then( (row) => {
-      return row != null ? row.room_id : null;
-    }).catch( (err) => {
-      log.error("Error getting room_id ", err.Error);
-      throw err;
-    });
-  }
-
-  public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
-    log.silly("SQL", "set_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-    return this.db.Run(
-      `
-      REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
-      VALUES ($discordId,$discordChannel,$roomId);
-      `
-    , {
-      discordId,
-      discordChannel,
-      roomId,
-    }).catch( (err) => {
-      log.error("Error executing set_dm_room query  ", err.Error);
-      throw err;
-    });
-  }
-
   public get_all_user_discord_ids(): Promise<any> {
     log.silly("SQL", "get_users_tokens");
     return this.db.All(
       `
       SELECT *
-      FROM get_user_discord_ids
+      FROM user_id_discord_id
       `,
     ).then( (rows) => {
       return rows;

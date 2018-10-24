@@ -24,6 +24,9 @@ export class MatrixEventProcessorOpts {
     }
 }
 
+type UserMemberArray = Discord.GuildMember[]|Discord.User[];
+type ChannelTypes = Discord.TextChannel|Discord.DMChannel|Discord.GroupDMChannel;
+
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: any;
@@ -31,6 +34,88 @@ export class MatrixEventProcessor {
     constructor (opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
+    }
+
+    public EventToEmbed(event: any, profile: any|null, channel: ChannelTypes): Discord.RichEmbed {
+
+        let members: UserMemberArray = [];
+        if (channel.type === "text") {
+            members = (<Discord.TextChannel> channel).members.array();
+        } else if (channel.type === "group") {
+            members = (<Discord.GroupDMChannel> channel).recipients.array();
+        } else {
+            const dm = <Discord.DMChannel> channel;
+            members = [dm.recipient, dm.client.user];
+        }
+
+        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
+            this.FindMentionsInPlainBody(
+                event.content.body,
+                members,
+            );
+
+        if (event.type === "m.sticker") {
+            body = "";
+        }
+
+        // Replace @everyone
+        if (this.config.bridge.disableEveryoneMention) {
+            body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
+        }
+
+        // Replace @here
+        if (this.config.bridge.disableHereMention) {
+            body = body.replace(new RegExp(`@here`, "g"), "@ here");
+        }
+
+        /* See issue #82
+        const isMarkdown = (event.content.format === "org.matrix.custom.html");
+        if (!isMarkdown) {
+          body = "\\" + body;
+        }*/
+
+        // Replace /me with * username ...
+        if (event.content.msgtype === "m.emote") {
+            if (profile &&
+                profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                body = `*${profile.displayname} ${body}*`;
+            } else {
+                body = `*${body}*`;
+            }
+        }
+
+        // replace <del>blah</del> with ~~blah~~
+        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
+
+        // Handle discord custom emoji
+        if (channel.type === "text") {
+            body = this.ReplaceDiscordEmoji(body, (<Discord.TextChannel> channel).guild);
+        }
+
+        let displayName = event.sender;
+        let avatarUrl = undefined;
+        if (profile) {
+            if (profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                displayName = profile.displayname;
+            }
+
+            if (profile.avatar_url) {
+                const mxClient = this.bridge.getClientFactory().getClientAs();
+                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
+            }
+        }
+        return new Discord.RichEmbed({
+            author: {
+                name: displayName.substr(0, MAX_NAME_LENGTH),
+                icon_url: avatarUrl,
+                url: `https://matrix.to/#/${event.sender}`,
+            },
+            description: body,
+        });
     }
 
     public StateEventToMessage(event: any, channel: Discord.TextChannel): string {
@@ -71,80 +156,15 @@ export class MatrixEventProcessor {
         return msg;
     }
 
-    public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
-        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
-            this.FindMentionsInPlainBody(
-                event.content.body,
-                channel.members.array(),
-            );
-
-        if (event.type === "m.sticker") {
-            body = "";
-        }
-
-        // Replace @everyone
-        if (this.config.bridge.disableEveryoneMention) {
-            body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
-        }
-
-        // Replace @here
-        if (this.config.bridge.disableHereMention) {
-            body = body.replace(new RegExp(`@here`, "g"), "@ here");
-        }
-
-        /* See issue #82
-        const isMarkdown = (event.content.format === "org.matrix.custom.html");
-        if (!isMarkdown) {
-          body = "\\" + body;
-        }*/
-
-        // Replace /me with * username ...
-        if (event.content.msgtype === "m.emote") {
-            if (profile &&
-                profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                body = `*${profile.displayname} ${body}*`;
-            } else {
-                body = `*${body}*`;
-            }
-        }
-
-        // replace <del>blah</del> with ~~blah~~
-        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
-
-        // Handle discord custom emoji
-        body = this.ReplaceDiscordEmoji(body, channel.guild);
-
-        let displayName = event.sender;
-        let avatarUrl = undefined;
-        if (profile) {
-            if (profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                displayName = profile.displayname;
-            }
-
-            if (profile.avatar_url) {
-                const mxClient = this.bridge.getClientFactory().getClientAs();
-                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
-            }
-        }
-        return new Discord.RichEmbed({
-            author: {
-                name: displayName.substr(0, MAX_NAME_LENGTH),
-                icon_url: avatarUrl,
-                url: `https://matrix.to/#/${event.sender}`,
-            },
-            description: body,
-        });
-    }
-
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
+    public FindMentionsInPlainBody(body: string, members: UserMemberArray): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
-        for (const member of members) {
-            const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                escapeStringRegexp(member.displayName);
+        for (const member of members as any[]) { // XXX: We have effectively disabled type checking here :(
+            const user = member.user !== undefined ? member.user : member;
+            let matcher = escapeStringRegexp(user.username + "#" + user.discriminator) +
+            "|" + escapeStringRegexp(user.username);
+            if (typeof(member.nickname) === "string") {
+                matcher = matcher + "|" + escapeStringRegexp(member.nickname);
+            }
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
                     , "igmu");

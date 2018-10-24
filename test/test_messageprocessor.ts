@@ -5,6 +5,7 @@ import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor"
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
+import { MockChannel } from "./mocks/channel";
 
 Chai.use(ChaiAsPromised);
 
@@ -30,6 +31,7 @@ describe("MessageProcessor", () => {
         const msg = new Discord.Message(null, null, null);
         msg.embeds = [];
         msg.content = "Hello World!";
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert(result.body, "Hello World!");
         Chai.assert(result.formattedBody, "Hello World!");
@@ -39,6 +41,7 @@ describe("MessageProcessor", () => {
         const msg = new Discord.Message(null, null, null);
         msg.embeds = [];
         msg.content = "Hello *World*!";
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "Hello *World*!");
         Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
@@ -46,6 +49,7 @@ describe("MessageProcessor", () => {
       it("processes non-discord markdown correctly.", async() => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         msg.embeds = [];
         msg.content = "> inb4 tests";
         let result = await processor.FormatDiscordMessage(msg);
@@ -61,6 +65,7 @@ describe("MessageProcessor", () => {
       it("processes discord-specific markdown correctly.", async() => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const msg = new Discord.Message(null, null, null);
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         msg.embeds = [];
         msg.content = "_ italic _";
         const result = await processor.FormatDiscordMessage(msg);
@@ -94,6 +99,7 @@ describe("MessageProcessor", () => {
             },
         ];
         msg.content = "message";
+        msg.channel = new MockChannel("123", new MockGuild("456")) as any;
         const result = await processor.FormatDiscordMessage(msg);
         Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
         Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
@@ -105,6 +111,9 @@ describe("MessageProcessor", () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const oldMsg = new Discord.Message(null, null, null);
         const newMsg = new Discord.Message(null, null, null);
+        const guild = new MockGuild("456");
+        oldMsg.channel = new MockChannel("123", guild) as any;
+        newMsg.channel = new MockChannel("123", guild) as any;
         oldMsg.embeds = [];
         newMsg.embeds = [];
        
@@ -121,6 +130,9 @@ describe("MessageProcessor", () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), <DiscordBot> bot);
         const oldMsg = new Discord.Message(null, null, null);
         const newMsg = new Discord.Message(null, null, null);
+        const guild = new MockGuild("456");
+        oldMsg.channel = new MockChannel("123", guild) as any;
+        newMsg.channel = new MockChannel("123", guild) as any;
         oldMsg.embeds = [];
         newMsg.embeds = [];
        

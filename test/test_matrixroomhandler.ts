@@ -11,6 +11,7 @@ import {MockMember} from "./mocks/member";
 import * as Bluebird from "bluebird";
 import {MockGuild} from "./mocks/guild";
 import {Guild} from "discord.js";
+import {Log} from "../src/log";
 import { Util } from "../src/util";
 
 Chai.use(ChaiAsPromised);
@@ -66,7 +67,7 @@ function createRH(opts: any = {}) {
         },
         getBot: () => {
             return {
-                _isRemoteUser: (id) => {
+                isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
             };
@@ -122,6 +123,10 @@ function createRH(opts: any = {}) {
         GetGuilds: () => [new MockGuild("123", [])],
         ThirdpartySearchForChannels: () => {
             return [];
+        },
+        DMHandler: {
+            OnMatrixMessage: () => Promise.resolve("DMMessageHandled"),
+            HandleInvite: () => Promise.resolve("DMInviteHandled"),
         },
         GetIntentFromDiscordMember: () => {
             return bridge.getIntent();
@@ -275,7 +280,7 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.message", content: {body: "!discord cmd"}}), null))
                 .to.eventually.equal("processedcmd");
         });
-        it("should ignore regular messages with no linked room", () => {
+        it("should send messages with no linked room to the DM handler", () => {
             const handler = createRH();
             const context = {
                 rooms: {
@@ -284,7 +289,7 @@ describe("MatrixRoomHandler", () => {
             };
             return expect(handler.OnEvent(buildRequest({
                 type: "m.room.message", content: {body: "abc"}}), context))
-                .to.be.rejectedWith("Event not processed by bridge");
+                .to.eventually.equal("DMMessageHandled");
         });
         it("should process stickers", () => {
             const handler = createRH();
@@ -312,9 +317,14 @@ describe("MatrixRoomHandler", () => {
                 state_key: "@botuser:localhost",
             })).to.eventually.be.equal("joinedroom");
         });
+        it("should accept invite for virtual users (DMs)", () => {
+            const handler: any = createRH();
+            return expect(handler.HandleInvite({
+                state_key: "@_discord_123:localhost",
+            })).to.eventually.be.equal("DMInviteHandled");
+        });
         it("should deny invite for other users", () => {
             const handler: any = createRH();
-            handler.joinRoom = () => Promise.resolve("joinedroom");
             return expect(handler.HandleInvite({
                 state_key: "@user:localhost",
             })).to.eventually.be.equal("stateevent");

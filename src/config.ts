@@ -7,6 +7,7 @@ export class DiscordBridgeConfig {
   public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
   public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
   public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
+  public puppeting: DiscordBridgeConfigPuppeting = new DiscordBridgeConfigPuppeting();
 
   /**
    * Apply a set of keys and values over the default config.
@@ -78,6 +79,11 @@ class DiscordBridgeConfigChannelDeleteOptions {
 
 class DiscordBridgeConfigLimits {
   public roomGhostJoinDelay: number = 6000;
+}
+
+export class DiscordBridgeConfigPuppeting {
+  public enabled = false;
+  public enableDMs = false;
 }
 
 export class LoggingFile {
