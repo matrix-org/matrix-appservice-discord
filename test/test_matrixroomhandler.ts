@@ -147,6 +147,9 @@ function createRH(opts: any = {}) {
         setRoomDirectoryVisibilityAppService: () => {
             return Promise.resolve();
         },
+        sendReadReceipt: () => {
+            return Promise.resolve();
+        },
     };
     const provisioner = {
         AskBridgePermission: () => {
