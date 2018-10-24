@@ -174,6 +174,7 @@ export class UserSyncroniser {
                     await tryState();
                 } catch (e) {
                     log.warn(`Failed to send state to ${roomId}`, e);
+                    throw e;
                 }
             }
         }
