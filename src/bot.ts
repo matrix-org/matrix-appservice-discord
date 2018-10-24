@@ -517,7 +517,7 @@ export class DiscordBot {
 
     // Update presence because sometimes discord misses people.
     await this.userSync.OnUpdateUser(msg.author);
-    let rooms;
+    let rooms = null;
     try {
       rooms = await this.ChannelSyncroniser.GetRoomIdsFromChannel(msg.channel);
     } catch (e) {

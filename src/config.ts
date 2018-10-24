@@ -82,8 +82,8 @@ class DiscordBridgeConfigLimits {
 }
 
 export class DiscordBridgeConfigPuppeting {
-  public enabled = true;
-  public enableDMs = true;
+  public enabled = false;
+  public enableDMs = false;
 }
 
 export class LoggingFile {
