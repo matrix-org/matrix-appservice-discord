@@ -19,9 +19,6 @@ import * as mime from "mime";
 
 const log = new Log("DiscordBot");
 
-// Due to messages often arriving before we get a response from the send call,
-// messages get delayed from discord.
-const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
@@ -107,17 +104,24 @@ export class DiscordBot {
       client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
       client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
 
-      client.on("messageDelete", (msg: Discord.Message) => {
-          this.discordMessageQueue[msg.channel.id] = Promise.all([
-            this.discordMessageQueue[msg.channel.id] || Promise.resolve(),
-            Bluebird.delay(this.config.limits.discordSendDelay),
-        ]).then(() => this.DeleteDiscordMessage(msg));
+      // Due to messages often arriving before we get a response from the send call,
+      // messages get delayed from discord. We use Bluebird.delay to handle this.
+
+      client.on("messageDelete", async (msg: Discord.Message) => {
+          // tslint:disable-next-line:await-promise
+          await Bluebird.delay(this.config.limits.discordSendDelay);
+          this.discordMessageQueue[msg.channel.id] = (async () => {
+              await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+              await this.OnMessage(msg);
+          })();
       });
-      client.on("messageUpdate", (oldMessage: Discord.Message, newMessage: Discord.Message) => {
-          this.discordMessageQueue[newMessage.channel.id] = Promise.all([
-            this.discordMessageQueue[newMessage.channel.id] || Promise.resolve(),
-            Bluebird.delay(this.config.limits.discordSendDelay),
-        ]).then(() => this.OnMessageUpdate(oldMessage, newMessage));
+      client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+          // tslint:disable-next-line:await-promise
+          await Bluebird.delay(this.config.limits.discordSendDelay);
+          this.discordMessageQueue[newMessage.channel.id] = (async () => {
+              await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
+              await this.OnMessageUpdate(oldMessage, newMessage);
+          })();
       });
       client.on("message", async (msg: Discord.Message) => {
         // tslint:disable-next-line:await-promise
