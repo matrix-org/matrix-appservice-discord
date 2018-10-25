@@ -268,7 +268,7 @@ export class DiscordBot {
             username: embed.author.name,
             avatarURL: embed.author.icon_url,
             file: opts.file,
-            embeds: [embedSet.replyEmbed],
+            embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
         } as any);
       } else {
         if (embedSet.replyEmbed) {
