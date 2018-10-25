@@ -28,11 +28,9 @@ properties:
             type: "boolean"
     auth:
         type: "object"
-        required: ["botToken"]
+        required: ["botToken", "clientID"]
         properties:
           clientID:
-            type: "string"
-          secret:
             type: "string"
           botToken:
             type: "string"

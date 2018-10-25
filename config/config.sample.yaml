@@ -36,7 +36,6 @@ bridge:
 # Authentication configuration for the discord bot.
 auth:
   clientID: "12345"
-  secret: "blah"
   botToken: "foobar"
 logging:
   # What level should the logger output to the console at.
