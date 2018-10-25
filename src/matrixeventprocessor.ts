@@ -239,6 +239,7 @@ export class MatrixEventProcessor {
                 sourceEvent.sender,
             );
         } catch (ex) {
+            log.warn("Failed to handle reply, showing a unknown embed:", ex);
             // For some reason we failed to get the event, so using fallback.
             embed.setDescription("Reply with unknown content");
             embed.setAuthor("Unknown");
@@ -254,7 +255,7 @@ export class MatrixEventProcessor {
         // Are they a discord user.
         if (this.bridge.getBot().isRemoteUser(sender)) {
             const localpart = new MatrixUser(sender.replace("@", "")).localpart;
-            const userOrMember = await this.discord.GetDiscordUserOrMember(localpart.substring("_discord_".length));
+            const userOrMember = await this.discord.GetDiscordUserOrMember(localpart.substring("_discord".length));
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
                     userOrMember.username,

@@ -267,7 +267,7 @@ export class DiscordBot {
         msg = await hook.send(embed.description, {
             username: embed.author.name,
             avatarURL: embed.author.icon_url,
-            file: opts.file,
+            files: opts.file ? [opts.file] : undefined,
             embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
         } as any);
       } else {
