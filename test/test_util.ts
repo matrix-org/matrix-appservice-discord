@@ -135,5 +135,9 @@ there are even more lines here.`);
 `);
             return expect(reply).to.equal("");
         });
+        it("Should return body if no reply found", () => {
+            const reply = Util.GetReplyFromReplyBody("Test\nwith\nhalfy");
+            return expect(reply).to.equal("Test\nwith\nhalfy");
+        });
     });
 });

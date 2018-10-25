@@ -102,14 +102,17 @@ This is the first reply`,
     config.bridge.disableDiscordMentions = disableMentions;
     config.bridge.disableEveryoneMention = disableEveryone;
     config.bridge.disableHereMention = disableHere;
+
+    const Util = Object.assign(require("../src/util").Util, {
+        DownloadFile: (name: string) => {
+            const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
+            return Buffer.alloc(size);
+        },
+    })
+
     return new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
-            Util: {
-                DownloadFile: (name: string) => {
-                    const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
-                    return Buffer.alloc(size);
-                },
-            },
+            Util
         },
     })).MatrixEventProcessor(
         new MatrixEventProcessorOpts(
@@ -672,7 +675,7 @@ describe("MatrixEventProcessor", () => {
             });
             expect(result).to.be.undefined;
         });
-        it("should handle replies with a wrongly formatted body", async () => {
+        it("should handle replies without a fallback", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
                 sender: "@test:localhost",
@@ -681,12 +684,16 @@ describe("MatrixEventProcessor", () => {
                     "body": "Test",
                     "m.relates_to": {
                         "m.in_reply_to": {
-                            event_id: "!event:thing",
+                            event_id: "$goodEvent:localhost",
                         },
                     },
                 },
             });
-            expect(result).to.be.undefined;
+            expect(result[0].description).to.be.equal("Hello!");
+            expect(result[0].author.name).to.be.equal("Doggo!");
+            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result[1]).to.be.equal("Test");
         });
         it("should handle replies with a missing event", async () => {
             const processor = createMatrixEventProcessor();
@@ -699,15 +706,15 @@ describe("MatrixEventProcessor", () => {
 This is where the reply goes`,
                     "m.relates_to": {
                         "m.in_reply_to": {
-                            event_id: "!event:thing",
+                            event_id: "$event:thing",
                         },
                     },
                 },
             });
-            expect(result[0].description).to.be.equal("This is the fake body");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result[0].description).to.be.equal("Reply with unknown content");
+            expect(result[0].author.name).to.be.equal("Unknown");
+            expect(result[0].author.icon_url).to.be.undefined;
+            expect(result[0].author.url).to.be.undefined;
             expect(result[1]).to.be.equal("This is where the reply goes");
         });
         it("should handle replies with a valid reply event", async () => {

@@ -240,7 +240,7 @@ export class Util {
 
   public static GetReplyFromReplyBody(body: string) {
       const lines = body.split("\n");
-      while(lines[0].startsWith("> ") || lines[0].trim().length > 0) {
+      while(lines[0].startsWith("> ") || lines[0].trim().length === 0) {
           lines.splice(0,1);
           if (lines.length === 0) {
               return "";
