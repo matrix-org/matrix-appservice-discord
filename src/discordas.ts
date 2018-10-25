@@ -67,7 +67,9 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
     controller: {
       // onUserQuery: userQuery,
       onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
-      onEvent: roomhandler.OnEvent.bind(roomhandler),
+      onEvent: (request, context) =>
+          request.outcomeFrom(Promise.resolve(roomhandler.OnEvent(request, context)))
+      ,
       onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
       thirdPartyLookup: roomhandler.ThirdPartyLookup,
       onLog: (line, isError) => {
@@ -84,6 +86,11 @@ function run (port: number, fileConfig: DiscordBridgeConfig) {
     registration,
     userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
+    // To avoid out of order message sending.
+    queue: {
+      type: "per_room",
+      perRequest: true,
+    },
   });
   provisioner.SetBridge(bridge);
   roomhandler.setBridge(bridge);
