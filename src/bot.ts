@@ -88,7 +88,7 @@ export class DiscordBot {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
 
-  public run (): Promise<void> {
+  public run(): Promise<void> {
     return this.clientFactory.init().then(() => {
       return this.clientFactory.getClient();
     }).then((client: any) => {
@@ -122,6 +122,7 @@ export class DiscordBot {
       client.on("message", (msg: Discord.Message) => {
         this.discordMessageQueue[msg.channel.id] = (async () => {
             await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+            // tslint:disable-next-line:await-promise
             await Bluebird.delay(this.config.limits.discordSendDelay);
             await this.OnMessage(msg);
         })();
@@ -190,12 +191,12 @@ export class DiscordBot {
     }
   }
 
-  public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
+  public LookupRoom(server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
     const hasSender = sender !== null;
     return this.clientFactory.getClient(sender).then((client) => {
       const guild = client.guilds.get(server);
       if (!guild) {
-        throw `Guild "${server}" not found`;
+        throw new Error(`Guild "${server}" not found`);
       }
       const channel = guild.channels.get(room);
       if (channel) {
@@ -204,7 +205,7 @@ export class DiscordBot {
         lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
-      throw `Channel "${room}" not found`;
+      throw new Error(`Channel "${room}" not found`);
     }).catch((err) => {
       log.verbose("LookupRoom => ", err);
       if (hasSender) {
@@ -217,7 +218,7 @@ export class DiscordBot {
 
   public async ProcessMatrixStateEvent(event: any): Promise<void> {
       log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-      const channel = <Discord.TextChannel> await this.GetChannelFromRoomId(event.room_id);
+      const channel = await this.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
       const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
       if (!msg) {
           return;
@@ -344,7 +345,7 @@ export class DiscordBot {
     }
   }
 
-  public OnUserQuery (userId: string): any {
+  public OnUserQuery(userId: string): any {
     return false;
   }
 
@@ -452,7 +453,7 @@ export class DiscordBot {
 
   private async OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
-    const chan = <Discord.TextChannel> msg.channel;
+    const chan = msg.channel as Discord.TextChannel;
     if (indexOfMsg !== -1) {
       log.verbose("Got repeated message, ignoring.");
       delete this.sentMessages[indexOfMsg];

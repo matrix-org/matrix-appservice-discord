@@ -36,7 +36,7 @@ const mxClient = {
 };
 
 function createMatrixEventProcessor
-    (disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
+   (disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
     const bridge = {
         getClientFactory: () => {
             return {

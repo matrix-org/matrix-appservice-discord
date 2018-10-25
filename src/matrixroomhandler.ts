@@ -41,7 +41,7 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
-  constructor (discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
+  constructor(discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
@@ -62,7 +62,7 @@ export class MatrixRoomHandler {
     this.bridge = bridge;
   }
 
-  public async OnAliasQueried (alias: string, roomId: string) {
+  public async OnAliasQueried(alias: string, roomId: string) {
     log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
     const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
 
@@ -78,7 +78,7 @@ export class MatrixRoomHandler {
     // Join a whole bunch of users.
     /* We delay the joins to give some implementations a chance to breathe */
     let delay = this.config.limits.roomGhostJoinDelay;
-    for (const member of (<Discord.TextChannel> channel).members.array()) {
+    for (const member of (channel as Discord.TextChannel).members.array()) {
         if (member.id === this.discord.GetBotId()) {
           continue;
         }
@@ -100,7 +100,7 @@ export class MatrixRoomHandler {
     await promiseChain;
   }
 
-  public OnEvent (request, context): Promise<any> {
+  public OnEvent(request, context): Promise<any> {
     const event = request.getData();
     if (event.unsigned.age > AGE_LIMIT) {
       log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
@@ -247,7 +247,7 @@ export class MatrixRoomHandler {
           const channelId = args[1];
           try {
               const discordResult = await this.discord.LookupRoom(guildId, channelId);
-              const channel = <Discord.TextChannel> discordResult.channel;
+              const channel = discordResult.channel as Discord.TextChannel;
 
               log.info(`Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
               this.bridge.getIntent().sendMessage(event.room_id, {
@@ -321,7 +321,7 @@ export class MatrixRoomHandler {
       }
   }
 
-  public OnAliasQuery (alias: string, aliasLocalpart: string): Promise<any> {
+  public OnAliasQuery(alias: string, aliasLocalpart: string): Promise<any> {
     log.info("Got request for #", aliasLocalpart);
     const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
     if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
@@ -400,7 +400,7 @@ export class MatrixRoomHandler {
   }
 
   public async HandleDiscordCommand(msg: Discord.Message) {
-    if (!(<Discord.TextChannel> msg.channel).guild) {
+    if (!(msg.channel as Discord.TextChannel).guild) {
       msg.channel.send("**ERROR:** only available for guild channels");
     }
 
@@ -526,7 +526,7 @@ export class MatrixRoomHandler {
       return doJoin().catch(errorHandler);
   }
 
-  private createMatrixRoom (channel: Discord.TextChannel, alias: string) {
+  private createMatrixRoom(channel: Discord.TextChannel, alias: string) {
     const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}`);
     remote.set("discord_type", "text");
     remote.set("discord_guild", channel.guild.id);

@@ -148,7 +148,7 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
         },
     };
     const discordbot: any = {
-        
+
     };
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
@@ -172,9 +172,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.OnDelete(<any> chan).then(() => {
+            return channelSync.OnDelete(chan as any).then(() => {
                 expect(REMOTECHANNEL_REMOVED).is.false;
             });
         });
@@ -192,9 +192,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.OnDelete(<any> chan).then(() => {
+            return channelSync.OnDelete(chan as any).then(() => {
                 expect(REMOTECHANNEL_REMOVED).is.true;
             });
         });
@@ -213,9 +213,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetRoomIdsFromChannel(<any> chan).then((chans) => {
+            return channelSync.GetRoomIdsFromChannel(chan as any).then((chans) => {
                 expect(chans.length).equals(1);
                 expect(chans[0]).equals("!1:localhost");
             });
@@ -249,9 +249,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetRoomIdsFromChannel(<any> chan).then((chans) => {
+            return channelSync.GetRoomIdsFromChannel(chan as any).then((chans) => {
                 /* tslint:disable:no-magic-numbers */
                 expect(chans.length).equals(2);
                 /* tslint:enable:no-magic-numbers */
@@ -263,7 +263,7 @@ describe("ChannelSyncroniser", () => {
             const chan = new MockChannel();
             chan.id = "blah";
             const channelSync = CreateChannelSync();
-            expect(channelSync.GetRoomIdsFromChannel(<any> chan)).to.eventually.be.rejected;
+            expect(channelSync.GetRoomIdsFromChannel(chan as any)).to.eventually.be.rejected;
         });
     });
     describe("GetChannelUpdateState", () => {
@@ -271,9 +271,9 @@ describe("ChannelSyncroniser", () => {
             const chan = new MockChannel();
             chan.type = "text";
             chan.id = "blah";
-            
+
             const channelSync = CreateChannelSync();
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.id).equals(chan.id);
                 expect(state.mxChannels.length).equals(0);
             });
@@ -286,7 +286,7 @@ describe("ChannelSyncroniser", () => {
             chan.name = "newName";
             chan.topic = "newTopic";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -301,9 +301,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].name).equals("[Discord] newGuild #newName");
                 expect(state.mxChannels[0].topic).equals("newTopic");
@@ -317,7 +317,7 @@ describe("ChannelSyncroniser", () => {
             chan.name = "newName";
             chan.topic = "newTopic";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -330,9 +330,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].name).is.null;
                 expect(state.mxChannels[0].topic).is.null;
@@ -346,7 +346,7 @@ describe("ChannelSyncroniser", () => {
             chan.name = "newName";
             chan.topic = "newTopic";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -361,9 +361,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].name).is.null;
                 expect(state.mxChannels[0].topic).is.null;
@@ -376,7 +376,7 @@ describe("ChannelSyncroniser", () => {
             chan.type = "text";
             chan.id = "blah";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -389,9 +389,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].iconUrl).equals("https://cdn.discordapp.com/icons/654321/new_icon.png");
                 expect(state.mxChannels[0].iconId).equals("new_icon");
@@ -404,7 +404,7 @@ describe("ChannelSyncroniser", () => {
             chan.type = "text";
             chan.id = "blah";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -417,9 +417,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].iconUrl).is.null;
                 expect(state.mxChannels[0].iconId).is.null;
@@ -432,7 +432,7 @@ describe("ChannelSyncroniser", () => {
             chan.type = "text";
             chan.id = "blah";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -445,9 +445,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.GetChannelUpdateState(<any> chan).then((state) => {
+            return channelSync.GetChannelUpdateState(chan as any).then((state) => {
                 expect(state.mxChannels.length).equals(1);
                 expect(state.mxChannels[0].removeIcon).is.true;
             });
@@ -463,7 +463,7 @@ describe("ChannelSyncroniser", () => {
             chan.name = "newName";
             chan.topic = "newTopic";
             chan.guild = guild;
-            
+
             const testStore = [
                 new Entry({
                     id: "1",
@@ -480,9 +480,9 @@ describe("ChannelSyncroniser", () => {
                     },
                 }),
             ];
-            
+
             const channelSync = CreateChannelSync(testStore);
-            return channelSync.OnUpdate(<any> chan).then((state) => {
+            return channelSync.OnUpdate(chan as any).then((state) => {
                 expect(ROOM_NAME_SET).equals("[Discord] newGuild #newName");
                 expect(ROOM_TOPIC_SET).equals("newTopic");
                 expect(ROOM_AVATAR_SET).equals("avatarset");

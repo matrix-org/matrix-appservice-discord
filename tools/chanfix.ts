@@ -101,7 +101,7 @@ bridge.loadDatabases().catch((e) => {
     });
 }).then((clientTmp: any) => {
     client = clientTmp;
-    
+
     // first set update_icon to true if needed
     return bridge.getRoomStore().getEntriesByRemoteRoomData({
         update_name: true,
@@ -109,7 +109,7 @@ bridge.loadDatabases().catch((e) => {
     });
 }).then((mxRoomEntries) => {
     const promiseList = [];
-    
+
     mxRoomEntries.forEach((entry) => {
         if (entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
@@ -125,7 +125,7 @@ bridge.loadDatabases().catch((e) => {
 }).then(() => {
     // now it is time to actually run the updates
     let promiseChain: Bluebird<any> = Bluebird.resolve();
-    
+
     let delay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
         promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {

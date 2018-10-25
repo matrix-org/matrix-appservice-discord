@@ -4,7 +4,7 @@ import {MockCollection} from "./collection";
 // Mocking TextChannel
 export class MockChannel {
     public members = new MockCollection<string, MockMember>();
-    constructor (
+    constructor(
         public id: string = "",
         public guild: any = null,
         public type: string = "text",

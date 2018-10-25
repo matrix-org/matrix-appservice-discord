@@ -15,20 +15,20 @@ export interface ICommandAction {
   description?: string;
   permission?: string;
   run(params: any): Promise<any>;
-};
+}
 
 export interface ICommandActions {
   [index: string]: ICommandAction;
-};
+}
 
 export interface ICommandParameter {
   description?: string;
   get(param: string): Promise<any>;
-};
+}
 
 export interface ICommandParameters {
   [index: string]: ICommandParameter;
-};
+}
 
 export class Util {
 
@@ -36,7 +36,7 @@ export class Util {
    * downloadFile - This function will take a URL and store the resulting data into
    * a buffer.
    */
-  public static DownloadFile (url: string): Promise<Buffer> {
+  public static DownloadFile(url: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       let ht;
       if (url.startsWith("https")) {
@@ -67,7 +67,7 @@ export class Util {
    * uploadContentFromUrl - Upload content from a given URL to the homeserver
    * and return a MXC URL.
    */
-  public static UploadContentFromUrl (url: string, intent: Intent, name: string): Promise<IUploadResult> {
+  public static UploadContentFromUrl(url: string, intent: Intent, name: string): Promise<IUploadResult> {
     let contenttype;
     let size;
     name = name || null;

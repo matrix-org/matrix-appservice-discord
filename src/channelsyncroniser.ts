@@ -31,13 +31,13 @@ export interface ISingleChannelState {
     iconUrl: string; // nullable
     iconId: string; // nullable
     removeIcon: boolean;
-};
+}
 
 export interface IChannelState {
     id: string;
     mxChannels: ISingleChannelState[];
     iconMxcUrl: string; // nullable
-};
+}
 
 export class ChannelSyncroniser {
 
@@ -75,7 +75,7 @@ export class ChannelSyncroniser {
                 log.error("Failed to get channel state", e);
             }
         }
-        
+
         let iconMxcUrl = null;
         for (const channelState of channelStates) {
             channelState.iconMxcUrl = channelState.iconMxcUrl || iconMxcUrl;
@@ -103,7 +103,7 @@ export class ChannelSyncroniser {
             log.warn(`Couldn't find roomids for deleted channel ${channel.id}`);
             return;
         }
-        for (const roomid of roomids){
+        for (const roomid of roomids) {
             try {
                 await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomid, entries[roomid][0]);
             } catch (e) {
@@ -139,13 +139,13 @@ export class ChannelSyncroniser {
             id: channel.id,
             mxChannels: [],
         });
-        
+
         const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
         if (remoteRooms.length === 0) {
             log.verbose(`Could not find any channels in room store.`);
             return channelState;
         }
-        
+
         const patternMap = {
             name: "#" + channel.name,
             guild: channel.guild.name,
@@ -165,19 +165,19 @@ export class ChannelSyncroniser {
             const singleChannelState = Object.assign({}, DEFAULT_SINGLECHANNEL_STATE, {
                 mxid,
             });
-            
+
             const oldName = remoteRoom.remote.get("discord_name");
             if (remoteRoom.remote.get("update_name") && (forceUpdate || oldName !== name)) {
                 log.verbose(`Channel ${mxid} name should be updated`);
                 singleChannelState.name = name;
             }
-            
+
             const oldTopic = remoteRoom.remote.get("discord_topic");
             if (remoteRoom.remote.get("update_topic") && (forceUpdate || oldTopic !== topic)) {
                 log.verbose(`Channel ${mxid} topic should be updated`);
                 singleChannelState.topic = topic;
             }
-            
+
             const oldIconUrl = remoteRoom.remote.get("discord_iconurl");
             // no force on icon update as we don't want to duplicate ALL the icons
             if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) {
@@ -211,14 +211,14 @@ export class ChannelSyncroniser {
                 remoteRoom.remote.set("discord_name", channelState.name);
                 roomUpdated = true;
             }
-            
+
             if (channelState.topic !== null) {
                 log.verbose(`Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
                 await intent.setRoomTopic(channelState.mxid, channelState.topic);
                 remoteRoom.remote.set("discord_topic", channelState.topic);
                 roomUpdated = true;
             }
-            
+
             if (channelState.iconUrl !== null) {
                 log.verbose(`Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
                 if (channelsState.iconMxcUrl === null) {
@@ -234,7 +234,7 @@ export class ChannelSyncroniser {
                 remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
                 roomUpdated = true;
             }
-            
+
             if (channelState.removeIcon) {
                 log.verbose(`Clearing icon_url for ${channelState.mxid}`);
                 await intent.setRoomAvatar(channelState.mxid, null);
@@ -242,7 +242,7 @@ export class ChannelSyncroniser {
                 remoteRoom.remote.set("discord_iconurl_mxc", null);
                 roomUpdated = true;
             }
-            
+
             if (roomUpdated) {
                 await this.roomStore.upsertEntry(remoteRoom);
             }
@@ -260,7 +260,7 @@ export class ChannelSyncroniser {
 
         this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
-            for (const member of channel.members.array()){
+            for (const member of channel.members.array()) {
                 try {
                     const mIntent = await this.bot.GetIntentFromDiscordMember(member);
                     mIntent.leave(roomId);
@@ -288,7 +288,7 @@ export class ChannelSyncroniser {
                 log.error(`Failed to set topic of room ${roomId} ${e}`);
             }
         }
-        
+
         if (plumbed !== true) {
             if (options.unsetRoomAlias) {
                 try {

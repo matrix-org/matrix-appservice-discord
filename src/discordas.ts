@@ -39,7 +39,7 @@ function generateRegistration(reg, callback)  {
   callback(reg);
 }
 
-function run (port: number, fileConfig: DiscordBridgeConfig) {
+function run(port: number, fileConfig: DiscordBridgeConfig) {
   const config = new DiscordBridgeConfig();
   config.ApplyConfig(fileConfig);
   Log.Configure(config.logging);

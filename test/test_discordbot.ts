@@ -56,7 +56,7 @@ describe("DiscordBot", () => {
     },
     limits: {
         discordSendDelay: 50,
-    }
+    },
   };
   describe("run()", () => {
     it("should resolve when ready.", () => {
@@ -151,20 +151,22 @@ describe("DiscordBot", () => {
           config,
           mockBridge,
       );
-      let expected = 0;
-      discordBot.OnMessage = (msg: any) => {
+        let expected = 0;
+        discordBot.OnMessage = (msg: any) => {
           assert.equal(msg.n, expected);
           expected++;
-          return Promise.resolve()
+          return Promise.resolve();
       };
-      const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
-      discordBot.setBridge(mockBridge);
-      await discordBot.run();
-      // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
-      for (let i = 0; i < (2000 / 50) - 5; i++) {
-          client.emit("message", { n: i, channel: { id: 123} });
+        const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
+        discordBot.setBridge(mockBridge);
+        await discordBot.run();
+        const ITERATIONS = 25;
+        const CHANID = 123;
+        // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
+        for (let i = 0; i < ITERATIONS; i++) {
+          client.emit("message", { n: i, channel: { id: CHANID} });
       }
-      await discordBot.discordMessageQueue[123];
+        await discordBot.discordMessageQueue[CHANID];
     });
   });
 
