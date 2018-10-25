@@ -114,17 +114,16 @@ export class MatrixRoomHandler {
         } else {
           return this.discord.ProcessMatrixStateEvent(event);
         }
-    } else if (event.type === "m.room.member") {
-      return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.name") {
-      return this.discord.ProcessMatrixStateEvent(event);
-    } else if (event.type === "m.room.topic") {
+    } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
       return this.discord.ProcessMatrixStateEvent(event);
     } else if (event.type === "m.room.redaction" && context.rooms.remote) {
       return this.discord.ProcessMatrixRedact(event);
     } else if (event.type === "m.room.message" || event.type === "m.sticker") {
         log.verbose(`Got ${event.type} event`);
-        if (event.type === "m.room.message" && event.content.body && event.content.body.startsWith("!discord")) {
+        const isBotCommand = event.type === "m.room.message" &&
+            event.content.body &&
+            event.content.body.startsWith("!discord");
+        if (isBotCommand) {
             return this.ProcessCommand(event, context);
         } else if (context.rooms.remote) {
             const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
@@ -172,6 +171,15 @@ export class MatrixRoomHandler {
   }
 
   public async ProcessCommand(event: any, context: any) {
+      const intent = this.bridge.getIntent();
+      // Due to #257 we need to check if we are joined.
+      try {
+          await intent.getClient().sendReadReceipt(event.event_id);
+      } catch (ex) {
+          log.warn("Couldn't send a read reciept into the room:", ex, ". Ignoring command.");
+          return;
+      }
+
       if (!this.config.bridge.enableSelfServiceBridging) {
           // We can do this here because the only commands we support are self-service bridging
           return this.bridge.getIntent().sendMessage(event.room_id, {
