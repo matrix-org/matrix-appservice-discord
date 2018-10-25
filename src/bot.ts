@@ -331,15 +331,15 @@ export class DiscordBot {
     return false;
   }
 
-  public GetDiscordUserOrMember(userId: Discord.Snowflake, guildId?: Discord.Snowflake)
-    : Promise<Discord.User|Discord.GuildMember> {
+  public GetDiscordUserOrMember(
+      userId: Discord.Snowflake, guildId?: Discord.Snowflake,
+  ): Promise<Discord.User|Discord.GuildMember> {
         try {
             if (guildId && this.bot.guilds.has(guildId)) {
                return this.bot.guilds.get(guildId).fetchMember(userId);
             }
             return this.bot.fetchUser(userId);
-        }
-        catch (ex) {
+        } catch (ex) {
             log.warn(`Could not fetch user data for ${userId} (guild: ${guildId})`);
             return undefined;
         }

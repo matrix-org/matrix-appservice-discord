@@ -48,7 +48,7 @@ function createMatrixEventProcessor
         getBot: () => {
             return {
                 isRemoteUser: () => false,
-            }
+            };
         },
         getIntent: () => {
             return {
@@ -123,7 +123,7 @@ This is the first reply`,
         new MatrixEventProcessorOpts(
             config,
             bridge,
-            null
+            null,
     ));
 }
 const mockChannel = new MockChannel();

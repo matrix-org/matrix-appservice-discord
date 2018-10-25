@@ -258,13 +258,13 @@ export class MatrixEventProcessor {
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
                     userOrMember.username,
-                    userOrMember.avatarURL
+                    userOrMember.avatarURL,
                 );
                 return;
             } else if (userOrMember instanceof Discord.GuildMember) {
                 embed.setAuthor(
                     userOrMember.displayName,
-                    userOrMember.user.avatarURL
+                    userOrMember.user.avatarURL,
                 );
                 return;
             }
