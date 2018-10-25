@@ -108,11 +108,11 @@ This is the first reply`,
             const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
             return Buffer.alloc(size);
         },
-    })
+    });
 
     return new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
-            Util
+            Util,
         },
     })).MatrixEventProcessor(
         new MatrixEventProcessorOpts(
