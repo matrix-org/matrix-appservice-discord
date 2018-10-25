@@ -116,4 +116,24 @@ describe("Util", () => {
             return expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
         });
     });
+    describe("GetReplyFromReplyBody", () => {
+        it("Should get a reply from the body", () => {
+            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
+
+This is where the reply goes`);
+            return expect(reply).to.equal("This is where the reply goes");
+        });
+        it("Should get a multi-line reply from the body", () => {
+            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
+
+This is where the reply goes and
+there are even more lines here.`);
+            return expect(reply).to.equal("This is where the reply goes and\nthere are even more lines here.");
+        });
+        it("Should get empty string from an empty reply", () => {
+            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
+`);
+            return expect(reply).to.equal("");
+        });
+    });
 });

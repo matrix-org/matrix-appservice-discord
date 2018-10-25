@@ -218,7 +218,7 @@ export class Util {
       params[param] = await parameters[param].get(args[i]);
       i++;
     }
-    
+
     const retStr = await action.run(params);
     return retStr;
   }
@@ -236,6 +236,17 @@ export class Util {
         }
     }
     return {command, args};
+  }
+
+  public static GetReplyFromReplyBody(body: string) {
+      const lines = body.split("\n");
+      while(lines[0].startsWith("> ") || lines[0].trim().length > 0) {
+          lines.splice(0,1);
+          if (lines.length === 0) {
+              return "";
+          }
+      }
+      return lines.join("\n").trim();
   }
 }
 

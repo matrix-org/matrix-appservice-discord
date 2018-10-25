@@ -14,7 +14,6 @@ const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_EMOJI_REGEX = /:(\w+):/g;
-const REPLY_REGEX = /> <(@.*:.*)> (.*)\n\n(.*)/;
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -207,10 +206,6 @@ export class MatrixEventProcessor {
     }
 
     public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed, string]|undefined> {
-        const REPLY_MATCHES = 4;
-        const INDEX_REPLY = 3;
-        const INDEX_SOURCE = 2;
-        const INDEX_SENDER = 1;
         const relatesTo = event.content["m.relates_to"];
         let eventId = null;
         if (relatesTo && relatesTo["m.in_reply_to"]) {
@@ -218,10 +213,11 @@ export class MatrixEventProcessor {
         } else {
             return;
         }
-        const matches = REPLY_REGEX.exec(event.content.body);
-        if (!matches || matches.length !== REPLY_MATCHES) {
-            return;
+        let reponseText = Util.GetReplyFromReplyBody(event.content.body || "");
+        if (reponseText === "") {
+            reponseText = "Reply with unknown content";
         }
+
         const intent = this.bridge.getIntent();
         const embed = new Discord.RichEmbed();
         // Try to get the event.
@@ -231,10 +227,7 @@ export class MatrixEventProcessor {
             // Check if this is also a reply.
             if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&
                 sourceEvent.content["m.relates_to"]["m.in_reply_to"]) {
-                const sourceMatch = REPLY_REGEX.exec(sourceEvent.content.body);
-                if (sourceMatch && sourceMatch.length === REPLY_MATCHES) {
-                    replyText = sourceMatch[INDEX_REPLY];
-                }
+                replyText = Util.GetReplyFromReplyBody(sourceEvent.content.body);
             }
             embed.setDescription(replyText);
             this.SetEmbedAuthor(
@@ -244,14 +237,10 @@ export class MatrixEventProcessor {
             );
         } catch (ex) {
             // For some reason we failed to get the event, so using fallback.
-            embed.setDescription(matches[INDEX_SOURCE]);
-            this.SetEmbedAuthor(
-                embed,
-                matches[INDEX_SENDER],
-                await intent.getProfileInfo(matches[INDEX_SENDER]),
-            );
+            embed.setDescription("Reply with unknown content");
+            embed.setAuthor("Unknown");
         }
-        return [embed, matches[INDEX_REPLY]];
+        return [embed, reponseText];
     }
 
     private SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile: any) {
