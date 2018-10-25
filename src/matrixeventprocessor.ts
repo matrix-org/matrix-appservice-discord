@@ -25,7 +25,7 @@ export class MatrixEventProcessorOpts {
     }
 }
 
-export interface MatrixEventProcessorResult {
+export interface IMatrixEventProcessorResult {
     messageEmbed: Discord.RichEmbed;
     replyEmbed?: Discord.RichEmbed;
 }
@@ -77,7 +77,9 @@ export class MatrixEventProcessor {
         return msg;
     }
 
-    public async EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Promise<MatrixEventProcessorResult> {
+    public async EventToEmbed(
+        event: any, profile: any|null, channel: Discord.TextChannel,
+    ): Promise<IMatrixEventProcessorResult> {
         let body = this.config.bridge.disableDiscordMentions ? event.content.body :
             this.FindMentionsInPlainBody(
                 event.content.body,
@@ -204,7 +206,11 @@ export class MatrixEventProcessor {
         return `[${name}](${url})`;
     }
 
-    public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed,string]|undefined> {
+    public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed, string]|undefined> {
+        const REPLY_MATCHES = 4;
+        const INDEX_REPLY = 3;
+        const INDEX_SOURCE = 2;
+        const INDEX_SENDER = 1;
         const relatesTo = event.content["m.relates_to"];
         let eventId = null;
         if (relatesTo && relatesTo["m.in_reply_to"]) {
@@ -213,7 +219,7 @@ export class MatrixEventProcessor {
             return;
         }
         const matches = REPLY_REGEX.exec(event.content.body);
-        if (!matches || matches.length !== 4) {
+        if (!matches || matches.length !== REPLY_MATCHES) {
             return;
         }
         const intent = this.bridge.getIntent();
@@ -226,26 +232,26 @@ export class MatrixEventProcessor {
             if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&
                 sourceEvent.content["m.relates_to"]["m.in_reply_to"]) {
                 const sourceMatch = REPLY_REGEX.exec(sourceEvent.content.body);
-                if (sourceMatch && sourceMatch.length === 4) {
-                    replyText = sourceMatch[3];
+                if (sourceMatch && sourceMatch.length === REPLY_MATCHES) {
+                    replyText = sourceMatch[INDEX_REPLY];
                 }
             }
             embed.setDescription(replyText);
             this.SetEmbedAuthor(
                 embed,
                 sourceEvent.sender,
-                await intent.getProfileInfo(sourceEvent.sender)
+                await intent.getProfileInfo(sourceEvent.sender),
             );
         } catch (ex) {
             // For some reason we failed to get the event, so using fallback.
-            embed.setDescription(matches[2]);
+            embed.setDescription(matches[INDEX_SOURCE]);
             this.SetEmbedAuthor(
                 embed,
-                matches[1],
-                await intent.getProfileInfo(matches[1])
+                matches[INDEX_SENDER],
+                await intent.getProfileInfo(matches[INDEX_SENDER]),
             );
         }
-        return [embed, matches[3]];
+        return [embed, matches[INDEX_REPLY]];
     }
 
     private SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile: any) {

@@ -59,14 +59,14 @@ function createMatrixEventProcessor
                         return {
                             sender: "@doggo:localhost",
                             content: {
-                                body: "Hello!"
-                            }
+                                body: "Hello!",
+                            },
                         };
                     } else if (eventId === "$reply:localhost") {
                         return {
                             sender: "@doggo:localhost",
                             content: {
-                                body: `> <@doggo:localhost> This is the original body
+                                "body": `> <@doggo:localhost> This is the original body
 
 This is the first reply`,
                                 "m.relates_to": {
@@ -344,7 +344,7 @@ describe("MatrixEventProcessor", () => {
         });
 
         it("Should enable mentions if configured.", async () => {
-            const processor = await createMatrixEventProcessor();
+            const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 sender: "@test:localhost",
                 content: {
@@ -404,7 +404,7 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
-                "I like <:supercake:123>"
+                "I like <:supercake:123>",
             );
         });
 
@@ -425,7 +425,7 @@ describe("MatrixEventProcessor", () => {
             }, {avatar_url: "test"}, mockChannelEmojis as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
-                "I like :lamecake:"
+                "I like :lamecake:",
             );
         });
         it("Should replace /me with * displayname, and italicize message", async () => {
@@ -441,7 +441,7 @@ describe("MatrixEventProcessor", () => {
             }, mockChannel as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
-                "*displayname likes puppies*"
+                "*displayname likes puppies*",
             );
         });
         it("Should handle stickers.", async () => {
@@ -678,7 +678,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
                 type: "m.room.message",
                 content: {
-                    body: "Test",
+                    "body": "Test",
                     "m.relates_to": {
                         "m.in_reply_to": {
                             event_id: "!event:thing",
@@ -694,7 +694,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
                 type: "m.room.message",
                 content: {
-                    body: `> <@doggo:localhost> This is the fake body
+                    "body": `> <@doggo:localhost> This is the fake body
 
 This is where the reply goes`,
                     "m.relates_to": {
@@ -716,7 +716,7 @@ This is where the reply goes`,
                 sender: "@test:localhost",
                 type: "m.room.message",
                 content: {
-                    body: `> <@doggo:localhost> This is the original body
+                    "body": `> <@doggo:localhost> This is the original body
 
 This is where the reply goes`,
                     "m.relates_to": {
@@ -738,7 +738,7 @@ This is where the reply goes`,
                 sender: "@test:localhost",
                 type: "m.room.message",
                 content: {
-                    body: `> <@doggo:localhost> This is the first reply
+                    "body": `> <@doggo:localhost> This is the first reply
 
 This is the second reply`,
                     "m.relates_to": {
@@ -760,7 +760,7 @@ This is the second reply`,
                 sender: "@test:localhost",
                 type: "m.room.message",
                 content: {
-                    body: `> <@doggo:localhost> sent an image.
+                    "body": `> <@doggo:localhost> sent an image.
 
 This is the reply`,
                     "m.relates_to": {

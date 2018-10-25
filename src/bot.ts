@@ -271,10 +271,10 @@ export class DiscordBot {
             embed: embedSet.replyEmbed,
         } as Discord.WebhookMessageOptions);
       } else {
-          if (embedSet.replyEmbed) {
-              embed.addField("Replying to", embedSet.replyEmbed.author.name);
-              embed.addField("Reply text", embedSet.replyEmbed.description);
-          }
+        if (embedSet.replyEmbed) {
+            embed.addField("Replying to", embedSet.replyEmbed.author.name);
+            embed.addField("Reply text", embedSet.replyEmbed.description);
+        }
         opts.embed = embed;
         msg = await chan.send("", opts);
       }
