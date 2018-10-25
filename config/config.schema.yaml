@@ -89,6 +89,8 @@ properties:
         properties:
             roomGhostJoinDelay:
                 type: "number"
+            discordSendDelay:
+                type: "number"
     channel:
         type: "object"
         properties:

@@ -119,11 +119,11 @@ export class DiscordBot {
             Bluebird.delay(this.config.limits.discordSendDelay),
         ]).then(() => this.OnMessageUpdate(oldMessage, newMessage));
       });
-      client.on("message", (msg: Discord.Message) => {
+      client.on("message", async (msg: Discord.Message) => {
+        // tslint:disable-next-line:await-promise
+        await Bluebird.delay(this.config.limits.discordSendDelay);
         this.discordMessageQueue[msg.channel.id] = (async () => {
             await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-            // tslint:disable-next-line:await-promise
-            await Bluebird.delay(this.config.limits.discordSendDelay);
             await this.OnMessage(msg);
         })();
       });
