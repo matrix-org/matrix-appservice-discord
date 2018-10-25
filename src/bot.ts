@@ -268,8 +268,8 @@ export class DiscordBot {
             username: embed.author.name,
             avatarURL: embed.author.icon_url,
             file: opts.file,
-            embed: embedSet.replyEmbed,
-        } as Discord.WebhookMessageOptions);
+            embeds: [embedSet.replyEmbed],
+        } as any);
       } else {
         if (embedSet.replyEmbed) {
             embed.addField("Replying to", embedSet.replyEmbed.author.name);
