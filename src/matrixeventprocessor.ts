@@ -6,6 +6,7 @@ import * as escapeStringRegexp from "escape-string-regexp";
 import {Util} from "./util";
 import * as path from "path";
 import * as mime from "mime";
+import {MatrixUser} from "matrix-appservice-bridge";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -19,6 +20,7 @@ export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
         readonly bridge: any,
+        readonly discord: DiscordBot,
         ) {
 
     }
@@ -32,10 +34,12 @@ export interface IMatrixEventProcessorResult {
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: any;
+    private discord: DiscordBot;
 
     constructor (opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
+        this.discord = opts.discord;
     }
 
     public StateEventToMessage(event: any, channel: Discord.TextChannel): string {
@@ -126,7 +130,7 @@ export class MatrixEventProcessor {
         const messageEmbed = new Discord.RichEmbed();
         const replyEmbedAndBody = await this.GetEmbedForReply(event);
         messageEmbed.setDescription(replyEmbedAndBody ? replyEmbedAndBody[1] : body);
-        this.SetEmbedAuthor(messageEmbed, event.sender, profile);
+        await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
         return {
             messageEmbed,
             replyEmbed: replyEmbedAndBody ? replyEmbedAndBody[0] : undefined,
@@ -230,10 +234,9 @@ export class MatrixEventProcessor {
                 replyText = Util.GetReplyFromReplyBody(sourceEvent.content.body);
             }
             embed.setDescription(replyText);
-            this.SetEmbedAuthor(
+            await this.SetEmbedAuthor(
                 embed,
                 sourceEvent.sender,
-                await intent.getProfileInfo(sourceEvent.sender),
             );
         } catch (ex) {
             // For some reason we failed to get the event, so using fallback.
@@ -243,10 +246,37 @@ export class MatrixEventProcessor {
         return [embed, reponseText];
     }
 
-    private SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile: any) {
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: any) {
         const intent = this.bridge.getIntent();
         let displayName = sender;
         let avatarUrl = undefined;
+
+        // Are they a discord user.
+        if (this.bridge.getBot().isRemoteUser(sender)) {
+            const localpart = new MatrixUser(sender.replace("@", "")).localpart;
+            const userOrMember = await this.discord.GetDiscordUserOrMember(localpart.substring("_discord_".length));
+            if (userOrMember instanceof Discord.User) {
+                embed.setAuthor(
+                    userOrMember.username,
+                    userOrMember.avatarURL
+                );
+                return;
+            } else if (userOrMember instanceof Discord.GuildMember) {
+                embed.setAuthor(
+                    userOrMember.displayName,
+                    userOrMember.user.avatarURL
+                );
+                return;
+            }
+            // Let it fall through.
+        }
+        if (profile === undefined) {
+            try {
+                profile = await intent.getProfileInfo(sender);
+            } catch (ex) {
+                log.warn(`Failed to fetch profile for ${sender}`, ex);
+            }
+        }
 
         if (profile) {
             if (profile.displayname &&
