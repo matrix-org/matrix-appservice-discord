@@ -109,7 +109,7 @@ export class MatrixRoomHandler {
     if (event.type === "m.room.member" && event.content.membership === "invite") {
       return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
-        if (this.bridge.getBot()._isRemoteUser(event.state_key)) {
+        if (this.bridge.getBot().isRemoteUser(event.state_key)) {
             return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
         } else {
           return this.discord.ProcessMatrixStateEvent(event);

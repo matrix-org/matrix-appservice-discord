@@ -66,7 +66,7 @@ function createRH(opts: any = {}) {
         },
         getBot: () => {
             return {
-                _isRemoteUser: (id) => {
+                isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
             };

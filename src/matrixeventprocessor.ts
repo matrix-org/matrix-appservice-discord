@@ -6,6 +6,7 @@ import * as escapeStringRegexp from "escape-string-regexp";
 import {Util} from "./util";
 import * as path from "path";
 import * as mime from "mime";
+import {MatrixUser} from "matrix-appservice-bridge";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -19,18 +20,26 @@ export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
         readonly bridge: any,
+        readonly discord: DiscordBot,
         ) {
 
     }
 }
 
+export interface IMatrixEventProcessorResult {
+    messageEmbed: Discord.RichEmbed;
+    replyEmbed?: Discord.RichEmbed;
+}
+
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: any;
+    private discord: DiscordBot;
 
     constructor (opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
+        this.discord = opts.discord;
     }
 
     public StateEventToMessage(event: any, channel: Discord.TextChannel): string {
@@ -71,7 +80,9 @@ export class MatrixEventProcessor {
         return msg;
     }
 
-    public EventToEmbed(event: any, profile: any|null, channel: Discord.TextChannel): Discord.RichEmbed {
+    public async EventToEmbed(
+        event: any, profile: any|null, channel: Discord.TextChannel,
+    ): Promise<IMatrixEventProcessorResult> {
         let body = this.config.bridge.disableDiscordMentions ? event.content.body :
             this.FindMentionsInPlainBody(
                 event.content.body,
@@ -116,28 +127,14 @@ export class MatrixEventProcessor {
         // Handle discord custom emoji
         body = this.ReplaceDiscordEmoji(body, channel.guild);
 
-        let displayName = event.sender;
-        let avatarUrl = undefined;
-        if (profile) {
-            if (profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                displayName = profile.displayname;
-            }
-
-            if (profile.avatar_url) {
-                const mxClient = this.bridge.getClientFactory().getClientAs();
-                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
-            }
-        }
-        return new Discord.RichEmbed({
-            author: {
-                name: displayName.substr(0, MAX_NAME_LENGTH),
-                icon_url: avatarUrl,
-                url: `https://matrix.to/#/${event.sender}`,
-            },
-            description: body,
-        });
+        const messageEmbed = new Discord.RichEmbed();
+        const replyEmbedAndBody = await this.GetEmbedForReply(event);
+        messageEmbed.setDescription(replyEmbedAndBody ? replyEmbedAndBody[1] : body);
+        await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
+        return {
+            messageEmbed,
+            replyEmbed: replyEmbedAndBody ? replyEmbedAndBody[0] : undefined,
+        };
     }
 
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
@@ -210,6 +207,95 @@ export class MatrixEventProcessor {
             }
         }
         return `[${name}](${url})`;
+    }
+
+    public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed, string]|undefined> {
+        const relatesTo = event.content["m.relates_to"];
+        let eventId = null;
+        if (relatesTo && relatesTo["m.in_reply_to"]) {
+            eventId = relatesTo["m.in_reply_to"].event_id;
+        } else {
+            return;
+        }
+        let reponseText = Util.GetReplyFromReplyBody(event.content.body || "");
+        if (reponseText === "") {
+            reponseText = "Reply with unknown content";
+        }
+
+        const intent = this.bridge.getIntent();
+        const embed = new Discord.RichEmbed();
+        // Try to get the event.
+        try {
+            const sourceEvent = await intent.getEvent(event.room_id, eventId);
+            let replyText = sourceEvent.content.body  || "Reply with unknown content";
+            // Check if this is also a reply.
+            if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&
+                sourceEvent.content["m.relates_to"]["m.in_reply_to"]) {
+                replyText = Util.GetReplyFromReplyBody(sourceEvent.content.body);
+            }
+            embed.setDescription(replyText);
+            await this.SetEmbedAuthor(
+                embed,
+                sourceEvent.sender,
+            );
+        } catch (ex) {
+            log.warn("Failed to handle reply, showing a unknown embed:", ex);
+            // For some reason we failed to get the event, so using fallback.
+            embed.setDescription("Reply with unknown content");
+            embed.setAuthor("Unknown");
+        }
+        return [embed, reponseText];
+    }
+
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: any) {
+        const intent = this.bridge.getIntent();
+        let displayName = sender;
+        let avatarUrl = undefined;
+
+        // Are they a discord user.
+        if (this.bridge.getBot().isRemoteUser(sender)) {
+            const localpart = new MatrixUser(sender.replace("@", "")).localpart;
+            const userOrMember = await this.discord.GetDiscordUserOrMember(localpart.substring("_discord".length));
+            if (userOrMember instanceof Discord.User) {
+                embed.setAuthor(
+                    userOrMember.username,
+                    userOrMember.avatarURL,
+                );
+                return;
+            } else if (userOrMember instanceof Discord.GuildMember) {
+                embed.setAuthor(
+                    userOrMember.displayName,
+                    userOrMember.user.avatarURL,
+                );
+                return;
+            }
+            // Let it fall through.
+        }
+        if (profile === undefined) {
+            try {
+                profile = await intent.getProfileInfo(sender);
+            } catch (ex) {
+                log.warn(`Failed to fetch profile for ${sender}`, ex);
+            }
+        }
+
+        if (profile) {
+            if (profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                displayName = profile.displayname;
+            }
+
+            if (profile.avatar_url) {
+                const mxClient = this.bridge.getClientFactory().getClientAs();
+                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
+            }
+        }
+        embed.setAuthor(
+            displayName.substr(0, MAX_NAME_LENGTH),
+            avatarUrl,
+            `https://matrix.to/#/${sender}`,
+        );
     }
 
     private GetFilenameForMediaEvent(content: any): string {
