@@ -13,7 +13,8 @@
     "adminme": "node ./build/tools/adminme.js",
     "usertool": "node ./build/tools/userClientTools.js",
     "directoryfix": "node ./build/tools/addRoomsToDirectory.js",
-    "ghostfix": "node ./build/tools/ghostfix.js"
+    "ghostfix": "node ./build/tools/ghostfix.js",
+    "chanfix": "node ./build/tools/chanfix.js"
   },
   "repository": {
     "type": "git",

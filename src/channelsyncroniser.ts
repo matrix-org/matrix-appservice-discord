@@ -133,7 +133,7 @@ export class ChannelSyncroniser {
         return rooms.map((room) => room.matrix.getId() as string);
     }
 
-    public async GetChannelUpdateState(channel: Discord.TextChannel): Promise<IChannelState> {
+    public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
         log.verbose(`State update request for ${channel.id}`);
         const channelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
             id: channel.id,
@@ -167,19 +167,19 @@ export class ChannelSyncroniser {
             });
             
             const oldName = remoteRoom.remote.get("discord_name");
-            if (remoteRoom.remote.get("update_name") && oldName !== name) {
+            if (remoteRoom.remote.get("update_name") && (forceUpdate || oldName !== name)) {
                 log.verbose(`Channel ${mxid} name should be updated`);
                 singleChannelState.name = name;
             }
             
             const oldTopic = remoteRoom.remote.get("discord_topic");
-            if (remoteRoom.remote.get("update_topic") && oldTopic !== topic) {
+            if (remoteRoom.remote.get("update_topic") && (forceUpdate || oldTopic !== topic)) {
                 log.verbose(`Channel ${mxid} topic should be updated`);
                 singleChannelState.topic = topic;
             }
             
             const oldIconUrl = remoteRoom.remote.get("discord_iconurl");
-            if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) {
+            if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) { // no force on icon update as we don't want to duplicate ALL the icons
                 log.verbose(`Channel ${mxid} icon should be updated`);
                 if (iconUrl !== null) {
                     singleChannelState.iconUrl = iconUrl;
@@ -191,6 +191,12 @@ export class ChannelSyncroniser {
             channelState.mxChannels.push(singleChannelState);
         });
         return channelState;
+    }
+
+    public async EnsureState(channel: Discord.TextChannel) {
+        const state = await this.GetChannelUpdateState(channel, true);
+        log.info(`Ensuring ${state.id} to be correct`);
+        await this.ApplyStateToChannel(state);
     }
 
     private async ApplyStateToChannel(channelsState: IChannelState) {

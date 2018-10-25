@@ -1,4 +1,4 @@
-import { AppServiceRegistration, ClientFactory, Bridge } from "matrix-appservice-bridge";
+import { AppServiceRegistration, ClientFactory, Bridge, Intent } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
@@ -9,22 +9,10 @@ import { DiscordBridgeConfig } from "../src/config";
 import { DiscordBot } from "../src/bot";
 import { DiscordStore } from "../src/store";
 import { Provisioner } from "../src/provisioner";
-import { UserSyncroniser } from "../src/usersyncroniser";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
 
-const log = new Log("GhostFix");
-
-// Note: The schedule must not have duplicate values to avoid problems in positioning.
-/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
-const JOIN_ROOM_SCHEDULE = [
-    0,              // Right away
-    1000,           // 1 second
-    30000,          // 30 seconds
-    300000,         // 5 minutes
-    900000,         // 15 minutes
-];
-/* tslint:enable:no-magic-numbers */
+const log = new Log("ChanFix");
 
 const optionDefinitions = [
     {
@@ -49,9 +37,9 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
-        header: "Fix usernames of joined ghosts",
-        content: "A tool to fix usernames of ghosts already in " +
-            "matrix rooms, to make sure they represent the correct discord usernames."},
+        header: "Fix bridged channels",
+        content: "A tool to fix channels of rooms already bridged " +
+            "to matrix, to make sure their names, icons etc. are correctly."},
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -99,57 +87,58 @@ const bridge = new Bridge({
 provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
 let chanSync;
-let userSync;
 
 let client;
 bridge.loadDatabases().catch((e) => {
     return discordstore.init();
 }).then(() => {
     chanSync = new ChannelSyncroniser(bridge, config, discordbot);
-    userSync = new UserSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
+    bridge._botClient = bridge._clientFactory.getClientAs();
+    bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
     return discordbot.ClientFactory.init().then(() => {
         return discordbot.ClientFactory.getClient();
     });
 }).then((clientTmp: any) => {
     client = clientTmp;
+    
+    // first set update_icon to true if needed
+    return bridge.getRoomStore().getEntriesByRemoteRoomData({
+        update_name: true,
+        update_topic: true,
+    });
+}).then((mxRoomEntries) => {
+    const promiseList = [];
+    
+    mxRoomEntries.forEach((entry) => {
+        if (entry.remote.get("plumbed")) {
+            return; // skipping plumbed rooms
+        }
+        const update_icon = entry.remote.get("update_icon");
+        if (update_icon !== undefined && update_icon !== null) {
+            return; // skipping because something was set manually
+        }
+        entry.remote.set("update_icon", true);
+        promiseList.push(bridge.getRoomStore().upsertEntry(entry));
+    });
+    return Promise.all(promiseList);
+}).then(() => {
+    // now it is time to actually run the updates
     let promiseChain: Bluebird<any> = Bluebird.resolve();
     
-    let delay = config.limits.roomGhostJoinDelay;
+    let delay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
         guild.channels.forEach((channel) => {
             if (channel.type !== "text") {
                 return;
             }
-            channel.members.forEach((member) => {
-                if (member.id === client.user.id) {
-                    return;
-                }
-                promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-                    return Bluebird.each(chanSync.GetRoomIdsFromChannel(channel), (room) => {
-                        let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-                        const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
-                            userSync.EnsureJoin(member, room);
-                        });
-                        const errorHandler = (err) => {
-                            log.error(`Error joining room ${room} as ${member.id}`);
-                            log.error(err);
-                            const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
-                            if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                                log.warn(`Cannot join ${room} as ${member.id}`);
-                                return Promise.reject(err);
-                            } else {
-                                currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
-                                return doJoin().catch(errorHandler);
-                            }
-                        };
-                        return doJoin().catch(errorHandler);
-                    }).catch((err) => {
-                        log.warn(`No associated matrix rooms for discord room ${channel.id}`);
-                    });
-                }));
-                delay += config.limits.roomGhostJoinDelay;
-            });
+            
+            promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+                return chanSync.EnsureState(channel).catch((err) => {
+                    log.warn(`Couldn't update rooms for ${channel.id}`, err);
+                });
+            }));
+            delay += config.limits.roomGhostJoinDelay;
         });
     });
     return promiseChain;
