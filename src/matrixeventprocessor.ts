@@ -226,7 +226,7 @@ export class MatrixEventProcessor {
         const embed = new Discord.RichEmbed();
         // Try to get the event.
         try {
-            const sourceEvent = await intent.getEvent(eventId);
+            const sourceEvent = await intent.getEvent(event.room_id, eventId);
             let replyText = sourceEvent.content.body  || "Reply with unknown content";
             // Check if this is also a reply.
             if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&

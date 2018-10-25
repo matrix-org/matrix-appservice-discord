@@ -59,7 +59,7 @@ function createMatrixEventProcessor
                         },
                     };
                 },
-                getEvent: async (eventId: string) => {
+                getEvent: async (_, eventId: string) => {
                     if (eventId === "$goodEvent:localhost") {
                         return {
                             sender: "@doggo:localhost",
