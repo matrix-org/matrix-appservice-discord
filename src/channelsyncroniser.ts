@@ -61,7 +61,7 @@ export class ChannelSyncroniser {
         }
     }
 
-    public async OnGuildUpdate(guild: Discord.Guild) {
+    public async OnGuildUpdate(guild: Discord.Guild, force = false) {
         log.verbose(`Got guild update for guild ${guild.id}`);
         const channelStates = [];
         for (const [_, channel] of guild.channels) {
@@ -69,7 +69,7 @@ export class ChannelSyncroniser {
                 continue; // not supported for now
             }
             try {
-                const channelState = await this.GetChannelUpdateState(channel as Discord.TextChannel);
+                const channelState = await this.GetChannelUpdateState(channel as Discord.TextChannel, force);
                 channelStates.push(channelState);
             } catch (e) {
                 log.error("Failed to get channel state", e);

@@ -128,18 +128,12 @@ bridge.loadDatabases().catch((e) => {
     
     let delay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
-        guild.channels.forEach((channel) => {
-            if (channel.type !== "text") {
-                return;
-            }
-            
-            promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-                return chanSync.EnsureState(channel).catch((err) => {
-                    log.warn(`Couldn't update rooms for ${channel.id}`, err);
-                });
-            }));
-            delay += config.limits.roomGhostJoinDelay;
-        });
+        promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+            return chanSync.OnGuildUpdate(guild, true).catch((err) => {
+                log.warn(`Couldn't update rooms of guild ${guild.id}`, err);
+            });
+        }));
+        delay += config.limits.roomGhostJoinDelay;
     });
     return promiseChain;
 }).catch((err) => {
