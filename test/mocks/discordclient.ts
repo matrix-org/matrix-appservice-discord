@@ -1,12 +1,13 @@
 import {MockCollection} from "./collection";
 import {MockGuild} from "./guild";
 import {MockUser} from "./user";
+import { EventEmitter } from "events";
 
 export class MockDiscordClient {
   public guilds = new MockCollection<string, MockGuild>();
   public user: MockUser;
   private testLoggedIn: boolean = false;
-  private testCallbacks: Map<string, () => void> = new Map();
+  private testCallbacks: Map<string, (...data: any[]) => void> = new Map();
 
   constructor() {
     const channels = [
@@ -30,8 +31,12 @@ export class MockDiscordClient {
     this.user = new MockUser("12345");
   }
 
-  public on(event: string, callback: () => void) {
+  public on(event: string, callback: (...data: any[]) => void) {
       this.testCallbacks.set(event, callback);
+  }
+
+  public emit(event: string, ...data: any[]) {
+      return this.testCallbacks.get(event).apply(this, data);
   }
 
   public async login(token: string): Promise<void> {

@@ -7,6 +7,8 @@ import { Log } from "../src/log";
 import { MessageProcessorMatrixResult } from "../src/messageprocessor";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
+import { DiscordBot } from "../src/bot";
+import { MockDiscordClient } from "./mocks/discordclient";
 
 Chai.use(ChaiAsPromised);
 
@@ -52,6 +54,9 @@ describe("DiscordBot", () => {
     bridge: {
         domain: "localhost",
     },
+    limits: {
+        discordSendDelay: 50,
+    }
   };
   describe("run()", () => {
     it("should resolve when ready.", () => {
@@ -138,6 +143,28 @@ describe("DiscordBot", () => {
       discordBot.OnMessageUpdate(oldMsg, newMsg).then(() => {
         Chai.assert.equal(checkMsgSent, true);
       });
+    });
+  });
+  describe("event:message", () => {
+    it("should delay messages so they arrive in order", async () => {
+        discordBot = new modDiscordBot.DiscordBot(
+          config,
+          mockBridge,
+      );
+      let expected = 0;
+      discordBot.OnMessage = (msg: any) => {
+          assert.equal(msg.n, expected);
+          expected++;
+          return Promise.resolve()
+      };
+      const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
+      discordBot.setBridge(mockBridge);
+      await discordBot.run();
+      // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
+      for (let i = 0; i < (2000 / 50) - 5; i++) {
+          client.emit("message", { n: i, channel: { id: 123} });
+      }
+      await discordBot.discordMessageQueue[123];
     });
   });
 

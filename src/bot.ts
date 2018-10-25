@@ -46,6 +46,9 @@ export class DiscordBot {
   private channelSync: ChannelSyncroniser;
   private roomHandler: MatrixRoomHandler;
 
+  /* Handles messages queued up to be sent to discord. */
+  private discordMessageQueue: { [channelId: string]: Promise<any> };
+
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
     this.store = store;
@@ -55,6 +58,7 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
     this.presenceHandler = new PresenceHandler(this);
+    this.discordMessageQueue = {};
   }
 
   public setBridge(bridge: Bridge) {
@@ -103,11 +107,24 @@ export class DiscordBot {
       client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
       client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
 
-      client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
-      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
-      client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
-          this.OnMessage(msg);
-        });
+      client.on("messageDelete", (msg: Discord.Message) => {
+          this.discordMessageQueue[msg.channel.id] = Promise.all([
+            this.discordMessageQueue[msg.channel.id] || Promise.resolve(),
+            Bluebird.delay(this.config.limits.discordSendDelay),
+        ]).then(() => this.DeleteDiscordMessage(msg));
+      });
+      client.on("messageUpdate", (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+          this.discordMessageQueue[newMessage.channel.id] = Promise.all([
+            this.discordMessageQueue[newMessage.channel.id] || Promise.resolve(),
+            Bluebird.delay(this.config.limits.discordSendDelay),
+        ]).then(() => this.OnMessageUpdate(oldMessage, newMessage));
+      });
+      client.on("message", (msg: Discord.Message) => {
+        this.discordMessageQueue[msg.channel.id] = (async () => {
+            await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+            await Bluebird.delay(this.config.limits.discordSendDelay);
+            await this.OnMessage(msg);
+        })();
       });
       const jsLog = new Log("discord.js");
 
@@ -486,7 +503,7 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.userSync.OnUpdateUser(msg.author).then(() => {
+    return this.userSync.OnUpdateUser(msg.author).then(() => {
       return this.channelSync.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("No bridged rooms to send message to. Oh well.");
         return null;
@@ -576,18 +593,18 @@ export class DiscordBot {
     }
   }
 
-    private async DeleteDiscordMessage(msg: Discord.Message) {
-        log.info(`Got delete event for ${msg.id}`);
-        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-        if (!storeEvent.Result) {
-          log.warn(`Could not redact because the event was not in the store.`);
-          return;
-        }
-        while (storeEvent.Next()) {
-          log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-          const intent = this.GetIntentFromDiscordMember(msg.author);
-          const matrixIds = storeEvent.MatrixId.split(";");
-          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
-        }
+  private async DeleteDiscordMessage(msg: Discord.Message) {
+    log.info(`Got delete event for ${msg.id}`);
+    const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+    if (!storeEvent.Result) {
+      log.warn(`Could not redact because the event was not in the store.`);
+      return;
     }
+    while (storeEvent.Next()) {
+      log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
+      const intent = this.GetIntentFromDiscordMember(msg.author);
+      const matrixIds = storeEvent.MatrixId.split(";");
+      await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+    }
+  }
 }

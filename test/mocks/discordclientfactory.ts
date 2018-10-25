@@ -1,6 +1,7 @@
 import {MockDiscordClient} from "./discordclient";
 
 export class DiscordClientFactory {
+  private botClient: MockDiscordClient = null;
   constructor(config: any, store: any) {
     ;
   }
@@ -10,6 +11,9 @@ export class DiscordClientFactory {
   }
 
   public getClient(userId?: string): Promise<MockDiscordClient> {
-    return Promise.resolve(new MockDiscordClient());
+    if (userId == null && !this.botClient){
+        this.botClient = new MockDiscordClient();
+    }
+    return Promise.resolve(this.botClient);
   }
 }
