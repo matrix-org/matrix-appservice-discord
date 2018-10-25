@@ -114,8 +114,8 @@ bridge.loadDatabases().catch((e) => {
         if (entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
         }
-        const update_icon = entry.remote.get("update_icon");
-        if (update_icon !== undefined && update_icon !== null) {
+        const updateIcon = entry.remote.get("update_icon");
+        if (updateIcon !== undefined && updateIcon !== null) {
             return; // skipping because something was set manually
         }
         entry.remote.set("update_icon", true);

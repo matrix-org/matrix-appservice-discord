@@ -179,7 +179,8 @@ export class ChannelSyncroniser {
             }
             
             const oldIconUrl = remoteRoom.remote.get("discord_iconurl");
-            if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) { // no force on icon update as we don't want to duplicate ALL the icons
+            // no force on icon update as we don't want to duplicate ALL the icons
+            if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) {
                 log.verbose(`Channel ${mxid} icon should be updated`);
                 if (iconUrl !== null) {
                     singleChannelState.iconUrl = iconUrl;
