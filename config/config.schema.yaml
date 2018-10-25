@@ -22,6 +22,10 @@ properties:
             type: "boolean"
           enableSelfServiceBridging:
             type: "boolean"
+          disableEveryoneMention:
+            type: "boolean"
+          disableHereMention:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken"]
@@ -34,7 +38,6 @@ properties:
             type: "string"
     logging:
         type: "object"
-        required: []
         properties:
           console:
             type: "string"
@@ -68,7 +71,6 @@ properties:
                     type: "string"
     database:
         type: "object"
-        required: []
         properties:
           connString:
             type: "string"
@@ -80,7 +82,34 @@ properties:
             type: "string"
     room:
         type: "object"
-        required: ["defaultVisibility"]
         properties:
           defaultVisibility:
             type: "string"
+            enum: ["public", "private"]
+    limits:
+        type: "object"
+        properties:
+            roomGhostJoinDelay:
+                type: "number"
+    channel:
+        type: "object"
+        properties:
+            namePattern:
+                type: "string"
+            deleteOptions:
+                type: "object"
+                properties:
+                   namePrefix:
+                       type: "string"
+                   topicPrefix:
+                       type: "string"
+                   disableMessaging:
+                     type: "boolean"
+                   unsetRoomAlias:
+                     type: "boolean"
+                   unlistFromDirectory:
+                     type: "boolean"
+                   setInviteOnly:
+                     type: "boolean"
+                   ghostsLeave:
+                     type: "boolean"
