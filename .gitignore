@@ -3,7 +3,9 @@
 # Logs
 logs
 *.log
+*.log.*
 npm-debug.log*
+.audit.json
 
 # Runtime data
 pids
@@ -45,3 +47,4 @@ discord-registration.yaml
 build
 
 *.db
+*.db.backup
