@@ -1,12 +1,26 @@
 language: node_js
-node_js:
- - "8.11.1"
- - "9.11.1"
- - "10.1.0"
-script:
- - npm run-script build
- - npm run-script coverage
- - npm run-script lint
+install: npm install && npm run build
+
+jobs:
+    include:
+    - stage: tests
+      name: "Unit - Node 8"
+      script: npm run test
+      node_js: "8"
+    - script: npm run test
+      name: "Unit - Node 10"
+      node_js: "10"
+    - script: npm run test
+      name: "Unit - Node 11"
+      node_js: "11.0.0"
+
+    - script: npm run lint
+      name: "Linting"
+      node_js: "10"
+    - script: npm run coverage
+      name: "Coverage"
+      node_js: "10"
+
 notifications:
     webhooks:
         urls:
