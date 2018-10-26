@@ -1,6 +1,7 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import * as Bluebird from "bluebird";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
@@ -68,7 +69,7 @@ function run(port: number, fileConfig: DiscordBridgeConfig) {
       // onUserQuery: userQuery,
       onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
       onEvent: (request, context) =>
-          request.outcomeFrom(Promise.resolve(roomhandler.OnEvent(request, context)))
+          request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)))
       ,
       onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
       thirdPartyLookup: roomhandler.ThirdPartyLookup,
