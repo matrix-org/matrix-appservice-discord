@@ -6,9 +6,12 @@ bridging, with one or two bugs cropping up.
 
 ![Screenshot of Riot and Discord working together](screenshot.png)
 
+
 ## Helping out
 
+
 [![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=develop)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
+[![#discord:half-shot.uk](https://img.shields.io/badge/matrix-%23discord%3Ahalf--shot.uk-lightgrey.svg)](https://matrix.to/#/#discord:half-shot.uk)
 
 ### PRs
 PRs are graciously accepted, so please come talk to us in [#discord-bridge:matrix.org](https://matrix.to/#/#discord-bridge:matrix.org)
@@ -20,30 +23,30 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 
 ## Setting up
 
-(These instructions were tested against Node.js v6.9.5 and the Synapse homeserver)
+These instructions were tested against Node.js v8.11.1 and the Synapse homeserver.
 
 ### Setup the bridge
 
 * Run ``npm install`` to grab the dependencies.
-* Run ``npm run-script build`` to build the typescript.
+* Run ``npm run build`` to build the typescript into javascript.
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
   * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
   While localhost would work, it does not resolve correctly with Webhooks/Avatars.
 
-  ````
+  ```yaml
   bridge:
-  domain: "example.com"
-  homeserverUrl: "https://example.com:8448"
-  ````
+      domain: "example.com"
+      homeserverUrl: "https://example.com:8448"
+  ```
 
 * Run ``node build/src/discordas.js -r -u "http://localhost:9005" -c config.yaml``
 * Modify your HSs appservices config so that it includes the generated file.
   * e.g. On synapse, adding to ``app_service_config_files`` array in ``homeserver.yaml``
 
-  ````
+  ```yaml
   app_service_config_files:
-  - "discord-registration.yaml"
-  ````
+    - "discord-registration.yaml"
+  ```
 
   * Copy ``discord-registration.yaml`` to your Synapse's directory.
 
@@ -51,7 +54,7 @@ Please also be aware that this is an unoffical project worked on in my (Half-Sho
 
 Following the instructions above, generate a registration file. The file may also be hand-crafted if you're familiar with the layout. You'll need this file to use the Docker image.
 
-```
+```shell
 # Create the volume where we'll keep the bridge's files
 mkdir -p /matrix-appservice-discord
 
@@ -83,7 +86,7 @@ should show up in the network list on Riot and other clients.
 
 * Create a new application via https://discordapp.com/developers/applications/me/create
 * Make sure to create a bot user. Fill in ``config.yaml``
-* Run ``npm run-script getbotlink`` to get a authorisation link.
+* Run ``npm run getbotlink`` to get a authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
 * Finally, you can join a room with ``#_discord_guildid_channelid``
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
