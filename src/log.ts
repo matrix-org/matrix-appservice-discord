@@ -1,6 +1,6 @@
-import { createLogger, Logger, format, transports } from "winston";     
+import { createLogger, Logger, format, transports } from "winston";
 import { DiscordBridgeConfigLogging, LoggingFile} from "./config";
-import { inspect } from "util"; 
+import { inspect } from "util";
 import * as moment from "moment";
 import "winston-daily-rotate-file";
 

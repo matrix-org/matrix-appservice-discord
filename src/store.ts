@@ -19,7 +19,7 @@ export class DiscordStore {
   public db: IDatabaseConnector;
   private version: number;
   private config: DiscordBridgeConfigDatabase;
-  constructor (private configOrFile: DiscordBridgeConfigDatabase|string) {
+  constructor(private configOrFile: DiscordBridgeConfigDatabase|string) {
     if (typeof(configOrFile) === "string") {
         this.config = new DiscordBridgeConfigDatabase();
         this.config.filename = configOrFile;
@@ -64,7 +64,7 @@ export class DiscordStore {
   /**
    * Checks the database has all the tables needed.
    */
-  public async init (overrideSchema: number = 0): Promise<void> {
+  public async init(overrideSchema: number = 0): Promise<void> {
     log.info("Starting DB Init");
     await this.open_database();
     let version = await this.getSchemaVersion();
@@ -95,11 +95,11 @@ export class DiscordStore {
     log.info("Updated database to the latest schema");
   }
 
-  public close () {
+  public close() {
     this.db.Close();
   }
 
-  public create_table (statement: string, tablename: string): Promise<void|Error> {
+  public create_table(statement: string, tablename: string): Promise<void|Error> {
     return this.db.Exec(statement).then(() => {
       log.info("Created table", tablename);
     }).catch((err) => {
@@ -266,7 +266,7 @@ export class DiscordStore {
       return data.Delete(this);
   }
 
-  private async getSchemaVersion ( ): Promise<number> {
+  private async getSchemaVersion( ): Promise<number> {
     log.silly("_get_schema_version");
     let version = 0;
     try {
@@ -277,7 +277,7 @@ export class DiscordStore {
     return version;
   }
 
-  private setSchemaVersion (ver: number): Promise<any> {
+  private setSchemaVersion(ver: number): Promise<any> {
     log.silly("_set_schema_version => ", ver);
     return this.db.Run(
       `

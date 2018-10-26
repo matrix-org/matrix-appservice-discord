@@ -36,7 +36,7 @@ export class MatrixEventProcessor {
     private bridge: any;
     private discord: DiscordBot;
 
-    constructor (opts: MatrixEventProcessorOpts) {
+    constructor(opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
@@ -250,7 +250,7 @@ export class MatrixEventProcessor {
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: any) {
         const intent = this.bridge.getIntent();
         let displayName = sender;
-        let avatarUrl = undefined;
+        let avatarUrl;
 
         // Are they a discord user.
         if (this.bridge.getBot().isRemoteUser(sender)) {

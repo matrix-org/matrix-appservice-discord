@@ -5,7 +5,7 @@ const log = new Log("SQLite3");
 
 export class SQLite3 implements IDatabaseConnector {
     private db: Database;
-    constructor (private filename: string) {
+    constructor(private filename: string) {
 
     }
 

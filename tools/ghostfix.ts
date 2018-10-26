@@ -114,7 +114,7 @@ bridge.loadDatabases().catch((e) => {
 }).then((clientTmp: any) => {
     client = clientTmp;
     let promiseChain: Bluebird<any> = Bluebird.resolve();
-    
+
     let delay = config.limits.roomGhostJoinDelay;
     client.guilds.forEach((guild) => {
         guild.channels.forEach((channel) => {

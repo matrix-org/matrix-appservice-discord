@@ -16,7 +16,7 @@ export class Postgres implements IDatabaseConnector {
     }
 
     private db: IDatabase<any>;
-    constructor (private connectionString: string) {
+    constructor(private connectionString: string) {
 
     }
     public Open() {

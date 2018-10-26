@@ -33,13 +33,13 @@ export interface IUserState {
     avatarUrl: string; // Nullable
     avatarId: string;
     removeAvatar: boolean; // If the avatar has been removed from the user.
-};
+}
 
 export interface IGuildMemberRole {
     name: string;
     color: number;
     position: number;
-};
+}
 
 export interface IGuildMemberState {
     id: string;

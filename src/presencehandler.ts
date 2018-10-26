@@ -14,12 +14,12 @@ export class PresenceHandler {
     private readonly bot: DiscordBot;
     private presenceQueue: User[];
     private interval: number;
-    constructor (bot: DiscordBot) {
+    constructor(bot: DiscordBot) {
         this.bot = bot;
         this.presenceQueue = [];
     }
 
-    get QueueCount (): number {
+    get QueueCount(): number {
         return this.presenceQueue.length;
     }
 

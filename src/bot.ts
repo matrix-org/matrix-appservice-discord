@@ -19,9 +19,6 @@ import * as mime from "mime";
 
 const log = new Log("DiscordBot");
 
-// Due to messages often arriving before we get a response from the send call,
-// messages get delayed from discord.
-const MSG_PROCESS_DELAY = 750;
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
@@ -46,6 +43,9 @@ export class DiscordBot {
   private channelSync: ChannelSyncroniser;
   private roomHandler: MatrixRoomHandler;
 
+  /* Handles messages queued up to be sent to discord. */
+  private discordMessageQueue: { [channelId: string]: Promise<any> };
+
   constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
     this.config = config;
     this.store = store;
@@ -55,6 +55,7 @@ export class DiscordBot {
       new MessageProcessorOpts(this.config.bridge.domain, this),
     );
     this.presenceHandler = new PresenceHandler(this);
+    this.discordMessageQueue = {};
   }
 
   public setBridge(bridge: Bridge) {
@@ -84,7 +85,7 @@ export class DiscordBot {
       return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
   }
 
-  public run (): Promise<void> {
+  public run(): Promise<void> {
     return this.clientFactory.init().then(() => {
       return this.clientFactory.getClient();
     }).then((client: any) => {
@@ -103,11 +104,32 @@ export class DiscordBot {
       client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
       client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
 
-      client.on("messageDelete", (msg) => { this.DeleteDiscordMessage(msg); });
-      client.on("messageUpdate", (oldMessage, newMessage) => { this.OnMessageUpdate(oldMessage, newMessage); });
-      client.on("message", (msg) => { Bluebird.delay(MSG_PROCESS_DELAY).then(() => {
-          this.OnMessage(msg);
-        });
+      // Due to messages often arriving before we get a response from the send call,
+      // messages get delayed from discord. We use Bluebird.delay to handle this.
+
+      client.on("messageDelete", async (msg: Discord.Message) => {
+          // tslint:disable-next-line:await-promise
+          await Bluebird.delay(this.config.limits.discordSendDelay);
+          this.discordMessageQueue[msg.channel.id] = (async () => {
+              await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+              await this.OnMessage(msg);
+          })();
+      });
+      client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+          // tslint:disable-next-line:await-promise
+          await Bluebird.delay(this.config.limits.discordSendDelay);
+          this.discordMessageQueue[newMessage.channel.id] = (async () => {
+              await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
+              await this.OnMessageUpdate(oldMessage, newMessage);
+          })();
+      });
+      client.on("message", async (msg: Discord.Message) => {
+        // tslint:disable-next-line:await-promise
+        await Bluebird.delay(this.config.limits.discordSendDelay);
+        this.discordMessageQueue[msg.channel.id] = (async () => {
+            await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+            await this.OnMessage(msg);
+        })();
       });
       const jsLog = new Log("discord.js");
 
@@ -173,12 +195,12 @@ export class DiscordBot {
     }
   }
 
-  public LookupRoom (server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
+  public LookupRoom(server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
     const hasSender = sender !== null;
     return this.clientFactory.getClient(sender).then((client) => {
       const guild = client.guilds.get(server);
       if (!guild) {
-        throw `Guild "${server}" not found`;
+        throw new Error(`Guild "${server}" not found`);
       }
       const channel = guild.channels.get(room);
       if (channel) {
@@ -187,7 +209,7 @@ export class DiscordBot {
         lookupResult.botUser = this.bot.user.id === client.user.id;
         return lookupResult;
       }
-      throw `Channel "${room}" not found`;
+      throw new Error(`Channel "${room}" not found`);
     }).catch((err) => {
       log.verbose("LookupRoom => ", err);
       if (hasSender) {
@@ -200,7 +222,7 @@ export class DiscordBot {
 
   public async ProcessMatrixStateEvent(event: any): Promise<void> {
       log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-      const channel = <Discord.TextChannel> await this.GetChannelFromRoomId(event.room_id);
+      const channel = await this.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
       const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
       if (!msg) {
           return;
@@ -327,7 +349,7 @@ export class DiscordBot {
     }
   }
 
-  public OnUserQuery (userId: string): any {
+  public OnUserQuery(userId: string): any {
     return false;
   }
 
@@ -435,7 +457,7 @@ export class DiscordBot {
 
   private async OnMessage(msg: Discord.Message) {
     const indexOfMsg = this.sentMessages.indexOf(msg.id);
-    const chan = <Discord.TextChannel> msg.channel;
+    const chan = msg.channel as Discord.TextChannel;
     if (indexOfMsg !== -1) {
       log.verbose("Got repeated message, ignoring.");
       delete this.sentMessages[indexOfMsg];
@@ -486,7 +508,7 @@ export class DiscordBot {
     }
 
     // Update presence because sometimes discord misses people.
-    this.userSync.OnUpdateUser(msg.author).then(() => {
+    return this.userSync.OnUpdateUser(msg.author).then(() => {
       return this.channelSync.GetRoomIdsFromChannel(msg.channel).catch((err) => {
         log.verbose("No bridged rooms to send message to. Oh well.");
         return null;
@@ -576,18 +598,18 @@ export class DiscordBot {
     }
   }
 
-    private async DeleteDiscordMessage(msg: Discord.Message) {
-        log.info(`Got delete event for ${msg.id}`);
-        const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-        if (!storeEvent.Result) {
-          log.warn(`Could not redact because the event was not in the store.`);
-          return;
-        }
-        while (storeEvent.Next()) {
-          log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-          const intent = this.GetIntentFromDiscordMember(msg.author);
-          const matrixIds = storeEvent.MatrixId.split(";");
-          await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
-        }
+  private async DeleteDiscordMessage(msg: Discord.Message) {
+    log.info(`Got delete event for ${msg.id}`);
+    const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
+    if (!storeEvent.Result) {
+      log.warn(`Could not redact because the event was not in the store.`);
+      return;
     }
+    while (storeEvent.Next()) {
+      log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
+      const intent = this.GetIntentFromDiscordMember(msg.author);
+      const matrixIds = storeEvent.MatrixId.split(";");
+      await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+    }
+  }
 }

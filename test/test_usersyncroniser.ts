@@ -126,7 +126,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 guild.channels.set("543345", chan as any);
                 return chan;
             }
-            throw new Error("Channel not found"); 
+            throw new Error("Channel not found");
         },
         GetGuilds: () => {
             return [];
