@@ -145,7 +145,8 @@ export class Util {
       Permissions.FLAGS.EMBED_LINKS |
       Permissions.FLAGS.ATTACH_FILES |
       Permissions.FLAGS.READ_MESSAGE_HISTORY |
-      Permissions.FLAGS.MANAGE_WEBHOOKS;
+      Permissions.FLAGS.MANAGE_WEBHOOKS |
+      Permissions.FLAGS.MANAGE_MESSAGES;
     /* tslint:enable:no-bitwise */
 
     const clientId = config.auth.clientID;
