@@ -2,7 +2,7 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig } from "./config";
-import { Bridge, RoomBridgeStore } from "matrix-appservice-bridge";
+import { Bridge, RoomBridgeStore, Entry } from "matrix-appservice-bridge";
 import { Log } from "./log";
 
 const log = new Log("ChannelSync");
@@ -252,7 +252,7 @@ export class ChannelSyncroniser {
     private async handleChannelDeletionForRoom(
         channel: Discord.TextChannel,
         roomId: string,
-        entry: any): Promise<void> {
+        entry: Entry): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
         const options = this.config.channel.deleteOptions;

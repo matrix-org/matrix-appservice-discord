@@ -40,7 +40,7 @@ export class DiscordClientFactory {
     }
 
    public getDiscordId(token: string): Bluebird<string> {
-        const client: any = new Client({
+        const client = new Client({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
             sync: false,
@@ -72,7 +72,7 @@ export class DiscordClientFactory {
         }
         // TODO: Select a profile based on preference, not the first one.
         const token = await this.store.get_token(discordIds[0]);
-        const client: any = Bluebird.promisifyAll(new Client({
+        const client = Bluebird.promisifyAll(new Client({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
             sync: true,

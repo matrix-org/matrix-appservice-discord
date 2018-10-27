@@ -3,7 +3,7 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
-import { MatrixUser, RemoteUser, Bridge, Entry } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
@@ -34,7 +34,7 @@ export class DiscordBot {
     private store: DiscordStore;
     private bot: Discord.Client;
     private bridge: Bridge;
-    private presenceInterval: any;
+    private presenceInterval: number;
     private sentMessages: string[];
     private msgProcessor: MessageProcessor;
     private mxEventProcessor: MatrixEventProcessor;
@@ -44,7 +44,7 @@ export class DiscordBot {
     private roomHandler: MatrixRoomHandler;
 
     /* Handles messages queued up to be sent to discord. */
-    private discordMessageQueue: { [channelId: string]: Promise<any> };
+    private discordMessageQueue: { [channelId: string]: Promise<void> };
 
     constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
         this.config = config;
@@ -81,7 +81,7 @@ export class DiscordBot {
         return this.channelSync;
     }
 
-    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): any {
+    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): Intent {
         return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
     }
 
@@ -352,7 +352,7 @@ export class DiscordBot {
         }
     }
 
-    public OnUserQuery(userId: string): any {
+    public OnUserQuery(userId: string): boolean {
         return false;
     }
 
