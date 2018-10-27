@@ -174,7 +174,7 @@ export class MatrixRoomHandler {
       const intent = this.bridge.getIntent();
       // Due to #257 we need to check if we are joined.
       try {
-          await intent.getClient().sendReadReceipt(event.event_id);
+          await intent.getClient().sendReadReceipt(event);
       } catch (ex) {
           log.warn("Couldn't send a read reciept into the room:", ex, ". Ignoring command.");
           return;
