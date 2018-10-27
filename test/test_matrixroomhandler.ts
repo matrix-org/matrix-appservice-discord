@@ -13,6 +13,9 @@ import {MockGuild} from "./mocks/guild";
 import {Guild} from "discord.js";
 import { Util } from "../src/util";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -24,11 +27,11 @@ const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
     "./util": {
         Util: {
             DelayedPromise: Util.DelayedPromise,
-            MsgToArgs: Util.MsgToArgs,
-            ParseCommand: Util.ParseCommand,
             GetMxidFromName: () => {
                 return "@123456:localhost";
             },
+            MsgToArgs: Util.MsgToArgs,
+            ParseCommand: Util.ParseCommand,
         },
     },
 })).MatrixRoomHandler;
@@ -53,22 +56,22 @@ function createRH(opts: any = {}) {
     USERSBANNED = 0;
     USERSUNBANNED = 0;
     const bridge = {
-        getIntent: () => {
-            return {
-                sendMessage: (roomId, content) => Promise.resolve(content),
-                getClient: () => mxClient,
-                join: () => { USERSJOINED++; },
-                leave: () => { },
-                kick: () => { USERSKICKED++; return Promise.resolve(); },
-                ban: () => { USERSBANNED++; return Promise.resolve(); },
-                unban: () => { USERSUNBANNED++; return Promise.resolve(); },
-            };
-        },
         getBot: () => {
             return {
                 isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
+            };
+        },
+        getIntent: () => {
+            return {
+                ban: () => { USERSBANNED++; return Promise.resolve(); },
+                getClient: () => mxClient,
+                join: () => { USERSJOINED++; },
+                kick: () => { USERSKICKED++; return Promise.resolve(); },
+                leave: () => { },
+                sendMessage: (roomId, content) => Promise.resolve(content),
+                unban: () => { USERSUNBANNED++; return Promise.resolve(); },
             };
         },
         getRoomStore: () => {
@@ -80,17 +83,19 @@ function createRH(opts: any = {}) {
         },
     };
     const us = {
+        EnsureJoin: () => Promise.resolve(),
         OnMemberState: () => Promise.resolve("user_sync_handled"),
         OnUpdateUser: () => Promise.resolve(),
-        EnsureJoin: () => Promise.resolve(),
     };
     const cs = {
-        OnUpdate: () => Promise.resolve(),
         GetRoomIdsFromChannel: (chan) => {
             return Promise.resolve(["#" + chan.id + ":localhost"]);
         },
+        OnUpdate: () => Promise.resolve(),
     };
     const bot = {
+        ChannelSyncroniser: cs,
+        GetBotId: () => "bot12345",
         GetChannelFromRoomId: (roomid: string) => {
             if (roomid === "!accept:localhost") {
                 const guild = new MockGuild("666666");
@@ -106,10 +111,10 @@ function createRH(opts: any = {}) {
                 return Promise.reject("Roomid not found");
             }
         },
-        GetBotId: () => "bot12345",
-        ProcessMatrixRedact: () => Promise.resolve("redacted"),
-        ProcessMatrixMsgEvent: () => Promise.resolve("processed"),
-        ProcessMatrixStateEvent: () => Promise.resolve("stateevent"),
+        GetGuilds: () => [new MockGuild("123", [])],
+        GetIntentFromDiscordMember: () => {
+            return bridge.getIntent();
+        },
         LookupRoom: (guildid, discordid) => {
             if (guildid !== "123") {
                 return Promise.reject("Guild not found");
@@ -119,15 +124,13 @@ function createRH(opts: any = {}) {
             const channel = new MockChannel();
             return Promise.resolve({channel, botUser: true });
         },
-        GetGuilds: () => [new MockGuild("123", [])],
+        ProcessMatrixMsgEvent: () => Promise.resolve("processed"),
+        ProcessMatrixRedact: () => Promise.resolve("redacted"),
+        ProcessMatrixStateEvent: () => Promise.resolve("stateevent"),
         ThirdpartySearchForChannels: () => {
             return [];
         },
-        GetIntentFromDiscordMember: () => {
-            return bridge.getIntent();
-        },
         UserSyncroniser: us,
-        ChannelSyncroniser: cs,
     };
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;
@@ -137,17 +140,17 @@ function createRH(opts: any = {}) {
         config.bridge.enableSelfServiceBridging = true;
     }
     const mxClient = {
+        getStateEvent: () => {
+            return Promise.resolve(opts.powerLevels || {});
+        },
         joinRoom: () => {
             USERSJOINED++;
             return Promise.resolve();
         },
-        getStateEvent: () => {
-            return Promise.resolve(opts.powerLevels || {});
-        },
-        setRoomDirectoryVisibilityAppService: () => {
+        sendReadReceipt: () => {
             return Promise.resolve();
         },
-        sendReadReceipt: () => {
+        setRoomDirectoryVisibilityAppService: () => {
             return Promise.resolve();
         },
     };
@@ -257,7 +260,9 @@ describe("MatrixRoomHandler", () => {
                 },
             };
             return expect(handler.OnEvent(buildRequest({
-                type: "m.room.message", content: {body: "abc"}}), context)).to.eventually.equal("processed");
+                content: {body: "abc"},
+                type: "m.room.message",
+            }), context)).to.eventually.equal("processed");
         });
         it("should alert if encryption is turned on", () => {
             const handler = createRH();
@@ -269,14 +274,17 @@ describe("MatrixRoomHandler", () => {
                 },
             };
             return expect(handler.OnEvent(buildRequest({
-                type: "m.room.encryption", room_id: "!accept:localhost"}), context)).to.eventually.be.fulfilled;
+                room_id: "!accept:localhost",
+                type: "m.room.encryption",
+            }), context)).to.eventually.be.fulfilled;
         });
         it("should process !discord commands", () => {
             const handler = createRH();
             handler.ProcessCommand = (ev) => Promise.resolve("processedcmd");
             return expect(handler.OnEvent(buildRequest({
-                type: "m.room.message", content: {body: "!discord cmd"}}), null))
-                .to.eventually.equal("processedcmd");
+                content: {body: "!discord cmd"},
+                type: "m.room.message",
+            }), null)).to.eventually.equal("processedcmd");
         });
         it("should ignore regular messages with no linked room", () => {
             const handler = createRH();
@@ -286,8 +294,9 @@ describe("MatrixRoomHandler", () => {
                 },
             };
             return expect(handler.OnEvent(buildRequest({
-                type: "m.room.message", content: {body: "abc"}}), context))
-                .to.be.rejectedWith("Event not processed by bridge");
+                content: {body: "abc"},
+                type: "m.room.message",
+            }), context)).to.be.rejectedWith("Event not processed by bridge");
         });
         it("should process stickers", () => {
             const handler = createRH();
@@ -299,11 +308,11 @@ describe("MatrixRoomHandler", () => {
                 },
             };
             return expect(handler.OnEvent(buildRequest({
-                type: "m.sticker",
                 content: {
                     body: "abc",
                     url: "mxc://abc",
                 },
+                type: "m.sticker",
             }), context)).to.eventually.equal("processed");
         });
     });
@@ -329,8 +338,8 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.ProcessCommand({
                 room_id: "!123:localhost",
             })).to.eventually.be.deep.equal({
-                msgtype: "m.notice",
                 body: "The owner of this bridge does not permit self-service bridging.",
+                msgtype: "m.notice",
             });
         });
         it("should warn if user is not powerful enough with defaults", () => {
@@ -338,8 +347,8 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.ProcessCommand({
                 room_id: "!123:localhost",
             })).to.eventually.be.deep.equal({
-                msgtype: "m.notice",
                 body: "You do not have the required power level in this room to create a bridge to a Discord channel.",
+                msgtype: "m.notice",
             });
         });
         it("should warn if user is not powerful enough with custom state default", () => {
@@ -349,8 +358,8 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.ProcessCommand({
                 room_id: "!123:localhost",
             })).to.eventually.be.deep.equal({
-                msgtype: "m.notice",
                 body: "You do not have the required power level in this room to create a bridge to a Discord channel.",
+                msgtype: "m.notice",
             });
         });
         it("should allow if user is powerful enough with defaults", () => {
@@ -358,8 +367,8 @@ describe("MatrixRoomHandler", () => {
                     users_default: 60,
                 }});
             return handler.ProcessCommand({
-                room_id: "!123:localhost",
                 content: {body: "!discord help"},
+                room_id: "!123:localhost",
             }).then((evt) => {
                 return expect(evt.body.startsWith("Available commands")).to.be.true;
             });
@@ -371,9 +380,9 @@ describe("MatrixRoomHandler", () => {
                     },
                 }});
             return handler.ProcessCommand({
+                content: {body: "!discord help"},
                 room_id: "!123:localhost",
                 sender: "@user:localhost",
-                content: {body: "!discord help"},
             }).then((evt) => {
                 return expect(evt.body.startsWith("Available commands")).to.be.true;
             });
@@ -385,57 +394,67 @@ describe("MatrixRoomHandler", () => {
                     }});
                 const context = {rooms: {}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord bridge 123 456"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("I have bridged this room to your channel");
                 });
             });
             it("will fail to bridge if permissions were denied", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    denyBridgePermission: true,
+                    powerLevels: {
                         users_default: 100,
-                    }, denyBridgePermission: true});
+                    },
+                });
                 const context = {rooms: {}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord bridge 123 456"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("The bridge has been declined by the Discord guild");
                 });
             });
             it("will fail to bridge if permissions were denied", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    failBridgeMatrix: true,
+                    powerLevels: {
                         users_default: 100,
-                    }, failBridgeMatrix: true});
+                    },
+                });
                 const context = {rooms: {}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord bridge 123 456"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be
                         .eq("There was a problem bridging that channel - has the guild owner approved the bridge?");
                 });
             });
             it("will not bridge if a link already exists", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    powerLevels: {
                         users_default: 100,
-                    }});
+                    },
+                });
                 const context = {rooms: { remote: true }};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord bridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("This room is already bridged to a Discord guild.");
                 });
             });
             it("will not bridge without required args", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    powerLevels: {
                         users_default: 100,
-                    }});
+                    },
+                });
                 const context = {rooms: {}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord bridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.contain("Invalid syntax");
                 });
@@ -443,59 +462,70 @@ describe("MatrixRoomHandler", () => {
         });
         describe("!discord unbridge", () => {
             it("will unbridge", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    powerLevels: {
                         users_default: 100,
-                    }});
+                    },
+                });
                 const context = {rooms: { remote: {
                     data: {
                         plumbed: true,
                     },
-                        } }};
+                } }};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord unbridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("This room has been unbridged");
                 });
             });
             it("will not unbridge if a link does not exist", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    powerLevels: {
                         users_default: 100,
-                    }});
+                    },
+                });
                 const context = {rooms: { remote: undefined }};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord unbridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("This room is not bridged.");
                 });
             });
             it("will not unbridge non-plumbed rooms", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    powerLevels: {
                         users_default: 100,
-                    }});
+                    },
+                });
                 const context = {rooms: { remote: {
-                            data: {
-                                plumbed: false,
-                }}}};
+                    data: {
+                        plumbed: false,
+                    },
+                }}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord unbridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.be.eq("This room cannot be unbridged.");
                 });
             });
             it("will show error if unbridge fails", () => {
-                const handler: any = createRH({powerLevels: {
+                const handler: any = createRH({
+                    failUnbridge: true,
+                    powerLevels: {
                         users_default: 100,
-                    }, failUnbridge: true});
+                    },
+                });
                 const context = {rooms: { remote: {
-                            data: {
-                                plumbed: true,
-                            }}}};
+                    data: {
+                        plumbed: true,
+                    },
+                }}};
                 return handler.ProcessCommand({
-                    room_id: "!123:localhost",
                     content: {body: "!discord unbridge"},
+                    room_id: "!123:localhost",
                 }, context).then((evt) => {
                     return expect(evt.body).to.contain("There was an error unbridging this room.");
                 });
@@ -548,8 +578,8 @@ describe("MatrixRoomHandler", () => {
         it("will return an array", () => {
             const handler: any = createRH({});
             return handler.tpGetLocation("", {
-                guild_id: "",
                 channel_name: "",
+                guild_id: "",
             }).then((channels) => {
                 expect(channels).to.be.a("array");
             });
@@ -597,6 +627,7 @@ describe("MatrixRoomHandler", () => {
             const intent = {
                 getClient: () => {
                     return {
+                        getUserId: () => "@test:localhost",
                         joinRoom: () => {
                             if (shouldFail) {
                                 shouldFail = false;
@@ -604,7 +635,6 @@ describe("MatrixRoomHandler", () => {
                             }
                             return Promise.resolve();
                         },
-                        getUserId: () => "@test:localhost",
                     };
                 },
             };
@@ -637,8 +667,8 @@ describe("MatrixRoomHandler", () => {
             };
             const message = {
                 channel,
-                member,
                 content: "!matrix kick someuser",
+                member,
             };
             return handler.HandleDiscordCommand(message).then(() => {
                 expect(USERSKICKED).equals(1);
@@ -655,8 +685,8 @@ describe("MatrixRoomHandler", () => {
             };
             const message = {
                 channel,
-                member,
                 content: "!matrix kick someuser",
+                member,
             };
             return handler.HandleDiscordCommand(message).then(() => {
                 // tslint:disable-next-line:no-magic-numbers
@@ -674,8 +704,8 @@ describe("MatrixRoomHandler", () => {
             };
             const message = {
                 channel,
-                member,
                 content: "!matrix kick someuser",
+                member,
             };
             return handler.HandleDiscordCommand(message).then(() => {
                 expect(USERSKICKED).equals(0);
@@ -692,8 +722,8 @@ describe("MatrixRoomHandler", () => {
             };
             const message = {
                 channel,
-                member,
                 content: "!matrix ban someuser",
+                member,
             };
             return handler.HandleDiscordCommand(message).then(() => {
                 expect(USERSBANNED).equals(1);
@@ -710,8 +740,8 @@ describe("MatrixRoomHandler", () => {
             };
             const message = {
                 channel,
-                member,
                 content: "!matrix unban someuser",
+                member,
             };
             return handler.HandleDiscordCommand(message).then(() => {
                 expect(USERSUNBANNED).equals(1);

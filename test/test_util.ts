@@ -3,6 +3,9 @@ import * as ChaiAsPromised from "chai-as-promised";
 
 import { Util, ICommandAction, ICommandParameters } from "../src/util";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -15,11 +18,11 @@ function CreateMockIntent(members) {
                         const ret = [];
                         for (const member of members[url]) {
                             ret.push({
-                                membership: member.membership,
-                                state_key: member.mxid,
                                 content: {
                                     displayname: member.displayname,
                                 },
+                                membership: member.membership,
+                                state_key: member.mxid,
                             });
                         }
                         return {
@@ -73,9 +76,9 @@ describe("Util", () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
@@ -88,14 +91,14 @@ describe("Util", () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@456:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
@@ -106,9 +109,9 @@ describe("Util", () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };

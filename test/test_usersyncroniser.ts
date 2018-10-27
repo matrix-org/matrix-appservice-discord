@@ -9,6 +9,9 @@ import {MockMember} from "./mocks/member";
 import {MockGuild} from "./mocks/guild";
 import { MockChannel } from "./mocks/channel";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -49,6 +52,42 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
     SEV_KEY = null;
     SEV_COUNT = 0;
     const bridge: any = {
+        getIntent: (id) => {
+            DISPLAYNAME_SET = null;
+            AVATAR_SET = null;
+            INTENT_ID = id;
+            JOIN_ROOM_ID = null;
+            JOINS = 0;
+            LEAVES = 0;
+            return {
+                getClient: () => {
+                    return {
+                        sendStateEvent: (roomId, type, content, key) => {
+                            SEV_ROOM_ID = roomId;
+                            SEV_CONTENT = content;
+                            SEV_KEY = key;
+                            SEV_COUNT++;
+                        },
+                    };
+                },
+                join: (roomId) => {
+                    JOIN_ROOM_ID = roomId;
+                    JOINS++;
+                },
+                leave: (roomId) => {
+                    LEAVE_ROOM_ID = roomId;
+                    LEAVES++;
+                },
+                setAvatarUrl: (ava) => {
+                    AVATAR_SET = ava;
+                    return Promise.resolve();
+                },
+                setDisplayName: (dn) => {
+                    DISPLAYNAME_SET = dn;
+                    return Promise.resolve();
+                },
+            };
+        },
         getUserStore: () => {
             REMOTEUSER_SET = null;
             LINK_RM_USER = null;
@@ -64,60 +103,18 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 getRemoteUsersFromMatrixId: (id) => {
                     return remoteUsers.filter((u) => u.id === id);
                 },
-                setRemoteUser: (remoteUser) => {
-                    REMOTEUSER_SET = remoteUser;
-                    return Promise.resolve();
-                },
                 linkUsers: (mxUser, remoteUser) => {
                     LINK_MX_USER = mxUser;
                     LINK_RM_USER = remoteUser;
                 },
-            };
-        },
-        getIntent: (id) => {
-            DISPLAYNAME_SET = null;
-            AVATAR_SET = null;
-            INTENT_ID = id;
-            JOIN_ROOM_ID = null;
-            JOINS = 0;
-            LEAVES = 0;
-            return {
-                join: (roomId) => {
-                    JOIN_ROOM_ID = roomId;
-                    JOINS++;
-                },
-                leave: (roomId) => {
-                    LEAVE_ROOM_ID = roomId;
-                    LEAVES++;
-                },
-                setDisplayName: (dn) => {
-                    DISPLAYNAME_SET = dn;
+                setRemoteUser: (remoteUser) => {
+                    REMOTEUSER_SET = remoteUser;
                     return Promise.resolve();
-                },
-                setAvatarUrl: (ava) => {
-                    AVATAR_SET = ava;
-                    return Promise.resolve();
-                },
-                getClient: () => {
-                    return {
-                        sendStateEvent: (roomId, type, content, key) => {
-                            SEV_ROOM_ID = roomId;
-                            SEV_CONTENT = content;
-                            SEV_KEY = key;
-                            SEV_COUNT++;
-                        },
-                    };
                 },
             };
         },
     };
     const discordbot: any = {
-        GetRoomIdsFromGuild: () => {
-            return Promise.resolve(GUILD_ROOM_IDS);
-        },
-        GetIntentFromDiscordMember: (id) => {
-            return bridge.getIntent(id);
-        },
         GetChannelFromRoomId: (id) => {
             if (id === "!found:localhost") {
                 const guild = new MockGuild("666666");
@@ -130,6 +127,12 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
         },
         GetGuilds: () => {
             return [];
+        },
+        GetIntentFromDiscordMember: (id) => {
+            return bridge.getIntent(id);
+        },
+        GetRoomIdsFromGuild: () => {
+            return Promise.resolve(GUILD_ROOM_IDS);
         },
     };
     const config = new DiscordBridgeConfig();
@@ -231,12 +234,12 @@ describe("UserSyncroniser", () => {
        it("Will create a new user", () => {
            const userSync = CreateUserSync();
            const state: IUserState = {
-               id: "123456",
-               createUser: true,
-               mxUserId: "@_discord_123456:localhost",
-               displayName: null, // Nullable
-               avatarUrl: null, // Nullable
                avatarId: null,
+               avatarUrl: null, // Nullable
+               createUser: true,
+               displayName: null, // Nullable
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
                removeAvatar: false,
            };
            return userSync.ApplyStateToProfile(state).then(() => {
@@ -248,12 +251,12 @@ describe("UserSyncroniser", () => {
        it("Will set a display name", () => {
            const userSync = CreateUserSync();
            const state: IUserState = {
-               id: "123456",
-               createUser: true,
-               mxUserId: "@_discord_123456:localhost",
-               displayName: "123456", // Nullable
-               avatarUrl: null, // Nullable
                avatarId: null,
+               avatarUrl: null, // Nullable
+               createUser: true,
+               displayName: "123456", // Nullable
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
                removeAvatar: false,
            };
            return userSync.ApplyStateToProfile(state).then(() => {
@@ -269,12 +272,12 @@ describe("UserSyncroniser", () => {
        it("Will set an avatar", () => {
            const userSync = CreateUserSync();
            const state: IUserState = {
-               id: "123456",
-               createUser: true,
-               mxUserId: "@_discord_123456:localhost",
-               displayName: null, // Nullable
-               avatarUrl: "654321", // Nullable
                avatarId: null,
+               avatarUrl: "654321", // Nullable
+               createUser: true,
+               displayName: null, // Nullable
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
                removeAvatar: false,
            };
            return userSync.ApplyStateToProfile(state).then(() => {
@@ -291,12 +294,12 @@ describe("UserSyncroniser", () => {
        it("Will remove an avatar", () => {
            const userSync = CreateUserSync();
            const state: IUserState = {
-               id: "123456",
-               createUser: true,
-               mxUserId: "@_discord_123456:localhost",
-               displayName: null, // Nullable
-               avatarUrl: null, // Nullable
                avatarId: null,
+               avatarUrl: null, // Nullable
+               createUser: true,
+               displayName: null, // Nullable
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
                removeAvatar: true,
            };
            return userSync.ApplyStateToProfile(state).then(() => {
@@ -313,12 +316,12 @@ describe("UserSyncroniser", () => {
        it("will do nothing if nothing needs to be done", () => {
            const userSync = CreateUserSync([new RemoteUser("123456")]);
            const state: IUserState = {
-               id: "123456",
-               createUser: false,
-               mxUserId: "@_discord_123456:localhost",
-               displayName: null, // Nullable
-               avatarUrl: null, // Nullable
                avatarId: null,
+               avatarUrl: null, // Nullable
+               createUser: false,
+               displayName: null, // Nullable
+               id: "123456",
+               mxUserId: "@_discord_123456:localhost",
                removeAvatar: false,
            };
            return userSync.ApplyStateToProfile(state).then(() => {
@@ -334,9 +337,9 @@ describe("UserSyncroniser", () => {
        it("Will apply a new nick", () => {
            const userSync = CreateUserSync([new RemoteUser("123456")]);
            const state: IGuildMemberState = {
+               displayName: "Good Boy",
                id: "123456",
                mxUserId: "@_discord_123456:localhost",
-               displayName: "Good Boy",
                roles: [],
            };
            return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
@@ -350,9 +353,9 @@ describe("UserSyncroniser", () => {
        it("Will not apply unchanged nick", () => {
            const userSync = CreateUserSync([new RemoteUser("123456")]);
            const state: IGuildMemberState = {
+               displayName: null,
                id: "123456",
                mxUserId: "@_discord_123456:localhost",
-               displayName: null,
                roles: [],
            };
            return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
@@ -368,13 +371,13 @@ describe("UserSyncroniser", () => {
            const TESTROLE_COLOR = 1337;
            const TESTROLE_POSITION = 42;
            const state: IGuildMemberState = {
+               displayName: "Good Boy",
                id: "123456",
                mxUserId: "@_discord_123456:localhost",
-               displayName: "Good Boy",
                roles: [
                    {
-                       name: TESTROLE_NAME,
                        color: TESTROLE_COLOR,
+                       name: TESTROLE_NAME,
                        position: TESTROLE_POSITION,
                    },
                ],
@@ -431,8 +434,8 @@ describe("UserSyncroniser", () => {
            const TESTROLE_POSITION = 42;
            member.roles = [
                {
-                   name: TESTROLE_NAME,
                    color: TESTROLE_COLOR,
+                   name: TESTROLE_NAME,
                    position: TESTROLE_POSITION,
                },
            ];
@@ -557,47 +560,37 @@ describe("UserSyncroniser", () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             return Promise.all([
                 expect(userSync.OnMemberState({
-                    origin_server_ts: 10000,
-                    content: {
-
-                    },
+                    content: { },
                     event_id: "Anicent:localhost",
+                    origin_server_ts: 10000,
                     room_id: "!found:localhost",
                     state_key: "123456",
                 }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 1 Failed"),
                 expect(userSync.OnMemberState({
-                    origin_server_ts: 7000,
-                    content: {
-
-                    },
+                    content: { },
                     event_id: "QuiteOld:localhost",
+                    origin_server_ts: 7000,
                     room_id: "!found:localhost",
                     state_key: "123456",
                 }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 2 Failed"),
                 expect(userSync.OnMemberState({
-                    origin_server_ts: 3000,
-                    content: {
-
-                    },
+                    content: { },
                     event_id: "FreshEnough:localhost",
+                    origin_server_ts: 3000,
                     room_id: "!found:localhost",
                     state_key: "123456",
                 }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 3 Failed"),
                 expect(userSync.OnMemberState({
-                    origin_server_ts: 4000,
-                    content: {
-
-                    },
+                    content: { },
                     event_id: "GettingOnABit:localhost",
+                    origin_server_ts: 4000,
                     room_id: "!found:localhost",
                     state_key: "123456",
                 }, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 4 Failed"),
                 expect(userSync.OnMemberState({
-                    origin_server_ts: 100,
-                    content: {
-
-                    },
+                    content: { },
                     event_id: "FreshOutTheOven:localhost",
+                    origin_server_ts: 100,
                     room_id: "!found:localhost",
                     state_key: "123456",
                 }, DELAY_MS)).to.eventually.be.fulfilled,

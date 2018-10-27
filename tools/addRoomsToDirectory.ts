@@ -13,25 +13,25 @@ import { Log } from "../src/log";
 const log = new Log("AddRoomsToDirectory");
 const optionDefinitions = [
     {
-        name: "help",
         alias: "h",
-        type: Boolean,
         description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
     },
     {
-      name: "config",
-      alias: "c",
-      type: String,
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      typeLabel: "<config.yaml>",
-    },
-    {
-        name: "store",
-        alias: "s",
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
         type: String,
+        typeLabel: "<config.yaml>",
+    },
+    {
+        alias: "s",
         defaultValue: "room-store.db",
         description: "The location of the room store.",
+        name: "store",
+        type: String,
     },
 ];
 
@@ -41,8 +41,9 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
+        content: "A tool to set all the bridged rooms to visible in the directory.",
         header: "Add rooms to directory",
-        content: "A tool to set all the bridged rooms to visible in the directory."},
+    },
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -65,12 +66,12 @@ const clientFactory = new ClientFactory({
 });
 
 const bridge = new Bridge({
-    homeserverUrl: true,
-    registration: true,
-    domain: "rubbish",
     controller: {
         onEvent: () => { },
     },
+    domain: "rubbish",
+    homeserverUrl: true,
+    registration: true,
     roomStore: options.store,
 });
 

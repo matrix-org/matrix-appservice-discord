@@ -59,7 +59,7 @@ export class Log {
 
     private static setupFileTransport(config: LoggingFile): transports.FileTransportInstance {
         config = Object.assign(new LoggingFile(), config);
-        const filterOutMods = format((info, opts) => {
+        const filterOutMods = format((info, _) => {
             if (config.disabled.includes(info.module) &&
                 config.enabled.length > 0 &&
                 !config.enabled.includes(info.module)
@@ -70,15 +70,15 @@ export class Log {
         });
 
         const opts = {
-            filename: config.file,
-            maxFiles: config.maxFiles,
-            maxSize: config.maxSize,
             datePattern: config.datePattern,
-            level: config.level,
+            filename: config.file,
             format: format.combine(
                 filterOutMods(),
                 FORMAT_FUNC,
             ),
+            level: config.level,
+            maxFiles: config.maxFiles,
+            maxSize: config.maxSize,
         };
 
         return new (transports as any).DailyRotateFile(opts);

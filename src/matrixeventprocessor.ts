@@ -1,12 +1,12 @@
 import * as Discord from "discord.js";
-import {MessageProcessorOpts, MessageProcessor} from "./messageprocessor";
-import {DiscordBot} from "./bot";
-import {DiscordBridgeConfig} from "./config";
+import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
+import { DiscordBot } from "./bot";
+import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import {Util} from "./util";
+import { Util } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import {MatrixUser} from "matrix-appservice-bridge";
+import { MatrixUser } from "matrix-appservice-bridge";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -201,8 +201,8 @@ export class MatrixEventProcessor {
             size = attachment.byteLength;
             if (size < MaxFileSize) {
                 return {
-                    name,
                     attachment,
+                    name,
                 };
             }
         }

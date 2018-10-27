@@ -4,7 +4,6 @@ import {
     MatrixRoom,
 } from "matrix-appservice-bridge";
 import * as Discord from "discord.js";
-import { Permissions } from "discord.js";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
@@ -76,7 +75,7 @@ export class Provisioner {
         }
 
         const perms = channel.permissionsFor(member);
-        if (!perms.hasPermission(Permissions.FLAGS.MANAGE_WEBHOOKS)) {
+        if (!perms.hasPermission(Discord.Permissions.FLAGS.MANAGE_WEBHOOKS)) {
             // Missing permissions, so just reject it
             return Promise.reject(new Error("You do not have permission to manage webhooks in this channel"));
         }

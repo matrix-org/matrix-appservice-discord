@@ -28,18 +28,18 @@ const JOIN_ROOM_SCHEDULE = [
 
 const optionDefinitions = [
     {
-        name: "help",
         alias: "h",
-        type: Boolean,
         description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
     },
     {
-      name: "config",
-      alias: "c",
-      type: String,
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      typeLabel: "<config.yaml>",
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
+        type: String,
+        typeLabel: "<config.yaml>",
     },
 ];
 
@@ -49,9 +49,10 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
-        header: "Fix usernames of joined ghosts",
         content: "A tool to fix usernames of ghosts already in " +
-            "matrix rooms, to make sure they represent the correct discord usernames."},
+        "matrix rooms, to make sure they represent the correct discord usernames.",
+        header: "Fix usernames of joined ghosts",
+    },
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -84,16 +85,16 @@ const bridge = new Bridge({
     controller: {
         onEvent: () => { },
     },
+    domain: config.bridge.domain,
+    homeserverUrl: config.bridge.homeserverUrl,
     intentOptions: {
         clients: {
             dontJoin: true, // handled manually
       },
     },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
     registration,
-    userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
+    userStore: config.database.userStorePath,
 });
 
 provisioner.SetBridge(bridge);

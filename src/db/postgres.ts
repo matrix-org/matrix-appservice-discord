@@ -1,10 +1,9 @@
-import {IMain, IDatabase} from "pg-promise";
 import * as pgPromise from "pg-promise";
 import { Log } from "../log";
 import { IDatabaseConnector } from "./connector";
 const log = new Log("SQLite3");
 
-const pgp: IMain = pgPromise({
+const pgp: pgPromise.IMain = pgPromise({
     // Initialization Options
 });
 
@@ -15,7 +14,7 @@ export class Postgres implements IDatabaseConnector {
         });
     }
 
-    private db: IDatabase<any>;
+    private db: pgPromise.IDatabase<any>;
     constructor(private connectionString: string) {
 
     }

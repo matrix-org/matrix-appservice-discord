@@ -2,6 +2,10 @@ import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import * as RealLog from "../src/log";
+
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -12,15 +16,15 @@ let loggedMessages = [];
 const WinstonMock = {
     createLogger: (format, transports) => {
         return createdLogger = {
-            format,
-            transports,
             close: () => {
                 loggerClosed = true;
             },
-            silent: false,
+            format,
             log: (type, ...msg) => {
                 loggedMessages = loggedMessages.concat(msg);
             },
+            silent: false,
+            transports,
         };
     },
 };

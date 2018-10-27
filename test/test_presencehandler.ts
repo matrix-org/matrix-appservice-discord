@@ -7,12 +7,18 @@ import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
 import { MockUser } from "./mocks/user";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 const INTERVAL = 250;
 let lastStatus = null;
 // const assert = Chai.assert;
 const bot = {
+    GetBotId: () => {
+        return "1234";
+    },
     GetIntentFromDiscordMember: (member) => {
         return {
             getClient: () => {
@@ -24,9 +30,6 @@ const bot = {
                 };
             },
         };
-    },
-    GetBotId: () => {
-        return "1234";
     },
 };
 
@@ -140,8 +143,8 @@ describe("PresenceHandler", () => {
                 status_msg: "Do not disturb",
             });
             member.MockSetPresence(new Discord.Presence({
-                status: "dnd",
                 game: new Discord.Game({name: "Test Game"}),
+                status: "dnd",
             }));
             handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -154,8 +157,8 @@ describe("PresenceHandler", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
-                status: "online",
                 game: new Discord.Game({name: "Test Game"}),
+                status: "online",
             }));
             handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
@@ -163,8 +166,8 @@ describe("PresenceHandler", () => {
                 status_msg: "Playing Test Game",
             });
             member.MockSetPresence(new Discord.Presence({
-                status: "online",
                 game: new Discord.Game({name: "Test Game", type: 1}),
+                status: "online",
             }));
             handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {

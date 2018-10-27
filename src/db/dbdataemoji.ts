@@ -36,11 +36,11 @@ export class DbEmoji implements IDbData {
             INSERT INTO emoji
             (emoji_id,name,animated,mxc_url,created_at,updated_at)
             VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
-                emoji_id: this.EmojiId,
-                name: this.Name,
                 animated: Number(this.Animated),
-                mxc_url: this.MxcUrl,
                 created_at: this.CreatedAt,
+                emoji_id: this.EmojiId,
+                mxc_url: this.MxcUrl,
+                name: this.Name,
                 updated_at: this.UpdatedAt,
         });
     }
@@ -56,10 +56,10 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
-                emoji_id: this.EmojiId,
-                name: this.Name,
                 animated: Number(this.Animated),
+                emoji_id: this.EmojiId,
                 mxc_url: this.MxcUrl,
+                name: this.Name,
                 updated_at: this.UpdatedAt,
         });
     }

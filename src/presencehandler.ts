@@ -1,4 +1,4 @@
-import {User, Presence} from "discord.js";
+import { User, Presence } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 const log = new Log("PresenceHandler");

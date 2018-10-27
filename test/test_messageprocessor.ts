@@ -6,6 +6,9 @@ import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 
 const bot = {
@@ -79,6 +82,7 @@ describe("MessageProcessor", () => {
                 color: null,
                 createdAt: null,
                 createdTimestamp: null,
+                description: "Description",
                 fields: null,
                 footer: null,
                 hexColor: null,
@@ -86,11 +90,10 @@ describe("MessageProcessor", () => {
                 message: null,
                 provider: null,
                 thumbnail: null,
-                type: null,
-                video: null,
                 title: "Title",
-                description: "Description",
+                type: null,
                 url: "http://example.com",
+                video: null,
             },
         ];
         msg.content = "message";
@@ -294,8 +297,8 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(null, null, null);
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
-                    title: "TestTitle",
                     description: "TestDescription",
+                    title: "TestTitle",
                 }),
             ];
             const inContent = "";
@@ -307,9 +310,9 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(null, null, null);
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
             ];
             const inContent = "";
@@ -333,14 +336,14 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(null, null, null);
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription2",
                     title: "TestTitle2",
                     url: "testurl2",
-                    description: "TestDescription2",
                 }),
             ];
             const inContent = "";
@@ -355,9 +358,9 @@ describe("MessageProcessor", () => {
             const msg = new Discord.Message(null, null, null);
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
             ];
             const inContent = "Content that goes in the message";

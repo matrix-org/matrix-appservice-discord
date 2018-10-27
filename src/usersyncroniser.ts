@@ -1,37 +1,37 @@
-import {User, GuildMember, GuildChannel} from "discord.js";
+import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
-import {Util} from "./util";
+import { Util } from "./util";
 import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
-import {DiscordBridgeConfig} from "./config";
+import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
-import {Log} from "./log";
+import { Log } from "./log";
 
 const log = new Log("UserSync");
 
 const DEFAULT_USER_STATE = {
-    id: null,
-    createUser: false,
-    mxUserId: null,
-    displayName: null, // Nullable
-    avatarUrl: null, // Nullable
     avatarId: null,
+    avatarUrl: null, // Nullable
+    createUser: false,
+    displayName: null, // Nullable
+    id: null,
+    mxUserId: null,
     removeAvatar: false,
 };
 
 const DEFAULT_GUILD_STATE = {
+    displayName: null,
     id: null,
     mxUserId: null,
-    displayName: null,
     roles: [],
 };
 
 export interface IUserState {
-    id: string;
-    createUser: boolean;
-    mxUserId: string;
-    displayName: string; // Nullable
-    avatarUrl: string; // Nullable
     avatarId: string;
+    avatarUrl: string; // Nullable
+    createUser: boolean;
+    displayName: string; // Nullable
+    id: string;
+    mxUserId: string;
     removeAvatar: boolean; // If the avatar has been removed from the user.
 }
 
@@ -42,9 +42,9 @@ export interface IGuildMemberRole {
 }
 
 export interface IGuildMemberState {
+    displayName: string;
     id: string;
     mxUserId: string;
-    displayName: string;
     roles: IGuildMemberRole[];
 }
 
@@ -154,9 +154,9 @@ export class UserSyncroniser {
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         const tryState = () => intent.getClient().sendStateEvent(roomId, "m.room.member", {
-            "membership": "join",
             "avatar_url": remoteUser.get("avatarurl_mxc"),
             "displayname": memberState.displayName,
+            "membership": "join",
             "uk.half-shot.discord.member": {
                 id: memberState.id,
                 roles: memberState.roles,
@@ -228,8 +228,8 @@ export class UserSyncroniser {
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
-                name: role.name,
                 color: role.color,
+                name: role.name,
                 position: role.position,
             }; }),
         });

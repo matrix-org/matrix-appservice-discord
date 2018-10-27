@@ -10,18 +10,18 @@ const log = new Log("ChannelSync");
 const POWER_LEVEL_MESSAGE_TALK = 50;
 
 const DEFAULT_CHANNEL_STATE = {
+    iconMxcUrl: null,
     id: null,
     mxChannels: [],
-    iconMxcUrl: null,
 };
 
 const DEFAULT_SINGLECHANNEL_STATE = {
+    iconId: null,
+    iconUrl: null, // nullable
     mxid: null,
     name: null, // nullable
-    topic: null, // nullable
-    iconUrl: null, // nullable
-    iconId: null,
     removeIcon: false,
+    topic: null, // nullable
 };
 
 export interface ISingleChannelState {
@@ -147,8 +147,8 @@ export class ChannelSyncroniser {
         }
 
         const patternMap = {
-            name: "#" + channel.name,
             guild: channel.guild.name,
+            name: "#" + channel.name,
         };
         let name = this.config.channel.namePattern;
         for (const p of Object.keys(patternMap)) {

@@ -2,6 +2,9 @@ import * as yaml from "js-yaml";
 import * as Chai from "chai";
 import { ConfigValidator } from "matrix-appservice-bridge";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 const expect = Chai.expect;
 
 describe("ConfigSchema", () => {

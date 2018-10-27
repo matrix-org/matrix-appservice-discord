@@ -13,6 +13,9 @@ import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor"
 import { MockChannel } from "./mocks/channel";
 import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -52,10 +55,69 @@ class Entry {
 function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
     const bridge: any = {
+        getIntent: (id) => {
+            ROOM_NAME_SET = null;
+            ROOM_TOPIC_SET = null;
+            ROOM_AVATAR_SET = null;
+            STATE_EVENT_SENT = false;
+            ALIAS_DELETED = false;
+            ROOM_DIRECTORY_VISIBILITY = null;
+            return {
+                getClient: () => {
+                    return {
+                        deleteAlias: (alias) => {
+                            ALIAS_DELETED = true;
+                            return Promise.resolve();
+                        },
+                        getStateEvent: (mxid, event) => {
+                            return Promise.resolve(event);
+                        },
+                        sendStateEvent: (mxid, event, data) => {
+                            STATE_EVENT_SENT = true;
+                            return Promise.resolve();
+                        },
+                        setRoomDirectoryVisibility: (mxid, visibility) => {
+                            ROOM_DIRECTORY_VISIBILITY = visibility;
+                            return Promise.resolve();
+                        },
+                        setRoomName: (mxid, name) => {
+                            ROOM_NAME_SET = name;
+                            return Promise.resolve();
+                        },
+                        setRoomTopic: (mxid, topic) => {
+                            ROOM_TOPIC_SET = topic;
+                            return Promise.resolve();
+                        },
+                    };
+                },
+                setRoomAvatar: (mxid, mxc) => {
+                    ROOM_AVATAR_SET = mxc;
+                    return Promise.resolve();
+                },
+                setRoomName: (mxid, name) => {
+                    ROOM_NAME_SET = name;
+                    return Promise.resolve();
+                },
+                setRoomTopic: (mxid, topic) => {
+                    ROOM_TOPIC_SET = topic;
+                    return Promise.resolve();
+                },
+            };
+        },
         getRoomStore: () => {
             REMOTECHANNEL_SET = false;
             REMOTECHANNEL_REMOVED = false;
             return {
+                getEntriesByMatrixId: (roomid) => {
+                    const entries = [];
+                    remoteChannels.forEach((c) => {
+                        const mxid = c.matrix.getId();
+                        if (roomid === mxid) {
+                            entries.push(c);
+                        }
+                    });
+                    return entries;
+                },
                 getEntriesByMatrixIds: (roomids) => {
                     const entries = {};
                     remoteChannels.forEach((c) => {
@@ -65,16 +127,6 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                                 entries[mxid] = [];
                             }
                             entries[mxid].push(c);
-                        }
-                    });
-                    return entries;
-                },
-                getEntriesByMatrixId: (roomid) => {
-                    const entries = [];
-                    remoteChannels.forEach((c) => {
-                        const mxid = c.matrix.getId();
-                        if (roomid === mxid) {
-                            entries.push(c);
                         }
                     });
                     return entries;
@@ -89,60 +141,11 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                         return true;
                     });
                 },
-                upsertEntry: (room) => {
-                    REMOTECHANNEL_SET = true;
-                },
                 removeEntriesByMatrixRoomId: (room) => {
                     REMOTECHANNEL_REMOVED = true;
                 },
-            };
-        },
-        getIntent: (id) => {
-            ROOM_NAME_SET = null;
-            ROOM_TOPIC_SET = null;
-            ROOM_AVATAR_SET = null;
-            STATE_EVENT_SENT = false;
-            ALIAS_DELETED = false;
-            ROOM_DIRECTORY_VISIBILITY = null;
-            return {
-                setRoomName: (mxid, name) => {
-                    ROOM_NAME_SET = name;
-                    return Promise.resolve();
-                },
-                setRoomTopic: (mxid, topic) => {
-                    ROOM_TOPIC_SET = topic;
-                    return Promise.resolve();
-                },
-                setRoomAvatar: (mxid, mxc) => {
-                    ROOM_AVATAR_SET = mxc;
-                    return Promise.resolve();
-                },
-                getClient: () => {
-                    return {
-                        getStateEvent: (mxid, event) => {
-                            return Promise.resolve(event);
-                        },
-                        setRoomName: (mxid, name) => {
-                            ROOM_NAME_SET = name;
-                            return Promise.resolve();
-                        },
-                        setRoomTopic: (mxid, topic) => {
-                            ROOM_TOPIC_SET = topic;
-                            return Promise.resolve();
-                        },
-                        sendStateEvent: (mxid, event, data) => {
-                            STATE_EVENT_SENT = true;
-                            return Promise.resolve();
-                        },
-                        deleteAlias: (alias) => {
-                            ALIAS_DELETED = true;
-                            return Promise.resolve();
-                        },
-                        setRoomDirectoryVisibility: (mxid, visibility) => {
-                            ROOM_DIRECTORY_VISIBILITY = visibility;
-                            return Promise.resolve();
-                        },
-                    };
+                upsertEntry: (room) => {
+                    REMOTECHANNEL_SET = true;
                 },
             };
         },
@@ -166,10 +169,10 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -186,10 +189,10 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -207,10 +210,10 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -227,26 +230,26 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                     },
+                    remote_id: "111",
                 }),
                 new Entry({
                     id: "2",
                     matrix_id: "!2:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                     },
+                    remote_id: "111",
                 }),
                 new Entry({
                     id: "3",
                     matrix_id: "!3:localhost",
-                    remote_id: "false",
                     remote: {
                         discord_channel: "no",
                     },
+                    remote_id: "false",
                 }),
             ];
 
@@ -291,7 +294,6 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_name: "[Discord] oldGuild oldName",
@@ -299,6 +301,7 @@ describe("ChannelSyncroniser", () => {
                         update_name: true,
                         update_topic: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -322,12 +325,12 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_name: "[Discord] oldGuild oldName",
                         discord_topic: "oldTopic",
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -351,7 +354,6 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_name: "[Discord] newGuild #newName",
@@ -359,6 +361,7 @@ describe("ChannelSyncroniser", () => {
                         update_name: true,
                         update_topic: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -381,12 +384,12 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_iconurl: "https://cdn.discordapp.com/icons/654321/old_icon.png",
                         update_icon: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -409,12 +412,12 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_iconurl: "https://cdn.discordapp.com/icons/654321/new_icon.png",
                         update_icon: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -437,12 +440,12 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
                         discord_iconurl: "https://cdn.discordapp.com/icons/654321/icon.png",
                         update_icon: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
@@ -468,16 +471,16 @@ describe("ChannelSyncroniser", () => {
                 new Entry({
                     id: "1",
                     matrix_id: "!1:localhost",
-                    remote_id: "111",
                     remote: {
                         discord_channel: chan.id,
+                        discord_iconurl: "https://cdn.discordapp.com/icons/654321/old_icon.png",
                         discord_name: "[Discord] oldGuild #oldName",
                         discord_topic: "oldTopic",
-                        discord_iconurl: "https://cdn.discordapp.com/icons/654321/old_icon.png",
+                        update_icon: true,
                         update_name: true,
                         update_topic: true,
-                        update_icon: true,
                     },
+                    remote_id: "111",
                 }),
             ];
 
