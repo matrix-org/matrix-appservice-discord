@@ -26,6 +26,10 @@
       "severity": "warning"
     },
     "no-unused-expression": true,
-    "prefer-const": true
+    "prefer-const": true,
+    "indent": [true, "spaces", 4],
+    "max-file-line-count": [true, 500],
+    "no-duplicate-imports": true,
+    "array-type": [true, "array"]
   }
 }
