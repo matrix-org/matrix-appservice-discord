@@ -2,7 +2,6 @@ import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appse
 import * as Bluebird from "bluebird";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
-import * as Bluebird from "bluebird";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
 import { MatrixRoomHandler } from "./matrixroomhandler";
