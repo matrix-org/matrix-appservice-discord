@@ -288,7 +288,7 @@ export class MatrixEventProcessor {
 
             if (profile.avatar_url) {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
-                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url);
+                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url, 128, 128);
             }
         }
         embed.setAuthor(
