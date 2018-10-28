@@ -165,11 +165,12 @@ export class MatrixRoomHandler {
       await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
   }
 
-  public HandleInvite(event: any) {
+  public async HandleInvite(event: any) {
     log.info("Received invite for " + event.state_key + " in room " + event.room_id);
     if (event.state_key === this.botUserId) {
       log.info("Accepting invite for bridge bot");
-      return this.joinRoom(this.bridge.getIntent(), event.room_id);
+      await this.joinRoom(this.bridge.getIntent(), event.room_id);
+      this.botJoinedRooms.add(event.room_id);
     } else {
       return this.discord.ProcessMatrixStateEvent(event);
     }
