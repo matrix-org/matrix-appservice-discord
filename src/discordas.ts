@@ -1,4 +1,5 @@
 import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
+import * as Bluebird from "bluebird";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as Bluebird from "bluebird";

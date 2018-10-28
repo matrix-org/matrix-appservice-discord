@@ -69,6 +69,7 @@ function createRH(opts: any = {}) {
                 isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
+                getJoinedRooms: () => ["!123:localhost"],
             };
         },
         getRoomStore: () => {
@@ -145,9 +146,6 @@ function createRH(opts: any = {}) {
             return Promise.resolve(opts.powerLevels || {});
         },
         setRoomDirectoryVisibilityAppService: () => {
-            return Promise.resolve();
-        },
-        sendReadReceipt: () => {
             return Promise.resolve();
         },
     };
@@ -324,6 +322,12 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("ProcessCommand", () => {
+        it("should not process command if not in room", () => {
+            const handler: any = createRH({disableSS: true});
+            return expect(handler.ProcessCommand({
+                room_id: "!666:localhost",
+            })).to.eventually.be.undefined;
+        });
         it("should warn if self service is disabled", () => {
             const handler: any = createRH({disableSS: true});
             return expect(handler.ProcessCommand({
