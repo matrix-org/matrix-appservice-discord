@@ -23,6 +23,7 @@ const AGE_LIMIT = 900000; // 15 * 60 * 1000
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
 const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
 const USERSYNC_STATE_DELAY_MS = 5000;
+const ROOM_CACHE_MAXAGE_MS = 15 * 60 * 1000;
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
 /* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
@@ -41,10 +42,13 @@ export class MatrixRoomHandler {
   private bridge: Bridge;
   private discord: DiscordBot;
   private botUserId: string;
+  private botJoinedRooms: Set<string>; // roomids
+  private botJoinedRoomsCacheUpdatedAt = 0; 
   constructor(discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
     this.discord = discord;
     this.config = config;
     this.botUserId = botUserId;
+    this.botJoinedRooms = new Set();
   }
 
   public get ThirdPartyLookup(): thirdPartyLookup {
@@ -106,6 +110,7 @@ export class MatrixRoomHandler {
       log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
       return Promise.reject("Event too old");
     }
+
     if (event.type === "m.room.member" && event.content.membership === "invite") {
       return this.HandleInvite(event);
     } else if (event.type === "m.room.member" && event.content.membership === "join") {
@@ -172,12 +177,9 @@ export class MatrixRoomHandler {
 
   public async ProcessCommand(event: any, context: any) {
       const intent = this.bridge.getIntent();
-      // Due to #257 we need to check if we are joined.
-      try {
-          await intent.getClient().sendReadReceipt(event);
-      } catch (ex) {
-          log.warn("Couldn't send a read reciept into the room:", ex, ". Ignoring command.");
-          return;
+      if (!(await this.isBotInRoom(event.room_id))) {
+        log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
+        return;
       }
 
       if (!this.config.bridge.enableSelfServiceBridging) {
@@ -551,5 +553,22 @@ export class MatrixRoomHandler {
       creationOpts,
       remote,
     };
+  }
+
+  private async isBotInRoom(roomId: string): Promise<Boolean> {
+    // Update the room cache, if not done already.
+    if (Date.now () - this.botJoinedRoomsCacheUpdatedAt > ROOM_CACHE_MAXAGE_MS) {
+      log.verbose("Updating room cache for bot...");
+      try {
+        log.verbose("Got new room cache for bot");
+        this.botJoinedRoomsCacheUpdatedAt = Date.now();
+        const rooms = (await this.bridge.getBot().getJoinedRooms()) as string[];
+        this.botJoinedRooms = new Set(rooms);
+      } catch (e) {
+        log.error("Failed to get room cache for bot, ", e);
+        return false;
+      }
+    }
+    return this.botJoinedRooms.has(roomId);
   }
 }
