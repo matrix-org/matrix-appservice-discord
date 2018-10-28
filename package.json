@@ -1,6 +1,6 @@
 {
   "name": "matrix-appservice-discord",
-  "version": "0.3.0-rc1",
+  "version": "0.3.0-rc3",
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
   "scripts": {
