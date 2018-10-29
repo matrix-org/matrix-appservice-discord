@@ -28,15 +28,15 @@ const mockBridge = {
     },
     getRoomStore: () => {
         return {
-            getEntriesByRemoteRoomData: (data) => {
+            getEntriesByRemoteRoomData: async (data) => {
                 if (data.discord_channel === "321") {
-                    return Promise.resolve([{
+                    return [{
                         matrix: {
                             getId: () => "foobar:example.com",
                         },
-                    }]);
+                    }];
                 }
-                return Promise.resolve([]);
+                return [];
             },
         };
     },
@@ -155,10 +155,9 @@ describe("DiscordBot", () => {
                 mockBridge,
             );
             let expected = 0;
-            discordBot.OnMessage = (msg: any) => {
+            discordBot.OnMessage = async (msg: any) => {
                 assert.equal(msg.n, expected);
                 expected++;
-                return Promise.resolve();
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
             discordBot.setBridge(mockBridge);

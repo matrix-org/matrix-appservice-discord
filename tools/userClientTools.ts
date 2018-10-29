@@ -104,9 +104,7 @@ Please enter your Discord Token
     });
 }
 
-function addUserToken(userid: string, token: string): Bluebird<null> {
+async function addUserToken(userid: string, token: string): Promise<void> {
     const clientFactory = new DiscordClientFactory(discordstore);
-    return clientFactory.getDiscordId(token).then((discordid: string) => {
-        return discordstore.add_user_token(userid, discordid, token);
-    });
+    clientFactory.getDiscordId(token).then(async (discordid) => discordstore.add_user_token(userid, discordid, token) );
 }

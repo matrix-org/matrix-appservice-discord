@@ -47,7 +47,7 @@ describe("Util", () => {
         });
     });
     describe("ParseCommand", () => {
-        it("parses commands", () => {
+        it("parses commands", async () => {
             const action: ICommandAction = {
                 params: ["param1", "param2"],
                 run: async ({param1, param2}) => {
@@ -72,7 +72,7 @@ describe("Util", () => {
         });
     });
     describe("GetMxidFromName", () => {
-        it("Finds a single member", () => {
+        it("Finds a single member", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
@@ -87,7 +87,7 @@ describe("Util", () => {
                 expect(mxid).equal("@123:localhost");
             });
         });
-        it("Errors on multiple members", () => {
+        it("Errors on multiple members", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {

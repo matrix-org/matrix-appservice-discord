@@ -12,9 +12,9 @@ import { MockMember } from "./mocks/member";
 Chai.use(ChaiAsPromised);
 
 const bot = {
-    GetEmoji: (name: string, animated: boolean, id: string): Promise<string> => {
+    GetEmoji: async (name: string, animated: boolean, id: string): Promise<string> => {
         if (id === "3333333") {
-            return Promise.resolve("mxc://image");
+            return "mxc://image";
         } else {
             throw new Error("Emoji not found");
         }

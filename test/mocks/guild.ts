@@ -18,11 +18,11 @@ export class MockGuild {
         });
     }
 
-    public fetchMember(id: string): Promise<MockMember|Error> {
+    public async fetchMember(id: string): Promise<MockMember|Error> {
         if (this.members.has(id)) {
-            return Promise.resolve(this.members.get(id));
+            return this.members.get(id);
         }
-        return Promise.reject("Member not in this guild");
+        throw new Error("Member not in this guild");
     }
 
     public _mockAddMember(member: MockMember) {

@@ -23,9 +23,8 @@ const bot = {
         return {
             getClient: () => {
                 return {
-                    setPresence: (status) => {
+                    setPresence: async (status) => {
                         lastStatus = status;
-                        return Promise.resolve();
                     },
                 };
             },

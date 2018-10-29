@@ -11,7 +11,7 @@ export class MockChannel {
         public name: string = "",
         public topic: string = "",
     ) { }
-    public send(data: any): Promise<any> {
-        return Promise.resolve(data);
+    public async send(data: any): Promise<any> {
+        return data;
     }
 }
