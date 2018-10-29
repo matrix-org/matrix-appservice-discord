@@ -306,12 +306,12 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("HandleInvite", () => {
-        it("should accept invite for bot user", () => {
+        it("should accept invite for bot user", async () => {
             const handler: any = createRH();
-            handler.joinRoom = () => Promise.resolve("joinedroom");
-            return expect(handler.HandleInvite({
+            await handler.HandleInvite({
                 state_key: "@botuser:localhost",
-            })).to.eventually.be.equal("joinedroom");
+            });
+            expect(USERSJOINED).to.equal(1);
         });
         it("should deny invite for other users", () => {
             const handler: any = createRH();

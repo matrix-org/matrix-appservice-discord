@@ -17,6 +17,7 @@ import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
+/* tslint:disable:no-magic-numbers */
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
@@ -26,7 +27,7 @@ const USERSYNC_STATE_DELAY_MS = 5000;
 const ROOM_CACHE_MAXAGE_MS = 15 * 60 * 1000;
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
-/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
+// Disabled because it complains about the values in the array
 const JOIN_ROOM_SCHEDULE = [
     0,              // Right away
     1000,           // 1 second
@@ -165,18 +166,18 @@ export class MatrixRoomHandler {
       await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
   }
 
-  public HandleInvite(event: any) {
+  public async HandleInvite(event: any) {
     log.info("Received invite for " + event.state_key + " in room " + event.room_id);
     if (event.state_key === this.botUserId) {
       log.info("Accepting invite for bridge bot");
-      return this.joinRoom(this.bridge.getIntent(), event.room_id);
+      await this.joinRoom(this.bridge.getIntent(), event.room_id);
+      this.botJoinedRooms.add(event.room_id);
     } else {
       return this.discord.ProcessMatrixStateEvent(event);
     }
   }
 
   public async ProcessCommand(event: any, context: any) {
-      const intent = this.bridge.getIntent();
       if (!(await this.isBotInRoom(event.room_id))) {
         log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
         return;
