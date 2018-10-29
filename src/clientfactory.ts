@@ -15,7 +15,7 @@ export class DiscordClientFactory {
     private botClient: Matrix.Client;
     private clients: Map<string, Matrix.Client>;
     constructor(store: DiscordStore, config?: DiscordBridgeConfigAuth) {
-        this.config = config;
+        this.config = config!;
         this.clients = new Map();
         this.store = store;
     }
@@ -59,8 +59,8 @@ export class DiscordClientFactory {
         });
     }
 
-    public async getClient(userId: string = null): Promise<Matrix.Client> {
-        if (userId == null) {
+    public async getClient(userId: string | null = null): Promise<Matrix.Client> {
+        if (userId === null) {
             return this.botClient;
         }
         if (this.clients.has(userId)) {

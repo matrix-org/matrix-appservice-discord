@@ -17,7 +17,8 @@ export class DbEvent implements IDbDataMany {
     // tslint:disable-next-line no-any
     public async RunQuery(store: DiscordStore, params: any): Promise<void> {
         this.rows = [];
-        let rowsM = null;
+        // tslint:disable-next-line no-any
+        let rowsM: any[] | null = null;
         if (params.matrix_id) {
             rowsM = await store.db.All(`
                 SELECT *
@@ -55,7 +56,6 @@ export class DbEvent implements IDbDataMany {
             }
         }
         this.Result = this.rows.length !== 0;
-        return null;
     }
 
     public Next(): boolean {

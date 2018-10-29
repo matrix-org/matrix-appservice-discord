@@ -67,8 +67,8 @@ class DiscordBridgeConfigChannel {
 }
 
 class DiscordBridgeConfigChannelDeleteOptions {
-    public namePrefix: string = null;
-    public topicPrefix: string = null;
+    public namePrefix: string | null = null;
+    public topicPrefix: string | null = null;
     public disableMessaging: boolean = false;
     public unsetRoomAlias: boolean = true;
     public unlistFromDirectory: boolean = true;

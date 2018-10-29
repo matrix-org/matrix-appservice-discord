@@ -45,7 +45,7 @@ export class MatrixEventProcessor {
         this.discord = opts.discord;
     }
 
-    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string {
+    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -60,11 +60,11 @@ export class MatrixEventProcessor {
         let msg = `\`${event.sender}\` `;
 
         if (event.type === "m.room.name") {
-            msg += `set the name to \`${event.content.name}\``;
+            msg += `set the name to \`${event.content!.name}\``;
         } else if (event.type === "m.room.topic") {
-            msg += `set the topic to \`${event.content.topic}\``;
+            msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
-            const membership = event.content.membership;
+            const membership = event.content!.membership;
             if (membership === "join"
                 && event.unsigned.prev_content === undefined) {
                 msg += `joined the room`;
@@ -86,9 +86,9 @@ export class MatrixEventProcessor {
     public async EventToEmbed(
         event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
     ): Promise<IMatrixEventProcessorResult> {
-        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
+        let body: string = this.config.bridge.disableDiscordMentions ? event.content!.body as string :
             this.FindMentionsInPlainBody(
-                event.content.body,
+                event.content!.body as string,
                 channel.members.array(),
             );
 
@@ -113,7 +113,7 @@ export class MatrixEventProcessor {
         }*/
 
         // Replace /me with * username ...
-        if (event.content.msgtype === "m.emote") {
+        if (event.content!.msgtype === "m.emote") {
             if (profile &&
                 profile.displayname &&
                 profile.displayname.length >= MIN_NAME_LENGTH &&
@@ -172,26 +172,30 @@ export class MatrixEventProcessor {
     }
 
     public async HandleAttachment(event: IMatrixEvent, mxClient: Matrix.Client): Promise<string|Discord.FileOptions> {
+        if (!event.content) {
+            event.content = {};
+        }
+
         const hasAttachment = [
             "m.image",
             "m.audio",
             "m.video",
             "m.file",
             "m.sticker",
-        ].includes(event.content.msgtype) || [
+        ].includes(event.content.msgtype as string) || [
             "m.sticker",
         ].includes(event.type);
         if (!hasAttachment) {
             return "";
         }
 
-        if (event.content.info == null) {
+        if (!event.content.info) {
             // Fractal sends images without an info, which is technically allowed
             // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
             event.content.info = {size: 0};
         }
 
-        if (event.content.url == null) {
+        if (!event.content.url) {
             log.info("Event was an attachment type but was missing a content.url");
             return "";
         }
@@ -213,6 +217,10 @@ export class MatrixEventProcessor {
     }
 
     public async GetEmbedForReply(event: IMatrixEvent): Promise<[Discord.RichEmbed, string]|undefined> {
+        if (!event.content) {
+            event.content = {};
+        }
+
         const relatesTo = event.content["m.relates_to"];
         let eventId = null;
         if (relatesTo && relatesTo["m.in_reply_to"]) {
@@ -250,7 +258,7 @@ export class MatrixEventProcessor {
         return [embed, reponseText];
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent) {
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {
         const intent = this.bridge.getIntent();
         let displayName = sender;
         let avatarUrl;
@@ -274,7 +282,7 @@ export class MatrixEventProcessor {
             }
             // Let it fall through.
         }
-        if (profile === undefined) {
+        if (!profile) {
             try {
                 profile = await intent.getProfileInfo(sender);
             } catch (ex) {

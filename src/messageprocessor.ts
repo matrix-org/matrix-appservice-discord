@@ -45,7 +45,7 @@ function _setupMarked() {
 }
 
 export class MessageProcessorOpts {
-    constructor(readonly domain: string, readonly bot: DiscordBot = null) {
+    constructor(readonly domain: string, readonly bot: DiscordBot) {
 
     }
 }
@@ -57,9 +57,9 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    constructor(opts: MessageProcessorOpts, bot: DiscordBot = null) {
+    constructor(opts: MessageProcessorOpts, bot: DiscordBot | null = null) {
         // Backwards compat
-        if (bot != null) {
+        if (bot !== null) {
             this.opts = new MessageProcessorOpts(opts.domain, bot);
         } else {
             this.opts = opts;

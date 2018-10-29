@@ -42,7 +42,7 @@ export class Schema implements IDbSchema {
         )]);
     }
 
-    private async moveUserIds(store: DiscordStore): Promise <null> {
+    private async moveUserIds(store: DiscordStore): Promise <void> {
         log.info("Performing one time moving of tokens to new table. Please wait.");
         let rows;
         try {

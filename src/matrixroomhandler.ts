@@ -81,7 +81,7 @@ export class MatrixRoomHandler {
             "public",
         );
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
-        const promiseList = [];
+        const promiseList: Promise<void>[] = [];
         /* We delay the joins to give some implementations a chance to breathe */
         // Join a whole bunch of users.
         /* We delay the joins to give some implementations a chance to breathe */
@@ -228,7 +228,7 @@ export class MatrixRoomHandler {
             });
         }
 
-        const {command, args} = Util.MsgToArgs(event.content.body, "!discord");
+        const {command, args} = Util.MsgToArgs(event.content!.body as string, "!discord");
 
         if (command === "help" && args[0] === "bridge") {
             const link = Util.GetBotLink(this.config);
@@ -505,7 +505,7 @@ export class MatrixRoomHandler {
 
     private DiscordModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {
         return async ({name}) => {
-            let allChannelMxids = [];
+            let allChannelMxids: string[] = [];
             await Promise.all(discordChannel.guild.channels.map(async (chan) => {
                 try {
                     const chanMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(chan);

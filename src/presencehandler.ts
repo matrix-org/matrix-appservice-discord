@@ -44,7 +44,7 @@ export class PresenceHandler {
         }
         log.info("Stopping presence handler");
         clearInterval(this.interval);
-        this.interval = null;
+        this.interval = 0;
     }
 
     public EnqueueUser(user: User) {

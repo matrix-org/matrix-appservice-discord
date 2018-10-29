@@ -29,7 +29,7 @@ export class Log {
     }
 
     private static config: DiscordBridgeConfigLogging;
-    private static logger: Logger = null;
+    private static logger: Logger;
 
     private static now() {
         return moment().format(Log.config.lineDateFormat);

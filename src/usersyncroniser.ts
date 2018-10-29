@@ -9,17 +9,17 @@ import { Log } from "./log";
 const log = new Log("UserSync");
 
 const DEFAULT_USER_STATE = {
-    avatarId: null,
-    avatarUrl: null, // Nullable
+    avatarId: "",
+    avatarUrl: null,
     createUser: false,
-    displayName: null, // Nullable
+    displayName: null,
     id: null,
     mxUserId: null,
     removeAvatar: false,
 };
 
 const DEFAULT_GUILD_STATE = {
-    displayName: null,
+    displayName: "",
     id: null,
     mxUserId: null,
     roles: [],
@@ -27,9 +27,9 @@ const DEFAULT_GUILD_STATE = {
 
 export interface IUserState {
     avatarId: string;
-    avatarUrl: string; // Nullable
+    avatarUrl: string | null;
     createUser: boolean;
-    displayName: string; // Nullable
+    displayName: string | null;
     id: string;
     mxUserId: string;
     removeAvatar: boolean; // If the avatar has been removed from the user.
@@ -88,7 +88,7 @@ export class UserSyncroniser {
     public async ApplyStateToProfile(userState: IUserState) {
         const intent = this.bridge.getIntent(userState.mxUserId);
         let userUpdated = false;
-        let remoteUser = null;
+        let remoteUser: RemoteUser;
         if (userState.createUser) {
             /* NOTE: Setting the displayname/avatar will register the user if they don't exist */
             log.info(`Creating new user ${userState.mxUserId}`);
@@ -184,7 +184,7 @@ export class UserSyncroniser {
 
     public async GetUserUpdateState(discordUser: User): Promise<IUserState> {
         log.verbose(`State update requested for ${discordUser.id}`);
-        const userState = Object.assign({}, DEFAULT_USER_STATE, {
+        const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
             mxUserId: `@_discord_${discordUser.id}:${this.config.bridge.domain}`,
         });
@@ -222,9 +222,12 @@ export class UserSyncroniser {
 
     public async GetUserStateForGuildMember(
         newMember: GuildMember,
-        displayname: string,
+        displayname?: string,
     ): Promise<IGuildMemberState> {
-        const guildState = Object.assign({}, DEFAULT_GUILD_STATE, {
+        if (!displayname) {
+            displayname = "";
+        }
+        const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
@@ -284,7 +287,7 @@ export class UserSyncroniser {
             if (guild.members.has(id)) {
                 log.info(`Updating user ${id} in guild ${guild.id}.`);
                 const member = guild.members.get(id);
-                const state = await this.GetUserStateForGuildMember(member, remoteUser.get("displayname"));
+                const state = await this.GetUserStateForGuildMember(member!, remoteUser.get("displayname"));
                 const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
                 return Promise.all(
                     rooms.map(
@@ -324,7 +327,7 @@ export class UserSyncroniser {
             log.warn(`Got member update for ${roomId}, but no channel or guild member could be found.`);
             return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
-        const state = await this.GetUserStateForGuildMember(member, ev.content.displayname);
+        const state = await this.GetUserStateForGuildMember(member, ev.content!.displayname);
         return this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
@@ -332,14 +335,14 @@ export class UserSyncroniser {
         const userStateKey = `${ev.room_id}${ev.state_key}`;
         if (this.userStateHold.has(userStateKey)) {
             const oldEv = this.userStateHold.get(userStateKey);
-            if (ev.origin_server_ts > oldEv.origin_server_ts) {
+            if (ev.origin_server_ts! > oldEv!.origin_server_ts!) {
                 return false; // New event is older
             }
         }
         this.userStateHold.set(userStateKey, ev);
         // tslint:disable-next-line:await-promise
         await Bluebird.delay(delayMs);
-        if (this.userStateHold.get(userStateKey).event_id !== ev.event_id) {
+        if (this.userStateHold.get(userStateKey)!.event_id !== ev.event_id) {
             // Event has changed and we are out of date.
             return false;
         }

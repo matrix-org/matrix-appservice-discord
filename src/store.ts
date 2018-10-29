@@ -26,7 +26,7 @@ export class DiscordStore {
         } else {
             this.config = configOrFile;
         }
-        this.version = null;
+        this.version = 0;
     }
 
     public async backup_database(): Promise<void|{}> {

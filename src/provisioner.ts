@@ -77,7 +77,7 @@ export class Provisioner {
         }
 
         const perms = channel.permissionsFor(member);
-        if (!perms.hasPermission(Discord.Permissions.FLAGS.MANAGE_WEBHOOKS)) {
+        if (!perms.hasPermission(Discord.Permissions.FLAGS.MANAGE_WEBHOOKS as Discord.PermissionResolvable)) {
             // Missing permissions, so just reject it
             throw new Error("You do not have permission to manage webhooks in this channel");
         }

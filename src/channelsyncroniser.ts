@@ -17,26 +17,26 @@ const DEFAULT_CHANNEL_STATE = {
 
 const DEFAULT_SINGLECHANNEL_STATE = {
     iconId: null,
-    iconUrl: null, // nullable
+    iconUrl: null,
     mxid: null,
-    name: null, // nullable
+    name: null,
     removeIcon: false,
-    topic: null, // nullable
+    topic: null,
 };
 
 export interface ISingleChannelState {
     mxid: string;
-    name: string; // nullable
-    topic: string; // nullable
-    iconUrl: string; // nullable
-    iconId: string; // nullable
+    name: string | null;
+    topic: string | null;
+    iconUrl: string | null;
+    iconId: string | null;
     removeIcon: boolean;
 }
 
 export interface IChannelState {
     id: string;
     mxChannels: ISingleChannelState[];
-    iconMxcUrl: string; // nullable
+    iconMxcUrl: string | null;
 }
 
 export class ChannelSyncroniser {
@@ -63,7 +63,7 @@ export class ChannelSyncroniser {
 
     public async OnGuildUpdate(guild: Discord.Guild, force = false) {
         log.verbose(`Got guild update for guild ${guild.id}`);
-        const channelStates = [];
+        const channelStates: IChannelState[] = [];
         for (const [_, channel] of guild.channels) {
             if (channel.type !== "text") {
                 continue; // not supported for now
@@ -76,7 +76,7 @@ export class ChannelSyncroniser {
             }
         }
 
-        let iconMxcUrl = null;
+        let iconMxcUrl: string | null = null;
         for (const channelState of channelStates) {
             channelState.iconMxcUrl = channelState.iconMxcUrl || iconMxcUrl;
             try {
@@ -135,7 +135,7 @@ export class ChannelSyncroniser {
 
     public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
         log.verbose(`State update request for ${channel.id}`);
-        const channelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
+        const channelState: IChannelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
             id: channel.id,
             mxChannels: [],
         });
@@ -150,19 +150,19 @@ export class ChannelSyncroniser {
             guild: channel.guild.name,
             name: "#" + channel.name,
         };
-        let name = this.config.channel.namePattern;
+        let name: string = this.config.channel.namePattern;
         for (const p of Object.keys(patternMap)) {
             name = name.replace(new RegExp(":" + p, "g"), patternMap[p]);
         }
         const topic = channel.topic;
         const icon = channel.guild.icon;
-        let iconUrl = null;
+        let iconUrl: string | null = null;
         if (icon) {
             iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.png`;
         }
         remoteRooms.forEach((remoteRoom) => {
             const mxid = remoteRoom.matrix.getId();
-            const singleChannelState = Object.assign({}, DEFAULT_SINGLECHANNEL_STATE, {
+            const singleChannelState: ISingleChannelState = Object.assign({}, DEFAULT_SINGLECHANNEL_STATE, {
                 mxid,
             });
 
@@ -219,7 +219,7 @@ export class ChannelSyncroniser {
                 roomUpdated = true;
             }
 
-            if (channelState.iconUrl !== null) {
+            if (channelState.iconUrl !== null && channelState.iconId !== null) {
                 log.verbose(`Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
                 if (channelsState.iconMxcUrl === null) {
                     const iconMxc = await Util.UploadContentFromUrl(

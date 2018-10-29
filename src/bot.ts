@@ -185,15 +185,15 @@ export class DiscordBot {
         }
         if (this.bot.guilds.has(guildId) ) {
             const guild = this.bot.guilds.get(guildId);
-            return guild.channels.filter((channel) => {
+            return guild!.channels.filter((channel) => {
                 return channel.name.toLowerCase() === channelName.toLowerCase(); // Implement searching in the future.
             }).map((channel) => {
                 return {
-                    alias: `#_discord_${guild.id}_${channel.id}:${this.config.bridge.domain}`,
+                    alias: `#_discord_${guild!.id}_${channel.id}:${this.config.bridge.domain}`,
                     fields: {
                         channel_id: channel.id,
                         channel_name: channel.name,
-                        guild_id: guild.id,
+                        guild_id: guild!.id,
                     },
                     protocol: "discord",
                 } as IThirdPartyLookup;
@@ -205,7 +205,7 @@ export class DiscordBot {
     }
 
     public async LookupRoom(server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
-        const hasSender = sender !== null;
+        const hasSender = sender !== null && sender !== undefined;
         try {
             const client = await this.clientFactory.getClient(sender);
             const guild = client.guilds.get(server);
@@ -224,7 +224,7 @@ export class DiscordBot {
             log.verbose("LookupRoom => ", err);
             if (hasSender) {
                 log.verbose(`Couldn't find guild/channel under user account. Falling back.`);
-                return await this.LookupRoom(server, room, null);
+                return await this.LookupRoom(server, room);
             }
             throw err;
         }
@@ -253,7 +253,7 @@ export class DiscordBot {
         });
     }
 
-    public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<null> {
+    public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<void> {
         const mxClient = this.bridge.getClientFactory().getClientAs();
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const result = await this.LookupRoom(guildId, channelId, event.sender);
@@ -277,8 +277,8 @@ export class DiscordBot {
             opts.file = file;
         }
 
-        let msg = null;
-        let hook: Discord.Webhook ;
+        let msg: Discord.Message | null | (Discord.Message | null)[] = null;
+        let hook: Discord.Webhook | undefined;
         if (botUser) {
             const webhooks = await chan.fetchWebhooks();
             hook = webhooks.filterArray((h) => h.name === "_matrix").pop();
@@ -300,14 +300,14 @@ export class DiscordBot {
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
                 msg = await hook.send(embed.description, {
-                    avatarURL: embed.author.icon_url,
+                    avatarURL: embed!.author!.icon_url,
                     embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
                     files: opts.file ? [opts.file] : undefined,
-                    username: embed.author.name,
+                    username: embed!.author!.name,
                 } as Discord.WebhookMessageOptions);
             } else {
                 if (embedSet.replyEmbed) {
-                    embed.addField("Replying to", embedSet.replyEmbed.author.name);
+                    embed.addField("Replying to", embedSet.replyEmbed!.author!.name);
                     embed.addField("Reply text", embedSet.replyEmbed.description);
                 }
                 opts.embed = embed;
@@ -342,7 +342,7 @@ export class DiscordBot {
 
         const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
 
-        if (!storeEvent.Result) {
+        if (!storeEvent || !storeEvent.Result) {
             log.warn(`Could not redact because the event was not in the store.`);
             return;
         }
@@ -368,10 +368,10 @@ export class DiscordBot {
 
     public async GetDiscordUserOrMember(
         userId: Discord.Snowflake, guildId?: Discord.Snowflake,
-    ): Promise<Discord.User|Discord.GuildMember> {
+    ): Promise<Discord.User|Discord.GuildMember|undefined> {
         try {
             if (guildId && this.bot.guilds.has(guildId)) {
-                return await this.bot.guilds.get(guildId).fetchMember(userId);
+                return await this.bot.guilds.get(guildId)!.fetchMember(userId);
             }
             return await this.bot.fetchUser(userId);
         } catch (ex) {
@@ -405,7 +405,10 @@ export class DiscordBot {
         if (!id.match(/^\d+$/)) {
             throw new Error("Non-numerical ID");
         }
-        const dbEmoji: DbEmoji = await this.store.Get(DbEmoji, {emoji_id: id});
+        const dbEmoji = await this.store.Get(DbEmoji, {emoji_id: id});
+        if (!dbEmoji) {
+            throw new Error("Couldn't fetch from store");
+        }
         if (!dbEmoji.Result) {
             const url = "https://cdn.discordapp.com/emojis/" + id + (animated ? ".gif" : ".png");
             const intent = this.bridge.getIntent();
@@ -620,7 +623,7 @@ export class DiscordBot {
     private async DeleteDiscordMessage(msg: Discord.Message) {
         log.info(`Got delete event for ${msg.id}`);
         const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.id});
-        if (!storeEvent.Result) {
+        if (!storeEvent || !storeEvent.Result) {
             log.warn(`Could not redact because the event was not in the store.`);
             return;
         }
