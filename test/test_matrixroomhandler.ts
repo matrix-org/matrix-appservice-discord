@@ -59,6 +59,7 @@ function createRH(opts: any = {}) {
     const bridge = {
         getBot: () => {
             return {
+                getJoinedRooms: () => ["!123:localhost"],
                 isRemoteUser: (id) => {
                     return id !== undefined && id.startsWith("@_discord_");
                 },
@@ -338,6 +339,12 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("ProcessCommand", () => {
+        it("should not process command if not in room", () => {
+            const handler: any = createRH({disableSS: true});
+            return expect(handler.ProcessCommand({
+                room_id: "!666:localhost",
+            })).to.eventually.be.undefined;
+        });
         it("should warn if self service is disabled", async () => {
             const handler: any = createRH({disableSS: true});
             await handler.ProcessCommand({
