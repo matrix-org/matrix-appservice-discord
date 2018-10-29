@@ -2,10 +2,10 @@ import { DiscordStore } from "../store";
 
 export interface IDbData {
     Result: boolean;
-    RunQuery(store: DiscordStore, params: any): Promise<null|Error>;
-    Insert(store: DiscordStore): Promise<null|Error>;
-    Update(store: DiscordStore): Promise<null|Error>;
-    Delete(store: DiscordStore): Promise<null|Error>;
+    RunQuery(store: DiscordStore, params: any): Promise<void|Error>;
+    Insert(store: DiscordStore): Promise<void|Error>;
+    Update(store: DiscordStore): Promise<void|Error>;
+    Delete(store: DiscordStore): Promise<void|Error>;
 }
 
 export interface IDbDataMany extends IDbData {

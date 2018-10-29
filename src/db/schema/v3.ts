@@ -7,8 +7,8 @@ const log = new Log("SchemaV3");
 
 export class Schema implements IDbSchema {
     public description = "user_tokens split into user_id_discord_id";
-    public run(store: DiscordStore): Promise<null> {
-        const promise = Promise.all([store.create_table(`
+    public async run(store: DiscordStore): Promise<void> {
+        await Promise.all([store.create_table(`
             CREATE TABLE user_id_discord_id (
                 discord_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
@@ -21,28 +21,25 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(discord_id)
             );`, "discord_id_token",
             )]);
-        return promise.then(() => {
-            // Backup before moving data.
-            return store.backup_database();
-        }).then(() => {
-            // Move old data to new tables.
-            return this.moveUserIds(store);
-        }).then(() => {
-            // Drop old table.
-            return store.db.Run(
-                `DROP TABLE IF EXISTS user_tokens;`,
-            );
-        });
+
+        // Backup before moving data.
+        await store.backup_database();
+
+        // Move old data to new tables.
+        await this.moveUserIds(store);
+
+        // Drop old table.
+        await store.db.Run(
+            `DROP TABLE IF EXISTS user_tokens;`,
+        );
     }
 
-    public rollBack(store: DiscordStore): Promise <void> {
-        return Promise.all([store.db.Run(
+    public async rollBack(store: DiscordStore): Promise <void> {
+        await Promise.all([store.db.Run(
             `DROP TABLE IF EXISTS user_id_discord_id;`,
         ), store.db.Run(
             `DROP TABLE IF EXISTS discord_id_token;`,
-        )]).then(() => {
-
-        });
+        )]);
     }
 
     private async moveUserIds(store: DiscordStore): Promise <null> {

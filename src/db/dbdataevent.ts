@@ -13,7 +13,7 @@ export class DbEvent implements IDbDataMany {
         return this.rows.length;
     }
 
-    public async RunQuery(store: DiscordStore, params: any): Promise<null> {
+    public async RunQuery(store: DiscordStore, params: any): Promise<void> {
         this.rows = [];
         let rowsM = null;
         if (params.matrix_id) {
@@ -67,7 +67,7 @@ export class DbEvent implements IDbDataMany {
         return true;
     }
 
-    public async Insert(store: DiscordStore): Promise<null> {
+    public async Insert(store: DiscordStore): Promise<void> {
         await store.db.Run(`
             INSERT INTO event_store
             (matrix_id,discord_id)
@@ -95,11 +95,11 @@ export class DbEvent implements IDbDataMany {
         });
     }
 
-    public Update(store: DiscordStore): Promise<null> {
+    public async Update(store: DiscordStore): Promise<void> {
         throw new Error("Update is not implemented");
     }
 
-    public async Delete(store: DiscordStore): Promise<null> {
+    public async Delete(store: DiscordStore): Promise<void> {
         await store.db.Run(`
             DELETE FROM event_store
             WHERE matrix_id = $matrix_id

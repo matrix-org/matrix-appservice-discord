@@ -39,18 +39,17 @@ export class DiscordClientFactory {
         });
     }
 
-    public getDiscordId(token: string): Bluebird<string> {
+    public async getDiscordId(token: string): Promise<string> {
         const client = new Client({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
             sync: false,
         });
         return new Bluebird<string>((resolve, reject) => {
-            client.on("ready", () => {
+            client.on("ready", async () => {
                 const id = client.user.id;
-                return client.destroy().then(() => {
-                    resolve(id);
-                });
+                await client.destroy();
+                resolve(id);
             });
             client.login(token).catch(reject);
         }).timeout(READY_TIMEOUT).catch((err: Error) => {

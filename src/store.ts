@@ -239,16 +239,17 @@ export class DiscordStore {
         });
     }
 
-    public Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
+    public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);
-        return dType.RunQuery(this, params).then(() => {
+        try {
+            await dType.RunQuery(this, params);
             log.silly(`Finished query with ${dType.Result ? "Results" : "No Results"}`);
             return dType;
-        }).catch((ex) => {
+        } catch (ex) {
             log.warn(`get <${dType.constructor.name} with params ${params} FAILED with exception ${ex}>`);
             return null;
-        });
+        }
     }
 
     public Insert<T extends IDbData>(data: T): Promise<Error> {

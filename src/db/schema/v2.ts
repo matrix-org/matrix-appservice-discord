@@ -2,8 +2,8 @@ import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
     public description = "Create DM Table, User Options";
-    public run(store: DiscordStore): Promise<Error[]> {
-        return Promise.all([
+    public async run(store: DiscordStore): Promise<void> {
+        await Promise.all([
             store.create_table(`
             CREATE TABLE dm_rooms (
                 discord_id	TEXT NOT NULL,
@@ -17,8 +17,8 @@ export class Schema implements IDbSchema {
             );`, "client_options",
         )]);
     }
-    public rollBack(store: DiscordStore): Promise<Error> {
-        return store.db.Exec(
+    public async rollBack(store: DiscordStore): Promise<void> {
+        await store.db.Exec(
             `DROP TABLE IF EXISTS dm_rooms;
             DROP TABLE IF EXISTS client_options;`,
         );

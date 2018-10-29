@@ -3,7 +3,7 @@ import {DiscordStore} from "../../store";
 
 export class Schema implements IDbSchema {
     public description = "create event_store and discord_msg_store tables";
-    public async run(store: DiscordStore): Promise<void|Error> {
+    public async run(store: DiscordStore): Promise<void> {
         await store.db.Run(
             `DROP TABLE IF EXISTS event_store;`,
         );
@@ -13,7 +13,7 @@ export class Schema implements IDbSchema {
                 discord_id TEXT NOT NULL,
                 PRIMARY KEY(matrix_id, discord_id)
         );`, "event_store");
-        return await store.create_table(`
+        await store.create_table(`
             CREATE TABLE discord_msg_store (
                 msg_id TEXT NOT NULL,
                 guild_id TEXT NOT NULL,
@@ -22,8 +22,8 @@ export class Schema implements IDbSchema {
         );`, "discord_msg_store");
     }
 
-    public rollBack(store: DiscordStore): Promise <null> {
-        return store.db.Exec(
+    public async rollBack(store: DiscordStore): Promise<void> {
+        await store.db.Exec(
             `DROP TABLE IF EXISTS event_store;` +
             `DROP TABLE IF EXISTS discord_msg_store;`,
         );
