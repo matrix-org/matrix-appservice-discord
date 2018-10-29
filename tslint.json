@@ -16,7 +16,7 @@
     "typedef": {
       "severity": "warning"
     },
-    "await-promise": true,
+    "await-promise": [true, "Bluebird"],
     "curly": true,
     "no-empty": false,
     "no-invalid-this": true,
