@@ -120,15 +120,13 @@ export class DiscordBot {
         // messages get delayed from discord. We use Bluebird.delay to handle this.
 
         client.on("messageDelete", async (msg: Discord.Message) => {
-            // tslint:disable-next-line:await-promise
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[msg.channel.id] = (async () => {
                 await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                await this.OnMessage(msg);
+                await this.DeleteDiscordMessage(msg);
             })();
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
-            // tslint:disable-next-line:await-promise
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[newMessage.channel.id] = (async () => {
                 await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
@@ -136,7 +134,6 @@ export class DiscordBot {
             })();
         });
         client.on("message", async (msg: Discord.Message) => {
-            // tslint:disable-next-line:await-promise
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[msg.channel.id] = (async () => {
                 await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
