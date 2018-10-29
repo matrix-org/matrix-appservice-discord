@@ -178,12 +178,11 @@ describe("MatrixRoomHandler", () => {
             const handler = createRH();
             return expect(handler.OnAliasQueried("#accept:localhost", "!accept:localhost")).to.be.fulfilled;
         });
-        it("should join successfully and create ghosts", () => {
+        it("should join successfully and create ghosts", async () => {
             const EXPECTEDUSERS = 2;
             const handler = createRH({createMembers: true});
-            return handler.OnAliasQueried("#accept:localhost", "!accept:localhost").then(() => {
-                expect(USERSJOINED).to.equal(EXPECTEDUSERS);
-            });
+            await handler.OnAliasQueried("#accept:localhost", "!accept:localhost");
+            expect(USERSJOINED).to.equal(EXPECTEDUSERS);
         });
         it("should not join successfully", () => {
             const handler = createRH();
@@ -315,19 +314,27 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("HandleInvite", () => {
-        it("should accept invite for bot user", () => {
+        it("should accept invite for bot user", async () => {
             const handler: any = createRH();
-            handler.joinRoom = async () => "joinedroom";
-            return expect(handler.HandleInvite({
+            let joinedRoom = false;
+            handler.joinRoom = async () => {
+                joinedRoom = true;
+            };
+            await handler.HandleInvite({
                 state_key: "@botuser:localhost",
-            })).to.eventually.be.equal("joinedroom");
+            });
+            expect(joinedRoom).to.be.true;
         });
-        it("should deny invite for other users", () => {
+        it("should deny invite for other users", async () => {
             const handler: any = createRH();
-            handler.joinRoom = async () => "joinedroom";
-            return expect(handler.HandleInvite({
+            let joinedRoom = false;
+            handler.joinRoom = async () => {
+                joinedRoom = true;
+            };
+            await handler.HandleInvite({
                 state_key: "@user:localhost",
-            })).to.eventually.be.equal("stateevent");
+            });
+            expect(joinedRoom).to.be.false;
         });
     });
     describe("ProcessCommand", () => {
@@ -537,12 +544,13 @@ describe("MatrixRoomHandler", () => {
                 "_discord_123_444:localhost",
                 "_discord_123_444")).to.eventually.be.undefined;
         });
-        it("will not create room if alias is wrong", () => {
+        it("will not create room if alias is wrong", async () => {
             const handler: any = createRH({});
             handler.createMatrixRoom = () => true;
-            return expect(handler.OnAliasQuery(
+            const ret = await handler.OnAliasQuery(
                 "_discord_123:localhost",
-                "_discord_123")).to.be.undefined;
+                "_discord_123");
+            expect(ret).to.be.undefined;
         });
     });
     describe("tpGetProtocol", () => {

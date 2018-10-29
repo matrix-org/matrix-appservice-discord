@@ -122,22 +122,22 @@ async function run() {
     await Promise.all(promiseList);
 
     // now it is time to actually run the updates
-    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    const promiseList2 = [];
 
     let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
-        promiseChain = promiseChain.return(async () => {
+        promiseList2.push((async () => {
             await Bluebird.delay(curDelay);
             try {
                 await chanSync.OnGuildUpdate(guild, true);
             } catch (err) {
                 log.warn(`Couldn't update rooms of guild ${guild.id}`, err);
             }
-        });
+        })());
         curDelay += config.limits.roomGhostJoinDelay;
     });
     try {
-        await promiseChain;
+        await Promise.all(promiseList2);
     } catch (err) {
         log.error(err);
     }

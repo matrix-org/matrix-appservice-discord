@@ -73,7 +73,7 @@ export class MatrixRoomHandler {
             "public",
         );
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
-        let promiseChain: Bluebird<any> = Bluebird.resolve();
+        const promiseList = [];
         /* We delay the joins to give some implementations a chance to breathe */
         // Join a whole bunch of users.
         /* We delay the joins to give some implementations a chance to breathe */
@@ -82,7 +82,7 @@ export class MatrixRoomHandler {
             if (member.id === this.discord.GetBotId()) {
               continue;
             }
-            promiseChain = promiseChain.return(async () => {
+            promiseList.push((async () => {
                 await Bluebird.delay(delay);
                 log.info("OnAliasQueried", `UserSyncing ${member.id}`);
                 // Ensure the profile is up to date.
@@ -91,11 +91,11 @@ export class MatrixRoomHandler {
                 await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
                 // set the correct discord guild name
                 await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
-            });
+            })());
             delay += this.config.limits.roomGhostJoinDelay;
         }
         // tslint:disable-next-line:await-promise
-        await promiseChain;
+        await Promise.all(promiseList);
     }
 
     public async OnEvent(request, context): Promise<any> {

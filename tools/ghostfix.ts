@@ -112,7 +112,7 @@ async function run() {
     await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
-    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    const promiseList = [];
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
         client.guilds.forEach((guild) => {
@@ -124,7 +124,7 @@ async function run() {
                     if (member.id === client.user.id) {
                         return;
                     }
-                    promiseChain = promiseChain.return(async () => {
+                    promiseList.push((async () => {
                         await Bluebird.delay(curDelay);
                         await Bluebird.each(chanSync.GetRoomIdsFromChannel(channel), async (room) => {
                             let currentSchedule = JOIN_ROOM_SCHEDULE[0];
@@ -156,13 +156,13 @@ async function run() {
                         }).catch((err) => {
                             log.warn(`No associated matrix rooms for discord room ${channel.id}`);
                         });
-                    });
+                    })());
                     curDelay += config.limits.roomGhostJoinDelay;
                 });
             });
         });
 
-        await promiseChain;
+        await Promise.all(promiseList);
     } catch (err) {
         log.error(err);
     }
