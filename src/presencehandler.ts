@@ -18,7 +18,7 @@ interface IMatrixPresence {
 export class PresenceHandler {
     private readonly bot: DiscordBot;
     private presenceQueue: User[];
-    private interval: number;
+    private interval: NodeJS.Timeout | null;
     constructor(bot: DiscordBot) {
         this.bot = bot;
         this.presenceQueue = [];
@@ -41,10 +41,11 @@ export class PresenceHandler {
     public Stop() {
         if (!this.interval) {
             log.info("Can not stop interval, not running.");
+            return;
         }
         log.info("Stopping presence handler");
         clearInterval(this.interval);
-        this.interval = 0;
+        this.interval = null;
     }
 
     public EnqueueUser(user: User) {
