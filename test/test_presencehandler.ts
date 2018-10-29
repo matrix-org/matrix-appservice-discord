@@ -92,51 +92,51 @@ describe("PresenceHandler", () => {
         });
     });
     describe("ProcessUser", () => {
-        it("processes an online user", () => {
+        it("processes an online user", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "online",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
             });
         });
-        it("processes an offline user", () => {
+        it("processes an offline user", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "offline",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "offline",
             });
 
         });
-        it("processes an idle user", () => {
+        it("processes an idle user", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "idle",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "unavailable",
             });
         });
-        it("processes an dnd user", () => {
+        it("processes an dnd user", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "dnd",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Do not disturb",
@@ -145,13 +145,13 @@ describe("PresenceHandler", () => {
                 game: new Discord.Game({name: "Test Game"}),
                 status: "dnd",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Do not disturb | Playing Test Game",
             });
         });
-        it("processes a user playing games", () => {
+        it("processes a user playing games", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
@@ -159,7 +159,7 @@ describe("PresenceHandler", () => {
                 game: new Discord.Game({name: "Test Game"}),
                 status: "online",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Playing Test Game",
@@ -168,7 +168,7 @@ describe("PresenceHandler", () => {
                 game: new Discord.Game({name: "Test Game", type: 1}),
                 status: "online",
             }));
-            handler.ProcessUser(member);
+            await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Streaming Test Game",

@@ -66,19 +66,23 @@ export class Provisioner {
         return !!this.pendingRequests[channelId];
     }
 
-    public MarkApproved(channel: Discord.TextChannel, member: Discord.GuildMember, allow: boolean): Promise<boolean> {
+    public async MarkApproved(
+        channel: Discord.TextChannel,
+        member: Discord.GuildMember,
+        allow: boolean,
+    ): Promise<boolean> {
         const channelId = channel.guild.id + "/" + channel.id;
         if (!this.pendingRequests[channelId]) {
-            return Promise.resolve(false); // no change, so false
+            return false; // no change, so false
         }
 
         const perms = channel.permissionsFor(member);
         if (!perms.hasPermission(Discord.Permissions.FLAGS.MANAGE_WEBHOOKS)) {
             // Missing permissions, so just reject it
-            return Promise.reject(new Error("You do not have permission to manage webhooks in this channel"));
+            throw new Error("You do not have permission to manage webhooks in this channel");
         }
 
         this.pendingRequests[channelId](allow);
-        return Promise.resolve(true); // replied, so true
+        return true; // replied, so true
     }
 }

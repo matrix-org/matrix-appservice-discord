@@ -271,7 +271,7 @@ export class UserSyncroniser {
         const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
         return Promise.all(
             rooms.map(
-                (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
+                async (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
             ),
         );
     }
@@ -288,7 +288,7 @@ export class UserSyncroniser {
                 const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
                 return Promise.all(
                     rooms.map(
-                        (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
+                        async (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
                     ),
                 );
             }

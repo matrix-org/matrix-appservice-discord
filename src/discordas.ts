@@ -40,7 +40,7 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
-function run(port: number, fileConfig: DiscordBridgeConfig) {
+async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
     config.ApplyConfig(fileConfig);
     Log.Configure(config.logging);
@@ -98,17 +98,17 @@ function run(port: number, fileConfig: DiscordBridgeConfig) {
     discordbot.setRoomHandler(roomhandler);
     log.info("Initing bridge.");
     log.info(`Started listening on port ${port}.`);
-    bridge.run(port, config).then(() => {
+
+    try {
+        await bridge.run(port, config);
         log.info("Initing store.");
-        return discordstore.init();
-    }).then(() => {
+        await discordstore.init();
         log.info("Initing bot.");
-        return discordbot.run().then(() => {
-            log.info("Discordbot started successfully.");
-        });
-    }).catch((err) => {
+        await discordbot.run();
+        log.info("Discordbot started successfully.");
+    } catch (err) {
         log.error(err);
         log.error("Failure during startup. Exiting.");
         process.exit(1);
-    });
+    }
 }

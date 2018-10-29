@@ -35,7 +35,7 @@ export class Util {
      * downloadFile - This function will take a URL and store the resulting data into
      * a buffer.
      */
-    public static DownloadFile(url: string): Promise<Buffer> {
+    public static async DownloadFile(url: string): Promise<Buffer> {
         return new Promise((resolve, reject) => {
             let ht;
             if (url.startsWith("https")) {
@@ -60,13 +60,13 @@ export class Util {
             req.on("error", (err) => {
                 reject(`Failed to download. ${err.code}`);
             });
-        });
+        }) as Promise<Buffer>;
     }
     /**
      * uploadContentFromUrl - Upload content from a given URL to the homeserver
      * and return a MXC URL.
      */
-    public static UploadContentFromUrl(url: string, intent: Intent, name: string): Promise<IUploadResult> {
+    public static async UploadContentFromUrl(url: string, intent: Intent, name: string): Promise<IUploadResult> {
         let contenttype;
         let size;
         name = name || null;
@@ -128,7 +128,7 @@ export class Util {
      * @param {number} duration The number of milliseconds to wait
      * @returns {Promise<any>} The promise
      */
-    public static DelayedPromise(duration: number): Promise<any> {
+    public static async DelayedPromise(duration: number): Promise<any> {
         return new Promise<any>((resolve, reject) => {
             setTimeout(resolve, duration);
         });

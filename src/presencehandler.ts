@@ -29,7 +29,8 @@ export class PresenceHandler {
             this.Stop();
         }
         log.info(`Starting presence handler with new interval ${intervalTime}ms`);
-        this.interval = setInterval(this.processIntervalThread.bind(this), intervalTime);
+        this.interval = setInterval(this.processIntervalThread.bind(this),  // tslint:disable-line no-floating-promises
+            intervalTime);
     }
 
     public Stop() {
@@ -61,16 +62,17 @@ export class PresenceHandler {
         }
     }
 
-    public ProcessUser(user: User): boolean {
+    public async ProcessUser(user: User): Promise<boolean> {
         const status = this.getUserPresence(user.presence);
-        this.setMatrixPresence(user, status);
+        await this.setMatrixPresence(user, status);
         return status.ShouldDrop;
     }
 
-    private processIntervalThread() {
+    private async processIntervalThread() {
         const user = this.presenceQueue.shift();
         if (user) {
-            if (!this.ProcessUser(user)) {
+            const proccessed = await this.ProcessUser(user);
+            if (!proccessed) {
                 this.presenceQueue.push(user);
             } else {
                 log.info(`Dropping ${user.id} from the presence queue.`);
@@ -102,20 +104,24 @@ export class PresenceHandler {
         return status;
     }
 
-    private setMatrixPresence(user: User, status: PresenceHandlerStatus) {
+    private async setMatrixPresence(user: User, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(user);
         const statusObj: any = {presence: status.Presence};
         if (status.StatusMsg) {
             statusObj.status_msg = status.StatusMsg;
         }
-        intent.getClient().setPresence(statusObj).catch((ex) => {
+        try {
+            await intent.getClient().setPresence(statusObj);
+        } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);
                 return;
             }
-            return this.bot.UserSyncroniser.OnUpdateUser(user).catch((err) => {
+            try {
+                await this.bot.UserSyncroniser.OnUpdateUser(user);
+            } catch (err) {
                 log.warn(`Could not register new Matrix user for ${user.id}`);
-            });
-        });
+            }
+        }
     }
 }

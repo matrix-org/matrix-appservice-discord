@@ -82,27 +82,27 @@ export class MatrixRoomHandler {
             if (member.id === this.discord.GetBotId()) {
               continue;
             }
-            promiseChain = promiseChain.return(Bluebird.delay(delay).then(async () => {
+            promiseChain = promiseChain.return(async () => {
+                await Bluebird.delay(delay);
                 log.info("OnAliasQueried", `UserSyncing ${member.id}`);
                 // Ensure the profile is up to date.
-                return this.discord.UserSyncroniser.OnUpdateUser(member.user);
-            }).then(async () => {
+                await this.discord.UserSyncroniser.OnUpdateUser(member.user);
                 log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-                return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId)
-                    // set the correct discord guild name
-                    .then(async () => this.discord.UserSyncroniser.EnsureJoin(member, roomId) );
-            }));
+                await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
+                // set the correct discord guild name
+                await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
+            });
             delay += this.config.limits.roomGhostJoinDelay;
         }
         // tslint:disable-next-line:await-promise
         await promiseChain;
     }
 
-    public OnEvent(request, context): Promise<any> {
+    public async OnEvent(request, context): Promise<any> {
         const event = request.getData();
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            return Promise.reject("Event too old");
+            throw new Error("Event too old");
         }
         if (event.type === "m.room.member" && event.content.membership === "invite") {
             return this.HandleInvite(event);
@@ -125,18 +125,23 @@ export class MatrixRoomHandler {
                 return this.ProcessCommand(event, context);
             } else if (context.rooms.remote) {
                 const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
-                return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]).catch((err) => {
+                try {
+                    return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
-                });
+                    return;
+                }
             }
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
-            return this.HandleEncryptionWarning(event.room_id).catch((err) => {
-                return Promise.reject(`Failed to handle encrypted room, ${err}`);
-            });
+            try {
+                return this.HandleEncryptionWarning(event.room_id);
+            } catch (err) {
+                throw new Error(`Failed to handle encrypted room, ${err}`);
+            }
         } else {
             log.verbose("Got non m.room.message event");
         }
-        return Promise.reject("Event not processed by bridge");
+        throw new Error("Event not processed by bridge");
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
@@ -158,13 +163,13 @@ export class MatrixRoomHandler {
         await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
     }
 
-    public HandleInvite(event: any) {
+    public async HandleInvite(event: any) {
         log.info("Received invite for " + event.state_key + " in room " + event.room_id);
         if (event.state_key === this.botUserId) {
             log.info("Accepting invite for bridge bot");
-            return this.joinRoom(this.bridge.getIntent(), event.room_id);
+            await this.joinRoom(this.bridge.getIntent(), event.room_id);
         } else {
-            return this.discord.ProcessMatrixStateEvent(event);
+            await this.discord.ProcessMatrixStateEvent(event);
         }
     }
 
@@ -320,23 +325,24 @@ export class MatrixRoomHandler {
         }
     }
 
-    public OnAliasQuery(alias: string, aliasLocalpart: string): Promise<any> {
+    public async OnAliasQuery(alias: string, aliasLocalpart: string): Promise<any> {
         log.info("Got request for #", aliasLocalpart);
         const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
             log.warn(`Alias '${aliasLocalpart}' was missing a server and/or a channel`);
             return;
         }
-        return this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]).then((result) => {
+        try {
+            const result = await this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]);
             log.info("Creating #", aliasLocalpart);
             return this.createMatrixRoom(result.channel, aliasLocalpart);
-        }).catch((err) => {
+        } catch (err) {
             log.error(`Couldn't find discord room '${aliasLocalpart}'.`, err);
-        });
+        }
     }
 
-    public tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
-        return Promise.resolve({
+    public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
+        return {
             field_types: {
                 // guild_name: {
                 //   regexp: "\S.{0,98}\S",
@@ -376,26 +382,26 @@ export class MatrixRoomHandler {
             }),
             location_fields: ["guild_id", "channel_name"],
             user_fields: ["username", "discriminator"],
-        });
+        };
     }
 
-    public tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
+    public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
         log.info("Got location request ", protocol, fields);
         const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
-        return Promise.resolve(chans);
+        return chans;
     }
 
-    public tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
-        return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
+    public async tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
+        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
     }
 
-    public tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
+    public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
         log.info("Got user request ", protocol, fields);
-        return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
+        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
     }
 
-    public tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
-        return Promise.reject({err: "Unsupported", code: HTTP_UNSUPPORTED});
+    public async tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
+        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
     }
 
     public async HandleDiscordCommand(msg: Discord.Message) {
@@ -484,20 +490,23 @@ export class MatrixRoomHandler {
     private DiscordModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {
         return async ({name}) => {
             let allChannelMxids = [];
-            await Promise.all(discordChannel.guild.channels.map((chan) => {
-                return this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(chan).then((chanMxids) => {
+            await Promise.all(discordChannel.guild.channels.map(async (chan) => {
+                try {
+                    const chanMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(chan);
                     allChannelMxids = allChannelMxids.concat(chanMxids);
-                }).catch((e) => {
+                } catch (e) {
                     // pass, non-text-channel
-                });
+                }
             }));
             let errorMsg = "";
-            await Promise.all(allChannelMxids.map((chanMxid) => {
+            await Promise.all(allChannelMxids.map(async (chanMxid) => {
                 const intent = this.bridge.getIntent();
-                return intent[funcKey](chanMxid, name).catch((e) => {
+                try {
+                    await intent[funcKey](chanMxid, name);
+                } catch (e) {
                     // maybe we don't have permission to kick/ban/unban...?
                     errorMsg += `\nCouldn't ${funcKey} ${name} from ${chanMxid}`;
-                });
+                }
             }));
             if (errorMsg) {
                 throw Error(errorMsg);
@@ -506,24 +515,34 @@ export class MatrixRoomHandler {
         };
     }
 
-    private joinRoom(intent: any, roomIdOrAlias: string): Promise<string> {
+    private async joinRoom(intent: any, roomIdOrAlias: string): Promise<void> {
         let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-        const doJoin = () => Util.DelayedPromise(currentSchedule)
-            .then(() => intent.getClient().joinRoom(roomIdOrAlias));
-        const errorHandler = (err) => {
+        const doJoin = async () => {
+            await Util.DelayedPromise(currentSchedule);
+            await intent.getClient().joinRoom(roomIdOrAlias);
+        };
+        const errorHandler = async (err) => {
             log.error(`Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
             log.error(err);
             const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
             if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
                 log.warn(`Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
-                return Promise.reject(err);
+                throw new Error(err);
             } else {
                 currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
-                return doJoin().catch(errorHandler);
+                try {
+                    await doJoin();
+                } catch (e) {
+                    await errorHandler(e);
+                }
             }
         };
 
-        return doJoin().catch(errorHandler);
+        try {
+            await doJoin();
+        } catch (e) {
+            await errorHandler(e);
+        }
     }
 
     private createMatrixRoom(channel: Discord.TextChannel, alias: string) {

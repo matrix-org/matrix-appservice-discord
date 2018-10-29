@@ -29,14 +29,14 @@ export class DiscordStore {
         this.version = null;
     }
 
-    public backup_database(): Promise<void|{}> {
+    public async backup_database(): Promise<void|{}> {
         if (this.config.filename == null) {
             log.warn("Backups not supported on non-sqlite connector");
             return;
         }
         if (this.config.filename === ":memory:") {
             log.info("Can't backup a :memory: database.");
-            return Promise.resolve();
+            return;
         }
         const BACKUP_NAME = this.config.filename + ".backup";
 
@@ -45,7 +45,7 @@ export class DiscordStore {
             fs.access(BACKUP_NAME, (err) => {
                 return resolve(err === null);
             });
-        }).then((result) => {
+        }).then(async (result) => {
             return new Promise((resolve, reject) => {
                 if (!result) {
                     log.warn("NOT backing up database while a file already exists");
@@ -99,144 +99,155 @@ export class DiscordStore {
         await this.db.Close();
     }
 
-    public create_table(statement: string, tablename: string): Promise<void|Error> {
-        return this.db.Exec(statement).then(() => {
+    public async create_table(statement: string, tablename: string): Promise<void|Error> {
+        try {
+            await this.db.Exec(statement);
             log.info("Created table", tablename);
-        }).catch((err) => {
+        } catch (err) {
             throw new Error(`Error creating '${tablename}': ${err}`);
-        });
+        }
     }
 
-    public add_user_token(userId: string, discordId: string, token: string): Promise<any> {
+    public async add_user_token(userId: string, discordId: string, token: string): Promise<any> {
         log.silly("SQL", "add_user_token => ", userId);
-        return Promise.all([
-            this.db.Run(
-              `
-              INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
-              `
-            , {
-                discordId,
-                userId,
-            }),
-            this.db.Run(
-              `
-              INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
-              `
-            , {
-                discordId,
-                token,
-            }),
-        ]).catch( (err) => {
+        try {
+            await Promise.all([
+                this.db.Run(
+                  `
+                  INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
+                  `
+                , {
+                    discordId,
+                    userId,
+                }),
+                this.db.Run(
+                  `
+                  INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
+                  `
+                , {
+                    discordId,
+                    token,
+                }),
+            ]);
+        } catch (err) {
             log.error("Error storing user token ", err);
             throw err;
-        });
+        }
     }
 
-    public delete_user_token(discordId: string): Promise<null> {
+    public async delete_user_token(discordId: string): Promise<void> {
         log.silly("SQL", "delete_user_token => ", discordId);
-        return this.db.Run(
-            `
-            DELETE FROM user_id_discord_id WHERE discord_id = $id;
-            DELETE FROM discord_id_token WHERE discord_id = $id;
-            `
-        , {
-            $id: discordId,
-        }).catch( (err) => {
+        try {
+            await this.db.Run(
+                `
+                DELETE FROM user_id_discord_id WHERE discord_id = $id;
+                DELETE FROM discord_id_token WHERE discord_id = $id;
+                `
+            , {
+                $id: discordId,
+            });
+        } catch (err) {
             log.error("Error deleting user token ", err);
             throw err;
-        });
+        }
     }
 
-    public get_user_discord_ids(userId: string): Promise<string[]> {
+    public async get_user_discord_ids(userId: string): Promise<string[]> {
         log.silly("SQL", "get_user_discord_ids => ", userId);
-        return this.db.All(
-            `
-            SELECT discord_id
-            FROM user_id_discord_id
-            WHERE user_id = $userId;
-            `
-        , {
-            userId,
-        }).then( (rows) => {
+        try {
+            const rows = await this.db.All(
+                `
+                SELECT discord_id
+                FROM user_id_discord_id
+                WHERE user_id = $userId;
+                `
+            , {
+                userId,
+            });
             if (rows != null) {
                 return rows.map((row) => row.discord_id);
             } else {
                 return [];
             }
-        }).catch( (err) => {
+        } catch (err)  {
             log.error("Error getting discord ids: ", err.Error);
             throw err;
-        });
+        }
     }
 
-    public get_token(discordId: string): Promise<string> {
+    public async get_token(discordId: string): Promise<string> {
         log.silly("SQL", "discord_id_token => ", discordId);
-        return this.db.Get(
-            `
-            SELECT token
-            FROM discord_id_token
-            WHERE discord_id = $discordId
-            `
-        , {
-            discordId,
-        }).then( (row) => {
+        try {
+            const row = await this.db.Get(
+                `
+                SELECT token
+                FROM discord_id_token
+                WHERE discord_id = $discordId
+                `
+            , {
+                discordId,
+            });
             return row != null ? row.token : null;
-        }).catch( (err) => {
+        } catch (err) {
             log.error("Error getting discord ids ", err.Error);
             throw err;
-        });
+        }
     }
 
-    public get_dm_room(discordId, discordChannel): Promise<string> {
+    public async get_dm_room(discordId, discordChannel): Promise<string> {
         log.silly("SQL", "get_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-        return this.db.Get(
-            `
-            SELECT room_id
-            FROM dm_rooms
-            WHERE dm_rooms.discord_id = $discordId
-            AND dm_rooms.discord_channel = $discordChannel;
-            `
-        , {
-            discordChannel,
-            discordId,
-        }).then( (row) => {
+        try {
+            const row = await this.db.Get(
+                `
+                SELECT room_id
+                FROM dm_rooms
+                WHERE dm_rooms.discord_id = $discordId
+                AND dm_rooms.discord_channel = $discordChannel;
+                `
+            , {
+                discordChannel,
+                discordId,
+            });
             return row != null ? row.room_id : null;
-        }).catch( (err) => {
+        } catch (err) {
             log.error("Error getting room_id ", err.Error);
             throw err;
-        });
+        }
     }
 
-    public set_dm_room(discordId, discordChannel, roomId): Promise<null> {
+    public async set_dm_room(discordId, discordChannel, roomId): Promise<void> {
         log.silly("SQL", "set_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-        return this.db.Run(
-            `
-            REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
-            VALUES ($discordId,$discordChannel,$roomId);
-            `
-        , {
-            discordChannel,
-            discordId,
-            roomId,
-        }).catch( (err) => {
+        try {
+            await this.db.Run(
+                `
+                REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
+                VALUES ($discordId,$discordChannel,$roomId);
+                `
+            , {
+                discordChannel,
+                discordId,
+                roomId,
+            });
+        } catch (err) {
             log.error("Error executing set_dm_room query  ", err.Error);
             throw err;
-        });
+        }
     }
 
-    public get_all_user_discord_ids(): Promise<any> {
+    public async get_all_user_discord_ids(): Promise<any> {
         log.silly("SQL", "get_users_tokens");
-        return this.db.All(
-            `
-            SELECT *
-            FROM get_user_discord_ids
-            `,
-        ).then( (rows) => {
+        try {
+            const rows = await this.db.All(
+                `
+                SELECT *
+                FROM get_user_discord_ids
+                `,
+            );
             return rows;
-        }).catch( (err) => {
+        } catch (err) {
             log.error("Error getting user token  ", err.Error);
             throw err;
-        });
+        }
     }
 
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
@@ -252,19 +263,19 @@ export class DiscordStore {
         }
     }
 
-    public Insert<T extends IDbData>(data: T): Promise<Error> {
+    public async Insert<T extends IDbData>(data: T): Promise<void> {
         log.silly(`insert <${data.constructor.name}>`);
-        return data.Insert(this);
+        await data.Insert(this);
     }
 
-    public Update<T extends IDbData>(data: T): Promise<Error>  {
+    public async Update<T extends IDbData>(data: T): Promise<void>  {
         log.silly(`insert <${data.constructor.name}>`);
-        return data.Update(this);
+        await data.Update(this);
     }
 
-    public Delete<T extends IDbData>(data: T): Promise<Error>  {
+    public async Delete<T extends IDbData>(data: T): Promise<void>  {
         log.silly(`insert <${data.constructor.name}>`);
-        return data.Delete(this);
+        await data.Delete(this);
     }
 
     private async getSchemaVersion( ): Promise<number> {
@@ -278,9 +289,9 @@ export class DiscordStore {
         return version;
     }
 
-    private setSchemaVersion(ver: number): Promise<any> {
+    private async setSchemaVersion(ver: number): Promise<void> {
         log.silly("_set_schema_version => ", ver);
-        return this.db.Run(
+        await this.db.Run(
             `
             UPDATE schema
             SET version = $ver
