@@ -18,9 +18,7 @@
     },
     "await-promise": true,
     "curly": true,
-    "no-empty": {
-      "severity": "warning"
-    },
+    "no-empty": false,
     "no-invalid-this": true,
     "no-string-throw": {
       "severity": "warning"
@@ -28,8 +26,17 @@
     "no-unused-expression": true,
     "prefer-const": true,
     "indent": [true, "spaces", 4],
-    "max-file-line-count": [true, 500],
+    "max-file-line-count": {
+      "severity": "warning",
+      "options": [500]
+    },
     "no-duplicate-imports": true,
-    "array-type": [true, "array"]
+    "array-type": [true, "array"],
+    "promise-function-async": {
+      "severity": "warning"
+    },
+    "no-bitwise": true,
+    "no-debugger": true,
+    "no-floating-promises": true
   }
 }
