@@ -85,81 +85,81 @@ export class DiscordBot {
         return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
     }
 
-    public run(): Promise<void> {
-        return this.clientFactory.init().then(() => {
-            return this.clientFactory.getClient();
-        }).then((client: any) => {
-            if (!this.config.bridge.disableTypingNotifications) {
-                client.on("typingStart", (c, u) => { this.OnTyping(c, u, true); });
-                client.on("typingStop", (c, u) => { this.OnTyping(c, u, false);  });
-            }
-            if (!this.config.bridge.disablePresence) {
-                client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
-                    this.presenceHandler.EnqueueUser(newMember.user);
-                });
-            }
-            this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-            client.on("channelUpdate", (_, newChannel) => this.channelSync.OnUpdate(newChannel) );
-            client.on("channelDelete", (channel) => this.channelSync.OnDelete(channel) );
-            client.on("guildUpdate", (_, newGuild) => this.channelSync.OnGuildUpdate(newGuild) );
-            client.on("guildDelete", (guild) => this.channelSync.OnGuildDelete(guild) );
+    public async run(): Promise<void> {
+        await this.clientFactory.init();
+        const client = await this.clientFactory.getClient();
 
-            // Due to messages often arriving before we get a response from the send call,
-            // messages get delayed from discord. We use Bluebird.delay to handle this.
-
-            client.on("messageDelete", async (msg: Discord.Message) => {
-                // tslint:disable-next-line:await-promise
-                await Bluebird.delay(this.config.limits.discordSendDelay);
-                this.discordMessageQueue[msg.channel.id] = (async () => {
-                    await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                    await this.OnMessage(msg);
-                })();
+        if (!this.config.bridge.disableTypingNotifications) {
+            client.on("typingStart", async (c, u) => this.OnTyping(c, u, true) );
+            client.on("typingStop", async (c, u) => this.OnTyping(c, u, false) );
+        }
+        if (!this.config.bridge.disablePresence) {
+            client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
+                this.presenceHandler.EnqueueUser(newMember.user);
             });
-            client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
-                // tslint:disable-next-line:await-promise
-                await Bluebird.delay(this.config.limits.discordSendDelay);
-                this.discordMessageQueue[newMessage.channel.id] = (async () => {
-                    await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
-                    await this.OnMessageUpdate(oldMessage, newMessage);
-                })();
-            });
-            client.on("message", async (msg: Discord.Message) => {
-                // tslint:disable-next-line:await-promise
-                await Bluebird.delay(this.config.limits.discordSendDelay);
-                this.discordMessageQueue[msg.channel.id] = (async () => {
-                    await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                    await this.OnMessage(msg);
-                })();
-            });
-            const jsLog = new Log("discord.js");
+        }
+        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+        client.on("channelUpdate", async (_, newChannel) => this.channelSync.OnUpdate(newChannel) );
+        client.on("channelDelete", async (channel) => this.channelSync.OnDelete(channel) );
+        client.on("guildUpdate", async (_, newGuild) => this.channelSync.OnGuildUpdate(newGuild) );
+        client.on("guildDelete", async (guild) => this.channelSync.OnGuildDelete(guild) );
 
-            this.userSync = new UserSyncroniser(this.bridge, this.config, this);
-            client.on("userUpdate", (_, user) => this.userSync.OnUpdateUser(user));
-            client.on("guildMemberAdd", (user) => this.userSync.OnAddGuildMember(user));
-            client.on("guildMemberRemove", (user) =>  this.userSync.OnRemoveGuildMember(user));
-            client.on("guildMemberUpdate", (oldUser, newUser) =>  this.userSync.OnUpdateGuildMember(oldUser, newUser));
-            client.on("debug", (msg) => { jsLog.verbose(msg); });
-            client.on("error", (msg) => { jsLog.error(msg); });
-            client.on("warn", (msg) => { jsLog.warn(msg); });
-            log.info("Discord bot client logged in.");
-            this.bot = client;
+        // Due to messages often arriving before we get a response from the send call,
+        // messages get delayed from discord. We use Bluebird.delay to handle this.
 
-            if (!this.config.bridge.disablePresence) {
-                if (!this.config.bridge.presenceInterval) {
-                    this.config.bridge.presenceInterval = MIN_PRESENCE_UPDATE_DELAY;
-                }
-                this.bot.guilds.forEach((guild) => {
-                    guild.members.forEach((member) => {
-                        if (member.id !== this.GetBotId()) {
-                            this.presenceHandler.EnqueueUser(member.user);
-                        }
-                    });
-                });
-                this.presenceHandler.Start(
-                    Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
-                );
-            }
+        client.on("messageDelete", async (msg: Discord.Message) => {
+            // tslint:disable-next-line:await-promise
+            await Bluebird.delay(this.config.limits.discordSendDelay);
+            this.discordMessageQueue[msg.channel.id] = (async () => {
+                await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+                await this.OnMessage(msg);
+            })();
         });
+        client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+            // tslint:disable-next-line:await-promise
+            await Bluebird.delay(this.config.limits.discordSendDelay);
+            this.discordMessageQueue[newMessage.channel.id] = (async () => {
+                await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
+                await this.OnMessageUpdate(oldMessage, newMessage);
+            })();
+        });
+        client.on("message", async (msg: Discord.Message) => {
+            // tslint:disable-next-line:await-promise
+            await Bluebird.delay(this.config.limits.discordSendDelay);
+            this.discordMessageQueue[msg.channel.id] = (async () => {
+                await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+                await this.OnMessage(msg);
+            })();
+        });
+        const jsLog = new Log("discord.js");
+
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
+        client.on("userUpdate", async (_, user) => this.userSync.OnUpdateUser(user));
+        client.on("guildMemberAdd", async (user) => this.userSync.OnAddGuildMember(user));
+        client.on("guildMemberRemove", async (user) =>  this.userSync.OnRemoveGuildMember(user));
+        client.on("guildMemberUpdate", async (oldUser, newUser) =>
+            this.userSync.OnUpdateGuildMember(oldUser, newUser));
+        client.on("debug", (msg) => { jsLog.verbose(msg); });
+        client.on("error", (msg) => { jsLog.error(msg); });
+        client.on("warn", (msg) => { jsLog.warn(msg); });
+        log.info("Discord bot client logged in.");
+        this.bot = client;
+
+        if (!this.config.bridge.disablePresence) {
+            if (!this.config.bridge.presenceInterval) {
+                this.config.bridge.presenceInterval = MIN_PRESENCE_UPDATE_DELAY;
+            }
+            this.bot.guilds.forEach((guild) => {
+                guild.members.forEach((member) => {
+                    if (member.id !== this.GetBotId()) {
+                        this.presenceHandler.EnqueueUser(member.user);
+                    }
+                });
+            });
+            this.presenceHandler.Start(
+                Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
+            );
+        }
     }
 
     public GetBotId(): string {
@@ -195,9 +195,10 @@ export class DiscordBot {
         }
     }
 
-    public LookupRoom(server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
+    public async LookupRoom(server: string, room: string, sender?: string): Promise<ChannelLookupResult> {
         const hasSender = sender !== null;
-        return this.clientFactory.getClient(sender).then((client) => {
+        try {
+            const client = await this.clientFactory.getClient(sender);
             const guild = client.guilds.get(server);
             if (!guild) {
                 throw new Error(`Guild "${server}" not found`);
@@ -210,14 +211,14 @@ export class DiscordBot {
                 return lookupResult;
             }
             throw new Error(`Channel "${room}" not found`);
-        }).catch((err) => {
+        } catch (err) {
             log.verbose("LookupRoom => ", err);
             if (hasSender) {
                 log.verbose(`Couldn't find guild/channel under user account. Falling back.`);
-                return this.LookupRoom(server, room, null);
+                return await this.LookupRoom(server, room, null);
             }
             throw err;
-        });
+        }
     }
 
     public async ProcessMatrixStateEvent(event: any): Promise<void> {
@@ -231,7 +232,7 @@ export class DiscordBot {
         if (!Array.isArray(res)) {
             res = [res];
         }
-        res.forEach((m: Discord.Message) => {
+        await Util.AsyncForEach(res, async (m: Discord.Message) => {
             log.verbose("Sent (state msg) ", m);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
@@ -239,7 +240,7 @@ export class DiscordBot {
             evt.DiscordId = m.id;
             evt.GuildId = channel.guild.id;
             evt.ChannelId = channel.id;
-            return this.store.Insert(evt);
+            await this.store.Insert(evt);
         });
     }
 
@@ -309,7 +310,7 @@ export class DiscordBot {
         if (!Array.isArray(msg)) {
             msg = [msg];
         }
-        msg.forEach((m: Discord.Message) => {
+        await Util.AsyncForEach(msg, async (m: Discord.Message) => {
             log.verbose("Sent ", m);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
@@ -318,7 +319,7 @@ export class DiscordBot {
             // Webhooks don't send guild info.
             evt.GuildId = guildId;
             evt.ChannelId = channelId;
-            return this.store.Insert(evt);
+            await this.store.Insert(evt);
         });
         return;
     }
@@ -356,39 +357,39 @@ export class DiscordBot {
         return false;
     }
 
-    public GetDiscordUserOrMember(
+    public async GetDiscordUserOrMember(
         userId: Discord.Snowflake, guildId?: Discord.Snowflake,
     ): Promise<Discord.User|Discord.GuildMember> {
         try {
             if (guildId && this.bot.guilds.has(guildId)) {
-                return this.bot.guilds.get(guildId).fetchMember(userId);
+                return await this.bot.guilds.get(guildId).fetchMember(userId);
             }
-            return this.bot.fetchUser(userId);
+            return await this.bot.fetchUser(userId);
         } catch (ex) {
             log.warn(`Could not fetch user data for ${userId} (guild: ${guildId})`);
             return undefined;
         }
     }
 
-    public GetChannelFromRoomId(roomId: string): Promise<Discord.Channel> {
-        return this.bridge.getRoomStore().getEntriesByMatrixId(
+    public async GetChannelFromRoomId(roomId: string): Promise<Discord.Channel> {
+        const entries = this.bridge.getRoomStore().getEntriesByMatrixId(
             roomId,
-        ).then((entries) => {
-            if (entries.length === 0) {
-                log.verbose(`Couldn"t find channel for roomId ${roomId}.`);
-                return Promise.reject("Room(s) not found.");
+        );
+
+        if (entries.length === 0) {
+            log.verbose(`Couldn"t find channel for roomId ${roomId}.`);
+            throw Error("Room(s) not found.");
+        }
+        const entry = entries[0];
+        const guild = this.bot.guilds.get(entry.remote.get("discord_guild"));
+        if (guild) {
+            const channel = this.bot.channels.get(entry.remote.get("discord_channel"));
+            if (channel) {
+                return channel;
             }
-            const entry = entries[0];
-            const guild = this.bot.guilds.get(entry.remote.get("discord_guild"));
-            if (guild) {
-                const channel = this.bot.channels.get(entry.remote.get("discord_channel"));
-                if (channel) {
-                    return channel;
-                }
-                throw Error("Channel given in room entry not found");
-            }
-            throw Error("Guild given in room entry not found");
-        });
+            throw Error("Channel given in room entry not found");
+        }
+        throw Error("Guild given in room entry not found");
     }
 
     public async GetEmoji(name: string, animated: boolean, id: string): Promise<string> {
@@ -409,16 +410,15 @@ export class DiscordBot {
         return dbEmoji.MxcUrl;
     }
 
-    public GetRoomIdsFromGuild(guild: string): Promise<string[]> {
-        return this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+    public async GetRoomIdsFromGuild(guild: string): Promise<string[]> {
+        const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
             discord_guild: guild,
-        }).then((rooms) => {
-            if (rooms.length === 0) {
-                log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
-                return Promise.reject("Room(s) not found.");
-            }
-            return rooms.map((room) => room.matrix.getId());
         });
+        if (rooms.length === 0) {
+            log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
+            throw new Error("Room(s) not found.");
+        }
+        return rooms.map((room) => room.matrix.getId());
     }
 
     private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
@@ -427,35 +427,35 @@ export class DiscordBot {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
         const intent = this.GetIntentFromDiscordMember(author);
 
-        rooms.forEach((room) => {
-            intent.sendMessage(room, {
+        await Util.AsyncForEach(rooms, async (room) => {
+            const res = await intent.sendMessage(room, {
                 body: matrixMsg.body,
                 format: "org.matrix.custom.html",
                 formatted_body: matrixMsg.formattedBody,
                 msgtype: "m.text",
-            }).then((res) => {
-                const evt = new DbEvent();
-                evt.MatrixId = res.event_id + ";" + room;
-                evt.DiscordId = msgID;
-                evt.ChannelId = chan.id;
-                evt.GuildId = guild.id;
-                return this.store.Insert(evt);
             });
+            const evt = new DbEvent();
+            evt.MatrixId = res.event_id + ";" + room;
+            evt.DiscordId = msgID;
+            evt.ChannelId = chan.id;
+            evt.GuildId = guild.id;
+            await this.store.Insert(evt);
         });
 
         // Sending was a success
         return true;
     }
 
-    private OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
-        this.channelSync.GetRoomIdsFromChannel(channel).then((rooms) => {
+    private async OnTyping(channel: Discord.Channel, user: Discord.User, isTyping: boolean) {
+        const rooms = await this.channelSync.GetRoomIdsFromChannel(channel);
+        try {
             const intent = this.GetIntentFromDiscordMember(user);
-            return Promise.all(rooms.map((room) => {
+            await Promise.all(rooms.map((room) => {
                 return intent.sendTyping(room, isTyping);
             }));
-        }).catch((err) => {
+        } catch (err) {
             log.warn("Failed to send typing indicator.", err);
-        });
+        }
     }
 
     private async OnMessage(msg: Discord.Message) {
