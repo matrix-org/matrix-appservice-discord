@@ -112,7 +112,7 @@ export class DiscordBot {
           await Bluebird.delay(this.config.limits.discordSendDelay);
           this.discordMessageQueue[msg.channel.id] = (async () => {
               await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-              await this.OnMessage(msg);
+              await this.DeleteDiscordMessage(msg);
           })();
       });
       client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
