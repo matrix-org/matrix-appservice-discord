@@ -1,6 +1,6 @@
 {
   "name": "matrix-appservice-discord",
-  "version": "0.3.0-rc1",
+  "version": "0.3.0-rc3",
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
   "scripts": {
@@ -28,7 +28,7 @@
     "as"
   ],
   "author": "Half-Shot",
-  "license": "APACHE-2",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/Half-Shot/matrix-appservice-discord/issues"
   },
