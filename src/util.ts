@@ -4,6 +4,7 @@ import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
 import * as mime from "mime";
 import { Permissions } from "discord.js";
+import { DiscordBridgeConfig } from "./config";
 
 const HTTP_OK = 200;
 
@@ -14,7 +15,7 @@ export interface ICommandAction {
     params: string[];
     description?: string;
     permission?: string;
-    run(params: any): Promise<any>;
+    run(params: any): Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandActions {
@@ -23,11 +24,38 @@ export interface ICommandActions {
 
 export interface ICommandParameter {
     description?: string;
-    get(param: string): Promise<any>;
+    get(param: string): Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandParameters {
     [index: string]: ICommandParameter;
+}
+
+export interface IMatrixEventContent {
+    body?: string;
+    info?: any; // tslint:disable-line no-any
+    name?: string;
+    topic?: string;
+    membership?: string;
+    msgtype?: string;
+    url?: string;
+    displayname?: string;
+    "m.relates_to"?: any; // tslint:disable-line no-any
+}
+
+export interface IMatrixEvent {
+    event_id: string;
+    state_key: string;
+    type: string;
+    sender: string;
+    room_id: string;
+    membership?: string;
+    avatar_url?: string;
+    displayname?: string;
+    redacts?: string;
+    content?: IMatrixEventContent;
+    unsigned?: any; // tslint:disable-line no-any
+    origin_server_ts?: number;
 }
 
 export class Util {
@@ -128,13 +156,13 @@ export class Util {
      * @param {number} duration The number of milliseconds to wait
      * @returns {Promise<any>} The promise
      */
-    public static async DelayedPromise(duration: number): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    public static async DelayedPromise(duration: number): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
             setTimeout(resolve, duration);
         });
     }
 
-    public static GetBotLink(config: any): string {
+    public static GetBotLink(config: DiscordBridgeConfig): string {
         /* tslint:disable:no-bitwise */
         const perms = Permissions.FLAGS.READ_MESSAGES |
             Permissions.FLAGS.SEND_MESSAGES |

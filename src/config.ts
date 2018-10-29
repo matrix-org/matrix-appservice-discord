@@ -13,6 +13,7 @@ export class DiscordBridgeConfig {
      * @param _config Config keys
      * @param configLayer Private parameter
      */
+    // tslint:disable-next-line no-any
     public ApplyConfig(newConfig: {[key: string]: any}, configLayer: any = this) {
           Object.keys(newConfig).forEach((key) => {
             if ( typeof(configLayer[key]) === "object" &&

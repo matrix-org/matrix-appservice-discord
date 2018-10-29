@@ -6,12 +6,15 @@ import {
     thirdPartyProtocolResult,
     thirdPartyUserResult,
     thirdPartyLocationResult,
+    BridgeContext,
+    ProvisionedRoom,
+    Intent,
 } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
-import { Util, ICommandActions, ICommandParameters } from "./util";
+import { Util, ICommandActions, ICommandParameters, IMatrixEvent } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
@@ -103,35 +106,41 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
-    public async OnEvent(request, context): Promise<any> {
+    public async OnEvent(request, context): Promise<void> {
         const event = request.getData();
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
             throw new Error("Event too old");
         }
         if (event.type === "m.room.member" && event.content.membership === "invite") {
-            return this.HandleInvite(event);
+            await this.HandleInvite(event);
+            return;
         } else if (event.type === "m.room.member" && event.content.membership === "join") {
             if (this.bridge.getBot().isRemoteUser(event.state_key)) {
-                return this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
+                await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
             } else {
-                return this.discord.ProcessMatrixStateEvent(event);
+                await this.discord.ProcessMatrixStateEvent(event);
             }
+            return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
-            return this.discord.ProcessMatrixStateEvent(event);
+            await this.discord.ProcessMatrixStateEvent(event);
+            return;
         } else if (event.type === "m.room.redaction" && context.rooms.remote) {
-            return this.discord.ProcessMatrixRedact(event);
+            await this.discord.ProcessMatrixRedact(event);
+            return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
             const isBotCommand = event.type === "m.room.message" &&
                 event.content.body &&
                 event.content.body.startsWith("!discord");
             if (isBotCommand) {
-                return this.ProcessCommand(event, context);
+                await this.ProcessCommand(event, context);
+                return;
             } else if (context.rooms.remote) {
                 const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
-                    return this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    await this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    return;
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
                     return;
@@ -139,7 +148,8 @@ export class MatrixRoomHandler {
             }
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
-                return this.HandleEncryptionWarning(event.room_id);
+                await this.HandleEncryptionWarning(event.room_id);
+                return;
             } catch (err) {
                 throw new Error(`Failed to handle encrypted room, ${err}`);
             }
@@ -168,7 +178,7 @@ export class MatrixRoomHandler {
         await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
     }
 
-    public async HandleInvite(event: any) {
+    public async HandleInvite(event: IMatrixEvent) {
         log.info("Received invite for " + event.state_key + " in room " + event.room_id);
         if (event.state_key === this.botUserId) {
             log.info("Accepting invite for bridge bot");
@@ -179,7 +189,7 @@ export class MatrixRoomHandler {
         }
     }
 
-    public async ProcessCommand(event: any, context: any) {
+    public async ProcessCommand(event: IMatrixEvent, context: BridgeContext) {
         const intent = this.bridge.getIntent();
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
@@ -328,7 +338,7 @@ export class MatrixRoomHandler {
         }
     }
 
-    public async OnAliasQuery(alias: string, aliasLocalpart: string): Promise<any> {
+    public async OnAliasQuery(alias: string, aliasLocalpart: string): Promise<ProvisionedRoom> {
         log.info("Got request for #", aliasLocalpart);
         const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
@@ -389,6 +399,7 @@ export class MatrixRoomHandler {
         };
     }
 
+    // tslint:disable-next-line no-any
     public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
         log.info("Got location request ", protocol, fields);
         const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
@@ -399,6 +410,7 @@ export class MatrixRoomHandler {
         throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
     }
 
+    // tslint:disable-next-line no-any
     public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
         log.info("Got user request ", protocol, fields);
         throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
@@ -453,7 +465,7 @@ export class MatrixRoomHandler {
             let replyHelpMessage = "Available Commands:\n";
             for (const actionKey of Object.keys(actions)) {
                 const action = actions[actionKey];
-                if (!msg.member.hasPermission(action.permission as any)) {
+                if (!msg.member.hasPermission(action.permission as Discord.PermissionResolvable)) {
                     continue;
                 }
                 replyHelpMessage += " - `!matrix " + actionKey;
@@ -476,7 +488,7 @@ export class MatrixRoomHandler {
             return;
         }
 
-        if (!msg.member.hasPermission(actions[command].permission as any)) {
+        if (!msg.member.hasPermission(actions[command].permission as Discord.PermissionResolvable)) {
             await msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
             return;
         }
@@ -519,7 +531,7 @@ export class MatrixRoomHandler {
         };
     }
 
-    private async joinRoom(intent: any, roomIdOrAlias: string): Promise<void> {
+    private async joinRoom(intent: Intent, roomIdOrAlias: string): Promise<void> {
         let currentSchedule = JOIN_ROOM_SCHEDULE[0];
         const doJoin = async () => {
             await Util.DelayedPromise(currentSchedule);
@@ -549,7 +561,7 @@ export class MatrixRoomHandler {
         }
     }
 
-    private createMatrixRoom(channel: Discord.TextChannel, alias: string) {
+    private createMatrixRoom(channel: Discord.TextChannel, alias: string): ProvisionedRoom {
         const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}`);
         remote.set("discord_type", "text");
         remote.set("discord_guild", channel.guild.id);
@@ -573,7 +585,7 @@ export class MatrixRoomHandler {
         return {
             creationOpts,
             remote,
-        };
+        } as ProvisionedRoom;
     }
 
     private async isBotInRoom(roomId: string): Promise<boolean> {

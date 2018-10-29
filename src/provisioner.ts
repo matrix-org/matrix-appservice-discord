@@ -32,7 +32,7 @@ export class Provisioner {
         return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
-    public async AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
+    public async AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<void> {
         const channelId = channel.guild.id + "/" + channel.id;
 
         let responded = false;

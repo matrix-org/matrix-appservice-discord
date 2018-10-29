@@ -81,6 +81,7 @@ export class Log {
             maxSize: config.maxSize,
         };
 
+        // tslint:disable-next-line no-any
         return new (transports as any).DailyRotateFile(opts);
     }
 
@@ -88,26 +89,32 @@ export class Log {
 
     constructor(private module: string) { }
 
+    // tslint:disable-next-line no-any
     public error(...msg: any[]) {
         this.log("error", msg);
     }
 
+    // tslint:disable-next-line no-any
     public warn(...msg: any[]) {
         this.log("warn", msg);
     }
 
+    // tslint:disable-next-line no-any
     public info(...msg: any[]) {
         this.log("info", msg);
     }
 
+    // tslint:disable-next-line no-any
     public verbose(...msg: any[]) {
         this.log("verbose", msg);
     }
 
+    // tslint:disable-next-line no-any
     public silly(...msg: any[]) {
         this.log("silly", msg);
     }
 
+    // tslint:disable-next-line no-any
     private log(level: string, msg: any[]) {
         if (Log.logger === null) {
             // We've not configured the logger yet, so create a basic one.

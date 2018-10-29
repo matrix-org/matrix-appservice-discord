@@ -4,7 +4,7 @@ import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
-import { Util } from "./util";
+import { Util, IMatrixEvent } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
@@ -26,6 +26,18 @@ const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org
 class ChannelLookupResult {
     public channel: Discord.TextChannel;
     public botUser: boolean;
+}
+
+interface IThirdPartyLookupField {
+    channel_id: string;
+    channel_name: string;
+    guild_id: string;
+}
+
+interface IThirdPartyLookup {
+    alias: string;
+    fields: IThirdPartyLookupField;
+    protocol: string;
 }
 
 export class DiscordBot {
@@ -170,7 +182,7 @@ export class DiscordBot {
         return this.bot.guilds.array();
     }
 
-    public ThirdpartySearchForChannels(guildId: string, channelName: string): any[] {
+    public ThirdpartySearchForChannels(guildId: string, channelName: string): IThirdPartyLookup[] {
         if (channelName.startsWith("#")) {
             channelName = channelName.substr(1);
         }
@@ -187,7 +199,7 @@ export class DiscordBot {
                         guild_id: guild.id,
                     },
                     protocol: "discord",
-                };
+                } as IThirdPartyLookup;
             });
         } else {
             log.info("Tried to do a third party lookup for a channel, but the guild did not exist");
@@ -221,7 +233,7 @@ export class DiscordBot {
         }
     }
 
-    public async ProcessMatrixStateEvent(event: any): Promise<void> {
+    public async ProcessMatrixStateEvent(event: IMatrixEvent): Promise<void> {
         log.verbose(`Got state event from ${event.room_id} ${event.type}`);
         const channel = await this.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
         const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
@@ -244,7 +256,7 @@ export class DiscordBot {
         });
     }
 
-    public async ProcessMatrixMsgEvent(event: any, guildId: string, channelId: string): Promise<null> {
+    public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<null> {
         const mxClient = this.bridge.getClientFactory().getClientAs();
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const result = await this.LookupRoom(guildId, channelId, event.sender);
@@ -295,7 +307,7 @@ export class DiscordBot {
                     embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
                     files: opts.file ? [opts.file] : undefined,
                     username: embed.author.name,
-                } as any);
+                } as Discord.WebhookMessageOptions);
             } else {
                 if (embedSet.replyEmbed) {
                     embed.addField("Replying to", embedSet.replyEmbed.author.name);
@@ -324,7 +336,7 @@ export class DiscordBot {
         return;
     }
 
-    public async ProcessMatrixRedact(event: any) {
+    public async ProcessMatrixRedact(event: IMatrixEvent) {
         if (this.config.bridge.disableDeletionForwarding) {
             return;
         }

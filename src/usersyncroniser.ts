@@ -1,6 +1,6 @@
 import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
-import { Util } from "./util";
+import { Util, IMatrixEvent } from "./util";
 import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
@@ -59,14 +59,14 @@ export class UserSyncroniser {
     public static readonly ERR_NEWER_EVENT = "newer_state_event_arrived";
 
     // roomId+userId => ev
-    public userStateHold: Map<string, any>;
+    public userStateHold: Map<string, IMatrixEvent>;
     private userStore: UserBridgeStore;
     constructor(
         private bridge: Bridge,
         private config: DiscordBridgeConfig,
         private discord: DiscordBot) {
         this.userStore = this.bridge.getUserStore();
-        this.userStateHold = new Map<string, any>();
+        this.userStateHold = new Map<string, IMatrixEvent>();
     }
 
     /**
@@ -276,7 +276,7 @@ export class UserSyncroniser {
         );
     }
 
-    public async UpdateStateForGuilds(remoteUser: any) {
+    public async UpdateStateForGuilds(remoteUser: RemoteUser) {
         const id = remoteUser.getId();
         log.info(`Got update for ${id}.`);
 
@@ -295,7 +295,7 @@ export class UserSyncroniser {
         });
     }
 
-    public async OnMemberState(ev: any, delayMs: number = 0): Promise<string> {
+    public async OnMemberState(ev: IMatrixEvent, delayMs: number = 0): Promise<string> {
         // Avoid tripping over multiple state events.
         if (await this.memberStateLock(ev, delayMs) === false) {
             // We're igorning this update because we have a newer one.
@@ -328,7 +328,7 @@ export class UserSyncroniser {
         return this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
-    private async memberStateLock(ev: any, delayMs: number = -1): Promise<boolean> {
+    private async memberStateLock(ev: IMatrixEvent, delayMs: number = -1): Promise<boolean> {
         const userStateKey = `${ev.room_id}${ev.state_key}`;
         if (this.userStateHold.has(userStateKey)) {
             const oldEv = this.userStateHold.get(userStateKey);

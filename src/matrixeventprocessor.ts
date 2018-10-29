@@ -3,10 +3,11 @@ import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util } from "./util";
+import { Util, IMatrixEvent, IMatrixEventContent } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import { MatrixUser } from "matrix-appservice-bridge";
+import { MatrixUser, Bridge } from "matrix-appservice-bridge";
+import * as Matrix from "matrix-js-sdk";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -21,7 +22,7 @@ const DISCORD_AVATAR_HEIGHT = 128;
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
-        readonly bridge: any,
+        readonly bridge: Bridge,
         readonly discord: DiscordBot,
         ) {
 
@@ -35,7 +36,7 @@ export interface IMatrixEventProcessorResult {
 
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
-    private bridge: any;
+    private bridge: Bridge;
     private discord: DiscordBot;
 
     constructor(opts: MatrixEventProcessorOpts) {
@@ -44,7 +45,7 @@ export class MatrixEventProcessor {
         this.discord = opts.discord;
     }
 
-    public StateEventToMessage(event: any, channel: Discord.TextChannel): string {
+    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string {
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -83,7 +84,7 @@ export class MatrixEventProcessor {
     }
 
     public async EventToEmbed(
-        event: any, profile: any|null, channel: Discord.TextChannel,
+        event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
     ): Promise<IMatrixEventProcessorResult> {
         let body = this.config.bridge.disableDiscordMentions ? event.content.body :
             this.FindMentionsInPlainBody(
@@ -170,7 +171,7 @@ export class MatrixEventProcessor {
         return content;
     }
 
-    public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
+    public async HandleAttachment(event: IMatrixEvent, mxClient: Matrix.Client): Promise<string|Discord.FileOptions> {
         const hasAttachment = [
             "m.image",
             "m.audio",
@@ -211,7 +212,7 @@ export class MatrixEventProcessor {
         return `[${name}](${url})`;
     }
 
-    public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed, string]|undefined> {
+    public async GetEmbedForReply(event: IMatrixEvent): Promise<[Discord.RichEmbed, string]|undefined> {
         const relatesTo = event.content["m.relates_to"];
         let eventId = null;
         if (relatesTo && relatesTo["m.in_reply_to"]) {
@@ -249,7 +250,7 @@ export class MatrixEventProcessor {
         return [embed, reponseText];
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: any) {
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent) {
         const intent = this.bridge.getIntent();
         let displayName = sender;
         let avatarUrl;
@@ -300,7 +301,7 @@ export class MatrixEventProcessor {
         );
     }
 
-    private GetFilenameForMediaEvent(content: any): string {
+    private GetFilenameForMediaEvent(content: IMatrixEventContent): string {
         if (content.body) {
             if (path.extname(content.body) !== "") {
                 return content.body;

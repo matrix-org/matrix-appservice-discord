@@ -9,10 +9,11 @@ import { MockGuild } from "./mocks/guild";
 import { MockCollection } from "./mocks/collection";
 import { MockMember } from "./mocks/member";
 import { MockEmoji } from "./mocks/emoji";
-import {MatrixEventProcessor, MatrixEventProcessorOpts} from "../src/matrixeventprocessor";
-import {DiscordBridgeConfig} from "../src/config";
-import {MessageProcessor, MessageProcessorOpts} from "../src/messageprocessor";
-import {MockChannel} from "./mocks/channel";
+import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
+import { DiscordBridgeConfig } from "../src/config";
+import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
+import { MockChannel } from "./mocks/channel";
+import { IMatrixEvent } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -142,7 +143,7 @@ describe("MatrixEventProcessor", () => {
             const event = {
                 sender: "@user:localhost",
                 type: "m.room.nonexistant",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, undefined);
@@ -152,7 +153,7 @@ describe("MatrixEventProcessor", () => {
             const event = {
                 sender: "@botuser:localhost",
                 type: "m.room.member",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, undefined);
@@ -165,7 +166,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@user:localhost",
                 type: "m.room.name",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the name to `Test Name` on Matrix.");
@@ -178,7 +179,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@user:localhost",
                 type: "m.room.topic",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the topic to `Test Topic` on Matrix.");
@@ -192,7 +193,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` joined the room on Matrix.");
@@ -207,7 +208,7 @@ describe("MatrixEventProcessor", () => {
                 state_key: "@user2:localhost",
                 type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
@@ -222,7 +223,7 @@ describe("MatrixEventProcessor", () => {
                 state_key: "@user2:localhost",
                 type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
@@ -237,7 +238,7 @@ describe("MatrixEventProcessor", () => {
                 state_key: "@user:localhost",
                 type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` left the room on Matrix.");
@@ -252,7 +253,7 @@ describe("MatrixEventProcessor", () => {
                 state_key: "@user2:localhost",
                 type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
@@ -266,11 +267,11 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            },
+            } as IMatrixEvent,
             {
                 avatar_url: "mxc://localhost/avatarurl",
                 displayname: "Test User",
-            }, mockChannel as any);
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "Test User");
             Chai.assert.equal(author.icon_url, "https://localhost/avatarurl");
@@ -284,8 +285,9 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            }, {
-                displayname: "Test User"}, mockChannel as any);
+            } as IMatrixEvent, {
+                displayname: "Test User",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "Test User");
             Chai.assert.isUndefined(author.icon_url);
@@ -299,7 +301,7 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            }, null, mockChannel as any);
+            } as IMatrixEvent, null, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "@test:localhost");
             Chai.assert.isUndefined(author.icon_url);
@@ -313,8 +315,9 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            }, {
-                displayname: "t"}, mockChannel as any);
+            } as IMatrixEvent, {
+                displayname: "t",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "@test:localhost");
         });
@@ -326,9 +329,9 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            }, {
+            } as IMatrixEvent, {
                 displayname: "this is a very very long displayname that should be capped",
-            }, mockChannel as any);
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "@test:localhost");
         });
@@ -340,7 +343,7 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
-            }, null, mockChannel as any);
+            } as IMatrixEvent, null, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "@testwithalottosayaboutitselftha");
         });
@@ -352,7 +355,9 @@ describe("MatrixEventProcessor", () => {
                     body: "testcontent",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "mxc://localhost/test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "mxc://localhost/test",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             Chai.assert.equal(author.name, "@test:localhost");
             Chai.assert.equal(author.icon_url, "https://localhost/test");
@@ -366,7 +371,9 @@ describe("MatrixEventProcessor", () => {
                     body: "@testuser2 Hello!",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "<@!12345> Hello!");
         });
 
@@ -377,7 +384,9 @@ describe("MatrixEventProcessor", () => {
                     body: "@testuser2 Hello!",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "@testuser2 Hello!");
         });
 
@@ -388,7 +397,9 @@ describe("MatrixEventProcessor", () => {
                     body: "@everyone Hello!",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "@ everyone Hello!");
         });
 
@@ -399,7 +410,9 @@ describe("MatrixEventProcessor", () => {
                     body: "@here Hello!",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "@ here Hello!");
         });
 
@@ -417,7 +430,9 @@ describe("MatrixEventProcessor", () => {
                     body: "I like :supercake:",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannelEmojis as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannelEmojis as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
                 "I like <:supercake:123>",
@@ -438,7 +453,9 @@ describe("MatrixEventProcessor", () => {
                     body: "I like :lamecake:",
                 },
                 sender: "@test:localhost",
-            }, {avatar_url: "test"}, mockChannelEmojis as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannelEmojis as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
                 "I like :lamecake:",
@@ -452,9 +469,9 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.emote",
                 },
                 sender: "@test:localhost",
-            }, {
+            } as IMatrixEvent, {
                 displayname: "displayname",
-            }, mockChannel as any);
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
                 "*displayname likes puppies*",
@@ -469,7 +486,9 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
                 type: "m.sticker",
-            }, {avatar_url: "test"}, mockChannel as any);
+            } as IMatrixEvent, {
+                avatar_url: "test",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "");
         });
     });
@@ -587,7 +606,7 @@ describe("MatrixEventProcessor", () => {
                 content: {
                     msgtype: "m.text",
                 },
-            }, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient)).to.eventually.eq("");
         });
         it("message without an info", () => {
             const processor = createMatrixEventProcessor();
@@ -597,7 +616,7 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            }, mxClient)).to.eventually.satisfy((attachment) => {
+            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
                 expect(attachment.name).to.eq("filename.webm");
                 expect(attachment.attachment.length).to.eq(SMALL_FILE);
                 return true;
@@ -612,7 +631,7 @@ describe("MatrixEventProcessor", () => {
                     },
                     msgtype: "m.video",
                 },
-            }, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient)).to.eventually.eq("");
         });
         it("message with a large info.size", () => {
             const LARGE_FILE = 8000000;
@@ -626,7 +645,8 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient))
+                .to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
         it("message with a small info.size", () => {
             const processor = createMatrixEventProcessor();
@@ -639,7 +659,7 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            }, mxClient)).to.eventually.satisfy((attachment) => {
+            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
                 expect(attachment.name).to.eq("filename.webm");
                 expect(attachment.attachment.length).to.eq(SMALL_FILE);
                 return true;
@@ -656,7 +676,7 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
         });
         it("Should handle stickers.", () => {
             const processor = createMatrixEventProcessor();
@@ -670,7 +690,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
                 type: "m.sticker",
-            }, mxClient)).to.eventually.satisfy((attachment) => {
+            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
                 expect(attachment.name).to.eq("Bunnies.png");
                 return true;
             });
@@ -685,7 +705,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result).to.be.undefined;
         });
         it("should handle replies without a fallback", async () => {
@@ -701,7 +721,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result[0].description).to.be.equal("Hello!");
             expect(result[0].author.name).to.be.equal("Doggo!");
             expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
@@ -723,7 +743,7 @@ This is where the reply goes`,
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result[0].description).to.be.equal("Reply with unknown content");
             expect(result[0].author.name).to.be.equal("Unknown");
             expect(result[0].author.icon_url).to.be.undefined;
@@ -745,7 +765,7 @@ This is where the reply goes`,
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result[0].description).to.be.equal("Hello!");
             expect(result[0].author.name).to.be.equal("Doggo!");
             expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
@@ -767,7 +787,7 @@ This is the second reply`,
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result[0].description).to.be.equal("This is the first reply");
             expect(result[0].author.name).to.be.equal("Doggo!");
             expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
@@ -789,7 +809,7 @@ This is the reply`,
                 },
                 sender: "@test:localhost",
                 type: "m.room.message",
-            });
+            } as IMatrixEvent);
             expect(result[0].description).to.be.equal("Reply with unknown content");
             expect(result[0].author.name).to.be.equal("Doggo!");
             expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");

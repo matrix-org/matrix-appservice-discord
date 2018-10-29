@@ -10,6 +10,11 @@ export class PresenceHandlerStatus {
     public ShouldDrop: boolean = false;
 }
 
+interface IMatrixPresence {
+    presence?: string;
+    status_msg?: string;
+}
+
 export class PresenceHandler {
     private readonly bot: DiscordBot;
     private presenceQueue: User[];
@@ -106,7 +111,7 @@ export class PresenceHandler {
 
     private async setMatrixPresence(user: User, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(user);
-        const statusObj: any = {presence: status.Presence};
+        const statusObj: IMatrixPresence = {presence: status.Presence};
         if (status.StatusMsg) {
             statusObj.status_msg = status.StatusMsg;
         }

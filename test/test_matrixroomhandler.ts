@@ -41,6 +41,8 @@ let USERSKICKED = 0;
 let USERSBANNED = 0;
 let USERSUNBANNED = 0;
 let MESSAGESENT: any = {};
+let USERSYNC_HANDLED = false;
+let MESSAGE_PROCCESS = "";
 
 function buildRequest(eventData) {
     if (eventData.unsigned === undefined) {
@@ -56,6 +58,8 @@ function createRH(opts: any = {}) {
     USERSKICKED = 0;
     USERSBANNED = 0;
     USERSUNBANNED = 0;
+    USERSYNC_HANDLED = false;
+    MESSAGE_PROCCESS = "";
     const bridge = {
         getBot: () => {
             return {
@@ -86,7 +90,9 @@ function createRH(opts: any = {}) {
     };
     const us = {
         EnsureJoin: async () => { },
-        OnMemberState: async () => "user_sync_handled",
+        OnMemberState: async () => {
+            USERSYNC_HANDLED = true;
+        },
         OnUpdateUser: async () => { },
     };
     const cs = {
@@ -126,9 +132,15 @@ function createRH(opts: any = {}) {
             const channel = new MockChannel();
             return {channel, botUser: true };
         },
-        ProcessMatrixMsgEvent: async () => "processed",
-        ProcessMatrixRedact: async () => "redacted",
-        ProcessMatrixStateEvent: async () => "stateevent",
+        ProcessMatrixMsgEvent: async () => {
+            MESSAGE_PROCCESS = "processed";
+        },
+        ProcessMatrixRedact: async () => {
+            MESSAGE_PROCCESS = "redacted";
+        },
+        ProcessMatrixStateEvent: async () => {
+            MESSAGE_PROCCESS = "stateevent";
+        },
         ThirdpartySearchForChannels: () => {
             return [];
         },
@@ -206,37 +218,48 @@ describe("MatrixRoomHandler", () => {
                 type: "m.potato",
                 unsigned: {age: AGE}}), null)).to.be.rejectedWith("Event not processed by bridge");
         });
-        it("should handle invites", () => {
+        it("should handle invites", async () => {
             const handler = createRH();
-            handler.HandleInvite = async (ev) => "invited";
-            return expect(handler.OnEvent(buildRequest({
+            let invited = false;
+            handler.HandleInvite = async (ev) => {
+                invited = true;
+            };
+            await handler.OnEvent(buildRequest({
                 content: {membership: "invite"},
-                type: "m.room.member"}), null)).to.eventually.equal("invited");
+                type: "m.room.member"}), null);
+            expect(invited).to.be.true;
         });
-        it("should handle own state updates", () => {
+        it("should handle own state updates", async () => {
             const handler = createRH();
-            return expect(handler.OnEvent(buildRequest({
+            await handler.OnEvent(buildRequest({
                 content: {membership: "join"},
                 state_key: "@_discord_12345:localhost",
-                type: "m.room.member"}), null)).to.eventually.equal("user_sync_handled");
+                type: "m.room.member"}), null);
+            expect(USERSYNC_HANDLED).to.be.true;
         });
-        it("should pass other member types to state event", () => {
+        it("should pass other member types to state event", async () => {
             const handler = createRH();
-            handler.HandleInvite = async (ev) => "invited";
-            return expect(handler.OnEvent(buildRequest({
+            let invited = false;
+            handler.HandleInvite = async (ev) => {
+                invited = true;
+            };
+            handler.OnEvent(buildRequest({
                 content: {membership: "join"},
                 state_key: "@bacon:localhost",
-                type: "m.room.member"}), null)).to.eventually.equal("stateevent");
+                type: "m.room.member"}), null);
+            expect(invited).to.be.false;
+            expect(MESSAGE_PROCCESS).equals("stateevent");
         });
-        it("should handle redactions with existing rooms", () => {
+        it("should handle redactions with existing rooms", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
                     remote: true,
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
-                type: "m.room.redaction"}), context)).to.eventually.equal("redacted");
+            await handler.OnEvent(buildRequest({
+                type: "m.room.redaction"}), context);
+            expect(MESSAGE_PROCCESS).equals("redacted");
         });
         it("should ignore redactions with no linked room", () => {
             const handler = createRH();
@@ -248,7 +271,7 @@ describe("MatrixRoomHandler", () => {
             return expect(handler.OnEvent(buildRequest({
                 type: "m.room.redaction"}), context)).to.be.rejectedWith("Event not processed by bridge");
         });
-        it("should process regular messages", () => {
+        it("should process regular messages", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
@@ -257,10 +280,11 @@ describe("MatrixRoomHandler", () => {
                     },
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
+            await handler.OnEvent(buildRequest({
                 content: {body: "abc"},
                 type: "m.room.message",
-            }), context)).to.eventually.equal("processed");
+            }), context);
+            expect(MESSAGE_PROCCESS).equals("processed");
         });
         it("should alert if encryption is turned on", () => {
             const handler = createRH();
@@ -276,13 +300,17 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.encryption",
             }), context)).to.eventually.be.fulfilled;
         });
-        it("should process !discord commands", () => {
+        it("should process !discord commands", async () => {
             const handler = createRH();
-            handler.ProcessCommand = async (ev) => "processedcmd";
-            return expect(handler.OnEvent(buildRequest({
+            let processedcmd = false;
+            handler.ProcessCommand = async (ev) => {
+                processedcmd = true;
+            };
+            await handler.OnEvent(buildRequest({
                 content: {body: "!discord cmd"},
                 type: "m.room.message",
-            }), null)).to.eventually.equal("processedcmd");
+            }), null);
+            expect(processedcmd).to.be.true;
         });
         it("should ignore regular messages with no linked room", () => {
             const handler = createRH();
@@ -296,7 +324,7 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.message",
             }), context)).to.be.rejectedWith("Event not processed by bridge");
         });
-        it("should process stickers", () => {
+        it("should process stickers", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
@@ -305,13 +333,14 @@ describe("MatrixRoomHandler", () => {
                     },
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
+            await handler.OnEvent(buildRequest({
                 content: {
                     body: "abc",
                     url: "mxc://abc",
                 },
                 type: "m.sticker",
-            }), context)).to.eventually.equal("processed");
+            }), context);
+            expect(MESSAGE_PROCCESS).equals("processed");
         });
     });
     describe("HandleInvite", () => {
