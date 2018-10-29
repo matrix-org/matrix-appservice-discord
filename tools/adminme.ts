@@ -89,10 +89,16 @@ const clientFactory = new ClientFactory({
 });
 const client = clientFactory.getClientAs();
 const intent = new Intent(client, client, {registered: true});
-intent.setPowerLevel(options.roomid, options.userid, options.power).then(() => {
-    console.log("Power levels set");
-    process.exit(0);
-}).catch((err) => {
-    console.error("Could not apply power levels to room:", err);
-    process.exit(1);
-});
+
+async function run() {
+    try {
+        await intent.setPowerLevel(options.roomid, options.userid, options.power);
+        console.log("Power levels set");
+        process.exit(0);
+    } catch (err) {
+        console.error("Could not apply power levels to room:", err);
+        process.exit(1);
+    }
+}
+
+run(); // tslint:disable-line no-floating-promises

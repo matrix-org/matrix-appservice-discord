@@ -87,30 +87,27 @@ const bridge = new Bridge({
 
 provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
-let chanSync;
 
-let client;
-bridge.loadDatabases().catch((e) => {
-    return discordstore.init();
-}).then(() => {
-    chanSync = new ChannelSyncroniser(bridge, config, discordbot);
+async function run() {
+    try {
+        await bridge.loadDatabases();
+    } catch (e) {
+        await discordstore.init();
+    }
+    const chanSync = new ChannelSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
     bridge._botClient = bridge._clientFactory.getClientAs();
     bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
-    return discordbot.ClientFactory.init().then(() => {
-        return discordbot.ClientFactory.getClient();
-    });
-}).then((clientTmp: any) => {
-    client = clientTmp;
+    await discordbot.ClientFactory.init();
+    const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
-    return bridge.getRoomStore().getEntriesByRemoteRoomData({
+    const mxRoomEntries = await bridge.getRoomStore().getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
     });
-}).then((mxRoomEntries) => {
-    const promiseList = [];
 
+    const promiseList = [];
     mxRoomEntries.forEach((entry) => {
         if (entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
@@ -122,23 +119,29 @@ bridge.loadDatabases().catch((e) => {
         entry.remote.set("update_icon", true);
         promiseList.push(bridge.getRoomStore().upsertEntry(entry));
     });
-    return Promise.all(promiseList);
-}).then(() => {
+    await Promise.all(promiseList);
+
     // now it is time to actually run the updates
     let promiseChain: Bluebird<any> = Bluebird.resolve();
 
-    let delay = config.limits.roomGhostJoinDelay; // we'll just re-use this
+    let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
-        promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-            return chanSync.OnGuildUpdate(guild, true).catch((err) => {
+        promiseChain = promiseChain.return(async () => {
+            await Bluebird.delay(curDelay);
+            try {
+                await chanSync.OnGuildUpdate(guild, true);
+            } catch (err) {
                 log.warn(`Couldn't update rooms of guild ${guild.id}`, err);
-            });
-        }));
-        delay += config.limits.roomGhostJoinDelay;
+            }
+        });
+        curDelay += config.limits.roomGhostJoinDelay;
     });
-    return promiseChain;
-}).catch((err) => {
-    log.error(err);
-}).then(() => {
+    try {
+        await promiseChain;
+    } catch (err) {
+        log.error(err);
+    }
     process.exit(0);
-});
+}
+
+run(); // tslint:disable-line no-floating-promises

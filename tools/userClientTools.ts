@@ -106,5 +106,6 @@ Please enter your Discord Token
 
 async function addUserToken(userid: string, token: string): Promise<void> {
     const clientFactory = new DiscordClientFactory(discordstore);
-    clientFactory.getDiscordId(token).then(async (discordid) => discordstore.add_user_token(userid, discordid, token) );
+    const discordid = await clientFactory.getDiscordId(token);
+    await discordstore.add_user_token(userid, discordid, token);
 }
