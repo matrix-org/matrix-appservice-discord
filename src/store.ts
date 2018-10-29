@@ -95,8 +95,8 @@ export class DiscordStore {
         log.info("Updated database to the latest schema");
     }
 
-    public close() {
-        this.db.Close();
+    public async close() {
+        await this.db.Close();
     }
 
     public create_table(statement: string, tablename: string): Promise<void|Error> {

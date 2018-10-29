@@ -99,10 +99,10 @@ export class DiscordBot {
                 });
             }
             this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-            client.on("channelUpdate", (_, newChannel) => { this.channelSync.OnUpdate(newChannel); });
-            client.on("channelDelete", (channel) => { this.channelSync.OnDelete(channel); });
-            client.on("guildUpdate", (_, newGuild) => { this.channelSync.OnGuildUpdate(newGuild); });
-            client.on("guildDelete", (guild) => { this.channelSync.OnGuildDelete(guild); });
+            client.on("channelUpdate", (_, newChannel) => this.channelSync.OnUpdate(newChannel) );
+            client.on("channelDelete", (channel) => this.channelSync.OnDelete(channel) );
+            client.on("guildUpdate", (_, newGuild) => this.channelSync.OnGuildUpdate(newGuild) );
+            client.on("guildDelete", (guild) => this.channelSync.OnGuildDelete(guild) );
 
             // Due to messages often arriving before we get a response from the send call,
             // messages get delayed from discord. We use Bluebird.delay to handle this.
@@ -486,16 +486,16 @@ export class DiscordBot {
                 const isApproved = msg.content === "!approve";
                 const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
                 if (successfullyBridged && isApproved) {
-                    msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
+                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
                 } else if (successfullyBridged && !isApproved) {
-                    msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
+                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
                 } else {
-                    msg.channel.sendMessage("Thanks for your response, however" +
+                    await msg.channel.sendMessage("Thanks for your response, however" +
                         "the time for responses has expired - sorry!");
                 }
             } catch (err) {
                 if (err.message === "You do not have permission to manage webhooks in this channel") {
-                    msg.channel.sendMessage(err.message);
+                    await msg.channel.sendMessage(err.message);
                 } else {
                     log.error("Error processing room approval");
                     log.error(err);
@@ -512,79 +512,85 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        return this.userSync.OnUpdateUser(msg.author).then(() => {
-            return this.channelSync.GetRoomIdsFromChannel(msg.channel).catch((err) => {
-                log.verbose("No bridged rooms to send message to. Oh well.");
-                return null;
-            });
-        }).then((rooms) => {
+        await this.userSync.OnUpdateUser(msg.author);
+        let rooms;
+        try {
+            rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
+        } catch (err) {
+            log.verbose("No bridged rooms to send message to. Oh well.");
+            return null;
+        }
+        try {
             if (rooms === null) {
               return null;
             }
             const intent = this.GetIntentFromDiscordMember(msg.author);
             // Check Attachements
-            msg.attachments.forEach((attachment) => {
-                Util.UploadContentFromUrl(attachment.url, intent, attachment.filename).then((content) => {
-                    const fileMime = mime.lookup(attachment.filename);
-                    const msgtype = attachment.height ? "m.image" : "m.file";
-                    const info = {
-                        h: null,
-                        mimetype: fileMime,
-                        size: attachment.filesize,
-                        w: null,
-                    };
-                    if (msgtype === "m.image") {
-                        info.w = attachment.width;
-                        info.h = attachment.height;
-                    }
-                    rooms.forEach((room) => {
-                        intent.sendMessage(room, {
-                            body: attachment.filename,
-                            external_url: attachment.url,
-                            info,
-                            msgtype,
-                            url: content.mxcUrl,
-                        }).then((res) => {
-                            const evt = new DbEvent();
-                            evt.MatrixId = res.event_id + ";" + room;
-                            evt.DiscordId = msg.id;
-                            evt.ChannelId = msg.channel.id;
-                            evt.GuildId = msg.guild.id;
-                            return this.store.Insert(evt);
-                        });
+            await Util.AsyncForEach(msg.attachments, async (attachment) => {
+                const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
+                const fileMime = mime.lookup(attachment.filename);
+                const msgtype = attachment.height ? "m.image" : "m.file";
+                const info = {
+                    h: null,
+                    mimetype: fileMime,
+                    size: attachment.filesize,
+                    w: null,
+                };
+                if (msgtype === "m.image") {
+                    info.w = attachment.width;
+                    info.h = attachment.height;
+                }
+                await Util.AsyncForEach(rooms, async (room) => {
+                    const res = await intent.sendMessage(room, {
+                        body: attachment.filename,
+                        external_url: attachment.url,
+                        info,
+                        msgtype,
+                        url: content.mxcUrl,
                     });
+                    const evt = new DbEvent();
+                    evt.MatrixId = res.event_id + ";" + room;
+                    evt.DiscordId = msg.id;
+                    evt.ChannelId = msg.channel.id;
+                    evt.GuildId = msg.guild.id;
+                    await this.store.Insert(evt);
                 });
             });
             if (msg.content !== null && msg.content !== "") {
-                this.msgProcessor.FormatDiscordMessage(msg).then((result) => {
-                    rooms.forEach((room) => {
-                        const trySend = () => intent.sendMessage(room, {
-                            body: result.body,
-                            format: "org.matrix.custom.html",
-                            formatted_body: result.formattedBody,
-                            msgtype: "m.text",
-                        });
-                        const afterSend = (res) => {
-                            const evt = new DbEvent();
-                            evt.MatrixId = res.event_id + ";" + room;
-                            evt.DiscordId = msg.id;
-                            evt.ChannelId = msg.channel.id;
-                            evt.GuildId = msg.guild.id;
-                            return this.store.Insert(evt);
-                        };
-                        trySend().then(afterSend).catch((e) => {
-                            if (e.errcode !== "M_FORBIDDEN") {
-                                log.error("DiscordBot", "Failed to send message into room.", e);
-                                return;
-                            }
-                            return this.userSync.EnsureJoin(msg.member, room).then(() => trySend()).then(afterSend);
-                        });
+                const result = await this.msgProcessor.FormatDiscordMessage(msg);
+                await Util.AsyncForEach(rooms, async (room) => {
+                    const trySend = async () => intent.sendMessage(room, {
+                        body: result.body,
+                        format: "org.matrix.custom.html",
+                        formatted_body: result.formattedBody,
+                        msgtype: "m.text",
                     });
+                    const afterSend = async (re) => {
+                        const evt = new DbEvent();
+                        evt.MatrixId = re.event_id + ";" + room;
+                        evt.DiscordId = msg.id;
+                        evt.ChannelId = msg.channel.id;
+                        evt.GuildId = msg.guild.id;
+                        await this.store.Insert(evt);
+                    };
+                    let res;
+                    try {
+                        res = await trySend();
+                        await afterSend(res);
+                    } catch (e) {
+                        if (e.errcode !== "M_FORBIDDEN") {
+                            log.error("DiscordBot", "Failed to send message into room.", e);
+                            return;
+                        }
+                        await this.userSync.EnsureJoin(msg.member, room);
+                        res = await trySend();
+                        await afterSend(res);
+                    }
                 });
             }
-        }).catch((err) => {
+        } catch (err) {
             log.verbose("Failed to send message into room.", err);
-        });
+        }
     }
 
     private async OnMessageUpdate(oldMsg: Discord.Message, newMsg: Discord.Message) {

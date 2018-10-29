@@ -52,5 +52,5 @@ export class MockDiscordClient {
         return;
     }
 
-    public destroy() { } // no-op
+    public async destroy() { } // no-op
 }

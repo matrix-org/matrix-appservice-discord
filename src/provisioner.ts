@@ -32,35 +32,33 @@ export class Provisioner {
         return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
-    public AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
-        return new Promise((resolve, reject) => {
-            const channelId = channel.guild.id + "/" + channel.id;
+    public async AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<any> {
+        const channelId = channel.guild.id + "/" + channel.id;
 
-            let responded = false;
-            const approveFn = (approved: boolean, expired = false) => {
-                if (responded) {
-                    return;
-                }
+        let responded = false;
+        const approveFn = (approved: boolean, expired = false) => {
+            if (responded) {
+                return;
+            }
 
-                responded = true;
-                delete this.pendingRequests[channelId];
-                if (approved) {
-                    resolve();
+            responded = true;
+            delete this.pendingRequests[channelId];
+            if (approved) {
+                return;
+            } else {
+                if (expired) {
+                    return new Error("Timed out waiting for a response from the Discord owners");
                 } else {
-                    if (expired) {
-                        reject(new Error("Timed out waiting for a response from the Discord owners"));
-                    } else {
-                        reject(new Error("The bridge has been declined by the Discord guild"));
-                    }
+                    return new Error("The bridge has been declined by the Discord guild");
                 }
-            };
+            }
+        };
 
-            this.pendingRequests[channelId] = approveFn;
-            setTimeout(() => approveFn(false, true), PERMISSION_REQUEST_TIMEOUT);
+        this.pendingRequests[channelId] = approveFn;
+        setTimeout(() => approveFn(false, true), PERMISSION_REQUEST_TIMEOUT);
 
-            channel.sendMessage(requestor + " on matrix would like to bridge this channel. Someone with permission" +
-                " to manage webhooks please reply with !approve or !deny in the next 5 minutes");
-        });
+        await channel.sendMessage(requestor + " on matrix would like to bridge this channel. Someone with permission" +
+            " to manage webhooks please reply with !approve or !deny in the next 5 minutes");
     }
 
     public HasPendingRequest(channel: Discord.TextChannel): boolean {

@@ -248,6 +248,12 @@ export class Util {
         }
         return lines.join("\n").trim();
     }
+
+    public static async AsyncForEach(arr, callback) {
+        for (let i = 0; i < arr.length; i++) {
+            await callback(arr[i], i, arr);
+        }
+    }
 }
 
 interface IUploadResult {

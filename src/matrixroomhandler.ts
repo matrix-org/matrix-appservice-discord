@@ -82,17 +82,15 @@ export class MatrixRoomHandler {
             if (member.id === this.discord.GetBotId()) {
               continue;
             }
-            promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
+            promiseChain = promiseChain.return(Bluebird.delay(delay).then(async () => {
                 log.info("OnAliasQueried", `UserSyncing ${member.id}`);
                 // Ensure the profile is up to date.
                 return this.discord.UserSyncroniser.OnUpdateUser(member.user);
-            }).then(() => {
+            }).then(async () => {
                 log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
                 return this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId)
-                    .then(() => {
-                      // set the correct discord guild name
-                      this.discord.UserSyncroniser.EnsureJoin(member, roomId);
-                    });
+                    // set the correct discord guild name
+                    .then(async () => this.discord.UserSyncroniser.EnsureJoin(member, roomId) );
             }));
             delay += this.config.limits.roomGhostJoinDelay;
         }
@@ -402,7 +400,7 @@ export class MatrixRoomHandler {
 
     public async HandleDiscordCommand(msg: Discord.Message) {
         if (!(msg.channel as Discord.TextChannel).guild) {
-            msg.channel.send("**ERROR:** only available for guild channels");
+            await msg.channel.send("**ERROR:** only available for guild channels");
         }
 
         const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
@@ -459,17 +457,17 @@ export class MatrixRoomHandler {
                 const parameter = parameters[parameterKey];
                 replyHelpMessage += " - `<" + parameterKey + ">`: " + parameter.description + "\n";
             }
-            msg.channel.send(replyHelpMessage);
+            await msg.channel.send(replyHelpMessage);
             return;
         }
 
         if (!actions[command]) {
-            msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
+            await msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
             return;
         }
 
         if (!msg.member.hasPermission(actions[command].permission as any)) {
-            msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
+            await msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
             return;
         }
 
@@ -480,7 +478,7 @@ export class MatrixRoomHandler {
             replyMessage = "**ERROR:** " + e.message;
         }
 
-        msg.channel.send(replyMessage);
+        await msg.channel.send(replyMessage);
     }
 
     private DiscordModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {
