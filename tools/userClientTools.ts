@@ -72,8 +72,8 @@ function handleUI() {
         input: process.stdin,
         output: process.stdout,
     });
-    let userid = null;
-    let token = null;
+    let userid = "";
+    let token = "";
 
     rl.question("Please enter your UserID ( ex @Half-Shot:half-shot.uk, @username:matrix.org)", (answeru) => {
         userid = answeru;

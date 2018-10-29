@@ -19,15 +19,15 @@ import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
-let UTIL_UPLOADED_AVATAR = null;
-let REMOTECHANNEL_SET = false;
-let REMOTECHANNEL_REMOVED = false;
-let ROOM_NAME_SET = null;
-let ROOM_TOPIC_SET = null;
-let ROOM_AVATAR_SET = null;
-let STATE_EVENT_SENT = false;
-let ALIAS_DELETED = false;
-let ROOM_DIRECTORY_VISIBILITY = null;
+let UTIL_UPLOADED_AVATAR: any = null;
+let REMOTECHANNEL_SET: any = false;
+let REMOTECHANNEL_REMOVED: any = false;
+let ROOM_NAME_SET: any = null;
+let ROOM_TOPIC_SET: any = null;
+let ROOM_AVATAR_SET: any = null;
+let STATE_EVENT_SENT: any = false;
+let ALIAS_DELETED: any = false;
+let ROOM_DIRECTORY_VISIBILITY: any = null;
 
 const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
@@ -101,7 +101,7 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
             REMOTECHANNEL_REMOVED = false;
             return {
                 getEntriesByMatrixId: (roomid) => {
-                    const entries = [];
+                    const entries: any[] = [];
                     remoteChannels.forEach((c) => {
                         const mxid = c.matrix.getId();
                         if (roomid === mxid) {
@@ -415,7 +415,7 @@ describe("ChannelSyncroniser", () => {
         });
         it("will delete the icon", async () => {
             const guild = new MockGuild("654321", [], "newGuild");
-            guild.icon = null;
+            guild.icon = "";
             const chan = new MockChannel();
             chan.type = "text";
             chan.id = "blah";

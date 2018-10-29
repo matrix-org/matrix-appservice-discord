@@ -9,6 +9,7 @@ import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { DiscordBot } from "../src/bot";
 import { MockDiscordClient } from "./mocks/discordclient";
+import { MockMessage } from "./mocks/message";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -102,9 +103,9 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, null);
-            const oldMsg = new Discord.Message(channel, null, null);
-            const newMsg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {} as any);
+            const oldMsg = new MockMessage(channel) as any;
+            const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
             newMsg.embeds = [];
 
@@ -129,9 +130,9 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, null);
-            const oldMsg = new Discord.Message(channel, null, null);
-            const newMsg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {} as any);
+            const oldMsg = new MockMessage(channel) as any;
+            const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
             newMsg.embeds = [];
 

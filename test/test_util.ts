@@ -15,7 +15,7 @@ function CreateMockIntent(members) {
             return {
                 _http: {
                     authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
-                        const ret = [];
+                        const ret: any[] = [];
                         for (const member of members[url]) {
                             ret.push({
                                 content: {

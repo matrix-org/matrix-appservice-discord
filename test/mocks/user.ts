@@ -9,8 +9,8 @@ export class MockUser {
         public id: string,
         public username: string = "",
         public discriminator: string = "",
-        public avatarURL: string = "",
-        public avatar: string = "",
+        public avatarURL: string | null = "",
+        public avatar: string | null = "",
     ) { }
 
     public MockSetPresence(presence: Presence) {

@@ -112,7 +112,7 @@ async function run() {
     await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
-    const promiseList = [];
+    const promiseList: Promise<void>[] = [];
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
         client.guilds.forEach((guild) => {

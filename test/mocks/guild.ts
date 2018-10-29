@@ -13,7 +13,7 @@ export class MockGuild {
     public id: string;
     public name: string;
     public icon: string;
-    constructor(id: string, channels: any[] = [], name: string = null) {
+    constructor(id: string, channels: any[] = [], name: string = "") {
         this.id = id;
         this.name = name || id;
         channels.forEach((item) => {
@@ -23,7 +23,7 @@ export class MockGuild {
 
     public async fetchMember(id: string): Promise<MockMember|Error> {
         if (this.members.has(id)) {
-            return this.members.get(id);
+            return this.members.get(id)!;
         }
         throw new Error("Member not in this guild");
     }

@@ -144,7 +144,7 @@ export class UserSyncroniser {
 
     public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
         log.info(`Applying new room state for ${memberState.mxUserId} to ${roomId}`);
-        if (memberState.displayName === null) {
+        if (!memberState.displayName) {
             // Nothing to do. Quitting
             return;
         }

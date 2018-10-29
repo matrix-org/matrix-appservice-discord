@@ -107,7 +107,7 @@ async function run() {
         update_topic: true,
     });
 
-    const promiseList = [];
+    const promiseList: Promise<void>[] = [];
     mxRoomEntries.forEach((entry) => {
         if (entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
@@ -122,7 +122,7 @@ async function run() {
     await Promise.all(promiseList);
 
     // now it is time to actually run the updates
-    const promiseList2 = [];
+    const promiseList2: Promise<void>[] = [];
 
     let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {

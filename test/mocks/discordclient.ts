@@ -41,7 +41,7 @@ export class MockDiscordClient {
     }
 
     public emit(event: string, ...data: any[]) {
-        return this.testCallbacks.get(event).apply(this, data);
+        return this.testCallbacks.get(event)!.apply(this, data);
     }
 
     public async login(token: string): Promise<void> {
@@ -50,7 +50,7 @@ export class MockDiscordClient {
         }
         this.testLoggedIn = true;
         if (this.testCallbacks.has("ready")) {
-            this.testCallbacks.get("ready")();
+            this.testCallbacks.get("ready")!();
         }
         return;
     }

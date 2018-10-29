@@ -116,7 +116,7 @@ export class Log {
 
     // tslint:disable-next-line no-any
     private log(level: string, msg: any[]) {
-        if (Log.logger === null) {
+        if (!Log.logger) {
             // We've not configured the logger yet, so create a basic one.
             Log.config = new DiscordBridgeConfigLogging();
             Log.setupLogger();

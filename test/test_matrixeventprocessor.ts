@@ -130,7 +130,7 @@ function createMatrixEventProcessor(
         new MatrixEventProcessorOpts(
             config,
             bridge,
-            null,
+            {} as any,
     ));
 }
 const mockChannel = new MockChannel();
@@ -273,9 +273,9 @@ describe("MatrixEventProcessor", () => {
                 displayname: "Test User",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "Test User");
-            Chai.assert.equal(author.icon_url, "https://localhost/avatarurl");
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "Test User");
+            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users displayname if it exists.", async () => {
@@ -289,9 +289,9 @@ describe("MatrixEventProcessor", () => {
                 displayname: "Test User",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "Test User");
-            Chai.assert.isUndefined(author.icon_url);
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "Test User");
+            Chai.assert.isUndefined(author!.icon_url);
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users userid if the displayname is not set", async () => {
@@ -303,9 +303,9 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
             } as IMatrixEvent, null, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
-            Chai.assert.isUndefined(author.icon_url);
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "@test:localhost");
+            Chai.assert.isUndefined(author!.icon_url);
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should use the userid when the displayname is too short", async () => {
@@ -319,7 +319,7 @@ describe("MatrixEventProcessor", () => {
                 displayname: "t",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
+            Chai.assert.equal(author!.name, "@test:localhost");
         });
 
         it("Should use the userid when displayname is too long", async () => {
@@ -333,7 +333,7 @@ describe("MatrixEventProcessor", () => {
                 displayname: "this is a very very long displayname that should be capped",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
+            Chai.assert.equal(author!.name, "@test:localhost");
         });
 
         it("Should cap the sender name if it is too long", async () => {
@@ -345,7 +345,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
             } as IMatrixEvent, null, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@testwithalottosayaboutitselftha");
+            Chai.assert.equal(author!.name, "@testwithalottosayaboutitselftha");
         });
 
         it("Should contain the users avatar if it exists.", async () => {
@@ -359,9 +359,9 @@ describe("MatrixEventProcessor", () => {
                 avatar_url: "mxc://localhost/test",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
-            Chai.assert.equal(author.icon_url, "https://localhost/test");
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "@test:localhost");
+            Chai.assert.equal(author!.icon_url, "https://localhost/test");
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should enable mentions if configured.", async () => {
@@ -722,11 +722,11 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent);
-            expect(result[0].description).to.be.equal("Hello!");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("Test");
+            expect(result![0].description).to.be.equal("Hello!");
+            expect(result![0].author!.name).to.be.equal("Doggo!");
+            expect(result![0].author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result![0].author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result![1]).to.be.equal("Test");
         });
         it("should handle replies with a missing event", async () => {
             const processor = createMatrixEventProcessor();
@@ -744,11 +744,11 @@ This is where the reply goes`,
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent);
-            expect(result[0].description).to.be.equal("Reply with unknown content");
-            expect(result[0].author.name).to.be.equal("Unknown");
-            expect(result[0].author.icon_url).to.be.undefined;
-            expect(result[0].author.url).to.be.undefined;
-            expect(result[1]).to.be.equal("This is where the reply goes");
+            expect(result![0].description).to.be.equal("Reply with unknown content");
+            expect(result![0].author!.name).to.be.equal("Unknown");
+            expect(result![0].author!.icon_url).to.be.undefined;
+            expect(result![0].author!.url).to.be.undefined;
+            expect(result![1]).to.be.equal("This is where the reply goes");
         });
         it("should handle replies with a valid reply event", async () => {
             const processor = createMatrixEventProcessor();
@@ -766,11 +766,11 @@ This is where the reply goes`,
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent);
-            expect(result[0].description).to.be.equal("Hello!");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is where the reply goes");
+            expect(result![0].description).to.be.equal("Hello!");
+            expect(result![0].author!.name).to.be.equal("Doggo!");
+            expect(result![0].author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result![0].author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result![1]).to.be.equal("This is where the reply goes");
         });
         it("should handle replies on top of replies", async () => {
             const processor = createMatrixEventProcessor();
@@ -788,11 +788,11 @@ This is the second reply`,
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent);
-            expect(result[0].description).to.be.equal("This is the first reply");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is the second reply");
+            expect(result![0].description).to.be.equal("This is the first reply");
+            expect(result![0].author!.name).to.be.equal("Doggo!");
+            expect(result![0].author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result![0].author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result![1]).to.be.equal("This is the second reply");
         });
         it("should handle replies with non text events", async () => {
             const processor = createMatrixEventProcessor();
@@ -810,11 +810,11 @@ This is the reply`,
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent);
-            expect(result[0].description).to.be.equal("Reply with unknown content");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is the reply");
+            expect(result![0].description).to.be.equal("Reply with unknown content");
+            expect(result![0].author!.name).to.be.equal("Doggo!");
+            expect(result![0].author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result![0].author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result![1]).to.be.equal("This is the reply");
         });
     });
 });

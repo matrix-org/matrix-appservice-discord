@@ -4,13 +4,13 @@ import {MockDiscordClient} from "./discordclient";
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 export class DiscordClientFactory {
-    private botClient: MockDiscordClient = null;
+    private botClient: MockDiscordClient;
     constructor(config: any, store: any) { }
 
     public async init(): Promise<void> { }
 
     public async getClient(userId?: string): Promise<MockDiscordClient> {
-        if (userId == null && !this.botClient) {
+        if (!userId && !this.botClient) {
             this.botClient = new MockDiscordClient();
         }
         return this.botClient;

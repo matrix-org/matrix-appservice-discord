@@ -9,9 +9,9 @@ import * as RealLog from "../src/log";
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
-let createdLogger = null;
-let loggerClosed = false;
-let loggedMessages = [];
+let createdLogger: any = null;
+let loggerClosed: any = false;
+let loggedMessages: any[] = [];
 
 const WinstonMock = {
     createLogger: (format, transports) => {
