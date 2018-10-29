@@ -3,6 +3,9 @@ import {MockMember} from "./member";
 import {MockEmoji} from "./emoji";
 import {Channel} from "discord.js";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 export class MockGuild {
     public channels = new MockCollection<string, Channel>();
     public members = new MockCollection<string, MockMember>();

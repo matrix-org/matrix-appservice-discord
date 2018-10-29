@@ -3,6 +3,9 @@ import {MockGuild} from "./guild";
 import {MockUser} from "./user";
 import { EventEmitter } from "events";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 export class MockDiscordClient {
     public guilds = new MockCollection<string, MockGuild>();
     public user: MockUser;
