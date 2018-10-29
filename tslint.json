@@ -32,9 +32,7 @@
     },
     "no-duplicate-imports": true,
     "array-type": [true, "array"],
-    "promise-function-async": {
-      "severity": "warning"
-    },
+    "promise-function-async": true,
     "no-bitwise": true,
     "no-debugger": true,
     "no-floating-promises": true
