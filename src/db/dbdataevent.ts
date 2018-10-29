@@ -7,12 +7,14 @@ export class DbEvent implements IDbDataMany {
     public GuildId: string;
     public ChannelId: string;
     public Result: boolean;
+    // tslint:disable-next-line no-any
     private rows: any[];
 
     get ResultCount(): number {
         return this.rows.length;
     }
 
+    // tslint:disable-next-line no-any
     public async RunQuery(store: DiscordStore, params: any): Promise<void> {
         this.rows = [];
         let rowsM = null;
@@ -45,6 +47,7 @@ export class DbEvent implements IDbDataMany {
                     WHERE msg_id = $id`, {
                         id: rowM.discord_id,
             })) {
+                // tslint:disable-next-line no-any
                 const insertRow: any = Object.assign({}, row);
                 insertRow.guild_id = rowD.guild_id;
                 insertRow.channel_id = rowD.channel_id;

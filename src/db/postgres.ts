@@ -14,6 +14,7 @@ export class Postgres implements IDatabaseConnector {
         });
     }
 
+    // tslint:disable-next-line no-any
     private db: pgPromise.IDatabase<any>;
     constructor(private connectionString: string) {
 
@@ -27,16 +28,19 @@ export class Postgres implements IDatabaseConnector {
         this.db = pgp(this.connectionString);
     }
 
+    // tslint:disable-next-line no-any
     public async Get(sql: string, parameters?: any): Promise<any> {
         log.silly("Get:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
 
+    // tslint:disable-next-line no-any
     public async All(sql: string, parameters?: any): Promise<any[]> {
         log.silly("All:", sql);
         return this.db.many(Postgres.ParameterizeSql(sql), parameters);
     }
 
+    // tslint:disable-next-line no-any
     public async Run(sql: string, parameters?: any): Promise<null> {
         log.silly("Run:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
@@ -46,6 +50,7 @@ export class Postgres implements IDatabaseConnector {
         // Postgres doesn't support disconnecting.
     }
 
+    // tslint:disable-next-line no-any
     public async Exec(sql: string): Promise<any> {
         log.silly("Exec:", sql);
         return this.db.none(sql);

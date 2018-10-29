@@ -108,7 +108,7 @@ export class DiscordStore {
         }
     }
 
-    public async add_user_token(userId: string, discordId: string, token: string): Promise<any> {
+    public async add_user_token(userId: string, discordId: string, token: string): Promise<void> {
         log.silly("SQL", "add_user_token => ", userId);
         try {
             await Promise.all([
@@ -233,7 +233,7 @@ export class DiscordStore {
             throw err;
         }
     }
-
+/*
     public async get_all_user_discord_ids(): Promise<any> {
         log.silly("SQL", "get_users_tokens");
         try {
@@ -249,7 +249,8 @@ export class DiscordStore {
             throw err;
         }
     }
-
+*/
+    // tslint:disable-next-line no-any
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);

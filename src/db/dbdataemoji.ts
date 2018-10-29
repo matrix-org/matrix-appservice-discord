@@ -10,6 +10,7 @@ export class DbEmoji implements IDbData {
     public UpdatedAt: number;
     public Result: boolean;
 
+    // tslint:disable-next-line no-any
     public async RunQuery(store: DiscordStore, params: any): Promise<void> {
         const row = await store.db.Get(`
             SELECT *
