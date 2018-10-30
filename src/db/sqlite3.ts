@@ -1,6 +1,6 @@
 import * as Database from "better-sqlite3";
 import { Log } from "../log";
-import { IDatabaseConnector } from "./connector";
+import { IDatabaseConnector, ISqlCommandParameters } from "./connector";
 const log = new Log("SQLite3");
 
 export class SQLite3 implements IDatabaseConnector {
@@ -15,19 +15,19 @@ export class SQLite3 implements IDatabaseConnector {
     }
 
     // tslint:disable-next-line no-any
-    public async Get(sql: string, parameters?: any): Promise<any> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
         log.silly("Get:", sql);
         return this.db.prepare(sql).get(parameters || []);
     }
 
     // tslint:disable-next-line no-any
-    public async All(sql: string, parameters?: any): Promise<any[]> {
+    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<any[]> {
         log.silly("All:", sql);
         return this.db.prepare(sql).all(parameters || []);
     }
 
     // tslint:disable-next-line no-any
-    public async Run(sql: string, parameters?: any): Promise<any> {
+    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
         log.silly("Run:", sql);
         return this.db.prepare(sql).run(parameters || []);
     }

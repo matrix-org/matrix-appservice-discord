@@ -1,5 +1,6 @@
 import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
+import { ISqlCommandParameters } from "./connector";
 
 export class DbEmoji implements IDbData {
     public EmojiId: string;
@@ -10,8 +11,7 @@ export class DbEmoji implements IDbData {
     public UpdatedAt: number;
     public Result: boolean;
 
-    // tslint:disable-next-line no-any
-    public async RunQuery(store: DiscordStore, params: any): Promise<void> {
+    public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
         const row = await store.db.Get(`
             SELECT *
             FROM emoji

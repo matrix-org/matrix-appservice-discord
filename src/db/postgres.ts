@@ -1,6 +1,6 @@
 import * as pgPromise from "pg-promise";
 import { Log } from "../log";
-import { IDatabaseConnector } from "./connector";
+import { IDatabaseConnector, ISqlCommandParameters } from "./connector";
 const log = new Log("SQLite3");
 
 const pgp: pgPromise.IMain = pgPromise({
@@ -29,19 +29,19 @@ export class Postgres implements IDatabaseConnector {
     }
 
     // tslint:disable-next-line no-any
-    public async Get(sql: string, parameters?: any): Promise<any> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
         log.silly("Get:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
 
     // tslint:disable-next-line no-any
-    public async All(sql: string, parameters?: any): Promise<any[]> {
+    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<any[]> {
         log.silly("All:", sql);
         return this.db.many(Postgres.ParameterizeSql(sql), parameters);
     }
 
     // tslint:disable-next-line no-any
-    public async Run(sql: string, parameters?: any): Promise<null> {
+    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
         log.silly("Run:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }

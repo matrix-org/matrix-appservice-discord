@@ -1,9 +1,9 @@
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import * as Discord from "discord.js";
+import { Client as DiscordClient } from "discord.js";
 import * as Bluebird from "bluebird";
 import { Log } from "./log";
-import * as Matrix from "matrix-js-sdk";
+import { Client as MatrixClient } from "matrix-js-sdk";
 
 const log = new Log("ClientFactory");
 
@@ -12,8 +12,8 @@ const READY_TIMEOUT = 5000;
 export class DiscordClientFactory {
     private config: DiscordBridgeConfigAuth;
     private store: DiscordStore;
-    private botClient: Matrix.Client;
-    private clients: Map<string, Matrix.Client>;
+    private botClient: MatrixClient;
+    private clients: Map<string, MatrixClient>;
     constructor(store: DiscordStore, config?: DiscordBridgeConfigAuth) {
         this.config = config!;
         this.clients = new Map();
@@ -26,7 +26,7 @@ export class DiscordClientFactory {
         }
         // We just need to make sure we have a bearer token.
         // Create a new Bot client.
-        this.botClient = Bluebird.promisifyAll(new Discord.Client({
+        this.botClient = Bluebird.promisifyAll(new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
             sync: true,
@@ -41,7 +41,7 @@ export class DiscordClientFactory {
     }
 
     public async getDiscordId(token: string): Promise<string> {
-        const client = new Discord.Client({
+        const client = new DiscordClient({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
             sync: false,
@@ -59,7 +59,7 @@ export class DiscordClientFactory {
         });
     }
 
-    public async getClient(userId: string | null = null): Promise<Matrix.Client> {
+    public async getClient(userId: string | null = null): Promise<MatrixClient> {
         if (userId === null) {
             return this.botClient;
         }
@@ -73,7 +73,7 @@ export class DiscordClientFactory {
         }
         // TODO: Select a profile based on preference, not the first one.
         const token = await this.store.get_token(discordIds[0]);
-        const client = Bluebird.promisifyAll(new Discord.Client({
+        const client = Bluebird.promisifyAll(new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
             sync: true,

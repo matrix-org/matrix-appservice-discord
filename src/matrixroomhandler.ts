@@ -72,7 +72,13 @@ export class MatrixRoomHandler {
 
     public async OnAliasQueried(alias: string, roomId: string) {
         log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
-        const channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
+        let channel: Discord.GuildChannel;
+        try {
+            channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
+        } catch (err) {
+            log.error("OnAliasQueried", `Cannot find discord channel for ${alias} ${roomId}`, err);
+            throw err;
+        }
 
         // Fire and forget RoomDirectory mapping
         this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
@@ -82,9 +88,8 @@ export class MatrixRoomHandler {
         );
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
         const promiseList: Promise<void>[] = [];
-        /* We delay the joins to give some implementations a chance to breathe */
         // Join a whole bunch of users.
-        /* We delay the joins to give some implementations a chance to breathe */
+        // We delay the joins to give some implementations a chance to breathe
         let delay = this.config.limits.roomGhostJoinDelay;
         for (const member of (channel as Discord.TextChannel).members.array()) {
             if (member.id === this.discord.GetBotId()) {
@@ -93,29 +98,32 @@ export class MatrixRoomHandler {
             promiseList.push((async () => {
                 await Bluebird.delay(delay);
                 log.info("OnAliasQueried", `UserSyncing ${member.id}`);
-                // Ensure the profile is up to date.
-                await this.discord.UserSyncroniser.OnUpdateUser(member.user);
-                log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-                await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
-                // set the correct discord guild name
-                await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
+                try {
+                    // Ensure the profile is up to date.
+                    await this.discord.UserSyncroniser.OnUpdateUser(member.user);
+                    log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
+                    await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
+                    // set the correct discord guild name
+                    await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
+                } catch (err) {
+                    log.warn("OnAliasQueried", `Failed to join user ${member.id} to ${roomId}`, err);
+                }
             })());
             delay += this.config.limits.roomGhostJoinDelay;
         }
-        // tslint:disable-next-line:await-promise
         await Promise.all(promiseList);
     }
 
     public async OnEvent(request, context): Promise<void> {
-        const event = request.getData();
+        const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
             throw new Error("Event too old");
         }
-        if (event.type === "m.room.member" && event.content.membership === "invite") {
+        if (event.type === "m.room.member" && event.content!.membership === "invite") {
             await this.HandleInvite(event);
             return;
-        } else if (event.type === "m.room.member" && event.content.membership === "join") {
+        } else if (event.type === "m.room.member" && event.content!.membership === "join") {
             if (this.bridge.getBot().isRemoteUser(event.state_key)) {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
             } else {
@@ -131,8 +139,8 @@ export class MatrixRoomHandler {
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
             const isBotCommand = event.type === "m.room.message" &&
-                event.content.body &&
-                event.content.body.startsWith("!discord");
+                event.content!.body &&
+                event.content!.body!.startsWith("!discord");
             if (isBotCommand) {
                 await this.ProcessCommand(event, context);
                 return;

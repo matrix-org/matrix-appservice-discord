@@ -7,7 +7,7 @@ import { Util, IMatrixEvent, IMatrixEventContent } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import { MatrixUser, Bridge } from "matrix-appservice-bridge";
-import * as Matrix from "matrix-js-sdk";
+import { Client as MatrixClient } from "matrix-js-sdk";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -171,7 +171,7 @@ export class MatrixEventProcessor {
         return content;
     }
 
-    public async HandleAttachment(event: IMatrixEvent, mxClient: Matrix.Client): Promise<string|Discord.FileOptions> {
+    public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
         if (!event.content) {
             event.content = {};
         }
