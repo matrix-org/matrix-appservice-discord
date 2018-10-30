@@ -34,6 +34,6 @@
     "no-bitwise": true,
     "no-debugger": true,
     "no-floating-promises": true,
-    "prefer-template": true
+    "prefer-template": [true, "allow-single-concat"]
   }
 }

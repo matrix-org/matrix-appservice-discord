@@ -33,7 +33,7 @@ export class Provisioner {
     }
 
     public async AskBridgePermission(channel: Discord.TextChannel, requestor: string): Promise<void> {
-        const channelId = channel.guild.id + "/" + channel.id;
+        const channelId = `${channel.guild.id}/${channel.id}`;
 
         let responded = false;
         const approveFn = (approved: boolean, expired = false) => {
@@ -57,12 +57,12 @@ export class Provisioner {
         this.pendingRequests[channelId] = approveFn;
         setTimeout(() => approveFn(false, true), PERMISSION_REQUEST_TIMEOUT);
 
-        await channel.sendMessage(requestor + " on matrix would like to bridge this channel. Someone with permission" +
+        await channel.sendMessage(`${requestor} on matrix would like to bridge this channel. Someone with permission` +
             " to manage webhooks please reply with !approve or !deny in the next 5 minutes");
     }
 
     public HasPendingRequest(channel: Discord.TextChannel): boolean {
-        const channelId = channel.guild.id + "/" + channel.id;
+        const channelId = `${channel.guild.id}/${channel.id}`;
         return !!this.pendingRequests[channelId];
     }
 
@@ -71,7 +71,7 @@ export class Provisioner {
         member: Discord.GuildMember,
         allow: boolean,
     ): Promise<boolean> {
-        const channelId = channel.guild.id + "/" + channel.id;
+        const channelId = `${channel.guild.id}/${channel.id}`;
         if (!this.pendingRequests[channelId]) {
             return false; // no change, so false
         }

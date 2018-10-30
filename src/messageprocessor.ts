@@ -94,7 +94,7 @@ export class MessageProcessor {
 
     public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
-        oldMsg.content = "*edit:* ~~" + oldMsg.content + "~~ -> " + newMsg.content;
+        oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
         return this.FormatDiscordMessage(oldMsg);
     }
 
@@ -122,11 +122,11 @@ export class MessageProcessor {
                 continue;
             }
             let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
-            const embedTitle = embed.url ? "<a href=\"" +
-                escapeHtml(embed.url) + "\">" + escapeHtml(embed.title) +
-                "</a>" : escapeHtml(embed.title);
+            const embedTitle = embed.url ?
+                `<a href="${escapeHtml(embed.url)}">${escapeHtml(embed.title)}</a>`
+                : escapeHtml(embed.title);
             if (embedTitle) {
-                embedContent += "<h5>" + embedTitle + "</h5>"; // h5 is probably best.
+                embedContent += `<h5>${embedTitle}</h5>`; // h5 is probably best.
             }
             if (embed.description) {
                 embedContent += marked(embed.description).replace(/\n/g, "<br>")

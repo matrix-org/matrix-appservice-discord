@@ -245,7 +245,7 @@ export class DiscordBot {
             log.verbose("Sent (state msg) ", m);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
-            evt.MatrixId = event.event_id + ";" + event.room_id;
+            evt.MatrixId = `${event.event_id};${event.room_id}`;
             evt.DiscordId = m.id;
             evt.GuildId = channel.guild.id;
             evt.ChannelId = channel.id;
@@ -323,7 +323,7 @@ export class DiscordBot {
             log.verbose("Sent ", m);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
-            evt.MatrixId = event.event_id + ";" + event.room_id;
+            evt.MatrixId = `${event.event_id};${event.room_id}`;
             evt.DiscordId = m.id;
             // Webhooks don't send guild info.
             evt.GuildId = guildId;
@@ -340,7 +340,7 @@ export class DiscordBot {
         log.info(`Got redact request for ${event.redacts}`);
         log.verbose(`Event:`, event);
 
-        const storeEvent = await this.store.Get(DbEvent, {matrix_id: event.redacts + ";" + event.room_id});
+        const storeEvent = await this.store.Get(DbEvent, {matrix_id: `${event.redacts};${event.room_id}`});
 
         if (!storeEvent || !storeEvent.Result) {
             log.warn(`Could not redact because the event was not in the store.`);
@@ -410,7 +410,7 @@ export class DiscordBot {
             throw new Error("Couldn't fetch from store");
         }
         if (!dbEmoji.Result) {
-            const url = "https://cdn.discordapp.com/emojis/" + id + (animated ? ".gif" : ".png");
+            const url = `https://cdn.discordapp.com/emojis/${id}${animated ? ".gif" : ".png"}`;
             const intent = this.bridge.getIntent();
             const mxcUrl = (await Util.UploadContentFromUrl(url, intent, name)).mxcUrl;
             dbEmoji.EmojiId = id;
@@ -447,7 +447,7 @@ export class DiscordBot {
                 msgtype: "m.text",
             });
             const evt = new DbEvent();
-            evt.MatrixId = res.event_id + ";" + room;
+            evt.MatrixId = `${res.event_id};${room}`;
             evt.DiscordId = msgID;
             evt.ChannelId = chan.id;
             evt.GuildId = guild.id;
@@ -561,7 +561,7 @@ export class DiscordBot {
                         url: content.mxcUrl,
                     });
                     const evt = new DbEvent();
-                    evt.MatrixId = res.event_id + ";" + room;
+                    evt.MatrixId = `${res.event_id};${room}`;
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
@@ -579,7 +579,7 @@ export class DiscordBot {
                     });
                     const afterSend = async (re) => {
                         const evt = new DbEvent();
-                        evt.MatrixId = re.event_id + ";" + room;
+                        evt.MatrixId = `${re.event_id};${room}`;
                         evt.DiscordId = msg.id;
                         evt.ChannelId = msg.channel.id;
                         evt.GuildId = msg.guild.id;

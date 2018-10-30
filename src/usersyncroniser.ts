@@ -351,6 +351,6 @@ export class UserSyncroniser {
     }
 
     private displayNameForUser(discordUser): string {
-        return discordUser.username + "#" + discordUser.discriminator;
+        return `${discordUser.username}#${discordUser.discriminator}`;
     }
 }

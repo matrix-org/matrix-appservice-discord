@@ -292,7 +292,7 @@ export class ChannelSyncroniser {
         if (plumbed !== true) {
             if (options.unsetRoomAlias) {
                 try {
-                    const alias = "#_" + entry.remote.roomId + ":" + this.config.bridge.domain;
+                    const alias = `#_${entry.remote.roomId}:${this.config.bridge.domain}`;
                     const canonicalAlias = await intent.getClient().getStateEvent(roomId, "m.room.canonical_alias");
                     if (canonicalAlias.alias === alias) {
                         await intent.getClient().sendStateEvent(roomId, "m.room.canonical_alias", {});

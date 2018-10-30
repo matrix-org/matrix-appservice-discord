@@ -143,8 +143,8 @@ export class MatrixEventProcessor {
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {
-            const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                escapeStringRegexp(member.displayName);
+            const matcher = `${escapeStringRegexp(`${member.user.username}#${member.user.discriminator}`)}|` +
+                `${escapeStringRegexp(member.displayName)}`;
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
                     , "igmu");
@@ -314,7 +314,7 @@ export class MatrixEventProcessor {
             if (path.extname(content.body) !== "") {
                 return content.body;
             }
-            return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
+            return `${path.basename(content.body)}.${mime.extension(content.info.mimetype)}`;
         }
         return "matrix-media." + mime.extension(content.info.mimetype);
     }

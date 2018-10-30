@@ -97,7 +97,7 @@ function createRH(opts: any = {}) {
     };
     const cs = {
         GetRoomIdsFromChannel: async (chan) => {
-            return ["#" + chan.id + ":localhost"];
+            return [`#${chan.id}:localhost`];
         },
         OnUpdate: async () => { },
     };

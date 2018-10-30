@@ -70,7 +70,7 @@ if (registration === null) {
     throw new Error("Failed to parse registration file");
 }
 
-const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
+const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
 const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
     token: registration.as_token,

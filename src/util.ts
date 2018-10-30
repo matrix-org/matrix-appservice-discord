@@ -195,7 +195,7 @@ export class Util {
             return client._http.authedRequestWithPrefix(
                 undefined,
                 "GET",
-                "/rooms/" + encodeURIComponent(chan) + "/members",
+                `/rooms/${encodeURIComponent(chan)}/members`,
                 undefined,
                 undefined,
                 "/_matrix/client/r0",

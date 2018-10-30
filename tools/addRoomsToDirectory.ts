@@ -61,7 +61,7 @@ if (registration === null) {
 }
 
 const clientFactory = new ClientFactory({
-    appServiceUserId: "@" + registration.sender_localpart + ":" + config.bridge.domain,
+    appServiceUserId: `@${registration.sender_localpart}:${config.bridge.domain}`,
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
 });

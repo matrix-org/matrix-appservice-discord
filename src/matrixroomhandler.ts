@@ -187,7 +187,7 @@ export class MatrixRoomHandler {
     }
 
     public async HandleInvite(event: IMatrixEvent) {
-        log.info("Received invite for " + event.state_key + " in room " + event.room_id);
+        log.info(`Received invite for ${event.state_key} in room ${event.room_id}`);
         if (event.state_key === this.botUserId) {
             log.info("Accepting invite for bridge bot");
             await this.joinRoom(this.bridge.getIntent(), event.room_id);
@@ -240,6 +240,7 @@ export class MatrixRoomHandler {
 
         if (command === "help" && args[0] === "bridge") {
             const link = Util.GetBotLink(this.config);
+            // tslint:disable prefer-template
             return this.bridge.getIntent().sendMessage(event.room_id, {
                 body: "How to bridge a Discord guild:\n" +
                 "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
@@ -252,6 +253,7 @@ export class MatrixRoomHandler {
                 "5. Enjoy your new bridge!",
                 msgtype: "m.notice",
             });
+            // tslint:enable prefer-template
         } else if (command === "bridge") {
             if (context.rooms.remote) {
                 return this.bridge.getIntent().sendMessage(event.room_id, {
@@ -336,6 +338,7 @@ export class MatrixRoomHandler {
             }
         } else if (command === "help") {
             // Unknown command or no command given to get help on, so we'll just give them the help
+            // tslint:disable prefer-template
             return this.bridge.getIntent().sendMessage(event.room_id, {
                 body: "Available commands:\n" +
                 "!discord bridge <guild id> <channel id>   - Bridges this room to a Discord channel\n" +
@@ -343,6 +346,7 @@ export class MatrixRoomHandler {
                 "!discord help <command>                   - Help menu for another command. Eg: !discord help bridge\n",
                 msgtype: "m.notice",
             });
+            // tslint:enable prefer-template
         }
     }
 
@@ -480,12 +484,12 @@ export class MatrixRoomHandler {
                 for (const param of action.params) {
                     replyHelpMessage += ` <${param}>`;
                 }
-                replyHelpMessage += "`: " + action.description + "\n";
+                replyHelpMessage += `\`: ${action.description}\n`;
             }
             replyHelpMessage += "\nParameters:\n";
             for (const parameterKey of Object.keys(parameters)) {
                 const parameter = parameters[parameterKey];
-                replyHelpMessage += " - `<" + parameterKey + ">`: " + parameter.description + "\n";
+                replyHelpMessage += ` - \`<${parameterKey}>\`: ${parameter.description}\n`;
             }
             await msg.channel.send(replyHelpMessage);
             return;
