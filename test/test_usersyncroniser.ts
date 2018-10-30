@@ -8,7 +8,7 @@ import * as Proxyquire from "proxyquire";
 import {MockMember} from "./mocks/member";
 import {MockGuild} from "./mocks/guild";
 import { MockChannel } from "./mocks/channel";
-import { IMatrixEvent } from "../src/util";
+import { IMatrixEvent } from "../src/matrixtypes";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */

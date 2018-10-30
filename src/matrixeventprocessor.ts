@@ -3,11 +3,12 @@ import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util, IMatrixEvent, IMatrixEventContent } from "./util";
+import { Util } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import { MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
+import { IMatrixEvent, IMatrixEventContent } from "./matrixtypes";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");

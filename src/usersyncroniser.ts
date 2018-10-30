@@ -1,10 +1,11 @@
 import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
-import { Util, IMatrixEvent } from "./util";
+import { Util } from "./util";
 import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
 import { Log } from "./log";
+import { IMatrixEvent } from "./matrixtypes";
 
 const log = new Log("UserSync");
 

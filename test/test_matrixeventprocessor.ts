@@ -13,7 +13,7 @@ import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeve
 import { DiscordBridgeConfig } from "../src/config";
 import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
 import { MockChannel } from "./mocks/channel";
-import { IMatrixEvent } from "../src/util";
+import { IMatrixEvent } from "../src/matrixtypes";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */

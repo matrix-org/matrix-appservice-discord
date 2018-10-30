@@ -4,7 +4,7 @@ import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
-import { Util, IMatrixEvent } from "./util";
+import { Util } from "./util";
 import { MessageProcessor, MessageProcessorOpts, MessageProcessorMatrixResult } from "./messageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
@@ -16,6 +16,7 @@ import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
+import { IMatrixEvent } from "./matrixtypes";
 
 const log = new Log("DiscordBot");
 

@@ -14,10 +14,11 @@ import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
-import { Util, ICommandActions, ICommandParameters, IMatrixEvent } from "./util";
+import { Util, ICommandActions, ICommandParameters } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
+import { IMatrixEvent } from "./matrixtypes";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
