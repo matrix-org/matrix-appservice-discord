@@ -102,13 +102,13 @@ export class MatrixRoomHandler {
                 try {
                     // Ensure the profile is up to date.
                     await this.discord.UserSyncroniser.OnUpdateUser(member.user);
-                    log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-                    await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
-                    // set the correct discord guild name
-                    await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
                 } catch (err) {
-                    log.warn("OnAliasQueried", `Failed to join user ${member.id} to ${roomId}`, err);
+                    log.warn("OnAliasQueried", `Failed to update profile of user ${member.id}`, err);
                 }
+                log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
+                await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
+                // set the correct discord guild name
+                await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
             })());
             delay += this.config.limits.roomGhostJoinDelay;
         }
