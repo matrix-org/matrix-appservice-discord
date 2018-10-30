@@ -1,6 +1,6 @@
 import * as pgPromise from "pg-promise";
 import { Log } from "../log";
-import { IDatabaseConnector, ISqlCommandParameters } from "./connector";
+import { IDatabaseConnector, ISqlCommandParameters, ISqlRow } from "./connector";
 const log = new Log("SQLite3");
 
 const pgp: pgPromise.IMain = pgPromise({
@@ -28,20 +28,17 @@ export class Postgres implements IDatabaseConnector {
         this.db = pgp(this.connectionString);
     }
 
-    // tslint:disable-next-line no-any
-    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow> {
         log.silly("Get:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
 
-    // tslint:disable-next-line no-any
-    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<any[]> {
+    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow[]> {
         log.silly("All:", sql);
         return this.db.many(Postgres.ParameterizeSql(sql), parameters);
     }
 
-    // tslint:disable-next-line no-any
-    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
+    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {
         log.silly("Run:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
@@ -50,9 +47,9 @@ export class Postgres implements IDatabaseConnector {
         // Postgres doesn't support disconnecting.
     }
 
-    // tslint:disable-next-line no-any
-    public async Exec(sql: string): Promise<any> {
+    public async Exec(sql: string): Promise<void> {
         log.silly("Exec:", sql);
-        return this.db.none(sql);
+        await this.db.none(sql);
+        return;
     }
 }

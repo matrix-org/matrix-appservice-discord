@@ -1,5 +1,6 @@
 import { DiscordStore } from "../store";
 import { IDbDataMany } from "./dbdatainterface";
+import { ISqlCommandParameters } from "./connector";
 
 export class DbEvent implements IDbDataMany {
     public MatrixId: string;
@@ -14,8 +15,7 @@ export class DbEvent implements IDbDataMany {
         return this.rows.length;
     }
 
-    // tslint:disable-next-line no-any
-    public async RunQuery(store: DiscordStore, params: any): Promise<void> {
+    public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
         this.rows = [];
         // tslint:disable-next-line no-any
         let rowsM: any[] | null = null;

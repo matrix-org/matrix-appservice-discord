@@ -20,12 +20,12 @@ export class DbEmoji implements IDbData {
             });
         this.Result = row !== undefined;
         if (this.Result) {
-            this.EmojiId = row.emoji_id;
-            this.Name = row.name;
+            this.EmojiId = row.emoji_id as string;
+            this.Name = row.name as string;
             this.Animated = Boolean(row.animated);
-            this.MxcUrl = row.mxc_url;
-            this.CreatedAt = row.created_at;
-            this.UpdatedAt = row.updated_at;
+            this.MxcUrl = row.mxc_url as string;
+            this.CreatedAt = row.created_at as number;
+            this.UpdatedAt = row.updated_at as number;
         }
     }
 

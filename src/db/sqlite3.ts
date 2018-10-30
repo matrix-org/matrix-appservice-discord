@@ -1,6 +1,6 @@
 import * as Database from "better-sqlite3";
 import { Log } from "../log";
-import { IDatabaseConnector, ISqlCommandParameters } from "./connector";
+import { IDatabaseConnector, ISqlCommandParameters, ISqlRow } from "./connector";
 const log = new Log("SQLite3");
 
 export class SQLite3 implements IDatabaseConnector {
@@ -14,20 +14,17 @@ export class SQLite3 implements IDatabaseConnector {
         this.db = new Database(this.filename);
     }
 
-    // tslint:disable-next-line no-any
-    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow> {
         log.silly("Get:", sql);
         return this.db.prepare(sql).get(parameters || []);
     }
 
-    // tslint:disable-next-line no-any
-    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<any[]> {
+    public async All(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow[]> {
         log.silly("All:", sql);
         return this.db.prepare(sql).all(parameters || []);
     }
 
-    // tslint:disable-next-line no-any
-    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<any> {
+    public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {
         log.silly("Run:", sql);
         return this.db.prepare(sql).run(parameters || []);
     }
@@ -36,8 +33,7 @@ export class SQLite3 implements IDatabaseConnector {
         this.db.close();
     }
 
-    // tslint:disable-next-line no-any
-    public async Exec(sql: string): Promise<any> {
+    public async Exec(sql: string): Promise<void> {
         log.silly("Exec:", sql);
         return this.db.exec(sql);
     }

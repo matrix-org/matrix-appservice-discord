@@ -165,7 +165,7 @@ export class DiscordStore {
                 userId,
             });
             if (rows != null) {
-                return rows.map((row) => row.discord_id);
+                return rows.map((row) => row.discord_id as string);
             } else {
                 return [];
             }
@@ -187,7 +187,7 @@ export class DiscordStore {
             , {
                 discordId,
             });
-            return row != null ? row.token : null;
+            return row ? row.token as string : "";
         } catch (err) {
             log.error("Error getting discord ids ", err.Error);
             throw err;
@@ -208,7 +208,7 @@ export class DiscordStore {
                 discordChannel,
                 discordId,
             });
-            return row != null ? row.room_id : null;
+            return row ? row.room_id as string : "";
         } catch (err) {
             log.error("Error getting room_id ", err.Error);
             throw err;
@@ -283,7 +283,8 @@ export class DiscordStore {
         log.silly("_get_schema_version");
         let version = 0;
         try {
-            version = await this.db.Get(`SELECT version FROM schema`);
+            const versionReply = await this.db.Get(`SELECT version FROM schema`);
+            version = versionReply.version as number;
         } catch (er) {
             log.warn("Couldn't fetch schema version, defaulting to 0");
         }
