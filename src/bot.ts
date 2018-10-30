@@ -632,7 +632,16 @@ export class DiscordBot {
             log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
             const intent = this.GetIntentFromDiscordMember(msg.author);
             const matrixIds = storeEvent.MatrixId.split(";");
-            await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+            try {
+                await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+            } catch (ex) {
+                log.warn(`Failed to delete ${storeEvent.DiscordId}, retrying as bot`);
+                try {
+                    await this.bridge.getIntent().getClient().redactEvent(matrixIds[1], matrixIds[0]);
+                } catch (ex) {
+                    log.warn(`Failed to delete ${storeEvent.DiscordId}, giving up`);
+                }
+            }
         }
     }
 }
