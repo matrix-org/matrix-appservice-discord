@@ -33,6 +33,7 @@
     "promise-function-async": true,
     "no-bitwise": true,
     "no-debugger": true,
-    "no-floating-promises": true
+    "no-floating-promises": true,
+    "prefer-template": true
   }
 }
