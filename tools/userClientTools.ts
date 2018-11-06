@@ -52,12 +52,12 @@ if (options.help || (options.add && options.remove) || !(options.add || options.
 }
 
 const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
-const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
+const discordstore = new DiscordStore(config.database ? config.database : "discord.db");
 discordstore.init().then(() => {
   log.info("Loaded database.");
   handleUI();
 }).catch((err) => {
-  log.info("Couldn't load database. Cannot continue.");
+  log.error("Couldn't load database. Cannot continue.", err);
   log.info("Ensure the bridge is not running while using this command.");
   process.exit(1);
 });
@@ -82,7 +82,7 @@ Please enter your Discord Token
           log.info("Completed successfully");
           process.exit(0);
         }).catch((err) => {
-          log.info("Failed to add, $s", err);
+          log.error("Failed to add, $s", err);
           process.exit(1);
         });
       });
@@ -92,7 +92,7 @@ Please enter your Discord Token
         log.info("Completed successfully");
         process.exit(0);
       }).catch((err) => {
-        log.info("Failed to delete, $s", err);
+        log.error("Failed to delete, $s", err);
         process.exit(1);
       });
     }
