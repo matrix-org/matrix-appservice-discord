@@ -241,7 +241,9 @@ export class MatrixRoomHandler {
           let guildId: string; 
           let channelId: string;
 
-          if (args.length === 2) { // "x y" syntax
+          const AMOUNT_OF_IDS_DISCORD_IDENTIFIES_ROOMS_BY = 2;
+
+          if (args.length === AMOUNT_OF_IDS_DISCORD_IDENTIFIES_ROOMS_BY) { // "x y" syntax
               guildId = args[0];
               channelId = args[1];
           } else if (args.length === 1 && args[0].includes("/")) { // "x/y" syntax
