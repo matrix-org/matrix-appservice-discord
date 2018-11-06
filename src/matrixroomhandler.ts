@@ -253,7 +253,7 @@ export class MatrixRoomHandler {
           } else {
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
-                  body: "Too many arguments, please only supply a guild ID and a channel ID.",
+                  body: "Invalid syntax",
               });
           }
 
