@@ -12,7 +12,7 @@ export class MockMember {
     public roles: any[] = [];
     constructor(id: string, username: string, public guild: any = null, public displayName: string = username) {
         this.id = id;
-        this.presence = new Discord.Presence({});
+        this.presence = new Discord.Presence({}, {} as any);
         this.user = new MockUser(this.id, username);
         this.nickname = displayName;
     }

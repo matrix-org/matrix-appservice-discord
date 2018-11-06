@@ -98,7 +98,7 @@ describe("PresenceHandler", () => {
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "online",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
@@ -110,7 +110,7 @@ describe("PresenceHandler", () => {
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "offline",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "offline",
@@ -123,7 +123,7 @@ describe("PresenceHandler", () => {
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "idle",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "unavailable",
@@ -135,16 +135,16 @@ describe("PresenceHandler", () => {
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
                 status: "dnd",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Do not disturb",
             });
             member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game"}),
+                game: new Discord.Game({name: "Test Game"}, {} as any),
                 status: "dnd",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
@@ -156,18 +156,18 @@ describe("PresenceHandler", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
             member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game"}),
+                game: new Discord.Game({name: "Test Game"}, {} as any),
                 status: "online",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
                 status_msg: "Playing Test Game",
             });
             member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game", type: 1}),
+                game: new Discord.Game({name: "Test Game", type: 1}, {} as any),
                 status: "online",
-            }));
+            }, {} as any));
             await handler.ProcessUser(member);
             Chai.assert.deepEqual(lastStatus, {
                 presence: "online",
