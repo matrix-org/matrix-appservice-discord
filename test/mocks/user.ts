@@ -1,16 +1,19 @@
 import { Presence } from "discord.js";
 
-export class MockUser {
-  public presence: Presence;
-  constructor(
-      public id: string,
-      public username: string = "",
-      public discriminator: string = "",
-      public avatarURL: string = "",
-      public avatar: string = "",
-  ) { }
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-  public MockSetPresence(presence: Presence) {
-      this.presence = presence;
-  }
+export class MockUser {
+    public presence: Presence;
+    constructor(
+        public id: string,
+        public username: string = "",
+        public discriminator: string = "",
+        public avatarURL: string | null = "",
+        public avatar: string | null = "",
+    ) { }
+
+    public MockSetPresence(presence: Presence) {
+        this.presence = presence;
+    }
 }

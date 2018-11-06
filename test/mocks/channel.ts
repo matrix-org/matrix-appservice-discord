@@ -1,6 +1,9 @@
 import {MockMember} from "./member";
 import {MockCollection} from "./collection";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 // Mocking TextChannel
 export class MockChannel {
     public members = new MockCollection<string, MockMember>();
@@ -11,7 +14,7 @@ export class MockChannel {
         public name: string = "",
         public topic: string = "",
     ) { }
-    public send(data: any): Promise<any> {
-        return Promise.resolve(data);
+    public async send(data: any): Promise<any> {
+        return data;
     }
 }

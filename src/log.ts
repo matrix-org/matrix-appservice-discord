@@ -29,7 +29,7 @@ export class Log {
     }
 
     private static config: DiscordBridgeConfigLogging;
-    private static logger: Logger = null;
+    private static logger: Logger;
 
     private static now() {
         return moment().format(Log.config.lineDateFormat);
@@ -59,7 +59,7 @@ export class Log {
 
     private static setupFileTransport(config: LoggingFile): transports.FileTransportInstance {
         config = Object.assign(new LoggingFile(), config);
-        const filterOutMods = format((info, opts) => {
+        const filterOutMods = format((info, _) => {
             if (config.disabled.includes(info.module) &&
                 config.enabled.length > 0 &&
                 !config.enabled.includes(info.module)
@@ -70,17 +70,18 @@ export class Log {
         });
 
         const opts = {
-            filename: config.file,
-            maxFiles: config.maxFiles,
-            maxSize: config.maxSize,
             datePattern: config.datePattern,
-            level: config.level,
+            filename: config.file,
             format: format.combine(
                 filterOutMods(),
                 FORMAT_FUNC,
             ),
+            level: config.level,
+            maxFiles: config.maxFiles,
+            maxSize: config.maxSize,
         };
 
+        // tslint:disable-next-line no-any
         return new (transports as any).DailyRotateFile(opts);
     }
 
@@ -88,28 +89,34 @@ export class Log {
 
     constructor(private module: string) { }
 
+    // tslint:disable-next-line no-any
     public error(...msg: any[]) {
         this.log("error", msg);
     }
 
+    // tslint:disable-next-line no-any
     public warn(...msg: any[]) {
         this.log("warn", msg);
     }
 
+    // tslint:disable-next-line no-any
     public info(...msg: any[]) {
         this.log("info", msg);
     }
 
+    // tslint:disable-next-line no-any
     public verbose(...msg: any[]) {
         this.log("verbose", msg);
     }
 
+    // tslint:disable-next-line no-any
     public silly(...msg: any[]) {
         this.log("silly", msg);
     }
 
+    // tslint:disable-next-line no-any
     private log(level: string, msg: any[]) {
-        if (Log.logger === null) {
+        if (!Log.logger) {
             // We've not configured the logger yet, so create a basic one.
             Log.config = new DiscordBridgeConfigLogging();
             Log.setupLogger();

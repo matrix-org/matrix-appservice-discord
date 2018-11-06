@@ -4,6 +4,9 @@ import * as Proxyquire from "proxyquire";
 import {DiscordBridgeConfigAuth} from "../src/config";
 import {MockDiscordClient} from "./mocks/discordclient";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -12,21 +15,21 @@ const DiscordClientFactory = Proxyquire("../src/clientfactory", {
 }).DiscordClientFactory;
 
 const STORE = {
-    get_user_discord_ids: (userid: string) => {
-        if (userid === "@valid:localhost") {
-            return Promise.resolve(["12345"]);
-        } else if (userid === "@invalid:localhost") {
-            return Promise.resolve(["1234555"]);
-        }
-        return Promise.resolve([]);
-    },
-    get_token: (discordid: string) => {
+    get_token: async (discordid: string) => {
         if (discordid === "12345") {
-            return Promise.resolve("passme");
+            return "passme";
         } else if (discordid === "1234555") {
-            return Promise.resolve("failme");
+            return "failme";
         }
-        return Promise.reject("Token not found");
+        throw new Error("Token not found");
+    },
+    get_user_discord_ids: async (userid: string) => {
+        if (userid === "@valid:localhost") {
+            return ["12345"];
+        } else if (userid === "@invalid:localhost") {
+            return ["1234555"];
+        }
+        return [];
     },
 };
 

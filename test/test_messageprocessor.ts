@@ -5,13 +5,17 @@ import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor"
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
+import { MockMessage } from "./mocks/message";
+
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 Chai.use(ChaiAsPromised);
 
 const bot = {
-    GetEmoji: (name: string, animated: boolean, id: string): Promise<string> => {
+    GetEmoji: async (name: string, animated: boolean, id: string): Promise<string> => {
         if (id === "3333333") {
-            return Promise.resolve("mxc://image");
+            return "mxc://image";
         } else {
             throw new Error("Emoji not found");
         }
@@ -27,7 +31,7 @@ describe("MessageProcessor", () => {
     describe("FormatDiscordMessage", () => {
       it("processes plain text messages correctly", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new Discord.Message(null, null, null);
+        const msg = new MockMessage() as any;
         msg.embeds = [];
         msg.content = "Hello World!";
         const result = await processor.FormatDiscordMessage(msg);
@@ -36,7 +40,7 @@ describe("MessageProcessor", () => {
       });
       it("processes markdown messages correctly.", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new Discord.Message(null, null, null);
+        const msg = new MockMessage() as any;
         msg.embeds = [];
         msg.content = "Hello *World*!";
         const result = await processor.FormatDiscordMessage(msg);
@@ -45,7 +49,7 @@ describe("MessageProcessor", () => {
       });
       it("processes non-discord markdown correctly.", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new Discord.Message(null, null, null);
+        const msg = new MockMessage() as any;
         msg.embeds = [];
         msg.content = "> inb4 tests";
         let result = await processor.FormatDiscordMessage(msg);
@@ -60,7 +64,7 @@ describe("MessageProcessor", () => {
       });
       it("processes discord-specific markdown correctly.", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new Discord.Message(null, null, null);
+        const msg = new MockMessage() as any;
         msg.embeds = [];
         msg.content = "_ italic _";
         const result = await processor.FormatDiscordMessage(msg);
@@ -71,26 +75,26 @@ describe("MessageProcessor", () => {
     describe("FormatEmbeds", () => {
       it("should format embeds correctly", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new Discord.Message(null, null, null);
+        const msg = new MockMessage() as any;
         msg.embeds = [
             {
-                author: null,
-                client: null,
-                color: null,
-                createdAt: null,
-                createdTimestamp: null,
-                fields: null,
-                footer: null,
-                hexColor: null,
-                image: null,
-                message: null,
-                provider: null,
-                thumbnail: null,
-                type: null,
-                video: null,
-                title: "Title",
+                author: {} as any,
+                client: {} as any,
+                color: {} as any,
+                createdAt: {} as any,
+                createdTimestamp: {} as any,
                 description: "Description",
+                fields: {} as any,
+                footer: {} as any,
+                hexColor: {} as any,
+                image: {} as any,
+                message: {} as any,
+                provider: {} as any,
+                thumbnail: {} as any,
+                title: "Title",
+                type: {} as any,
                 url: "http://example.com",
+                video: {} as any,
             },
         ];
         msg.content = "message";
@@ -103,8 +107,8 @@ describe("MessageProcessor", () => {
     describe("FormatEdit", () => {
       it("should format basic edits appropriately", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const oldMsg = new Discord.Message(null, null, null);
-        const newMsg = new Discord.Message(null, null, null);
+        const oldMsg = new MockMessage() as any;
+        const newMsg = new MockMessage() as any;
         oldMsg.embeds = [];
         newMsg.embeds = [];
 
@@ -119,8 +123,8 @@ describe("MessageProcessor", () => {
 
       it("should format markdown heavy edits apropriately", async () => {
         const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const oldMsg = new Discord.Message(null, null, null);
-        const newMsg = new Discord.Message(null, null, null);
+        const oldMsg = new MockMessage() as any;
+        const newMsg = new MockMessage() as any;
         oldMsg.embeds = [];
         newMsg.embeds = [];
 
@@ -140,8 +144,8 @@ describe("MessageProcessor", () => {
         it("processes members missing from the guild correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {});
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <@!12345>";
             content = processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello @_discord_12345:localhost");
@@ -150,8 +154,8 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {});
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <@!12345>";
             content = processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello TestUsername");
@@ -160,8 +164,8 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {});
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <@!12345>";
             content = processor.ReplaceMembers(content, msg);
             Chai.assert.equal(content, "Hello TestNickname");
@@ -171,8 +175,8 @@ describe("MessageProcessor", () => {
         it("processes members missing from the guild correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {});
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;@!12345&gt;";
             content = processor.ReplaceMembersPostmark(content, msg);
             Chai.assert.equal(content,
@@ -182,8 +186,8 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, null);
-            const msg = new Discord.Message(channel, null, null);
+            const channel = new Discord.TextChannel(guild, {});
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;@!12345&gt;";
             content = processor.ReplaceMembersPostmark(content, msg);
             Chai.assert.equal(content,
@@ -195,7 +199,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <#123456789>";
             content = processor.ReplaceChannels(content, msg);
             Chai.assert.equal(content, "Hello #123456789");
@@ -205,7 +209,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <#456>";
             content = processor.ReplaceChannels(content, msg);
             Chai.assert.equal(content, "Hello #TestChannel");
@@ -216,7 +220,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;#123456789&gt;";
             content = processor.ReplaceChannelsPostmark(content, msg);
             Chai.assert.equal(content,
@@ -227,7 +231,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;#456&gt;";
             content = processor.ReplaceChannelsPostmark(content, msg);
             Chai.assert.equal(content,
@@ -239,7 +243,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <:hello:123456789>";
             content = await processor.ReplaceEmoji(content, msg);
             Chai.assert.equal(content, "Hello <:hello:123456789>");
@@ -249,7 +253,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello <:hello:3333333>";
             content = await processor.ReplaceEmoji(content, msg);
             Chai.assert.equal(content, "Hello :hello:");
@@ -260,7 +264,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;:hello:123456789&gt;";
             content = await processor.ReplaceEmojiPostmark(content, msg);
             Chai.assert.equal(content, "Hello &lt;:hello:123456789&gt;");
@@ -270,7 +274,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
-            const msg = new Discord.Message(channel, null, null);
+            const msg = new MockMessage(channel) as any;
             let content = "Hello &lt;:hello:3333333&gt;";
             content = await processor.ReplaceEmojiPostmark(content, msg);
             Chai.assert.equal(content, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
@@ -279,7 +283,7 @@ describe("MessageProcessor", () => {
     describe("InsertEmbeds", () => {
         it("processes titleless embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
                     description: "TestDescription",
@@ -291,11 +295,11 @@ describe("MessageProcessor", () => {
         });
         it("processes urlless embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
-                    title: "TestTitle",
                     description: "TestDescription",
+                    title: "TestTitle",
                 }),
             ];
             const inContent = "";
@@ -304,12 +308,12 @@ describe("MessageProcessor", () => {
         });
         it("processes linked embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
             ];
             const inContent = "";
@@ -318,7 +322,7 @@ describe("MessageProcessor", () => {
         });
         it("rejects titleless and descriptionless embeds", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
                     url: "testurl",
@@ -330,17 +334,17 @@ describe("MessageProcessor", () => {
         });
         it("processes multiple embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription2",
                     title: "TestTitle2",
                     url: "testurl2",
-                    description: "TestDescription2",
                 }),
             ];
             const inContent = "";
@@ -352,12 +356,12 @@ describe("MessageProcessor", () => {
         });
         it("inserts embeds properly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const msg = new Discord.Message(null, null, null);
+            const msg = new MockMessage() as any;
             msg.embeds = [
                 new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
                     title: "TestTitle",
                     url: "testurl",
-                    description: "TestDescription",
                 }),
             ];
             const inContent = "Content that goes in the message";

@@ -3,6 +3,9 @@ import * as ChaiAsPromised from "chai-as-promised";
 
 import { Util, ICommandAction, ICommandParameters } from "../src/util";
 
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -12,14 +15,14 @@ function CreateMockIntent(members) {
             return {
                 _http: {
                     authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
-                        const ret = [];
+                        const ret: any[] = [];
                         for (const member of members[url]) {
                             ret.push({
-                                membership: member.membership,
-                                state_key: member.mxid,
                                 content: {
                                     displayname: member.displayname,
                                 },
+                                membership: member.membership,
+                                state_key: member.mxid,
                             });
                         }
                         return {
@@ -44,7 +47,7 @@ describe("Util", () => {
         });
     });
     describe("ParseCommand", () => {
-        it("parses commands", () => {
+        it("parses commands", async () => {
             const action: ICommandAction = {
                 params: ["param1", "param2"],
                 run: async ({param1, param2}) => {
@@ -69,13 +72,13 @@ describe("Util", () => {
         });
     });
     describe("GetMxidFromName", () => {
-        it("Finds a single member", () => {
+        it("Finds a single member", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
@@ -84,18 +87,18 @@ describe("Util", () => {
                 expect(mxid).equal("@123:localhost");
             });
         });
-        it("Errors on multiple members", () => {
+        it("Errors on multiple members", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@456:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
@@ -106,9 +109,9 @@ describe("Util", () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
