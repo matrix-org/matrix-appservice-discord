@@ -224,7 +224,7 @@ export class MatrixRoomHandler {
               "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
               "2. Invite me to the matrix room you'd like to bridge\n" +
               "3. Open the Discord channel you'd like to bridge in a web browser\n" +
-              "4. In the matrix room, send the message `!discord bridge <guild id> <channel id>` " +
+              "4. In the matrix room, send the message `!discord bridge <guild id>/<channel id>` " +
               "(without the backticks)\n" +
               "   Note: The Guild ID and Channel ID can be retrieved from the URL in your web browser.\n" +
               "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
@@ -238,16 +238,23 @@ export class MatrixRoomHandler {
               });
           }
 
-          const minArgs = 2;
-          if (args.length < minArgs) {
+          let guildId: string; 
+          let channelId: string;
+
+          if (args.length === 2) { // "x y" syntax
+              let guildId = args[0];
+              let channelId = args[1];
+          } else if (args.length === 1 && args[0].includes("/")) { // "x/y" syntax
+              const split = args[0].split("/");
+              let guildId = split[0]; 
+              let channelId = split[1];
+          } else {
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
-                  body: "Invalid syntax. For more information try !discord help bridge",
+                  body: "Too many arguments, please only supply a guild ID and a channel ID.",
               });
           }
 
-          const guildId = args[0];
-          const channelId = args[1];
           try {
               const discordResult = await this.discord.LookupRoom(guildId, channelId);
               const channel = discordResult.channel as Discord.TextChannel;
