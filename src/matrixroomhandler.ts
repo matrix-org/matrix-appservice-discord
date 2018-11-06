@@ -242,12 +242,12 @@ export class MatrixRoomHandler {
           let channelId: string;
 
           if (args.length === 2) { // "x y" syntax
-              let guildId = args[0];
-              let channelId = args[1];
+              guildId = args[0];
+              channelId = args[1];
           } else if (args.length === 1 && args[0].includes("/")) { // "x/y" syntax
               const split = args[0].split("/");
-              let guildId = split[0]; 
-              let channelId = split[1];
+              guildId = split[0]; 
+              channelId = split[1];
           } else {
               return this.bridge.getIntent().sendMessage(event.room_id, {
                   msgtype: "m.notice",
