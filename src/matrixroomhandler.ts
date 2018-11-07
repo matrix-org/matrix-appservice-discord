@@ -271,7 +271,7 @@ export class MatrixRoomHandler {
                 });
             }
 
-            let guildId: string; 
+            let guildId: string;
             let channelId: string;
 
             const AMOUNT_OF_IDS_DISCORD_IDENTIFIES_ROOMS_BY = 2;
@@ -281,7 +281,7 @@ export class MatrixRoomHandler {
                 channelId = args[1];
             } else if (args.length === 1 && args[0].includes("/")) { // "x/y" syntax
                 const split = args[0].split("/");
-                guildId = split[0]; 
+                guildId = split[0];
                 channelId = split[1];
             } else {
                 return this.bridge.getIntent().sendMessage(event.room_id, {
