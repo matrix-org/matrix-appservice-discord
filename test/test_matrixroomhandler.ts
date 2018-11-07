@@ -187,9 +187,9 @@ function createRH(opts: any = {}) {
 
 describe("MatrixRoomHandler", () => {
     describe("OnAliasQueried", () => {
-        it("should join successfully", () => {
+        it("should join successfully", async () => {
             const handler = createRH();
-            return expect(handler.OnAliasQueried("#accept:localhost", "!accept:localhost")).to.be.fulfilled;
+            await handler.OnAliasQueried("#accept:localhost", "!accept:localhost");
         });
         it("should join successfully and create ghosts", async () => {
             const EXPECTEDUSERS = 2;
@@ -197,26 +197,41 @@ describe("MatrixRoomHandler", () => {
             await handler.OnAliasQueried("#accept:localhost", "!accept:localhost");
             expect(USERSJOINED).to.equal(EXPECTEDUSERS);
         });
-        it("should not join successfully", () => {
+        it("should not join successfully", async () => {
             const handler = createRH();
-            return expect(handler.OnAliasQueried("#reject:localhost", "!reject:localhost")).to.be.rejected;
+            try {
+                await handler.OnAliasQueried("#reject:localhost", "!reject:localhost");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("OnEvent", () => {
-        it("should reject old events", () => {
+        it("should reject old events", async () => {
             const AGE = 900001; // 15 * 60 * 1000
             const handler = createRH();
-            return expect(handler.OnEvent(
-                buildRequest({unsigned: {age: AGE}}), null))
-                .to.be.rejectedWith("Event too old");
+            try {
+                await handler.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+                expect(e.message).equals("Event too old");
+            }
         });
-        it("should reject un-processable events", () => {
+        it("should reject un-processable events", async () => {
             const AGE = 900000; // 15 * 60 * 1000
             const handler = createRH();
-            return expect(handler.OnEvent(buildRequest({
-                content: {},
-                type: "m.potato",
-                unsigned: {age: AGE}}), null)).to.be.rejectedWith("Event not processed by bridge");
+            try {
+                await handler.OnEvent(buildRequest({
+                    content: {},
+                    type: "m.potato",
+                    unsigned: {age: AGE}}), null);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+                expect(e.message).equals("Event not processed by bridge");
+            }
         });
         it("should handle invites", async () => {
             const handler = createRH();
@@ -261,15 +276,21 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.redaction"}), context);
             expect(MESSAGE_PROCCESS).equals("redacted");
         });
-        it("should ignore redactions with no linked room", () => {
+        it("should ignore redactions with no linked room", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
                     remote: null,
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
-                type: "m.room.redaction"}), context)).to.be.rejectedWith("Event not processed by bridge");
+            try {
+                await handler.OnEvent(buildRequest({
+                    type: "m.room.redaction"}), context);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+                expect(e.message).equals("Event not processed by bridge");
+            }
         });
         it("should process regular messages", async () => {
             const handler = createRH();
@@ -286,7 +307,7 @@ describe("MatrixRoomHandler", () => {
             }), context);
             expect(MESSAGE_PROCCESS).equals("processed");
         });
-        it("should alert if encryption is turned on", () => {
+        it("should alert if encryption is turned on", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
@@ -295,10 +316,10 @@ describe("MatrixRoomHandler", () => {
                     },
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
+            await handler.OnEvent(buildRequest({
                 room_id: "!accept:localhost",
                 type: "m.room.encryption",
-            }), context)).to.eventually.be.fulfilled;
+            }), context);
         });
         it("should process !discord commands", async () => {
             const handler = createRH();
@@ -312,17 +333,23 @@ describe("MatrixRoomHandler", () => {
             }), null);
             expect(processedcmd).to.be.true;
         });
-        it("should ignore regular messages with no linked room", () => {
+        it("should ignore regular messages with no linked room", async () => {
             const handler = createRH();
             const context = {
                 rooms: {
                     remote: null,
                 },
             };
-            return expect(handler.OnEvent(buildRequest({
-                content: {body: "abc"},
-                type: "m.room.message",
-            }), context)).to.be.rejectedWith("Event not processed by bridge");
+            try {
+                await handler.OnEvent(buildRequest({
+                    content: {body: "abc"},
+                    type: "m.room.message",
+                }), context)
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+                expect(e.message).equals("Event not processed by bridge");
+            }
         });
         it("should process stickers", async () => {
             const handler = createRH();
@@ -368,11 +395,12 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("ProcessCommand", () => {
-        it("should not process command if not in room", () => {
+        it("should not process command if not in room", async () => {
             const handler: any = createRH({disableSS: true});
-            return expect(handler.ProcessCommand({
+            const ret = await handler.ProcessCommand({
                 room_id: "!666:localhost",
-            })).to.eventually.be.undefined;
+            });
+            expect(ret).to.be.undefined;
         });
         it("should warn if self service is disabled", async () => {
             const handler: any = createRH({disableSS: true});
@@ -570,26 +598,29 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("OnAliasQuery", () => {
-        it("will create room", () => {
+        it("will create room", async () => {
             const handler: any = createRH({});
             handler.createMatrixRoom = () => true;
-            return expect(handler.OnAliasQuery(
+            const ret = await handler.OnAliasQuery(
                 "_discord_123_456:localhost",
-                "_discord_123_456")).to.eventually.be.true;
+                "_discord_123_456");
+            expect(ret).to.be.true;
         });
-        it("will not create room if guild cannot be found", () => {
+        it("will not create room if guild cannot be found", async () => {
             const handler: any = createRH({});
             handler.createMatrixRoom = () => true;
-            return expect(handler.OnAliasQuery(
+            const ret = await handler.OnAliasQuery(
                 "_discord_111_456:localhost",
-                "_discord_111_456")).to.eventually.be.undefined;
+                "_discord_111_456");
+            expect(ret).to.be.undefined;
         });
-        it("will not create room if channel cannot be found", () => {
+        it("will not create room if channel cannot be found", async () => {
             const handler: any = createRH({});
             handler.createMatrixRoom = () => true;
-            return expect(handler.OnAliasQuery(
+            const ret = await handler.OnAliasQuery(
                 "_discord_123_444:localhost",
-                "_discord_123_444")).to.eventually.be.undefined;
+                "_discord_123_444");
+            expect(ret).to.be.undefined;
         });
         it("will not create room if alias is wrong", async () => {
             const handler: any = createRH({});
@@ -601,48 +632,61 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("tpGetProtocol", () => {
-       it("will return an object", () => {
+       it("will return an object", async () => {
            const handler: any = createRH({});
-           return handler.tpGetProtocol("").then((protocol) => {
-               expect(protocol).to.not.be.null;
-               expect(protocol.instances[0].network_id).to.equal("123");
-               expect(protocol.instances[0].bot_user_id).to.equal("@botuser:localhost");
-               expect(protocol.instances[0].desc).to.equal("123");
-               expect(protocol.instances[0].network_id).to.equal("123");
-           });
+           const protocol = await handler.tpGetProtocol("");
+           expect(protocol).to.not.be.null;
+           expect(protocol.instances[0].network_id).to.equal("123");
+           expect(protocol.instances[0].bot_user_id).to.equal("@botuser:localhost");
+           expect(protocol.instances[0].desc).to.equal("123");
+           expect(protocol.instances[0].network_id).to.equal("123");
        });
     });
     describe("tpGetLocation", () => {
-        it("will return an array", () => {
+        it("will return an array", async () => {
             const handler: any = createRH({});
-            return handler.tpGetLocation("", {
+            const channels = await handler.tpGetLocation("", {
                 channel_name: "",
                 guild_id: "",
-            }).then((channels) => {
-                expect(channels).to.be.a("array");
             });
+            expect(channels).to.be.a("array");
         });
     });
     describe("tpParseLocation", () => {
-        it("will reject", () => {
+        it("will reject", async () => {
             const handler: any = createRH({});
-            return expect(handler.tpParseLocation("alias")).to.eventually.be.rejected;
+            try {
+                await handler.tpParseLocation("alias");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("tpGetUser", () => {
-        it("will reject", () => {
+        it("will reject", async () => {
             const handler: any = createRH({});
-            return expect(handler.tpGetUser("", {})).to.eventually.be.rejected;
+            try {
+                await handler.tpGetUser("", {});
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("tpParseUser", () => {
-        it("will reject", () => {
+        it("will reject", async () => {
             const handler: any = createRH({});
-            return expect(handler.tpParseUser("alias")).to.eventually.be.rejected;
+            try {
+                await handler.tpParseUser("alias");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("joinRoom", () => {
-        it("will join immediately", () => {
+        it("will join immediately", async () => {
             const handler: any = createRH({});
             const intent = {
                 getClient: () => {
@@ -653,11 +697,12 @@ describe("MatrixRoomHandler", () => {
             };
             const startTime = Date.now();
             const MAXTIME = 1000;
-            return expect(handler.joinRoom(intent, "#test:localhost")).to.eventually.be.fulfilled.and.satisfy(() => {
+            await handler.joinRoom(intent, "#test:localhost");
+            expect(1).to.satisfy(() => {
                 return (Date.now() - startTime) < MAXTIME;
             });
         });
-        it("will fail first, join after", () => {
+        it("will fail first, join after", async () => {
             const handler: any = createRH({});
             let shouldFail = true;
             const intent = {
@@ -675,8 +720,9 @@ describe("MatrixRoomHandler", () => {
             };
             const startTime = Date.now();
             const MINTIME = 1000;
-            return expect(handler.joinRoom(intent, "#test:localhost")).to.eventually.be.fulfilled.and.satisfy(() => {
-                expect(shouldFail).to.be.false;
+            await handler.joinRoom(intent, "#test:localhost");
+            expect(shouldFail).to.be.false;
+            expect(1).to.satisfy(() => {
                 return (Date.now() - startTime) > MINTIME;
             });
         });
@@ -691,7 +737,7 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("HandleDiscordCommand", () => {
-        it("will kick a member", () => {
+        it("will kick a member", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123");
             const guild = new MockGuild("456", [channel]);
@@ -705,11 +751,10 @@ describe("MatrixRoomHandler", () => {
                 content: "!matrix kick someuser",
                 member,
             };
-            return handler.HandleDiscordCommand(message).then(() => {
-                expect(USERSKICKED).equals(1);
-            });
+            await handler.HandleDiscordCommand(message);
+            expect(USERSKICKED).equals(1);
         });
-        it("will kick a member in all guild rooms", () => {
+        it("will kick a member in all guild rooms", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123");
             const guild = new MockGuild("456", [channel, (new MockChannel("456"))]);
@@ -723,12 +768,11 @@ describe("MatrixRoomHandler", () => {
                 content: "!matrix kick someuser",
                 member,
             };
-            return handler.HandleDiscordCommand(message).then(() => {
-                // tslint:disable-next-line:no-magic-numbers
-                expect(USERSKICKED).equals(2);
-            });
+            await handler.HandleDiscordCommand(message);
+            // tslint:disable-next-line:no-magic-numbers
+            expect(USERSKICKED).equals(2);
         });
-        it("will deny permission", () => {
+        it("will deny permission", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123");
             const guild = new MockGuild("456", [channel]);
@@ -742,11 +786,10 @@ describe("MatrixRoomHandler", () => {
                 content: "!matrix kick someuser",
                 member,
             };
-            return handler.HandleDiscordCommand(message).then(() => {
-                expect(USERSKICKED).equals(0);
-            });
+            await handler.HandleDiscordCommand(message);
+            expect(USERSKICKED).equals(0);
         });
-        it("will ban a member", () => {
+        it("will ban a member", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123");
             const guild = new MockGuild("456", [channel]);
@@ -760,11 +803,10 @@ describe("MatrixRoomHandler", () => {
                 content: "!matrix ban someuser",
                 member,
             };
-            return handler.HandleDiscordCommand(message).then(() => {
-                expect(USERSBANNED).equals(1);
-            });
+            await handler.HandleDiscordCommand(message);
+            expect(USERSBANNED).equals(1);
         });
-        it("will unban a member", () => {
+        it("will unban a member", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123");
             const guild = new MockGuild("456", [channel]);
@@ -778,9 +820,8 @@ describe("MatrixRoomHandler", () => {
                 content: "!matrix unban someuser",
                 member,
             };
-            return handler.HandleDiscordCommand(message).then(() => {
-                expect(USERSUNBANNED).equals(1);
-            });
+            await handler.HandleDiscordCommand(message);
+            expect(USERSUNBANNED).equals(1);
         });
     });
 });

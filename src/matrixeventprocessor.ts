@@ -211,7 +211,7 @@ export class MatrixEventProcessor {
                 return {
                     attachment,
                     name,
-                };
+                } as Discord.FileOptions;
             }
         }
         return `[${name}](${url})`;

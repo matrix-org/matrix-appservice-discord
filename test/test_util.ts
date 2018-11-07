@@ -66,9 +66,8 @@ describe("Util", () => {
                     },
                 },
             };
-            return Util.ParseCommand(action, parameters, ["hello", "world"]).then((retStr) => {
-                expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
-            });
+            const retStr = await Util.ParseCommand(action, parameters, ["hello", "world"]);
+            expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
         });
     });
     describe("GetMxidFromName", () => {
@@ -83,9 +82,8 @@ describe("Util", () => {
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return Util.GetMxidFromName(intent, "goodboy", ["abc"]).then((mxid) => {
-                expect(mxid).equal("@123:localhost");
-            });
+            const mxid = await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
+            expect(mxid).equal("@123:localhost");
         });
         it("Errors on multiple members", async () => {
             const mockRooms = {
@@ -103,9 +101,14 @@ describe("Util", () => {
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return expect(Util.GetMxidFromName(intent, "goodboy", ["abc"])).to.eventually.be.rejected;
+            try {
+                await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
-        it("Errors on no member", () => {
+        it("Errors on no member", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
@@ -116,7 +119,12 @@ describe("Util", () => {
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
+            try {
+                await Util.GetMxidFromName(intent, "badboy", ["abc"]);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("GetReplyFromReplyBody", () => {
@@ -124,23 +132,23 @@ describe("Util", () => {
             const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
 
 This is where the reply goes`);
-            return expect(reply).to.equal("This is where the reply goes");
+            expect(reply).to.equal("This is where the reply goes");
         });
         it("Should get a multi-line reply from the body", () => {
             const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
 
 This is where the reply goes and
 there are even more lines here.`);
-            return expect(reply).to.equal("This is where the reply goes and\nthere are even more lines here.");
+            expect(reply).to.equal("This is where the reply goes and\nthere are even more lines here.");
         });
         it("Should get empty string from an empty reply", () => {
             const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
 `);
-            return expect(reply).to.equal("");
+            expect(reply).to.equal("");
         });
         it("Should return body if no reply found", () => {
             const reply = Util.GetReplyFromReplyBody("Test\nwith\nhalfy");
-            return expect(reply).to.equal("Test\nwith\nhalfy");
+            expect(reply).to.equal("Test\nwith\nhalfy");
         });
     });
 });

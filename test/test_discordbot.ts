@@ -15,6 +15,7 @@ import { MockMessage } from "./mocks/message";
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 Chai.use(ChaiAsPromised);
+const expect = Chai.expect;
 
 const assert = Chai.assert;
 // const should = Chai.should as any;
@@ -63,39 +64,49 @@ describe("DiscordBot", () => {
         },
     };
     describe("run()", () => {
-        it("should resolve when ready.", () => {
+        it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 null,
             );
             discordBot.setBridge(mockBridge);
-            return discordBot.run();
+            await discordBot.run();
         });
     });
 
     describe("LookupRoom()", () => {
-        beforeEach(() => {
+        beforeEach( async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 null,
             );
             discordBot.setBridge(mockBridge);
-            return discordBot.run();
+            await discordBot.run();
         });
-        it("should reject a missing guild.", () => {
-            return assert.isRejected(discordBot.LookupRoom("541", "321"));
+        it("should reject a missing guild.", async () => {
+            try {
+                await discordBot.LookupRoom("541", "321");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
 
-        it("should reject a missing channel.", () => {
-            return assert.isRejected(discordBot.LookupRoom("123", "666"));
+        it("should reject a missing channel.", async () => {
+            try {
+                await discordBot.LookupRoom("123", "666");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
 
-        it("should resolve a guild and channel id.", () => {
-            return assert.isFulfilled(discordBot.LookupRoom("123", "321"));
+        it("should resolve a guild and channel id.", async () => {
+            await discordBot.LookupRoom("123", "321");
         });
     });
     describe("OnMessageUpdate()", () => {
-        it("should return on an unchanged message", () => {
+        it("should return on an unchanged message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
@@ -117,12 +128,11 @@ describe("DiscordBot", () => {
             let checkMsgSent = false;
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
-            discordBot.OnMessageUpdate(oldMsg, newMsg).then(() => {
-                Chai.assert.equal(checkMsgSent, false);
-            });
+            await discordBot.OnMessageUpdate(oldMsg, newMsg);
+            Chai.assert.equal(checkMsgSent, false);
         });
 
-        it("should send a matrix message on an edited discord message", () => {
+        it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
@@ -144,9 +154,8 @@ describe("DiscordBot", () => {
             let checkMsgSent = false;
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
-            discordBot.OnMessageUpdate(oldMsg, newMsg).then(() => {
-                Chai.assert.equal(checkMsgSent, true);
-            });
+            await discordBot.OnMessageUpdate(oldMsg, newMsg);
+            Chai.assert.equal(checkMsgSent, true);
         });
     });
     describe("event:message", () => {

@@ -600,43 +600,43 @@ describe("MatrixEventProcessor", () => {
     });
     describe("HandleAttachment", () => {
         const SMALL_FILE = 200;
-        it("message without an attachment", () => {
+        it("message without an attachment", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
                     msgtype: "m.text",
                 },
-            } as IMatrixEvent, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("");
         });
-        it("message without an info", () => {
+        it("message without an info", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const attachment = (await processor.HandleAttachment({
                 content: {
                     body: "filename.webm",
                     msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("filename.webm");
-                expect(attachment.attachment.length).to.eq(SMALL_FILE);
-                return true;
-            });
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("filename.webm");
+            expect(attachment.attachment.length).to.eq(SMALL_FILE);
         });
-        it("message without a url", () => {
+        it("message without a url", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
                     info: {
                         size: 1,
                     },
                     msgtype: "m.video",
                 },
-            } as IMatrixEvent, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("");
         });
-        it("message with a large info.size", () => {
+        it("message with a large info.size", async () => {
             const LARGE_FILE = 8000000;
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
                     body: "filename.webm",
                     info: {
@@ -645,12 +645,12 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            } as IMatrixEvent, mxClient))
-                .to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
-        it("message with a small info.size", () => {
+        it("message with a small info.size", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const attachment = (await processor.HandleAttachment({
                 content: {
                     body: "filename.webm",
                     info: {
@@ -659,15 +659,13 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("filename.webm");
-                expect(attachment.attachment.length).to.eq(SMALL_FILE);
-                return true;
-            });
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("filename.webm");
+            expect(attachment.attachment.length).to.eq(SMALL_FILE);
         });
-        it("message with a small info.size but a larger file", () => {
+        it("message with a small info.size but a larger file", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
                     body: "filename.webm",
                     info: {
@@ -676,11 +674,12 @@ describe("MatrixEventProcessor", () => {
                     msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            } as IMatrixEvent, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
-        it("Should handle stickers.", () => {
+        it("Should handle stickers.", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const attachment = (await processor.HandleAttachment({
                 content: {
                     body: "Bunnies",
                     info: {
@@ -690,10 +689,8 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
                 type: "m.sticker",
-            } as IMatrixEvent, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("Bunnies.png");
-                return true;
-            });
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("Bunnies.png");
         });
     });
     describe("GetEmbedForReply", () => {

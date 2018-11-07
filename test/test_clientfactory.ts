@@ -35,71 +35,88 @@ const STORE = {
 
 describe("ClientFactory", () => {
     describe("init", () => {
-       it ("should start successfully", () => {
-           const config = new DiscordBridgeConfigAuth();
-           config.botToken = "passme";
-           const cf = new DiscordClientFactory(null, config);
-           return expect(cf.init()).to.eventually.be.fulfilled;
-       });
-       it ("should fail if a config is not supplied", () => {
-           const cf = new DiscordClientFactory(null);
-           return expect(cf.init()).to.eventually.be.rejected;
-       });
-       it ("should fail if the bot fails to connect", () => {
-           const config = new DiscordBridgeConfigAuth();
-           config.botToken = "failme";
-           const cf = new DiscordClientFactory(null, config);
-           return expect(cf.init()).to.eventually.be.rejected;
-       });
+        it ("should start successfully", async () => {
+            const config = new DiscordBridgeConfigAuth();
+            config.botToken = "passme";
+            const cf = new DiscordClientFactory(null, config);
+            await cf.init();
+        });
+        it ("should fail if a config is not supplied", async () => {
+            const cf = new DiscordClientFactory(null);
+            try {
+                await cf.init();
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
+        });
+        it ("should fail if the bot fails to connect", async () => {
+            const config = new DiscordBridgeConfigAuth();
+            config.botToken = "failme";
+            const cf = new DiscordClientFactory(null, config);
+            try {
+                await cf.init();
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
+        });
     });
     describe("getDiscordId", () => {
-        it("should fetch id successfully", () => {
+        it("should fetch id successfully", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(null);
-            return expect(cf.getDiscordId("passme")).to.eventually.equal("12345");
+            const discordId = await cf.getDiscordId("passme");
+            expect(discordId).equals("12345");
         });
-        it("should fail if the token is not recognised", () => {
+        it("should fail if the token is not recognised", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(null);
-            return expect(cf.getDiscordId("failme")).to.eventually.be.rejected;
+            try {
+                await cf.getDiscordId("failme");
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("getClient", () => {
-        it("should fetch bot client successfully", () => {
+        it("should fetch bot client successfully", async () => {
             const config = new DiscordBridgeConfigAuth();
             config.botToken = "passme";
             const cf = new DiscordClientFactory(null, config);
             cf.botClient = 1;
-            return expect(cf.getClient()).to.eventually.equal(cf.botClient);
+            const client = await cf.getClient();
+            expect(client).equals(cf.botClient);
         });
-        it("should return cached client", () => {
+        it("should return cached client", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(null);
             cf.clients.set("@user:localhost", "testclient");
-            return expect(cf.getClient("@user:localhost")).to.eventually.equal("testclient");
+            const client = await cf.getClient("@user:localhost");
+            expect(client).equals("testclient");
         });
-        it("should fetch bot client if userid doesn't match", () => {
+        it("should fetch bot client if userid doesn't match", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
             cf.botClient = 1;
-            return expect(cf.getClient("@user:localhost")).to.eventually.equal(cf.botClient);
+            const client = await cf.getClient("@user:localhost");
+            expect(client).equals(cf.botClient);
         });
-        it("should fetch user client if userid matches", () => {
+        it("should fetch user client if userid matches", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
-            return cf.getClient("@valid:localhost").then((client) => {
-                expect(client).is.not.null;
-                expect(cf.clients.has("@valid:localhost")).to.be.true;
-            });
+            const client = await cf.getClient("@valid:localhost");
+            expect(client).is.not.null;
+            expect(cf.clients.has("@valid:localhost")).to.be.true;
         });
-        it("should fail if the user client cannot log in", () => {
+        it("should fail if the user client cannot log in", async () => {
             const config = new DiscordBridgeConfigAuth();
             const cf = new DiscordClientFactory(STORE);
             cf.botClient = 1;
-            return cf.getClient("@invalid:localhost").then((client) => {
-                expect(client).to.equal(cf.botClient);
-                expect(cf.clients.has("@invalid:localhost")).to.be.false;
-            });
+            const client = await cf.getClient("@invalid:localhost");
+            expect(client).to.equal(cf.botClient);
+            expect(cf.clients.has("@invalid:localhost")).to.be.false;
         });
     });
 });
