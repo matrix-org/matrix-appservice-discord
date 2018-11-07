@@ -46,8 +46,8 @@ describe("MessageProcessor", () => {
             const result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "Hello *World*!");
             Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
-          });
-          it("processes non-discord markdown correctly.", async () => {
+        });
+        it("processes non-discord markdown correctly.", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];
@@ -60,9 +60,10 @@ describe("MessageProcessor", () => {
             msg.content = "[test](http://example.com)";
             result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "[test](http://example.com)");
-            Chai.assert.equal(result.formattedBody, "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
-          });
-          it("processes discord-specific markdown correctly.", async () => {
+            Chai.assert.equal(result.formattedBody,
+                "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
+        });
+        it("processes discord-specific markdown correctly.", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];

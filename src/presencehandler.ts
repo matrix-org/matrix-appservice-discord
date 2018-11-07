@@ -28,13 +28,13 @@ export class PresenceHandler {
         return this.presenceQueue.length;
     }
 
-    public Start(intervalTime: number) {
+    public async Start(intervalTime: number) {
         if (this.interval) {
             log.info("Restarting presence handler...");
             this.Stop();
         }
         log.info(`Starting presence handler with new interval ${intervalTime}ms`);
-        this.interval = setInterval(this.processIntervalThread.bind(this),  // tslint:disable-line no-floating-promises
+        this.interval = setInterval(await this.processIntervalThread.bind(this),
             intervalTime);
     }
 

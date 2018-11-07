@@ -38,16 +38,10 @@ describe("PresenceHandler", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
         });
     });
-    describe("Start", () => {
-        it("should start without errors", () => {
-            const handler = new PresenceHandler(bot as DiscordBot);
-            handler.Start(INTERVAL);
-        });
-    });
     describe("Stop", () => {
-        it("should stop without errors", () => {
+        it("should start and stop without errors", async () => {
             const handler = new PresenceHandler(bot as DiscordBot);
-            handler.Start(INTERVAL);
+            await handler.Start(INTERVAL);
             handler.Stop();
         });
     });

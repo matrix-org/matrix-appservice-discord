@@ -57,6 +57,7 @@ describe("DiscordBot", () => {
             botToken: "blah",
         },
         bridge: {
+            disablePresence: true,
             domain: "localhost",
         },
         limits: {

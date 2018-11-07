@@ -344,7 +344,7 @@ describe("MatrixRoomHandler", () => {
                 await handler.OnEvent(buildRequest({
                     content: {body: "abc"},
                     type: "m.room.message",
-                }), context)
+                }), context);
                 throw new Error("didn't fail");
             } catch (e) {
                 expect(e.message).to.not.equal("didn't fail");
