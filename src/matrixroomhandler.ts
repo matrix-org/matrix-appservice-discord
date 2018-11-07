@@ -285,6 +285,7 @@ export class MatrixRoomHandler {
                 channelId = split[1];
             } else {
                 return this.bridge.getIntent().sendMessage(event.room_id, {
+                    body: "Invalid syntax: See `!discord help`",
                     formatted_body: "Invalid syntax: See <code>!discord help</code>",
                     msgtype: "m.notice",
                 });
