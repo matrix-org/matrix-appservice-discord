@@ -271,8 +271,26 @@ export class MatrixRoomHandler {
                 });
             }
 
-            const guildId = args[0];
-            const channelId = args[1];
+            let guildId: string;
+            let channelId: string;
+
+            const AMOUNT_OF_IDS_DISCORD_IDENTIFIES_ROOMS_BY = 2;
+
+            if (args.length === AMOUNT_OF_IDS_DISCORD_IDENTIFIES_ROOMS_BY) { // "x y" syntax
+                guildId = args[0];
+                channelId = args[1];
+            } else if (args.length === 1 && args[0].includes("/")) { // "x/y" syntax
+                const split = args[0].split("/");
+                guildId = split[0];
+                channelId = split[1];
+            } else {
+                return this.bridge.getIntent().sendMessage(event.room_id, {
+                    body: "Invalid syntax: See `!discord help`",
+                    formatted_body: "Invalid syntax: See <code>!discord help</code>",
+                    msgtype: "m.notice",
+                });
+            }
+
             try {
                 const discordResult = await this.discord.LookupRoom(guildId, channelId);
                 const channel = discordResult.channel as Discord.TextChannel;

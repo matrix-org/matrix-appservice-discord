@@ -489,6 +489,17 @@ describe("MatrixRoomHandler", () => {
                 }, context);
                 expect(evt.body).to.contain("Invalid syntax");
             });
+            it("will bridge with x/y syntax", async () => {
+                const handler: any = createRH({powerLevels: {
+                        users_default: 100,
+                    }});
+                const context = {rooms: {}};
+                const evt = await handler.ProcessCommand({
+                    content: {body: "!discord bridge 123 456"},
+                    room_id: "!123:localhost",
+                }, context);
+                expect(evt.body).equals("I have bridged this room to your channel");
+            });
         });
         describe("!discord unbridge", () => {
             it("will unbridge", async () => {
