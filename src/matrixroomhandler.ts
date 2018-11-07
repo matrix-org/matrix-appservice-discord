@@ -285,8 +285,8 @@ export class MatrixRoomHandler {
                 channelId = split[1];
             } else {
                 return this.bridge.getIntent().sendMessage(event.room_id, {
-                    msgtype: "m.notice",
                     body: "Invalid syntax",
+                    msgtype: "m.notice",
                 });
             }
 
