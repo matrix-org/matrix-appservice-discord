@@ -1,4 +1,3 @@
 --reporter list
 --ui bdd
 --recursive
---expose-internals
