@@ -64,6 +64,7 @@
     "eslint": "^3.8.1",
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
-    "proxyquire": "^1.7.11"
+    "proxyquire": "^1.7.11",
+    "why-is-node-running": "^2.0.3"
   }
 }
