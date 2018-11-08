@@ -164,9 +164,37 @@ describe("DiscordBot", () => {
         const CHANID = 123;
         // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
         for (let i = 0; i < ITERATIONS; i++) {
-          client.emit("message", { n: i, channel: { id: CHANID} });
-      }
+          await client.emit("message", { n: i, channel: { id: CHANID} });
+        }
         await discordBot.discordMessageQueue[CHANID];
+        assert.equal(expected, ITERATIONS);
+    });
+    it("should handle messages that reject in the queue", async () => {
+        discordBot = new modDiscordBot.DiscordBot(
+            config,
+            mockBridge,
+        );
+        let expected = 0;
+        const THROW_EVERY = 5;
+        discordBot.OnMessage = (msg: any) => {
+            assert.equal(msg.n, expected);
+            expected++;
+            if (expected % THROW_EVERY === 0) {
+                return Promise.reject("Deliberate throw in test");
+            }
+            return Promise.resolve();
+        };
+        const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
+        discordBot.setBridge(mockBridge);
+        await discordBot.run();
+        const ITERATIONS = 25;
+        const CHANID = 123;
+        // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
+        for (let n = 0; n < ITERATIONS; n++) {
+            await client.emit("message", { n, channel: { id: CHANID} });
+        }
+        await discordBot.discordMessageQueue[CHANID];
+        assert.equal(expected, ITERATIONS);
     });
   });
 
