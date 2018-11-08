@@ -124,27 +124,33 @@ export class DiscordBot {
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[msg.channel.id] = (async () => {
                 await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                await this.DeleteDiscordMessage(msg).catch(
-                    (err) => log.error("Caught while handing 'messageDelete'", err),
-                );
+                try {
+                    await this.DeleteDiscordMessage(msg);
+                } catch (err) {
+                    log.error("Caught while handing 'messageDelete'", err);
+                }
             })();
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[newMessage.channel.id] = (async () => {
                 await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
-                await this.OnMessageUpdate(oldMessage, newMessage).catch(
-                    (err) => log.error("Caught while handing 'messageUpdate'", err),
-                );
+                try {
+                    await this.OnMessageUpdate(oldMessage, newMessage);
+                } catch (err) {
+                    log.error("Caught while handing 'messageUpdate'", err);
+                }
             })();
         });
         client.on("message", async (msg: Discord.Message) => {
             await Bluebird.delay(this.config.limits.discordSendDelay);
             this.discordMessageQueue[msg.channel.id] = (async () => {
                 await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                await this.OnMessage(msg).catch(
-                    (err) => log.error("Caught while handing 'message'", err),
-                );
+                try {
+                    await this.OnMessage(msg);
+                } catch (err) {
+                    log.error("Caught while handing 'message'", err);
+                }
             })();
         });
         const jsLog = new Log("discord.js");
