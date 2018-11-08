@@ -35,8 +35,8 @@ export class MockDiscordClient {
       this.testCallbacks.set(event, callback);
   }
 
-  public emit(event: string, ...data: any[]) {
-      return this.testCallbacks.get(event).apply(this, data);
+  public async emit(event: string, ...data: any[]) {
+      await this.testCallbacks.get(event).apply(this, data);
   }
 
   public async login(token: string): Promise<void> {
