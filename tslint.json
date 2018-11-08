@@ -7,25 +7,33 @@
       "severity": "warning"
     },
     "object-literal-sort-keys": "off",
-    "no-any": {
-      "severity": "warning"
-    },
+    "no-any": true,
     "arrow-return-shorthand": true,
     "no-magic-numbers": true,
     "prefer-for-of": true,
     "typedef": {
       "severity": "warning"
     },
-    "await-promise": true,
+    "await-promise": [true, "Bluebird"],
     "curly": true,
-    "no-empty": {
-      "severity": "warning"
-    },
+    "no-empty": false,
     "no-invalid-this": true,
     "no-string-throw": {
       "severity": "warning"
     },
     "no-unused-expression": true,
-    "prefer-const": true
+    "prefer-const": true,
+    "indent": [true, "spaces", 4],
+    "max-file-line-count": {
+      "severity": "warning",
+      "options": [500]
+    },
+    "no-duplicate-imports": true,
+    "array-type": [true, "array"],
+    "promise-function-async": true,
+    "no-bitwise": true,
+    "no-debugger": true,
+    "no-floating-promises": true,
+    "prefer-template": [true, "allow-single-concat"]
   }
 }

@@ -1,5 +1,6 @@
 import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
+import { ISqlCommandParameters } from "./connector";
 
 export class DbEmoji implements IDbData {
     public EmojiId: string;
@@ -10,45 +11,44 @@ export class DbEmoji implements IDbData {
     public UpdatedAt: number;
     public Result: boolean;
 
-    public RunQuery(store: DiscordStore, params: any): Promise<null> {
-        return store.db.Get(`
+    public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
+        const row = await store.db.Get(`
             SELECT *
             FROM emoji
             WHERE emoji_id = $id`, {
                 id: params.emoji_id,
-            }).then((row) => {
-                this.Result = row !== undefined;
-                if (this.Result) {
-                    this.EmojiId = row.emoji_id;
-                    this.Name = row.name;
-                    this.Animated = Boolean(row.animated);
-                    this.MxcUrl = row.mxc_url;
-                    this.CreatedAt = row.created_at;
-                    this.UpdatedAt = row.updated_at;
-                }
-        });
+            });
+        this.Result = row !== undefined;
+        if (this.Result) {
+            this.EmojiId = row.emoji_id as string;
+            this.Name = row.name as string;
+            this.Animated = Boolean(row.animated);
+            this.MxcUrl = row.mxc_url as string;
+            this.CreatedAt = row.created_at as number;
+            this.UpdatedAt = row.updated_at as number;
+        }
     }
 
-    public Insert(store: DiscordStore): Promise<null> {
+    public async Insert(store: DiscordStore): Promise<void> {
         this.CreatedAt = new Date().getTime();
         this.UpdatedAt = this.CreatedAt;
-        return store.db.Run(`
+        await store.db.Run(`
             INSERT INTO emoji
             (emoji_id,name,animated,mxc_url,created_at,updated_at)
             VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
-                emoji_id: this.EmojiId,
-                name: this.Name,
                 animated: Number(this.Animated),
-                mxc_url: this.MxcUrl,
                 created_at: this.CreatedAt,
+                emoji_id: this.EmojiId,
+                mxc_url: this.MxcUrl,
+                name: this.Name,
                 updated_at: this.UpdatedAt,
         });
     }
 
-    public Update(store: DiscordStore) {
+    public async Update(store: DiscordStore): Promise<void> {
         // Ensure this has incremented by 1 for Insert+Update operations.
         this.UpdatedAt = new Date().getTime() + 1;
-        return store.db.Run(`
+        await store.db.Run(`
             UPDATE emoji
             SET name = $name,
             animated = $animated,
@@ -56,15 +56,15 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
-                emoji_id: this.EmojiId,
-                name: this.Name,
                 animated: Number(this.Animated),
+                emoji_id: this.EmojiId,
                 mxc_url: this.MxcUrl,
+                name: this.Name,
                 updated_at: this.UpdatedAt,
         });
     }
 
-    public Delete(store: DiscordStore): Promise<null> {
+    public async Delete(store: DiscordStore): Promise<void> {
         throw new Error("Delete is not implemented");
     }
 }

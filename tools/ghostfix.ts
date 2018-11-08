@@ -28,18 +28,18 @@ const JOIN_ROOM_SCHEDULE = [
 
 const optionDefinitions = [
     {
-        name: "help",
         alias: "h",
-        type: Boolean,
         description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
     },
     {
-      name: "config",
-      alias: "c",
-      type: String,
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      typeLabel: "<config.yaml>",
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
+        type: String,
+        typeLabel: "<config.yaml>",
     },
 ];
 
@@ -49,9 +49,10 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
-        header: "Fix usernames of joined ghosts",
         content: "A tool to fix usernames of ghosts already in " +
-            "matrix rooms, to make sure they represent the correct discord usernames."},
+        "matrix rooms, to make sure they represent the correct discord usernames.",
+        header: "Fix usernames of joined ghosts",
+    },
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -69,7 +70,7 @@ if (registration === null) {
     throw new Error("Failed to parse registration file");
 }
 
-const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
+const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
 const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
     token: registration.as_token,
@@ -84,77 +85,88 @@ const bridge = new Bridge({
     controller: {
         onEvent: () => { },
     },
+    domain: config.bridge.domain,
+    homeserverUrl: config.bridge.homeserverUrl,
     intentOptions: {
         clients: {
             dontJoin: true, // handled manually
       },
     },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
     registration,
-    userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
+    userStore: config.database.userStorePath,
 });
 
 provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
-let chanSync;
-let userSync;
 
-let client;
-bridge.loadDatabases().catch((e) => {
-    return discordstore.init();
-}).then(() => {
-    chanSync = new ChannelSyncroniser(bridge, config, discordbot);
-    userSync = new UserSyncroniser(bridge, config, discordbot);
+async function run() {
+    try {
+        await bridge.loadDatabases();
+    } catch (e) {
+        await discordstore.init();
+    }
+    const chanSync = new ChannelSyncroniser(bridge, config, discordbot);
+    const userSync = new UserSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
-    return discordbot.ClientFactory.init().then(() => {
-        return discordbot.ClientFactory.getClient();
-    });
-}).then((clientTmp: any) => {
-    client = clientTmp;
-    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    await discordbot.ClientFactory.init();
+    const client = await discordbot.ClientFactory.getClient();
 
-    let delay = config.limits.roomGhostJoinDelay;
-    client.guilds.forEach((guild) => {
-        guild.channels.forEach((channel) => {
-            if (channel.type !== "text") {
-                return;
-            }
-            channel.members.forEach((member) => {
-                if (member.id === client.user.id) {
+    const promiseList: Promise<void>[] = [];
+    let curDelay = config.limits.roomGhostJoinDelay;
+    try {
+        client.guilds.forEach((guild) => {
+            guild.channels.forEach((channel) => {
+                if (channel.type !== "text") {
                     return;
                 }
-                promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-                    return Bluebird.each(chanSync.GetRoomIdsFromChannel(channel), (room) => {
-                        let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-                        const doJoin = () => Util.DelayedPromise(currentSchedule).then(() => {
-                            userSync.EnsureJoin(member, room);
-                        });
-                        const errorHandler = (err) => {
-                            log.error(`Error joining room ${room} as ${member.id}`);
-                            log.error(err);
-                            const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
-                            if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                                log.warn(`Cannot join ${room} as ${member.id}`);
-                                return Promise.reject(err);
-                            } else {
-                                currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
-                                return doJoin().catch(errorHandler);
+                channel.members.forEach((member) => {
+                    if (member.id === client.user.id) {
+                        return;
+                    }
+                    promiseList.push((async () => {
+                        await Bluebird.delay(curDelay);
+                        await Bluebird.each(chanSync.GetRoomIdsFromChannel(channel), async (room) => {
+                            let currentSchedule = JOIN_ROOM_SCHEDULE[0];
+                            const doJoin = async () => {
+                                await Util.DelayedPromise(currentSchedule);
+                                await userSync.EnsureJoin(member, room);
+                            };
+                            const errorHandler = async (err) => {
+                                log.error(`Error joining room ${room} as ${member.id}`);
+                                log.error(err);
+                                const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
+                                if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
+                                    log.warn(`Cannot join ${room} as ${member.id}`);
+                                    throw new Error(err);
+                                } else {
+                                    currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
+                                    try {
+                                        await doJoin();
+                                    } catch (e) {
+                                        await errorHandler(e);
+                                    }
+                                }
+                            };
+                            try {
+                                await doJoin();
+                            } catch (e) {
+                                await errorHandler(e);
                             }
-                        };
-                        return doJoin().catch(errorHandler);
-                    }).catch((err) => {
-                        log.warn(`No associated matrix rooms for discord room ${channel.id}`);
-                    });
-                }));
-                delay += config.limits.roomGhostJoinDelay;
+                        }).catch((err) => {
+                            log.warn(`No associated matrix rooms for discord room ${channel.id}`);
+                        });
+                    })());
+                    curDelay += config.limits.roomGhostJoinDelay;
+                });
             });
         });
-    });
-    return promiseChain;
-}).catch((err) => {
-    log.error(err);
-}).then(() => {
+
+        await Promise.all(promiseList);
+    } catch (err) {
+        log.error(err);
+    }
     process.exit(0);
-});
+}
+
+run(); // tslint:disable-line no-floating-promises

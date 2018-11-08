@@ -1,37 +1,38 @@
-import {User, GuildMember, GuildChannel} from "discord.js";
+import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
-import {Util} from "./util";
+import { Util } from "./util";
 import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
-import {DiscordBridgeConfig} from "./config";
+import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
-import {Log} from "./log";
+import { Log } from "./log";
+import { IMatrixEvent } from "./matrixtypes";
 
 const log = new Log("UserSync");
 
 const DEFAULT_USER_STATE = {
-    id: null,
+    avatarId: "",
+    avatarUrl: null,
     createUser: false,
+    displayName: null,
+    id: null,
     mxUserId: null,
-    displayName: null, // Nullable
-    avatarUrl: null, // Nullable
-    avatarId: null,
     removeAvatar: false,
 };
 
 const DEFAULT_GUILD_STATE = {
+    displayName: "",
     id: null,
     mxUserId: null,
-    displayName: null,
     roles: [],
 };
 
 export interface IUserState {
-    id: string;
-    createUser: boolean;
-    mxUserId: string;
-    displayName: string; // Nullable
-    avatarUrl: string; // Nullable
     avatarId: string;
+    avatarUrl: string | null;
+    createUser: boolean;
+    displayName: string | null;
+    id: string;
+    mxUserId: string;
     removeAvatar: boolean; // If the avatar has been removed from the user.
 }
 
@@ -42,9 +43,9 @@ export interface IGuildMemberRole {
 }
 
 export interface IGuildMemberState {
+    displayName: string;
     id: string;
     mxUserId: string;
-    displayName: string;
     roles: IGuildMemberRole[];
 }
 
@@ -59,14 +60,14 @@ export class UserSyncroniser {
     public static readonly ERR_NEWER_EVENT = "newer_state_event_arrived";
 
     // roomId+userId => ev
-    public userStateHold: Map<string, any>;
+    public userStateHold: Map<string, IMatrixEvent>;
     private userStore: UserBridgeStore;
     constructor(
         private bridge: Bridge,
         private config: DiscordBridgeConfig,
         private discord: DiscordBot) {
         this.userStore = this.bridge.getUserStore();
-        this.userStateHold = new Map<string, any>();
+        this.userStateHold = new Map<string, IMatrixEvent>();
     }
 
     /**
@@ -88,7 +89,7 @@ export class UserSyncroniser {
     public async ApplyStateToProfile(userState: IUserState) {
         const intent = this.bridge.getIntent(userState.mxUserId);
         let userUpdated = false;
-        let remoteUser = null;
+        let remoteUser: RemoteUser;
         if (userState.createUser) {
             /* NOTE: Setting the displayname/avatar will register the user if they don't exist */
             log.info(`Creating new user ${userState.mxUserId}`);
@@ -144,7 +145,7 @@ export class UserSyncroniser {
 
     public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
         log.info(`Applying new room state for ${memberState.mxUserId} to ${roomId}`);
-        if (memberState.displayName === null) {
+        if (!memberState.displayName) {
             // Nothing to do. Quitting
             return;
         }
@@ -154,9 +155,9 @@ export class UserSyncroniser {
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         const tryState = () => intent.getClient().sendStateEvent(roomId, "m.room.member", {
-            "membership": "join",
             "avatar_url": remoteUser.get("avatarurl_mxc"),
             "displayname": memberState.displayName,
+            "membership": "join",
             "uk.half-shot.discord.member": {
                 id: memberState.id,
                 roles: memberState.roles,
@@ -184,7 +185,7 @@ export class UserSyncroniser {
 
     public async GetUserUpdateState(discordUser: User): Promise<IUserState> {
         log.verbose(`State update requested for ${discordUser.id}`);
-        const userState = Object.assign({}, DEFAULT_USER_STATE, {
+        const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
             mxUserId: `@_discord_${discordUser.id}:${this.config.bridge.domain}`,
         });
@@ -222,14 +223,17 @@ export class UserSyncroniser {
 
     public async GetUserStateForGuildMember(
         newMember: GuildMember,
-        displayname: string,
+        displayname?: string,
     ): Promise<IGuildMemberState> {
-        const guildState = Object.assign({}, DEFAULT_GUILD_STATE, {
+        if (!displayname) {
+            displayname = "";
+        }
+        const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
-                name: role.name,
                 color: role.color,
+                name: role.name,
                 position: role.position,
             }; }),
         });
@@ -271,12 +275,12 @@ export class UserSyncroniser {
         const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
         return Promise.all(
             rooms.map(
-                (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
+                async (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
             ),
         );
     }
 
-    public async UpdateStateForGuilds(remoteUser: any) {
+    public async UpdateStateForGuilds(remoteUser: RemoteUser) {
         const id = remoteUser.getId();
         log.info(`Got update for ${id}.`);
 
@@ -284,18 +288,18 @@ export class UserSyncroniser {
             if (guild.members.has(id)) {
                 log.info(`Updating user ${id} in guild ${guild.id}.`);
                 const member = guild.members.get(id);
-                const state = await this.GetUserStateForGuildMember(member, remoteUser.get("displayname"));
+                const state = await this.GetUserStateForGuildMember(member!, remoteUser.get("displayname"));
                 const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
                 return Promise.all(
                     rooms.map(
-                        (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
+                        async (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
                     ),
                 );
             }
         });
     }
 
-    public async OnMemberState(ev: any, delayMs: number = 0): Promise<string> {
+    public async OnMemberState(ev: IMatrixEvent, delayMs: number = 0): Promise<string> {
         // Avoid tripping over multiple state events.
         if (await this.memberStateLock(ev, delayMs) === false) {
             // We're igorning this update because we have a newer one.
@@ -324,22 +328,22 @@ export class UserSyncroniser {
             log.warn(`Got member update for ${roomId}, but no channel or guild member could be found.`);
             return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
-        const state = await this.GetUserStateForGuildMember(member, ev.content.displayname);
+        const state = await this.GetUserStateForGuildMember(member, ev.content!.displayname);
         return this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
-    private async memberStateLock(ev: any, delayMs: number = -1): Promise<boolean> {
+    private async memberStateLock(ev: IMatrixEvent, delayMs: number = -1): Promise<boolean> {
         const userStateKey = `${ev.room_id}${ev.state_key}`;
         if (this.userStateHold.has(userStateKey)) {
             const oldEv = this.userStateHold.get(userStateKey);
-            if (ev.origin_server_ts > oldEv.origin_server_ts) {
+            if (ev.origin_server_ts! > oldEv!.origin_server_ts!) {
                 return false; // New event is older
             }
         }
         this.userStateHold.set(userStateKey, ev);
         // tslint:disable-next-line:await-promise
         await Bluebird.delay(delayMs);
-        if (this.userStateHold.get(userStateKey).event_id !== ev.event_id) {
+        if (this.userStateHold.get(userStateKey)!.event_id !== ev.event_id) {
             // Event has changed and we are out of date.
             return false;
         }
@@ -348,6 +352,6 @@ export class UserSyncroniser {
     }
 
     private displayNameForUser(discordUser): string {
-        return discordUser.username + "#" + discordUser.discriminator;
+        return `${discordUser.username}#${discordUser.discriminator}`;
     }
 }

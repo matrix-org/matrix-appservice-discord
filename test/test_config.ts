@@ -1,6 +1,10 @@
 import * as Chai from "chai";
 import * as ChaiAsPromised from "chai-as-promised";
 import { DiscordBridgeConfig } from "../src/config";
+
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
@@ -9,11 +13,11 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
         const config = new DiscordBridgeConfig();
         config.ApplyConfig({
             bridge: {
-                homeserverUrl: "blah",
-                disableTypingNotifications: true,
-                disableDiscordMentions: false,
                 disableDeletionForwarding: true,
+                disableDiscordMentions: false,
+                disableTypingNotifications: true,
                 enableSelfServiceBridging: false,
+                homeserverUrl: "blah",
             },
             logging: {
                 console: "warn",

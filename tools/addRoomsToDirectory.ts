@@ -10,28 +10,29 @@ import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import { DiscordBridgeConfig } from "../src/config";
 import { Log } from "../src/log";
+import { Util } from "../src/util";
 const log = new Log("AddRoomsToDirectory");
 const optionDefinitions = [
     {
-        name: "help",
         alias: "h",
-        type: Boolean,
         description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
     },
     {
-      name: "config",
-      alias: "c",
-      type: String,
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      typeLabel: "<config.yaml>",
-    },
-    {
-        name: "store",
-        alias: "s",
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
         type: String,
+        typeLabel: "<config.yaml>",
+    },
+    {
+        alias: "s",
         defaultValue: "room-store.db",
         description: "The location of the room store.",
+        name: "store",
+        type: String,
     },
 ];
 
@@ -41,8 +42,9 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
+        content: "A tool to set all the bridged rooms to visible in the directory.",
         header: "Add rooms to directory",
-        content: "A tool to set all the bridged rooms to visible in the directory."},
+    },
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -59,44 +61,52 @@ if (registration === null) {
 }
 
 const clientFactory = new ClientFactory({
-    appServiceUserId: "@" + registration.sender_localpart + ":" + config.bridge.domain,
+    appServiceUserId: `@${registration.sender_localpart}:${config.bridge.domain}`,
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
 });
 
 const bridge = new Bridge({
-    homeserverUrl: true,
-    registration: true,
-    domain: "rubbish",
     controller: {
         onEvent: () => { },
     },
+    domain: "rubbish",
+    homeserverUrl: true,
+    registration: true,
     roomStore: options.store,
 });
 
-bridge.loadDatabases().catch((e) => {
-    log.error("AddRoom", `Failed to load database`, e);
-}).then(() => {
-    return bridge.getRoomStore().getEntriesByRemoteRoomData({
+async function run() {
+    try {
+        await bridge.loadDatabases();
+    } catch (e) {
+        log.error(`Failed to load database`, e);
+    }
+
+    let rooms = await bridge.getRoomStore().getEntriesByRemoteRoomData({
         discord_type: "text",
     });
-}).then((rooms) => {
     rooms = rooms.filter((r) => r.remote.get("plumbed") !== true );
     const client = clientFactory.getClientAs();
-    log.info("AddRoom", `Got ${rooms.length} rooms to set`);
-    rooms.forEach((room) => {
-        const guild = room.remote.get("discord_guild");
-        const roomId = room.matrix.getId();
-        client.setRoomDirectoryVisibilityAppService(
-            guild,
-            roomId,
-            "public",
-        ).then(() => {
-            log.info("AddRoom", `Set ${roomId} to visible in ${guild}'s directory`);
-        }).catch((e) => {
-            log.error("AddRoom", `Failed to set ${roomId} to visible in ${guild}'s directory`, e);
+    log.info(`Got ${rooms.length} rooms to set`);
+    try {
+        await Util.AsyncForEach(rooms, async (room) => {
+            const guild = room.remote.get("discord_guild");
+            const roomId = room.matrix.getId();
+            try {
+                await client.setRoomDirectoryVisibilityAppService(
+                    guild,
+                    roomId,
+                    "public",
+                );
+                log.info(`Set ${roomId} to visible in ${guild}'s directory`);
+            } catch (e) {
+                log.error(`Failed to set ${roomId} to visible in ${guild}'s directory`, e);
+            }
         });
-    });
-}).catch((e) => {
-    log.error("AddRoom", `Failed to run script`, e);
-});
+    } catch (e) {
+        log.error(`Failed to run script`, e);
+    }
+}
+
+run(); // tslint:disable-line no-floating-promises

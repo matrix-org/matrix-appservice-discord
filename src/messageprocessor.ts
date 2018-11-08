@@ -45,7 +45,7 @@ function _setupMarked() {
 }
 
 export class MessageProcessorOpts {
-    constructor(readonly domain: string, readonly bot: DiscordBot = null) {
+    constructor(readonly domain: string, readonly bot?: DiscordBot) {
 
     }
 }
@@ -57,9 +57,9 @@ export class MessageProcessorMatrixResult {
 
 export class MessageProcessor {
     private readonly opts: MessageProcessorOpts;
-    constructor(opts: MessageProcessorOpts, bot: DiscordBot = null) {
+    constructor(opts: MessageProcessorOpts, bot: DiscordBot | null = null) {
         // Backwards compat
-        if (bot != null) {
+        if (bot !== null) {
             this.opts = new MessageProcessorOpts(opts.domain, bot);
         } else {
             this.opts = opts;
@@ -94,7 +94,7 @@ export class MessageProcessor {
 
     public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
-        oldMsg.content = "*edit:* ~~" + oldMsg.content + "~~ -> " + newMsg.content;
+        oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
         return this.FormatDiscordMessage(oldMsg);
     }
 
@@ -122,11 +122,11 @@ export class MessageProcessor {
                 continue;
             }
             let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
-            const embedTitle = embed.url ? "<a href=\"" +
-                escapeHtml(embed.url) + "\">" + escapeHtml(embed.title) +
-                "</a>" : escapeHtml(embed.title);
+            const embedTitle = embed.url ?
+                `<a href="${escapeHtml(embed.url)}">${escapeHtml(embed.title)}</a>`
+                : escapeHtml(embed.title);
             if (embedTitle) {
-                embedContent += "<h5>" + embedTitle + "</h5>"; // h5 is probably best.
+                embedContent += `<h5>${embedTitle}</h5>`; // h5 is probably best.
             }
             if (embed.description) {
                 embedContent += marked(embed.description).replace(/\n/g, "<br>")
@@ -201,7 +201,7 @@ export class MessageProcessor {
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
                 // we still fetch the mxcUrl to check if the emoji is valid=
-                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
+                const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
                 content = content.replace(results[0], `:${name}:`);
             } catch (ex) {
                 log.warn(
@@ -222,7 +222,7 @@ export class MessageProcessor {
             const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
             const id = results[ID_EMOJI_REGEX_GROUP];
             try {
-                const mxcUrl = await this.opts.bot.GetEmoji(name, animated, id);
+                const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
                 content = content.replace(results[0],
                     `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`);
             } catch (ex) {

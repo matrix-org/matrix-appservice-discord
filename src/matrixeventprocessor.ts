@@ -1,12 +1,14 @@
 import * as Discord from "discord.js";
-import {MessageProcessorOpts, MessageProcessor} from "./messageprocessor";
-import {DiscordBot} from "./bot";
-import {DiscordBridgeConfig} from "./config";
+import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
+import { DiscordBot } from "./bot";
+import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import {Util} from "./util";
+import { Util } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import {MatrixUser} from "matrix-appservice-bridge";
+import { MatrixUser, Bridge } from "matrix-appservice-bridge";
+import { Client as MatrixClient } from "matrix-js-sdk";
+import { IMatrixEvent, IMatrixEventContent } from "./matrixtypes";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -21,7 +23,7 @@ const DISCORD_AVATAR_HEIGHT = 128;
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
-        readonly bridge: any,
+        readonly bridge: Bridge,
         readonly discord: DiscordBot,
         ) {
 
@@ -35,7 +37,7 @@ export interface IMatrixEventProcessorResult {
 
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
-    private bridge: any;
+    private bridge: Bridge;
     private discord: DiscordBot;
 
     constructor(opts: MatrixEventProcessorOpts) {
@@ -44,7 +46,7 @@ export class MatrixEventProcessor {
         this.discord = opts.discord;
     }
 
-    public StateEventToMessage(event: any, channel: Discord.TextChannel): string {
+    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -59,11 +61,11 @@ export class MatrixEventProcessor {
         let msg = `\`${event.sender}\` `;
 
         if (event.type === "m.room.name") {
-            msg += `set the name to \`${event.content.name}\``;
+            msg += `set the name to \`${event.content!.name}\``;
         } else if (event.type === "m.room.topic") {
-            msg += `set the topic to \`${event.content.topic}\``;
+            msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
-            const membership = event.content.membership;
+            const membership = event.content!.membership;
             if (membership === "join"
                 && event.unsigned.prev_content === undefined) {
                 msg += `joined the room`;
@@ -83,11 +85,11 @@ export class MatrixEventProcessor {
     }
 
     public async EventToEmbed(
-        event: any, profile: any|null, channel: Discord.TextChannel,
+        event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
     ): Promise<IMatrixEventProcessorResult> {
-        let body = this.config.bridge.disableDiscordMentions ? event.content.body :
+        let body: string = this.config.bridge.disableDiscordMentions ? event.content!.body as string :
             this.FindMentionsInPlainBody(
-                event.content.body,
+                event.content!.body as string,
                 channel.members.array(),
             );
 
@@ -112,7 +114,7 @@ export class MatrixEventProcessor {
         }*/
 
         // Replace /me with * username ...
-        if (event.content.msgtype === "m.emote") {
+        if (event.content!.msgtype === "m.emote") {
             if (profile &&
                 profile.displayname &&
                 profile.displayname.length >= MIN_NAME_LENGTH &&
@@ -142,8 +144,8 @@ export class MatrixEventProcessor {
     public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
         const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
         for (const member of members) {
-            const matcher = escapeStringRegexp(member.user.username + "#" + member.user.discriminator) + "|" +
-                escapeStringRegexp(member.displayName);
+            const matcher = `${escapeStringRegexp(`${member.user.username}#${member.user.discriminator}`)}|` +
+                `${escapeStringRegexp(member.displayName)}`;
             const regex = new RegExp(
                     `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
                     , "igmu");
@@ -170,27 +172,31 @@ export class MatrixEventProcessor {
         return content;
     }
 
-    public async HandleAttachment(event: any, mxClient: any): Promise<string|Discord.FileOptions> {
+    public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
+        if (!event.content) {
+            event.content = {};
+        }
+
         const hasAttachment = [
             "m.image",
             "m.audio",
             "m.video",
             "m.file",
             "m.sticker",
-        ].includes(event.content.msgtype) || [
+        ].includes(event.content.msgtype as string) || [
             "m.sticker",
         ].includes(event.type);
         if (!hasAttachment) {
             return "";
         }
 
-        if (event.content.info == null) {
+        if (!event.content.info) {
             // Fractal sends images without an info, which is technically allowed
             // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
             event.content.info = {size: 0};
         }
 
-        if (event.content.url == null) {
+        if (!event.content.url) {
             log.info("Event was an attachment type but was missing a content.url");
             return "";
         }
@@ -203,15 +209,19 @@ export class MatrixEventProcessor {
             size = attachment.byteLength;
             if (size < MaxFileSize) {
                 return {
-                    name,
                     attachment,
+                    name,
                 };
             }
         }
         return `[${name}](${url})`;
     }
 
-    public async GetEmbedForReply(event: any): Promise<[Discord.RichEmbed, string]|undefined> {
+    public async GetEmbedForReply(event: IMatrixEvent): Promise<[Discord.RichEmbed, string]|undefined> {
+        if (!event.content) {
+            event.content = {};
+        }
+
         const relatesTo = event.content["m.relates_to"];
         let eventId = null;
         if (relatesTo && relatesTo["m.in_reply_to"]) {
@@ -249,7 +259,7 @@ export class MatrixEventProcessor {
         return [embed, reponseText];
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: any) {
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {
         const intent = this.bridge.getIntent();
         let displayName = sender;
         let avatarUrl;
@@ -273,7 +283,7 @@ export class MatrixEventProcessor {
             }
             // Let it fall through.
         }
-        if (profile === undefined) {
+        if (!profile) {
             try {
                 profile = await intent.getProfileInfo(sender);
             } catch (ex) {
@@ -300,12 +310,12 @@ export class MatrixEventProcessor {
         );
     }
 
-    private GetFilenameForMediaEvent(content: any): string {
+    private GetFilenameForMediaEvent(content: IMatrixEventContent): string {
         if (content.body) {
             if (path.extname(content.body) !== "") {
                 return content.body;
             }
-            return path.basename(content.body) + "." + mime.extension(content.info.mimetype);
+            return `${path.basename(content.body)}.${mime.extension(content.info.mimetype)}`;
         }
         return "matrix-media." + mime.extension(content.info.mimetype);
     }
