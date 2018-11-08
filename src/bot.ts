@@ -249,7 +249,7 @@ export class DiscordBot {
             res = [res];
         }
         await Util.AsyncForEach(res, async (m: Discord.Message) => {
-            log.verbose("Sent (state msg) ", m);
+            log.verbose("Sent (state msg) ", m.id);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
             evt.MatrixId = `${event.event_id};${event.room_id}`;
@@ -327,7 +327,7 @@ export class DiscordBot {
             msg = [msg];
         }
         await Util.AsyncForEach(msg, async (m: Discord.Message) => {
-            log.verbose("Sent ", m);
+            log.verbose("Sent ", m.id);
             this.sentMessages.push(m.id);
             const evt = new DbEvent();
             evt.MatrixId = `${event.event_id};${event.room_id}`;
