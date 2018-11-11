@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
 import { Log } from "../src/log";
@@ -14,7 +13,6 @@ import { MockMessage } from "./mocks/message";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
 const assert = Chai.assert;

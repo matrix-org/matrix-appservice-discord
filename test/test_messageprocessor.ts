@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
 import { DiscordBot } from "../src/bot";
@@ -9,8 +8,6 @@ import { MockMessage } from "./mocks/message";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-Chai.use(ChaiAsPromised);
 
 const bot = {
     GetEmoji: async (name: string, animated: boolean, id: string): Promise<string> => {
