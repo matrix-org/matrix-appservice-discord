@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 // import * as Proxyquire from "proxyquire";
 import { DiscordStore, CURRENT_SCHEMA } from "../src/store";
 import { DbEmoji } from "../src/db/dbdataemoji";
@@ -9,7 +8,6 @@ import { Log } from "../src/log";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
 const TEST_SCHEMA = CURRENT_SCHEMA;
@@ -27,7 +25,7 @@ describe("DiscordStore", () => {
         it("should not throw when adding an entry", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
-            return expect(store.add_user_token("userid", "token", "discordid")).to.eventually.be.fulfilled;
+            await store.add_user_token("userid", "token", "discordid");
         });
     });
     describe("Get|Insert|Update<DbEmoji>", () => {
@@ -39,7 +37,7 @@ describe("DiscordStore", () => {
             emoji.Animated = false;
             emoji.Name = "TestEmoji";
             emoji.MxcUrl = "TestUrl";
-            return expect(store.Insert(emoji)).to.eventually.be.fulfilled;
+            await store.Insert(emoji);
         });
         it("should get successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -89,7 +87,7 @@ describe("DiscordStore", () => {
             event.DiscordId = "456";
             event.GuildId = "123";
             event.ChannelId = "123";
-            return expect(store.Insert(event)).to.eventually.be.fulfilled;
+            await store.Insert(event);
         });
         it("should get successfully", async () => {
             const store = new DiscordStore(":memory:");

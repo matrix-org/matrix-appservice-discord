@@ -178,7 +178,7 @@ export class DiscordBot {
                     }
                 });
             });
-            this.presenceHandler.Start(
+            await this.presenceHandler.Start(
                 Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
             );
         }

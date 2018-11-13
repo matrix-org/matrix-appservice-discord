@@ -31,10 +31,13 @@ export class DiscordClientFactory {
             messageCacheLifetime: 5,
             sync: true,
         }));
-        return Bluebird.all([
-            this.botClient.onAsync("ready").timeout(READY_TIMEOUT, "Bot timed out waiting for ready."),
-            this.botClient.login(this.config.botToken),
-        ]).then(() => { return; }).catch((err) => {
+
+        return new Bluebird<void>((resolve, reject) => {
+            this.botClient.on("ready", () => {
+                resolve();
+            });
+            this.botClient.login(this.config.botToken).catch(reject);
+        }).timeout(READY_TIMEOUT).catch((err) => {
             log.error("Could not login as the bot user. This is bad!", err);
             throw err;
         });

@@ -149,14 +149,13 @@ describe("UserSyncroniser", () => {
                 "test.jpg",
                 "111",
             );
-            return userSync.GetUserUpdateState(user as any).then((state) => {
-                expect(state.createUser).is.true;
-                expect(state.removeAvatar).is.false;
-                expect(state.displayName).equals("TestUsername#6969");
-                expect(state.mxUserId).equals("@_discord_123456:localhost");
-                expect(state.avatarId).equals("111");
-                expect(state.avatarUrl).equals("test.jpg");
-            });
+            const state = await userSync.GetUserUpdateState(user as any);
+            expect(state.createUser).is.true;
+            expect(state.removeAvatar).is.false;
+            expect(state.displayName).equals("TestUsername#6969");
+            expect(state.mxUserId).equals("@_discord_123456:localhost");
+            expect(state.avatarId).equals("111");
+            expect(state.avatarUrl).equals("test.jpg");
         });
         it("Will change display names", async () => {
             const remoteUser = new RemoteUser("123456", {
@@ -172,14 +171,13 @@ describe("UserSyncroniser", () => {
                 "test.jpg",
                 "111",
             );
-            return userSync.GetUserUpdateState(user as any).then((state) => {
-                expect(state.createUser, "CreateUser").is.false;
-                expect(state.removeAvatar, "RemoveAvatar").is.false;
-                expect(state.displayName, "DisplayName").equals("TestUsername#6969");
-                expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
-                expect(state.avatarId, "AvatarID").is.empty;
-                expect(state.avatarUrl, "AvatarUrl").is.null;
-            });
+            const state = await userSync.GetUserUpdateState(user as any);
+            expect(state.createUser, "CreateUser").is.false;
+            expect(state.removeAvatar, "RemoveAvatar").is.false;
+            expect(state.displayName, "DisplayName").equals("TestUsername#6969");
+            expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
+            expect(state.avatarId, "AvatarID").is.empty;
+            expect(state.avatarUrl, "AvatarUrl").is.null;
         });
         it("Will change avatars", async () => {
             const remoteUser = new RemoteUser("123456", {
@@ -195,14 +193,13 @@ describe("UserSyncroniser", () => {
                 "test2.jpg",
                 "111",
             );
-            return userSync.GetUserUpdateState(user as any).then((state) => {
-                expect(state.createUser, "CreateUser").is.false;
-                expect(state.removeAvatar, "RemoveAvatar").is.false;
-                expect(state.avatarUrl, "AvatarUrl").equals("test2.jpg");
-                expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
-                expect(state.avatarId, "AvatarID").is.equals("111");
-                expect(state.displayName, "DisplayName").is.null;
-            });
+            const state = await userSync.GetUserUpdateState(user as any);
+            expect(state.createUser, "CreateUser").is.false;
+            expect(state.removeAvatar, "RemoveAvatar").is.false;
+            expect(state.avatarUrl, "AvatarUrl").equals("test2.jpg");
+            expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
+            expect(state.avatarId, "AvatarID").is.equals("111");
+            expect(state.displayName, "DisplayName").is.null;
         });
         it("Will remove avatars", async () => {
             const remoteUser = new RemoteUser("123456", {
@@ -218,14 +215,13 @@ describe("UserSyncroniser", () => {
                 null,
                 null,
             );
-            return userSync.GetUserUpdateState(user as any).then((state) => {
-                expect(state.createUser, "CreateUser").is.false;
-                expect(state.removeAvatar, "RemoveAvatar").is.true;
-                expect(state.avatarUrl, "AvatarUrl").is.null;
-                expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
-                expect(state.avatarId, "AvatarID").is.empty;
-                expect(state.displayName, "DisplayName").is.null;
-            });
+            const state = await userSync.GetUserUpdateState(user as any);
+            expect(state.createUser, "CreateUser").is.false;
+            expect(state.removeAvatar, "RemoveAvatar").is.true;
+            expect(state.avatarUrl, "AvatarUrl").is.null;
+            expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
+            expect(state.avatarId, "AvatarID").is.empty;
+            expect(state.displayName, "DisplayName").is.null;
         });
     });
     describe("ApplyStateToProfile", () => {
@@ -240,11 +236,10 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 removeAvatar: false,
             };
-            return userSync.ApplyStateToProfile(state).then(() => {
-                expect(LINK_MX_USER).is.not.null;
-                expect(LINK_RM_USER).is.not.null;
-                expect(REMOTEUSER_SET).is.null;
-            });
+            await userSync.ApplyStateToProfile(state);
+            expect(LINK_MX_USER).is.not.null;
+            expect(LINK_RM_USER).is.not.null;
+            expect(REMOTEUSER_SET).is.null;
         });
         it("Will set a display name", async () => {
             const userSync = CreateUserSync();
@@ -257,15 +252,14 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 removeAvatar: false,
             };
-            return userSync.ApplyStateToProfile(state).then(() => {
-                expect(LINK_MX_USER).is.not.null;
-                expect(LINK_RM_USER).is.not.null;
-                expect(REMOTEUSER_SET).is.not.null;
-                expect(DISPLAYNAME_SET).equal("123456");
-                expect(REMOTEUSER_SET.data.displayname).equal("123456");
-                expect(AVATAR_SET).is.null;
-                expect(REMOTEUSER_SET.data.avatarurl).is.undefined;
-            });
+            await userSync.ApplyStateToProfile(state);
+            expect(LINK_MX_USER).is.not.null;
+            expect(LINK_RM_USER).is.not.null;
+            expect(REMOTEUSER_SET).is.not.null;
+            expect(DISPLAYNAME_SET).equal("123456");
+            expect(REMOTEUSER_SET.data.displayname).equal("123456");
+            expect(AVATAR_SET).is.null;
+            expect(REMOTEUSER_SET.data.avatarurl).is.undefined;
         });
         it("Will set an avatar", async () => {
             const userSync = CreateUserSync();
@@ -278,16 +272,15 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 removeAvatar: false,
             };
-            return userSync.ApplyStateToProfile(state).then(() => {
-                expect(LINK_MX_USER).is.not.null;
-                expect(LINK_RM_USER).is.not.null;
-                expect(AVATAR_SET).equal("avatarset");
-                expect(UTIL_UPLOADED_AVATAR).to.be.true;
-                expect(REMOTEUSER_SET).is.not.null;
-                expect(REMOTEUSER_SET.data.avatarurl).equal("654321");
-                expect(REMOTEUSER_SET.data.displayname).is.undefined;
-                expect(DISPLAYNAME_SET).is.null;
-            });
+            await userSync.ApplyStateToProfile(state);
+            expect(LINK_MX_USER).is.not.null;
+            expect(LINK_RM_USER).is.not.null;
+            expect(AVATAR_SET).equal("avatarset");
+            expect(UTIL_UPLOADED_AVATAR).to.be.true;
+            expect(REMOTEUSER_SET).is.not.null;
+            expect(REMOTEUSER_SET.data.avatarurl).equal("654321");
+            expect(REMOTEUSER_SET.data.displayname).is.undefined;
+            expect(DISPLAYNAME_SET).is.null;
         });
         it("Will remove an avatar", async () => {
             const userSync = CreateUserSync();
@@ -300,16 +293,15 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 removeAvatar: true,
             };
-            return userSync.ApplyStateToProfile(state).then(() => {
-                expect(LINK_MX_USER).is.not.null;
-                expect(LINK_RM_USER).is.not.null;
-                expect(AVATAR_SET).is.null;
-                expect(UTIL_UPLOADED_AVATAR).to.be.false;
-                expect(REMOTEUSER_SET).is.not.null;
-                expect(REMOTEUSER_SET.data.avatarurl).is.null;
-                expect(REMOTEUSER_SET.data.displayname).is.undefined;
-                expect(DISPLAYNAME_SET).is.null;
-            });
+            await userSync.ApplyStateToProfile(state);
+            expect(LINK_MX_USER).is.not.null;
+            expect(LINK_RM_USER).is.not.null;
+            expect(AVATAR_SET).is.null;
+            expect(UTIL_UPLOADED_AVATAR).to.be.false;
+            expect(REMOTEUSER_SET).is.not.null;
+            expect(REMOTEUSER_SET.data.avatarurl).is.null;
+            expect(REMOTEUSER_SET.data.displayname).is.undefined;
+            expect(DISPLAYNAME_SET).is.null;
         });
         it("will do nothing if nothing needs to be done", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -322,13 +314,12 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 removeAvatar: false,
             };
-            return userSync.ApplyStateToProfile(state).then(() => {
-                expect(LINK_MX_USER).is.null;
-                expect(LINK_RM_USER).is.null;
-                expect(AVATAR_SET).is.null;
-                expect(REMOTEUSER_SET).is.null;
-                expect(DISPLAYNAME_SET).is.null;
-            });
+            await userSync.ApplyStateToProfile(state);
+            expect(LINK_MX_USER).is.null;
+            expect(LINK_RM_USER).is.null;
+            expect(AVATAR_SET).is.null;
+            expect(REMOTEUSER_SET).is.null;
+            expect(DISPLAYNAME_SET).is.null;
         });
     });
     describe("ApplyStateToRoom", () => {
@@ -340,13 +331,12 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 roles: [],
             };
-            return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
-                expect(REMOTEUSER_SET).is.not.null;
-                expect(REMOTEUSER_SET.data.nick_123456).is.equal("Good Boy");
-                expect(SEV_ROOM_ID).is.equal("!abc:localhost");
-                expect(SEV_CONTENT.displayname).is.equal("Good Boy");
-                expect(SEV_KEY).is.equal("@_discord_123456:localhost");
-            });
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
+            expect(REMOTEUSER_SET).is.not.null;
+            expect(REMOTEUSER_SET.data.nick_123456).is.equal("Good Boy");
+            expect(SEV_ROOM_ID).is.equal("!abc:localhost");
+            expect(SEV_CONTENT.displayname).is.equal("Good Boy");
+            expect(SEV_KEY).is.equal("@_discord_123456:localhost");
         });
         it("Will not apply unchanged nick", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -356,12 +346,11 @@ describe("UserSyncroniser", () => {
                 mxUserId: "@_discord_123456:localhost",
                 roles: [],
             };
-            return userSync.ApplyStateToRoom(state, "!abc:localhost", "123456").then(() => {
-                expect(REMOTEUSER_SET).is.null;
-                expect(SEV_ROOM_ID).is.null;
-                expect(SEV_CONTENT).is.null;
-                expect(SEV_KEY).is.null;
-            });
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
+            expect(REMOTEUSER_SET).is.null;
+            expect(SEV_ROOM_ID).is.null;
+            expect(SEV_CONTENT).is.null;
+            expect(SEV_KEY).is.null;
         });
         it("Will apply roles", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -380,15 +369,14 @@ describe("UserSyncroniser", () => {
                     },
                 ],
             };
-            return userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678").then(() => {
-                const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-                const roles = custKey.roles;
-                expect(custKey.id).is.equal("123456");
-                expect(roles.length).is.equal(1);
-                expect(roles[0].name).is.equal(TESTROLE_NAME);
-                expect(roles[0].color).is.equal(TESTROLE_COLOR);
-                expect(roles[0].position).is.equal(TESTROLE_POSITION);
-            });
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+            const roles = custKey.roles;
+            expect(custKey.id).is.equal("123456");
+            expect(roles.length).is.equal(1);
+            expect(roles[0].name).is.equal(TESTROLE_NAME);
+            expect(roles[0].color).is.equal(TESTROLE_COLOR);
+            expect(roles[0].position).is.equal(TESTROLE_POSITION);
         });
     });
     describe("GetUserStateForGuildMember", () => {
@@ -413,9 +401,8 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild,
                 "BestDog");
-            return userSync.GetUserStateForGuildMember(member as any, "BestDog").then((state) => {
-                expect(state.displayName).is.empty;
-            });
+            const state = await userSync.GetUserStateForGuildMember(member as any, "BestDog");
+            expect(state.displayName).is.empty;
         });
         it("Will correctly add roles", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -436,12 +423,11 @@ describe("UserSyncroniser", () => {
                     position: TESTROLE_POSITION,
                 },
             ];
-            return userSync.GetUserStateForGuildMember(member as any).then((state) => {
-                expect(state.roles.length).to.be.equal(1);
-                expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
-                expect(state.roles[0].color).to.be.equal(TESTROLE_COLOR);
-                expect(state.roles[0].position).to.be.equal(TESTROLE_POSITION);
-            });
+            const state = await userSync.GetUserStateForGuildMember(member as any);
+            expect(state.roles.length).to.be.equal(1);
+            expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
+            expect(state.roles[0].color).to.be.equal(TESTROLE_COLOR);
+            expect(state.roles[0].position).to.be.equal(TESTROLE_POSITION);
         });
     });
     describe("OnAddGuildMember", () => {
@@ -453,24 +439,22 @@ describe("UserSyncroniser", () => {
                 "123456",
                 "username",
                 guild);
-            return userSync.OnAddGuildMember(member as any).then(() => {
-                expect(JOINS).to.equal(GUILD_ROOM_IDS.length);
-            });
+            await userSync.OnAddGuildMember(member as any);
+            expect(JOINS).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnRemoveGuildMember", () => {
-         it("will leave users from rooms", async () => {
-             const userSync = CreateUserSync([new RemoteUser("123456")]);
-             const guild = new MockGuild(
-                 "654321");
-             const member = new MockMember(
-                 "123456",
-                 "username",
-                 guild);
-             return userSync.OnRemoveGuildMember(member as any).then(() => {
-                 expect(LEAVES).to.equal(GUILD_ROOM_IDS.length);
-             });
-         });
+        it("will leave users from rooms", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const guild = new MockGuild(
+                "654321");
+            const member = new MockMember(
+                "123456",
+                "username",
+                guild);
+            await userSync.OnRemoveGuildMember(member as any);
+            expect(LEAVES).to.equal(GUILD_ROOM_IDS.length);
+        });
     });
     describe("OnUpdateGuildMember", () => {
         it("will update state for rooms", async () => {
@@ -486,9 +470,8 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild,
                 "FiddleDee");
-            return userSync.OnUpdateGuildMember(oldMember as any, newMember as any).then(() => {
-                expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
-            });
+            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
+            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
         });
         it("will not update state for unchanged member", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
@@ -504,53 +487,54 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild,
                 "FiddleDee");
-            return userSync.OnUpdateGuildMember(oldMember as any, newMember as any).then(() => {
-                expect(SEV_COUNT).to.equal(0);
-            });
+            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
+            expect(SEV_COUNT).to.equal(0);
         });
     });
     describe("OnMemberState", () => {
         it("will update state for rooms", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
-            return userSync.OnMemberState({
+            await userSync.OnMemberState({
                 content: {
 
                 },
                 room_id: "!found:localhost",
                 state_key: "123456",
-            } as IMatrixEvent, 0).then(() => {
-                 expect(SEV_COUNT).to.equal(1);
-            });
+            } as IMatrixEvent, 0);
+            expect(SEV_COUNT).to.equal(1);
         });
         it("will not update state for a unknown user", async () => {
             const userSync = CreateUserSync([]);
-            return expect(userSync.OnMemberState({
+            const ret = await userSync.OnMemberState({
                 content: {
 
                 },
                 room_id: "!abcdef:localhost",
                 state_key: "123456",
-            } as IMatrixEvent, 0)).to.eventually.equal(UserSyncroniser.ERR_USER_NOT_FOUND);
+            } as IMatrixEvent, 0);
+            expect(ret).equals(UserSyncroniser.ERR_USER_NOT_FOUND);
         });
         it("will not update state for a unknown room", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
-            return expect(userSync.OnMemberState({
+            const ret = await userSync.OnMemberState({
                 content: {
 
                 },
                 room_id: "!notfound:localhost",
                 state_key: "123456",
-            } as IMatrixEvent, 0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+            } as IMatrixEvent, 0);
+            expect(ret).equals(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
         });
         it("will not update state for a member not found in the channel", async () => {
             const userSync = CreateUserSync([new RemoteUser("111222")]);
-            return expect(userSync.OnMemberState({
+            const ret = await userSync.OnMemberState({
                 content: {
 
                 },
                 room_id: "!found:localhost",
                 state_key: "111222",
-            } as IMatrixEvent, 0)).to.eventually.equal(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
+            } as IMatrixEvent, 0);
+            expect(ret).equals(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
         });
         it("will not process old events", async () => {
             const DELAY_MS = 250;

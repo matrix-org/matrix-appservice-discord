@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
@@ -10,7 +9,6 @@ import { MockUser } from "./mocks/user";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 const INTERVAL = 250;
 let lastStatus = null;
@@ -38,16 +36,10 @@ describe("PresenceHandler", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
         });
     });
-    describe("Start", () => {
-        it("should start without errors", () => {
-            const handler = new PresenceHandler(bot as DiscordBot);
-            handler.Start(INTERVAL);
-        });
-    });
     describe("Stop", () => {
-        it("should stop without errors", () => {
+        it("should start and stop without errors", async () => {
             const handler = new PresenceHandler(bot as DiscordBot);
-            handler.Start(INTERVAL);
+            await handler.Start(INTERVAL);
             handler.Stop();
         });
     });

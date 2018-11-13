@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
 import { DiscordBot } from "../src/bot";
@@ -9,8 +8,6 @@ import { MockMessage } from "./mocks/message";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-Chai.use(ChaiAsPromised);
 
 const bot = {
     GetEmoji: async (name: string, animated: boolean, id: string): Promise<string> => {
@@ -29,114 +26,115 @@ describe("MessageProcessor", () => {
         });
     });
     describe("FormatDiscordMessage", () => {
-      it("processes plain text messages correctly", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new MockMessage() as any;
-        msg.embeds = [];
-        msg.content = "Hello World!";
-        const result = await processor.FormatDiscordMessage(msg);
-        Chai.assert(result.body, "Hello World!");
-        Chai.assert(result.formattedBody, "Hello World!");
-      });
-      it("processes markdown messages correctly.", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new MockMessage() as any;
-        msg.embeds = [];
-        msg.content = "Hello *World*!";
-        const result = await processor.FormatDiscordMessage(msg);
-        Chai.assert.equal(result.body, "Hello *World*!");
-        Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
-      });
-      it("processes non-discord markdown correctly.", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new MockMessage() as any;
-        msg.embeds = [];
-        msg.content = "> inb4 tests";
-        let result = await processor.FormatDiscordMessage(msg);
-        Chai.assert.equal(result.body, "> inb4 tests");
-        Chai.assert.equal(result.formattedBody, "<p>&gt; inb4 tests</p>");
+        it("processes plain text messages correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "Hello World!";
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert(result.body, "Hello World!");
+            Chai.assert(result.formattedBody, "Hello World!");
+        });
+        it("processes markdown messages correctly.", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "Hello *World*!";
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "Hello *World*!");
+            Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
+        });
+        it("processes non-discord markdown correctly.", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "> inb4 tests";
+            let result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "> inb4 tests");
+            Chai.assert.equal(result.formattedBody, "<p>&gt; inb4 tests</p>");
 
-        msg.embeds = [];
-        msg.content = "[test](http://example.com)";
-        result = await processor.FormatDiscordMessage(msg);
-        Chai.assert.equal(result.body, "[test](http://example.com)");
-        Chai.assert.equal(result.formattedBody, "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
-      });
-      it("processes discord-specific markdown correctly.", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new MockMessage() as any;
-        msg.embeds = [];
-        msg.content = "_ italic _";
-        const result = await processor.FormatDiscordMessage(msg);
-        Chai.assert.equal(result.body, "_ italic _");
-        Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
-      });
+            msg.embeds = [];
+            msg.content = "[test](http://example.com)";
+            result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "[test](http://example.com)");
+            Chai.assert.equal(result.formattedBody,
+                "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
+        });
+        it("processes discord-specific markdown correctly.", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "_ italic _";
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "_ italic _");
+            Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
+        });
     });
     describe("FormatEmbeds", () => {
-      it("should format embeds correctly", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const msg = new MockMessage() as any;
-        msg.embeds = [
-            {
-                author: {} as any,
-                client: {} as any,
-                color: {} as any,
-                createdAt: {} as any,
-                createdTimestamp: {} as any,
-                description: "Description",
-                fields: {} as any,
-                footer: {} as any,
-                hexColor: {} as any,
-                image: {} as any,
-                message: {} as any,
-                provider: {} as any,
-                thumbnail: {} as any,
-                title: "Title",
-                type: {} as any,
-                url: "http://example.com",
-                video: {} as any,
-            },
-        ];
-        msg.content = "message";
-        const result = await processor.FormatDiscordMessage(msg);
-        Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
-        Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
-            "</h5><p>Description</p>");
-      });
+        it("should format embeds correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                {
+                    author: {} as any,
+                    client: {} as any,
+                    color: {} as any,
+                    createdAt: {} as any,
+                    createdTimestamp: {} as any,
+                    description: "Description",
+                    fields: {} as any,
+                    footer: {} as any,
+                    hexColor: {} as any,
+                    image: {} as any,
+                    message: {} as any,
+                    provider: {} as any,
+                    thumbnail: {} as any,
+                    title: "Title",
+                    type: {} as any,
+                    url: "http://example.com",
+                    video: {} as any,
+                },
+            ];
+            msg.content = "message";
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
+            Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
+                "</h5><p>Description</p>");
+        });
     });
     describe("FormatEdit", () => {
-      it("should format basic edits appropriately", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const oldMsg = new MockMessage() as any;
-        const newMsg = new MockMessage() as any;
-        oldMsg.embeds = [];
-        newMsg.embeds = [];
+        it("should format basic edits appropriately", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const oldMsg = new MockMessage() as any;
+            const newMsg = new MockMessage() as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
 
-        // Content updated but not changed
-        oldMsg.content = "a";
-        newMsg.content = "b";
+            // Content updated but not changed
+            oldMsg.content = "a";
+            newMsg.content = "b";
 
-        const result = await processor.FormatEdit(oldMsg, newMsg);
-        Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
-        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>");
-      });
+            const result = await processor.FormatEdit(oldMsg, newMsg);
+            Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
+            Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>");
+        });
 
-      it("should format markdown heavy edits apropriately", async () => {
-        const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-        const oldMsg = new MockMessage() as any;
-        const newMsg = new MockMessage() as any;
-        oldMsg.embeds = [];
-        newMsg.embeds = [];
+        it("should format markdown heavy edits apropriately", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const oldMsg = new MockMessage() as any;
+            const newMsg = new MockMessage() as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
 
-        // Content updated but not changed
-        oldMsg.content = "a slice of **cake**";
-        newMsg.content = "*a* slice of cake";
+            // Content updated but not changed
+            oldMsg.content = "a slice of **cake**";
+            newMsg.content = "*a* slice of cake";
 
-        const result = await processor.FormatEdit(oldMsg, newMsg);
-        Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
-        Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
-          "cake</strong></del> -&gt; <em>a</em> slice of cake</p>");
-      });
+            const result = await processor.FormatEdit(oldMsg, newMsg);
+            Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
+            Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
+              "cake</strong></del> -&gt; <em>a</em> slice of cake</p>");
+        });
 
     });
 

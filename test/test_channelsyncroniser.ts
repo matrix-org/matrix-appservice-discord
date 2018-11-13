@@ -1,5 +1,4 @@
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
@@ -16,7 +15,6 @@ import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
 let UTIL_UPLOADED_AVATAR: any = null;
@@ -253,11 +251,16 @@ describe("ChannelSyncroniser", () => {
             expect(chans[0]).equals("!1:localhost");
             expect(chans[1]).equals("!2:localhost");
         });
-        it("should reject on no rooms", () => {
+        it("should reject on no rooms", async () => {
             const chan = new MockChannel();
             chan.id = "blah";
             const channelSync = CreateChannelSync();
-            expect(channelSync.GetRoomIdsFromChannel(chan as any)).to.eventually.be.rejected;
+            try {
+                await channelSync.GetRoomIdsFromChannel(chan as any);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
     describe("GetChannelUpdateState", () => {
