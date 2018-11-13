@@ -551,7 +551,7 @@ export class DiscordBot {
             }
             const intent = this.GetIntentFromDiscordMember(msg.author);
             // Check Attachements
-            await Util.AsyncForEach(msg.attachments, async (attachment) => {
+            await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
                 const fileMime = mime.lookup(attachment.filename);
                 const msgtype = attachment.height ? "m.image" : "m.file";
