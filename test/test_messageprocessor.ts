@@ -375,7 +375,6 @@ TestDescription`,
         });
     });
     describe("Message Type", () => {
-        
         it("sets non-bot messages as m.text", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const msg = new MockMessage() as any;
