@@ -147,7 +147,8 @@ export class UserSyncroniser {
             await this.ApplyStateToRoom(state, roomId, member.guild.id);
         } catch (e) {
             if (e.errcode !== "M_FORBIDDEN") {
-                log.warn(`Failed to join ${state.id} to ${roomId}`, e);
+                log.error(`Failed to join ${state.id} to ${roomId}`, e);
+                throw e;
             } else {
                 log.info(`User not in room ${roomId}, inviting`);
                 try {
@@ -155,6 +156,7 @@ export class UserSyncroniser {
                     await this.ApplyStateToRoom(state, roomId, member.guild.id);
                 } catch (e) {
                     log.error(`Failed to join ${state.id} to ${roomId}`, e);
+                    throw e;
                 }
             }
         }
