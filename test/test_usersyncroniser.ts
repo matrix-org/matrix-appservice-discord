@@ -326,6 +326,8 @@ describe("UserSyncroniser", () => {
         it("Will apply a new nick", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
+                bot: false,
+                displayColor: 0,
                 displayName: "Good Boy",
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
@@ -341,6 +343,8 @@ describe("UserSyncroniser", () => {
         it("Will not apply unchanged nick", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
+                bot: false,
+                displayColor: 0,
                 displayName: "",
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
@@ -358,6 +362,8 @@ describe("UserSyncroniser", () => {
             const TESTROLE_COLOR = 1337;
             const TESTROLE_POSITION = 42;
             const state: IGuildMemberState = {
+                bot: false,
+                displayColor: 0,
                 displayName: "Good Boy",
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
@@ -377,6 +383,40 @@ describe("UserSyncroniser", () => {
             expect(roles[0].name).is.equal(TESTROLE_NAME);
             expect(roles[0].color).is.equal(TESTROLE_COLOR);
             expect(roles[0].position).is.equal(TESTROLE_POSITION);
+        });
+        it("Will set bot correctly", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const state: IGuildMemberState = {
+                bot: false,
+                displayColor: 0,
+                displayName: "Good Boy",
+                id: "123456",
+                mxUserId: "@_discord_123456:localhost",
+                roles: [ ],
+            };
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            let custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+            expect(custKey.bot).is.false;
+
+            state.bot = true;
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+            expect(custKey.bot).is.true;
+        });
+        it("Will set the displayColor correctly", async () => {
+            const TEST_COLOR = 1234;
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const state: IGuildMemberState = {
+                bot: false,
+                displayColor: TEST_COLOR,
+                displayName: "Good Boy",
+                id: "123456",
+                mxUserId: "@_discord_123456:localhost",
+                roles: [ ],
+            };
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+            expect(custKey.displayColor).is.equal(TEST_COLOR);
         });
     });
     describe("GetUserStateForGuildMember", () => {

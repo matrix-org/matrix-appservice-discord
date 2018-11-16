@@ -43,6 +43,8 @@ export interface IGuildMemberRole {
 }
 
 export interface IGuildMemberState {
+    bot: boolean;
+    displayColor: number;
     displayName: string;
     id: string;
     mxUserId: string;
@@ -159,6 +161,8 @@ export class UserSyncroniser {
             "displayname": memberState.displayName,
             "membership": "join",
             "uk.half-shot.discord.member": {
+                bot: memberState.bot,
+                displayColor: memberState.displayColor,
                 id: memberState.id,
                 roles: memberState.roles,
             },
@@ -229,6 +233,8 @@ export class UserSyncroniser {
             displayname = "";
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
+            bot: newMember.user.bot,
+            displayColor: newMember.displayColor,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
