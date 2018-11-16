@@ -374,4 +374,25 @@ TestDescription`,
             );
         });
     });
+    describe("Message Type", () => {
+        
+        it("sets non-bot messages as m.text", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "no bot";
+            msg.author.bot = false;
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.msgtype, "m.text");
+        });
+        it("sets bot messages as m.notice", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "a bot";
+            msg.author.bot = true;
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.msgtype, "m.notice");
+        });
+    });
 });
