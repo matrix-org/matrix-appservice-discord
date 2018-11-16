@@ -140,9 +140,29 @@ export class UserSyncroniser {
         }
     }
 
-    public async EnsureJoin(member: GuildMember, roomId: string) {
+    public async JoinRoom(member: GuildMember, roomId: string) {
         const state = await this.GetUserStateForGuildMember(member, "");
-        log.info(`Ensuring ${state.id} is joined to ${roomId}`);
+        log.info(`Joining ${state.id} in ${roomId}`);
+        try {
+            await this.ApplyStateToRoom(state, roomId, member.guild.id);
+        } catch (e) {
+            if (e.errcode !== "M_FORBIDDEN") {
+                log.warn(`Failed to join ${state.id} to ${roomId}`, e);
+            } else {
+                log.info(`User not in room ${roomId}, inviting`);
+                try {
+                    await this.bridge.getIntent().invite(roomId, state.mxUserId);
+                    await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                } catch (e) {
+                    log.error(`Failed to join ${state.id} to ${roomId}`, e);
+                }
+            }
+        }
+    }
+
+    public async SetRoomState(member: GuildMember, roomId: string) {
+        const state = await this.GetUserStateForGuildMember(member, "");
+        log.info(`Setting room state for ${state.id} in ${roomId}`);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
@@ -157,7 +177,7 @@ export class UserSyncroniser {
         const intent = this.bridge.getIntent(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
-        const tryState = () => intent.getClient().sendStateEvent(roomId, "m.room.member", {
+        await intent.getClient().sendStateEvent(roomId, "m.room.member", {
             "avatar_url": remoteUser.get("avatarurl_mxc"),
             "displayname": memberState.displayName,
             "membership": "join",
@@ -169,24 +189,9 @@ export class UserSyncroniser {
                 username: memberState.username,
             },
         }, memberState.mxUserId);
-        try {
-            await tryState();
-        } catch (e) {
-            if (e.errcode !== "M_FORBIDDEN") {
-                log.warn(`Failed to send state to ${roomId}`, e);
-            } else {
-                log.warn(`User not in room ${roomId}, inviting`);
-                try {
-                    await this.bridge.getIntent().invite(roomId, memberState.mxUserId);
-                    await tryState();
-                } catch (e) {
-                    log.warn(`Failed to send state to ${roomId}`, e);
-                }
-            }
-        }
 
         remoteUser.set(nickKey, memberState.displayName);
-        return this.userStore.setRemoteUser(remoteUser);
+        await this.userStore.setRemoteUser(remoteUser);
     }
 
     public async GetUserUpdateState(discordUser: User): Promise<IUserState> {
@@ -338,7 +343,8 @@ export class UserSyncroniser {
             return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
         const state = await this.GetUserStateForGuildMember(member, ev.content!.displayname);
-        return this.ApplyStateToRoom(state, roomId, member.guild.id);
+        await this.ApplyStateToRoom(state, roomId, member.guild.id);
+        return "";
     }
 
     private async memberStateLock(ev: IMatrixEvent, delayMs: number = -1): Promise<boolean> {

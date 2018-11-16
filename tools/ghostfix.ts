@@ -130,7 +130,7 @@ async function run() {
                             let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                             const doJoin = async () => {
                                 await Util.DelayedPromise(currentSchedule);
-                                await userSync.EnsureJoin(member, room);
+                                await userSync.JoinRoom(member, room);
                             };
                             const errorHandler = async (err) => {
                                 log.error(`Error joining room ${room} as ${member.id}`);

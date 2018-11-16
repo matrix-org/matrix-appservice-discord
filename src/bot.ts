@@ -607,7 +607,7 @@ export class DiscordBot {
                             log.error("DiscordBot", "Failed to send message into room.", e);
                             return;
                         }
-                        await this.userSync.EnsureJoin(msg.member, room);
+                        await this.userSync.JoinRoom(msg.member, room);
                         res = await trySend();
                         await afterSend(res);
                     }
