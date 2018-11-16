@@ -581,7 +581,7 @@ export class DiscordBot {
                     await this.store.Insert(evt);
                 });
             });
-            if (msg.content !== null && msg.content !== "") {
+            if (msg.content !== null) {
                 const result = await this.msgProcessor.FormatDiscordMessage(msg);
                 await Util.AsyncForEach(rooms, async (room) => {
                     const trySend = async () => intent.sendMessage(room, {
