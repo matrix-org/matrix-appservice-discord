@@ -43,10 +43,13 @@ export interface IGuildMemberRole {
 }
 
 export interface IGuildMemberState {
+    bot: boolean;
+    displayColor: number;
     displayName: string;
     id: string;
     mxUserId: string;
     roles: IGuildMemberRole[];
+    username: string;
 }
 
 /**
@@ -159,8 +162,11 @@ export class UserSyncroniser {
             "displayname": memberState.displayName,
             "membership": "join",
             "uk.half-shot.discord.member": {
+                bot: memberState.bot,
+                displayColor: memberState.displayColor,
                 id: memberState.id,
                 roles: memberState.roles,
+                username: memberState.username,
             },
         }, memberState.mxUserId);
         try {
@@ -229,6 +235,8 @@ export class UserSyncroniser {
             displayname = "";
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
+            bot: newMember.user.bot,
+            displayColor: newMember.displayColor,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
@@ -236,6 +244,7 @@ export class UserSyncroniser {
                 name: role.name,
                 position: role.position,
             }; }),
+            username: newMember.user.tag,
         });
 
         // Check guild nick.
