@@ -118,20 +118,29 @@ export class MessageProcessor {
 
     public InsertEmbedsPostmark(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
-            if (embed.title === undefined && embed.description === undefined) {
+            if (!embed.title && !embed.description) {
                 continue;
             }
-            let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
-            const embedTitle = embed.url ?
-                `<a href="${escapeHtml(embed.url)}">${escapeHtml(embed.title)}</a>`
-                : escapeHtml(embed.title);
-            if (embedTitle) {
+            const color = embed.color ? embed.color : 0;
+            const HEX_BASE = 16;
+            const colorHex = color.toString(HEX_BASE);
+            const pad = "#000000";
+            const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
+
+            let embedContent = `<table><tr><td><span data-mx-bg-color=\"${htmlColor}\">&nbsp;</span></td><td>`;
+            const useTitle = embed.title ? embed.title : (embed.author && embed.author.name ? embed.author : "");
+            if (useTitle) {
+                const embedTitle = embed.url ?
+                `<a href="${escapeHtml(embed.url)}">${escapeHtml(useTitle)}</a>`
+                : escapeHtml(useTitle);
+                
                 embedContent += `<h5>${embedTitle}</h5>`; // h5 is probably best.
             }
             if (embed.description) {
                 embedContent += marked(embed.description).replace(/\n/g, "<br>")
                     .replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
             }
+            embedContent += "</td></table>";
             content += embedContent;
         }
         return content;
