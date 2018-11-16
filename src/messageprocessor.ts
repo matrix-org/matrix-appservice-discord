@@ -29,7 +29,9 @@ function _setupMarked() {
     // as discord doesn't support these markdown rules
     // we want to disable them by setting their regexes to non-matchable ones
     // deleting the regexes would lead to marked-internal errors
-    for (const r of ["hr", "heading", "lheading", "blockquote", "list", "item", "bullet", "def", "table", "lheading"]) {
+    const removeRegexes = ["hr", "heading", "lheading", "blockquote",
+        "list", "item", "bullet", "def", "table", "lheading", "code"];
+    for (const r of removeRegexes) {
         markedLexer.rules[r] = /$^/;
     }
     // paragraph-end matching is different, as we don't have headers and thelike
@@ -42,6 +44,7 @@ function _setupMarked() {
     }
     // discords em for underscores supports if there are spaces around the underscores, thus change that
     markedInlineLexer.rules.em = /^_([^_](?:[^_]|__)*?[^_]?)_\b|^\*((?:\*\*|[^*])+?)\*(?!\*)/;
+    markedInlineLexer.rules.del = /^~~(\s*[\s\S]*?\s*)~~/;
 }
 
 export class MessageProcessorOpts {

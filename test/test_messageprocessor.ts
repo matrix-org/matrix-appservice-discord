@@ -65,9 +65,19 @@ describe("MessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "_ italic _";
-            const result = await processor.FormatDiscordMessage(msg);
+            let result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "_ italic _");
             Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
+
+            msg.content = "~~ strike ~~";
+            result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "~~ strike ~~");
+            Chai.assert.equal(result.formattedBody, "<p><del> strike </del></p>");
+
+            msg.content = "test\n    non-block";
+            result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "test\n    non-block");
+            Chai.assert.equal(result.formattedBody, "<p>test<br>    non-block</p>");
         });
     });
     describe("FormatEmbeds", () => {
