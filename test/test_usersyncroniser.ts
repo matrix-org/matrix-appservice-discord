@@ -332,6 +332,7 @@ describe("UserSyncroniser", () => {
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
                 roles: [],
+                username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.not.null;
@@ -349,6 +350,7 @@ describe("UserSyncroniser", () => {
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
                 roles: [],
+                username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.null;
@@ -374,6 +376,7 @@ describe("UserSyncroniser", () => {
                         position: TESTROLE_POSITION,
                     },
                 ],
+                username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
             const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
@@ -393,6 +396,7 @@ describe("UserSyncroniser", () => {
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
                 roles: [ ],
+                username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
             let custKey = SEV_CONTENT["uk.half-shot.discord.member"];
@@ -413,10 +417,26 @@ describe("UserSyncroniser", () => {
                 id: "123456",
                 mxUserId: "@_discord_123456:localhost",
                 roles: [ ],
+                username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
             const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
             expect(custKey.displayColor).is.equal(TEST_COLOR);
+        });
+        it("Will set username correctly", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const state: IGuildMemberState = {
+                bot: false,
+                displayColor: 0,
+                displayName: "Good Boy",
+                id: "123456",
+                mxUserId: "@_discord_123456:localhost",
+                roles: [ ],
+                username: "user#1234",
+            };
+            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
+            expect(custKey.username).is.equal("user#1234");
         });
     });
     describe("GetUserStateForGuildMember", () => {

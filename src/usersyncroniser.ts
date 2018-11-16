@@ -49,6 +49,7 @@ export interface IGuildMemberState {
     id: string;
     mxUserId: string;
     roles: IGuildMemberRole[];
+    username: string;
 }
 
 /**
@@ -165,6 +166,7 @@ export class UserSyncroniser {
                 displayColor: memberState.displayColor,
                 id: memberState.id,
                 roles: memberState.roles,
+                username: memberState.username,
             },
         }, memberState.mxUserId);
         try {
@@ -242,6 +244,7 @@ export class UserSyncroniser {
                 name: role.name,
                 position: role.position,
             }; }),
+            username: newMember.user.tag,
         });
 
         // Check guild nick.
