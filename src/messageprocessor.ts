@@ -10,6 +10,8 @@ const USER_REGEX = /<@!?([0-9]*)>/g;
 const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
 const CHANNEL_REGEX = /<#?([0-9]*)>/g;
 const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
+const GROUP_REGEX = /<@&([0-9]*)>/g;
+const GROUP_REGEX_POSTMARK = /&lt;@&amp;([0-9]*)&gt;/g;
 const EMOJI_SIZE = 32;
 const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
 const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
@@ -79,12 +81,14 @@ export class MessageProcessor {
         content = this.InsertEmbeds(content, msg);
         content = this.ReplaceMembers(content, msg);
         content = this.ReplaceChannels(content, msg);
+        content = this.ReplaceGroups(content, msg);
         content = await this.ReplaceEmoji(content, msg);
 
         // parse postmark stuff
         contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
         contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
+        contentPostmark = this.ReplaceGroupsPostmark(contentPostmark, msg);
         contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
 
         result.body = content;
@@ -189,6 +193,38 @@ export class MessageProcessor {
             const replaceStr = `<a href="${MATRIX_TO_LINK}${roomId}">${channelStr}</a>`;
             content = content.replace(results[0], replaceStr);
             results = CHANNEL_REGEX_POSTMARK.exec(content);
+        }
+        return content;
+    }
+
+    public ReplaceGroups(content: string, msg: Discord.Message): string {
+        let results = GROUP_REGEX.exec(content);
+        while (results !== null) {
+            const id = results[1];
+            const role = msg.guild.roles.get(id);
+            if (role) {
+                content = content.replace(results[0], `@${role.name}`);
+            }
+            results = GROUP_REGEX.exec(content);
+        }
+        return content;
+    }
+
+    public ReplaceGroupsPostmark(content: string, msg: Discord.Message): string {
+        const HEX_BASE = 16;
+
+        let results = GROUP_REGEX_POSTMARK.exec(content);
+        while (results !== null) {
+            const id = results[1];
+            const role = msg.guild.roles.get(id);
+            if (role) {
+                const colorHex = role.color.toString(HEX_BASE);
+                const pad = "#000000";
+                const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
+                const groupStr = `<span data-mx-color="${htmlColor}"><b>@${escapeHtml(role.name)}</b></span>`;
+                content = content.replace(results[0], groupStr);
+            }
+            results = GROUP_REGEX_POSTMARK.exec(content);
         }
         return content;
     }

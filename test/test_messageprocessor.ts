@@ -5,6 +5,7 @@ import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
+import { MockRole } from "./mocks/role";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -234,6 +235,59 @@ describe("MessageProcessor", () => {
             content = processor.ReplaceChannelsPostmark(content, msg);
             Chai.assert.equal(content,
                 "Hello <a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
+        });
+    });
+    describe("ReplaceGroups", () => {
+        it("ignores unknown groups", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const role = new MockRole("5678", "role");
+            guild.roles.set("5678", role);
+            const msg = new MockMessage(channel) as any;
+            let content = "Hi <@&1234>!";
+            content = processor.ReplaceGroups(content, msg);
+            Chai.assert.equal(content, "Hi <@&1234>!");
+        });
+        it("parses known groups", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const role = new MockRole("1234", "role");
+            guild.roles.set("1234", role);
+            const msg = new MockMessage(channel) as any;
+            let content = "Hi <@&1234>!";
+            content = processor.ReplaceGroups(content, msg);
+            Chai.assert.equal(content, "Hi @role!");
+        });
+    });
+    describe("ReplaceGroupsPostmark", () => {
+        it("ignores unknown groups", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const role = new MockRole("5678", "role");
+            guild.roles.set("5678", role);
+            const msg = new MockMessage(channel) as any;
+            let content = "Hi &lt;@&amp;1234&gt;!";
+            content = processor.ReplaceGroupsPostmark(content, msg);
+            Chai.assert.equal(content, "Hi &lt;@&amp;1234&gt;!");
+        });
+        it("parses known groups", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const ROLE_COLOR = 0xDEAD88;
+            const role = new MockRole("1234", "role", ROLE_COLOR);
+            guild.roles.set("1234", role);
+            const msg = new MockMessage(channel) as any;
+            let content = "Hi &lt;@&amp;1234&gt;!";
+            content = processor.ReplaceGroupsPostmark(content, msg);
+            Chai.assert.equal(content, "Hi <span data-mx-color=\"#dead88\"><b>@role</b></span>!");
         });
     });
     describe("ReplaceEmoji", () => {
