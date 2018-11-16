@@ -53,6 +53,7 @@ export class MessageProcessorOpts {
 export class MessageProcessorMatrixResult {
     public formattedBody: string;
     public body: string;
+    public msgtype: string;
 }
 
 export class MessageProcessor {
@@ -89,6 +90,7 @@ export class MessageProcessor {
 
         result.body = content;
         result.formattedBody = contentPostmark;
+        result.msgtype = msg.author.bot ? "m.notice" : "m.text";
         return result;
     }
 

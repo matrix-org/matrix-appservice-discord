@@ -588,7 +588,7 @@ export class DiscordBot {
                         body: result.body,
                         format: "org.matrix.custom.html",
                         formatted_body: result.formattedBody,
-                        msgtype: "m.text",
+                        msgtype: result.msgtype,
                     });
                     const afterSend = async (re) => {
                         const evt = new DbEvent();

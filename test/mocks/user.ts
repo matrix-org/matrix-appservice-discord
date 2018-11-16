@@ -11,6 +11,7 @@ export class MockUser {
         public discriminator: string = "",
         public avatarURL: string | null = "",
         public avatar: string | null = "",
+        public bot: boolean = false,
     ) { }
 
     public MockSetPresence(presence: Presence) {
