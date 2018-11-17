@@ -129,8 +129,8 @@ describe("MessageProcessor", () => {
             msg.content = "message http://example.com";
             const result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "message http://example.com");
-            Chai.assert.equal(result.formattedBody, "<p>message <a href=\"http://example.com\">" +
-                "http://example.com</a></p>");
+            Chai.assert.equal(result.formattedBody, "message <a href=\"http://example.com\">" +
+                "http://example.com</a>");
         });
     });
     describe("FormatEdit", () => {
