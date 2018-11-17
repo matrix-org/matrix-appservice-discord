@@ -69,59 +69,58 @@ export class Util {
      */
     public static async UploadContentFromUrl(url: string, intent: Intent, name: string | null): Promise<IUploadResult> {
         let contenttype;
-        let size;
         name = name || null;
-        return new Promise((resolve, reject) => {
-            let ht;
-            if (url.startsWith("https")) {
-                ht = https;
-            } else {
-                ht = http;
-            }
-            const req = ht.get( url, (res) => {
-                let buffer = Buffer.alloc(0);
-
-                if (res.headers.hasOwnProperty("content-type")) {
-                    contenttype = res.headers["content-type"];
+        try {
+            const bufferRet = (await (new Promise((resolve, reject) => {
+                let ht;
+                if (url.startsWith("https")) {
+                    ht = https;
                 } else {
-                    log.verbose("No content-type given by server, guessing based on file name.");
-                    contenttype = mime.lookup(url);
+                    ht = http;
                 }
+                const req = ht.get( url, (res) => {
+                    let buffer = Buffer.alloc(0);
 
-                if (name === null) {
-                    const names = url.split("/");
-                    name = names[names.length - 1];
-                }
+                    if (res.headers.hasOwnProperty("content-type")) {
+                        contenttype = res.headers["content-type"];
+                    } else {
+                        log.verbose("No content-type given by server, guessing based on file name.");
+                        contenttype = mime.lookup(url);
+                    }
 
-                res.on("data", (d) => {
-                    buffer = Buffer.concat([buffer, d]);
+                    if (name === null) {
+                        const names = url.split("/");
+                        name = names[names.length - 1];
+                    }
+
+                    res.on("data", (d) => {
+                        buffer = Buffer.concat([buffer, d]);
+                    });
+
+                    res.on("end", () => {
+                        resolve(buffer);
+                    });
                 });
-
-                res.on("end", () => {
-                    resolve(buffer);
+                req.on("error", (err) => {
+                    reject(`Failed to download. ${err.code}`);
                 });
-            });
-            req.on("error", (err) => {
-                reject(`Failed to download. ${err.code}`);
-            });
-        }).then((buffer: Buffer) => {
-            size = buffer.length;
-            return intent.getClient().uploadContent(buffer, {
+            }))) as Buffer;
+            const size = bufferRet.length;
+            const contentUri = await intent.getClient().uploadContent(bufferRet, {
                 name,
                 onlyContentUri: true,
                 rawResponse: false,
                 type: contenttype,
             });
-        }).then((contentUri) => {
             log.verbose("Media uploaded to ", contentUri);
             return {
                 mxcUrl: contentUri,
                 size,
             };
-        }).catch((reason) => {
+        } catch (reason) {
             log.error("Failed to upload content:\n", reason);
             throw reason;
-        });
+        }
     }
 
     /**
