@@ -58,6 +58,7 @@ export interface IGuildMemberState {
  */
 export class UserSyncroniser {
 
+    public static readonly ERR_NO_ERROR = "";
     public static readonly ERR_USER_NOT_FOUND = "user_not_found";
     public static readonly ERR_CHANNEL_MEMBER_NOT_FOUND = "channel_or_member_not_found";
     public static readonly ERR_NEWER_EVENT = "newer_state_event_arrived";
@@ -289,7 +290,7 @@ export class UserSyncroniser {
         log.info(`Got update for ${oldMember.id}.`);
         const state = await this.GetUserStateForGuildMember(newMember, oldMember.displayName);
         const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
-        return Promise.all(
+        await Promise.all(
             rooms.map(
                 async (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
             ),
@@ -346,7 +347,7 @@ export class UserSyncroniser {
         }
         const state = await this.GetUserStateForGuildMember(member, ev.content!.displayname);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
-        return "";
+        return UserSyncroniser.ERR_NO_ERROR;
     }
 
     private async memberStateLock(ev: IMatrixEvent, delayMs: number = -1): Promise<boolean> {
