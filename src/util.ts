@@ -258,6 +258,13 @@ export class Util {
 
     public static NumberToHTMLColor(color: number): string {
         const HEX_BASE = 16;
+        const COLOR_MAX = 0xFFFFFF;
+        if (color > COLOR_MAX) {
+            color = COLOR_MAX;
+        }
+        if (color < 0) {
+            color = 0;
+        }
         const colorHex = color.toString(HEX_BASE);
         const pad = "#000000";
         const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;

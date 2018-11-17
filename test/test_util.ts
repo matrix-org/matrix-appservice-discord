@@ -150,10 +150,20 @@ there are even more lines here.`);
         });
     });
     describe("NumberToHTMLColor", () => {
-        it("Should work", () => {
+        it("Should handle valid colors", () => {
             const COLOR = 0xdeadaf;
             const reply = Util.NumberToHTMLColor(COLOR);
             expect(reply).to.equal("#deadaf");
+        });
+        it("Should reject too large colors", () => {
+            const COLOR = 0xFFFFFFFF;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#ffffff");
+        });
+        it("Should reject too small colors", () => {
+            const COLOR = -1;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#000000");
         });
     });
 });

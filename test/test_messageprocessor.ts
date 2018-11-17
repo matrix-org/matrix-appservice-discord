@@ -149,7 +149,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "@_discord_12345:localhost");
 
-            reply = processor.InsertUserHTML(content, msg);
+            reply = processor.InsertUser(content, msg, true);
             Chai.assert.equal(reply,
                 "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
         });
@@ -163,7 +163,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "TestUsername");
 
-            reply = processor.InsertUserHTML(content, msg);
+            reply = processor.InsertUser(content, msg, true);
             Chai.assert.equal(reply,
                 "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
         });
@@ -177,7 +177,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "TestNickname");
 
-            reply = processor.InsertUserHTML(content, msg);
+            reply = processor.InsertUser(content, msg, true);
             Chai.assert.equal(reply,
                 "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestNickname</a>");
         });
@@ -192,7 +192,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertChannel(content, msg);
             Chai.assert.equal(reply, "#123456789");
 
-            reply = processor.InsertChannelHTML(content, msg);
+            reply = processor.InsertChannel(content, msg, true);
             Chai.assert.equal(reply,
                 "<a href=\"https://matrix.to/#/#_discord_123_123456789:localhost\">#123456789</a>");
         });
@@ -206,7 +206,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertChannel(content, msg);
             Chai.assert.equal(reply, "#TestChannel");
 
-            reply = processor.InsertChannelHTML(content, msg);
+            reply = processor.InsertChannel(content, msg, true);
             Chai.assert.equal(reply,
                 "<a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
         });
@@ -224,7 +224,7 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertRole(content, msg);
             Chai.assert.equal(reply, "<@&1234>");
 
-            reply = processor.InsertRoleHTML(content, msg);
+            reply = processor.InsertRole(content, msg, true);
             Chai.assert.equal(reply, "&lt;@&amp;1234&gt;");
         });
         it("parses known roles", () => {
@@ -240,8 +240,8 @@ describe("MessageProcessor", () => {
             let reply = processor.InsertRole(content, msg);
             Chai.assert.equal(reply, "@role");
 
-            reply = processor.InsertRoleHTML(content, msg);
-            Chai.assert.equal(reply, "<span data-mx-color=\"#dead88\"><b>@role</b></span>");
+            reply = processor.InsertRole(content, msg, true);
+            Chai.assert.equal(reply, "<span data-mx-color=\"#dead88\"><strong>@role</strong></span>");
         });
     });
     describe("InsertEmoji", () => {
@@ -276,7 +276,7 @@ describe("MessageProcessor", () => {
             let reply = await processor.InsertMxcImages(content, msg);
             Chai.assert.equal(reply, "Hello <:hello:123456789>");
 
-            reply = await processor.InsertMxcImagesHTML(content, msg);
+            reply = await processor.InsertMxcImages(content, msg, true);
             Chai.assert.equal(reply, "Hello &lt;:hello:123456789&gt;");
         });
         it("processes emoji correctly", async () => {
@@ -289,7 +289,7 @@ describe("MessageProcessor", () => {
             let reply = await processor.InsertMxcImages(content, msg);
             Chai.assert.equal(reply, "Hello :hello:");
 
-            reply = await processor.InsertMxcImagesHTML(content, msg);
+            reply = await processor.InsertMxcImages(content, msg, true);
             Chai.assert.equal(reply, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });

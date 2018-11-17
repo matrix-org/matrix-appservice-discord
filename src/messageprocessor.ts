@@ -33,21 +33,12 @@ export class MessageProcessorMatrixResult {
     public msgtype: string;
 }
 
-interface IUserNode {
+interface IDiscordNode {
     id: number;
 }
 
-interface IChannelNode {
-    id: number;
-}
-
-interface IRoleNode {
-    id: number;
-}
-
-interface IEmojiNode {
+interface IEmojiNode extends IDiscordNode {
     animated: boolean;
-    id: number;
     name: string;
 }
 
@@ -70,12 +61,12 @@ export class MessageProcessor {
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = markdown.toHTML(content, {
-            discordCallback: this.getDiscordCallbackHTML(msg),
+            discordCallback: this.getDiscordParseCallbacksHTML(msg),
         });
 
         // parse the plain text stuff
         content = markdown.toHTML(content, {
-            discordCallback: this.getDiscordCallback(msg),
+            discordCallback: this.getDiscordParseCallbacks(msg),
             discordOnly: true,
         });
         content = this.InsertEmbeds(content, msg);
@@ -83,7 +74,7 @@ export class MessageProcessor {
 
         // parse postmark stuff
         contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
-        contentPostmark = await this.InsertMxcImagesHTML(contentPostmark, msg);
+        contentPostmark = await this.InsertMxcImages(contentPostmark, msg, true);
 
         result.body = content;
         result.formattedBody = contentPostmark;
@@ -129,7 +120,7 @@ export class MessageProcessor {
             }
             if (embed.description) {
                 embedContent += markdown.toHTML(embed.description, {
-                    discordCallback: this.getDiscordCallbackHTML(msg),
+                    discordCallback: this.getDiscordParseCallbacksHTML(msg),
                     embed: true,
                 });
             }
@@ -138,55 +129,39 @@ export class MessageProcessor {
         return content;
     }
 
-    public InsertUser(node: IUserNode, msg: Discord.Message): string {
+    public InsertUser(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
         const member = msg.guild.members.get(id.toString());
         const memberId = `@_discord_${id}:${this.opts.domain}`;
-        return member ? (member.displayName) : memberId;
-    }
-
-    public InsertUserHTML(node: IUserNode, msg: Discord.Message): string {
-        const id = node.id;
-        const member = msg.guild.members.get(id.toString());
-        const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
-        let memberName = memberId;
-        if (member) {
-            memberName = escapeHtml(member.displayName);
+        const memberName = member ? member.displayName : memberId;
+        if (!html) {
+            return memberName;
         }
-        return `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
+        return `<a href="${MATRIX_TO_LINK}${escapeHtml(memberId)}">${escapeHtml(memberName)}</a>`;
     }
 
-    public InsertChannel(node: IChannelNode, msg: Discord.Message): string {
+    public InsertChannel(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
         const channel = msg.guild.channels.get(id.toString());
-        return channel ? "#" + channel.name : "#" + id;
-    }
-
-    public InsertChannelHTML(node: IChannelNode, msg: Discord.Message) {
-        const id = node.id;
-        const channel = msg.guild.channels.get(id.toString());
-        const roomId = escapeHtml(`#_discord_${msg.guild.id}_${id}:${this.opts.domain}`);
         const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
-        return `<a href="${MATRIX_TO_LINK}${roomId}">${channelStr}</a>`;
-    }
-
-    public InsertRole(node: IRoleNode, msg: Discord.Message): string {
-        const id = node.id;
-        const role = msg.guild.roles.get(id.toString());
-        if (!role) {
-            return `<@&${id}>`;
+        if (!html) {
+            return channelStr;
         }
-        return `@${role.name}`;
+        const roomId = escapeHtml(`#_discord_${msg.guild.id}_${id}:${this.opts.domain}`);
+        return `<a href="${MATRIX_TO_LINK}${roomId}">${escapeHtml(channelStr)}</a>`;
     }
 
-    public InsertRoleHTML(node: IRoleNode, msg: Discord.Message): string {
+    public InsertRole(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
         const role = msg.guild.roles.get(id.toString());
         if (!role) {
-            return `&lt;@&amp;${id}&gt;`;
+            return html ? `&lt;@&amp;${id}&gt;` : `<@&${id}>`;
+        }
+        if (!html) {
+            return `@${role.name}`;
         }
         const color = Util.NumberToHTMLColor(role.color);
-        return `<span data-mx-color="${color}"><b>@${escapeHtml(role.name)}</b></span>`;
+        return `<span data-mx-color="${color}"><strong>@${escapeHtml(role.name)}</strong></span>`;
     }
 
     public InsertEmoji(node: IEmojiNode): string {
@@ -197,7 +172,7 @@ export class MessageProcessor {
         return `${FLAG}${name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
     }
 
-    public async InsertMxcImages(content: string, msg: Discord.Message): Promise<string> {
+    public async InsertMxcImages(content: string, msg: Discord.Message, html: boolean = false): Promise<string> {
         let results = MXC_INSERT_REGEX.exec(content);
         while (results !== null) {
             const name = results[NAME_MXC_INSERT_REGEX_GROUP];
@@ -206,12 +181,20 @@ export class MessageProcessor {
             let replace = "";
             try {
                 const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
-                replace = `:${name}:`;
+                if (html) {
+                    replace = `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
+                } else {
+                    replace = `:${name}:`;
+                }
             } catch (ex) {
                 log.warn(
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
-                replace = `<${animated ? "a" : ""}:${name}:${id}>`;
+                if (html) {
+                    replace = `&lt;${animated ? "a" : ""}:${name}:${id}&gt;`;
+                } else {
+                    replace = `<${animated ? "a" : ""}:${name}:${id}>`;
+                }
             }
             content = content.replace(results[0],
                 replace);
@@ -220,30 +203,7 @@ export class MessageProcessor {
         return content;
     }
 
-    public async InsertMxcImagesHTML(content: string, msg: Discord.Message): Promise<string> {
-        let results = MXC_INSERT_REGEX.exec(content);
-        while (results !== null) {
-            const name = results[NAME_MXC_INSERT_REGEX_GROUP];
-            const animated = results[ANIMATED_MXC_INSERT_REGEX_GROUP] === "1";
-            const id = results[ID_MXC_INSERT_REGEX_GROUP];
-            let replace = "";
-            try {
-                const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
-                replace = `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
-            } catch (ex) {
-                log.warn(
-                    `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
-                );
-                replace = `&lt;${animated ? "a" : ""}:${name}:${id}&gt;`;
-            }
-            content = content.replace(results[0],
-                replace);
-            results = MXC_INSERT_REGEX.exec(content);
-        }
-        return content;
-    }
-
-    private getDiscordCallback(msg: Discord.Message) {
+    private getDiscordParseCallbacks(msg: Discord.Message) {
         return {
             channel: (node) => this.InsertChannel(node, msg),
             emoji: (node) => this.InsertEmoji(node),
@@ -252,12 +212,12 @@ export class MessageProcessor {
         };
     }
 
-    private getDiscordCallbackHTML(msg: Discord.Message) {
+    private getDiscordParseCallbacksHTML(msg: Discord.Message) {
         return {
-            channel: (node) => this.InsertChannelHTML(node, msg),
+            channel: (node) => this.InsertChannel(node, msg, true),
             emoji: (node) => this.InsertEmoji(node), // are post-inserted
-            role: (node) => this.InsertRoleHTML(node, msg),
-            user: (node) => this.InsertUserHTML(node, msg),
+            role: (node) => this.InsertRole(node, msg, true),
+            user: (node) => this.InsertUser(node, msg, true),
         };
     }
 }
