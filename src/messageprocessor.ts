@@ -7,19 +7,12 @@ import { Util } from "./util";
 import { Log } from "./log";
 const log = new Log("MessageProcessor");
 
-const USER_REGEX = /<@!?([0-9]*)>/g;
-const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
-const CHANNEL_REGEX = /<#?([0-9]*)>/g;
-const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
-const EMOJI_SIZE = 32;
-const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
-const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-
 const MXC_INSERT_REGEX = /\x01(\w+)\x01([01])\x01([0-9]*)\x01/g;
 const NAME_MXC_INSERT_REGEX_GROUP = 1;
 const ANIMATED_MXC_INSERT_REGEX_GROUP = 2;
 const ID_MXC_INSERT_REGEX_GROUP = 3;
+const EMOJI_SIZE = 32;
 
 export class MessageProcessorOpts {
     constructor(readonly domain: string, readonly bot?: DiscordBot) {
