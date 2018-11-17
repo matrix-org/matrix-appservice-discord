@@ -101,6 +101,36 @@ describe("MessageProcessor", () => {
             Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
                 "</h5><p>Description</p>");
         });
+        it("should ignore same-url embeds", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                {
+                    author: {} as any,
+                    client: {} as any,
+                    color: {} as any,
+                    createdAt: {} as any,
+                    createdTimestamp: {} as any,
+                    description: "Description",
+                    fields: {} as any,
+                    footer: {} as any,
+                    hexColor: {} as any,
+                    image: {} as any,
+                    message: {} as any,
+                    provider: {} as any,
+                    thumbnail: {} as any,
+                    title: "Title",
+                    type: {} as any,
+                    url: "http://example.com",
+                    video: {} as any,
+                },
+            ];
+            msg.content = "message http://example.com";
+            const result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "message http://example.com");
+            Chai.assert.equal(result.formattedBody, "<p>message <a href=\"http://example.com\">" +
+                "http://example.com</a></p>");
+        });
     });
     describe("FormatEdit", () => {
         it("should format basic edits appropriately", async () => {

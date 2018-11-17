@@ -105,6 +105,9 @@ export class MessageProcessor {
             if (embed.title === undefined && embed.description === undefined) {
                 continue;
             }
+            if (this.isEmbedInBody(msg, embed)) {
+                continue;
+            }
             let embedContent = "\n\n----"; // Horizontal rule. Two to make sure the content doesn't become a title.
             const embedTitle = embed.url ? `[${embed.title}](${embed.url})` : embed.title;
             if (embedTitle) {
@@ -121,6 +124,9 @@ export class MessageProcessor {
     public InsertEmbedsPostmark(content: string, msg: Discord.Message): string {
         for (const embed of msg.embeds) {
             if (embed.title === undefined && embed.description === undefined) {
+                continue;
+            }
+            if (this.isEmbedInBody(msg, embed)) {
                 continue;
             }
             let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
@@ -235,6 +241,13 @@ export class MessageProcessor {
             results = EMOJI_REGEX_POSTMARK.exec(content);
         }
         return content;
+    }
+
+    private isEmbedInBody(msg: Discord.Message, embed: Discord.MessageEmbed): boolean {
+        if (!embed.url) {
+            return false;
+        }
+        return msg.content.includes(embed.url);
     }
 }
 
