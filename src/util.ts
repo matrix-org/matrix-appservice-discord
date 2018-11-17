@@ -71,7 +71,7 @@ export class Util {
         let contenttype;
         name = name || null;
         try {
-            const buffer = (await (new Promise((resolve, reject) => {
+            const bufferRet = (await (new Promise((resolve, reject) => {
                 let ht;
                 if (url.startsWith("https")) {
                     ht = https;
@@ -105,8 +105,8 @@ export class Util {
                     reject(`Failed to download. ${err.code}`);
                 });
             }))) as Buffer;
-            const size = buffer.length;
-            const contentUri = await intent.getClient().uploadContent(buffer, {
+            const size = bufferRet.length;
+            const contentUri = await intent.getClient().uploadContent(bufferRet, {
                 name,
                 onlyContentUri: true,
                 rawResponse: false,
