@@ -581,38 +581,42 @@ export class DiscordBot {
                     await this.store.Insert(evt);
                 });
             });
-            if (msg.content !== null) {
-                const result = await this.msgProcessor.FormatDiscordMessage(msg);
-                await Util.AsyncForEach(rooms, async (room) => {
-                    const trySend = async () => intent.sendMessage(room, {
-                        body: result.body,
-                        format: "org.matrix.custom.html",
-                        formatted_body: result.formattedBody,
-                        msgtype: result.msgtype,
-                    });
-                    const afterSend = async (re) => {
-                        const evt = new DbEvent();
-                        evt.MatrixId = `${re.event_id};${room}`;
-                        evt.DiscordId = msg.id;
-                        evt.ChannelId = msg.channel.id;
-                        evt.GuildId = msg.guild.id;
-                        await this.store.Insert(evt);
-                    };
-                    let res;
-                    try {
-                        res = await trySend();
-                        await afterSend(res);
-                    } catch (e) {
-                        if (e.errcode !== "M_FORBIDDEN") {
-                            log.error("DiscordBot", "Failed to send message into room.", e);
-                            return;
-                        }
-                        await this.userSync.JoinRoom(msg.member, room);
-                        res = await trySend();
-                        await afterSend(res);
-                    }
-                });
+            if (msg.content === null) {
+                return;
             }
+            const result = await this.msgProcessor.FormatDiscordMessage(msg);
+            if (!result.body) {
+                return;
+            }
+            await Util.AsyncForEach(rooms, async (room) => {
+                const trySend = async () => intent.sendMessage(room, {
+                    body: result.body,
+                    format: "org.matrix.custom.html",
+                    formatted_body: result.formattedBody,
+                    msgtype: result.msgtype,
+                });
+                const afterSend = async (re) => {
+                    const evt = new DbEvent();
+                    evt.MatrixId = `${re.event_id};${room}`;
+                    evt.DiscordId = msg.id;
+                    evt.ChannelId = msg.channel.id;
+                    evt.GuildId = msg.guild.id;
+                    await this.store.Insert(evt);
+                };
+                let res;
+                try {
+                    res = await trySend();
+                    await afterSend(res);
+                } catch (e) {
+                    if (e.errcode !== "M_FORBIDDEN") {
+                        log.error("DiscordBot", "Failed to send message into room.", e);
+                        return;
+                    }
+                    await this.userSync.JoinRoom(msg.member, room);
+                    res = await trySend();
+                    await afterSend(res);
+                }
+            });
         } catch (err) {
             log.verbose("Failed to send message into room.", err);
         }
