@@ -87,7 +87,7 @@ function createRH(opts: any = {}) {
         },
     };
     const us = {
-        EnsureJoin: async () => { },
+        JoinRoom: async () => { USERSJOINED++; },
         OnMemberState: async () => {
             USERSYNC_HANDLED = true;
         },
@@ -155,6 +155,7 @@ function createRH(opts: any = {}) {
         getStateEvent: async () => {
             return opts.powerLevels || {};
         },
+        getUserId: () => "@user:localhost",
         joinRoom: async () => {
             USERSJOINED++;
         },

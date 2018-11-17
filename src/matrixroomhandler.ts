@@ -106,9 +106,8 @@ export class MatrixRoomHandler {
                     log.warn("OnAliasQueried", `Failed to update profile of user ${member.id}`, err);
                 }
                 log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
-                await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId);
-                // set the correct discord guild name
-                await this.discord.UserSyncroniser.EnsureJoin(member, roomId);
+
+                await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId, member);
             })());
             delay += this.config.limits.roomGhostJoinDelay;
         }
@@ -562,11 +561,15 @@ export class MatrixRoomHandler {
         };
     }
 
-    private async joinRoom(intent: Intent, roomIdOrAlias: string): Promise<void> {
+    private async joinRoom(intent: Intent, roomIdOrAlias: string, member?: Discord.GuildMember): Promise<void> {
         let currentSchedule = JOIN_ROOM_SCHEDULE[0];
         const doJoin = async () => {
             await Util.DelayedPromise(currentSchedule);
-            await intent.getClient().joinRoom(roomIdOrAlias);
+            if (member) {
+                await this.discord.UserSyncroniser.JoinRoom(member, roomIdOrAlias);
+            } else {
+                await intent.getClient().joinRoom(roomIdOrAlias);
+            }
         };
         const errorHandler = async (err) => {
             log.error(`Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
