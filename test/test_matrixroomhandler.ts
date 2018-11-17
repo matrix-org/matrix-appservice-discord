@@ -521,7 +521,7 @@ describe("MatrixRoomHandler", () => {
                     }});
                 const context = {rooms: {}};
                 const evt = await handler.ProcessCommand({
-                    content: {body: "!discord bridge 123 456"},
+                    content: {body: "!discord bridge 123/456"},
                     room_id: "!123:localhost",
                 }, context);
                 expect(evt.body).equals("I have bridged this room to your channel");
