@@ -68,12 +68,14 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         controller: {
             // onUserQuery: userQuery,
             onAliasQueried: async (alias: string, roomId: string) => {
-                try { await roomhandler.OnAliasQueried.bind(roomhandler); }
-                catch (err) { log.error("onAliasQueried", err); }
+                try {
+                    await roomhandler.OnAliasQueried.bind(roomhandler);
+                } catch (err) { log.error("onAliasQueried", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string) => {
-                try { await roomhandler.OnAliasQuery.bind(roomhandler); }
-                catch (err) { log.error("onAliasQuery", err); }
+                try {
+                    await roomhandler.OnAliasQuery.bind(roomhandler);
+                } catch (err) { log.error("onAliasQuery", err); }
             },
             onEvent: async (request, context) => {
                 try {

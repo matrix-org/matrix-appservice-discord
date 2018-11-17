@@ -104,36 +104,43 @@ export class DiscordBot {
 
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (c, u) => {
-                try { await this.OnTyping(c, u, true); }
-                catch (err) { log.error("typingStart", err); }
+                try {
+                    await this.OnTyping(c, u, true);
+                } catch (err) { log.error("typingStart", err); }
             });
             client.on("typingStop", async (c, u) => {
-                try { await this.OnTyping(c, u, false); }
-                catch (err) { log.error("typingStop", err); }
+                try {
+                    await this.OnTyping(c, u, false);
+                } catch (err) { log.error("typingStop", err); }
             });
         }
         if (!this.config.bridge.disablePresence) {
             client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
-                try { this.presenceHandler.EnqueueUser(newMember.user); }
-                catch (err) { log.error("presenceUpdate", err); }
+                try {
+                    this.presenceHandler.EnqueueUser(newMember.user);
+                } catch (err) { log.error("presenceUpdate", err); }
             });
         }
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
         client.on("channelUpdate", async (_, newChannel) => {
-            try { await this.channelSync.OnUpdate(newChannel); }
-            catch (err) { log.error("channelUpdate", err); }
+            try {
+                await this.channelSync.OnUpdate(newChannel);
+            } catch (err) { log.error("channelUpdate", err); }
         });
         client.on("channelDelete", async (channel) => {
-            try { await this.channelSync.OnDelete(channel); }
-            catch (err) { log.error("channelDelete", err); }
+            try {
+                await this.channelSync.OnDelete(channel);
+            } catch (err) { log.error("channelDelete", err); }
         });
         client.on("guildUpdate", async (_, newGuild) => {
-            try { await this.channelSync.OnGuildUpdate(newGuild); }
-            catch (err) { log.error("guildUpdate", err); }
+            try {
+                await this.channelSync.OnGuildUpdate(newGuild);
+            } catch (err) { log.error("guildUpdate", err); }
         });
         client.on("guildDelete", async (guild) => {
-            try { await this.channelSync.OnGuildDelete(guild); }
-            catch (err) { log.error("guildDelete", err); }
+            try {
+                await this.channelSync.OnGuildDelete(guild);
+            } catch (err) { log.error("guildDelete", err); }
         });
 
         // Due to messages often arriving before we get a response from the send call,
@@ -188,20 +195,24 @@ export class DiscordBot {
 
         this.userSync = new UserSyncroniser(this.bridge, this.config, this);
         client.on("userUpdate", async (_, user) => {
-            try { await this.userSync.OnUpdateUser(user); }
-            catch (err) { log.error("userUpdate", err); }
+            try {
+                await this.userSync.OnUpdateUser(user);
+            } catch (err) { log.error("userUpdate", err); }
         });
         client.on("guildMemberAdd", async (user) => {
-            try { await this.userSync.OnAddGuildMember(user); }
-            catch (err) { log.error("guildMemberAdd", err); }
+            try {
+                await this.userSync.OnAddGuildMember(user);
+            } catch (err) { log.error("guildMemberAdd", err); }
         });
         client.on("guildMemberRemove", async (user) =>  {
-            try { await this.userSync.OnRemoveGuildMember(user); }
-            catch (err) { log.error("guildMemberRemove", err); }
+            try {
+                await this.userSync.OnRemoveGuildMember(user);
+            } catch (err) { log.error("guildMemberRemove", err); }
         });
         client.on("guildMemberUpdate", async (oldUser, newUser) => {
-            try { await this.userSync.OnUpdateGuildMember(oldUser, newUser); }
-            catch (err) { log.error("guildMemberUpdate", err); }
+            try {
+                await this.userSync.OnUpdateGuildMember(oldUser, newUser);
+            } catch (err) { log.error("guildMemberUpdate", err); }
         });
         client.on("debug", (msg) => { jsLog.verbose(msg); });
         client.on("error", (msg) => { jsLog.error(msg); });
