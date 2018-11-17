@@ -175,7 +175,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            const content = { id: 12345 };
+            const content = { id: "12345" };
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "@_discord_12345:localhost");
 
@@ -189,7 +189,7 @@ describe("MessageProcessor", () => {
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            const content = { id: 12345 };
+            const content = { id: "12345" };
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "TestUsername");
 
@@ -203,7 +203,7 @@ describe("MessageProcessor", () => {
             guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            const content = { id: 12345 };
+            const content = { id: "12345" };
             let reply = processor.InsertUser(content, msg);
             Chai.assert.equal(reply, "TestNickname");
 
@@ -218,7 +218,7 @@ describe("MessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             const msg = new MockMessage(channel) as any;
-            const content = { id: 123456789 };
+            const content = { id: "123456789" };
             let reply = processor.InsertChannel(content, msg);
             Chai.assert.equal(reply, "#123456789");
 
@@ -232,7 +232,7 @@ describe("MessageProcessor", () => {
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
             const msg = new MockMessage(channel) as any;
-            const content = { id: 456 };
+            const content = { id: "456" };
             let reply = processor.InsertChannel(content, msg);
             Chai.assert.equal(reply, "#TestChannel");
 
@@ -250,7 +250,7 @@ describe("MessageProcessor", () => {
             const role = new MockRole("5678", "role");
             guild.roles.set("5678", role);
             const msg = new MockMessage(channel) as any;
-            const content = { id: 1234 };
+            const content = { id: "1234" };
             let reply = processor.InsertRole(content, msg);
             Chai.assert.equal(reply, "<@&1234>");
 
@@ -266,7 +266,7 @@ describe("MessageProcessor", () => {
             const role = new MockRole("1234", "role", ROLE_COLOR);
             guild.roles.set("1234", role);
             const msg = new MockMessage(channel) as any;
-            const content = { id: 1234 };
+            const content = { id: "1234" };
             let reply = processor.InsertRole(content, msg);
             Chai.assert.equal(reply, "@role");
 
@@ -279,7 +279,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const content = {
                 animated: false,
-                id: 1234,
+                id: "1234",
                 name: "blah",
             };
             const reply = processor.InsertEmoji(content);
@@ -289,7 +289,7 @@ describe("MessageProcessor", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const content = {
                 animated: true,
-                id: 1234,
+                id: "1234",
                 name: "blah",
             };
             const reply = processor.InsertEmoji(content);

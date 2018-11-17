@@ -27,7 +27,7 @@ export class MessageProcessorMatrixResult {
 }
 
 interface IDiscordNode {
-    id: number;
+    id: string;
 }
 
 interface IEmojiNode extends IDiscordNode {
@@ -130,7 +130,7 @@ export class MessageProcessor {
 
     public InsertUser(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
-        const member = msg.guild.members.get(id.toString());
+        const member = msg.guild.members.get(id);
         const memberId = `@_discord_${id}:${this.opts.domain}`;
         const memberName = member ? member.displayName : memberId;
         if (!html) {
@@ -141,7 +141,7 @@ export class MessageProcessor {
 
     public InsertChannel(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
-        const channel = msg.guild.channels.get(id.toString());
+        const channel = msg.guild.channels.get(id);
         const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
         if (!html) {
             return channelStr;
@@ -152,7 +152,7 @@ export class MessageProcessor {
 
     public InsertRole(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
-        const role = msg.guild.roles.get(id.toString());
+        const role = msg.guild.roles.get(id);
         if (!role) {
             return html ? `&lt;@&amp;${id}&gt;` : `<@&${id}>`;
         }
