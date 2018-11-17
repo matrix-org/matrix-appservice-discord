@@ -5,6 +5,7 @@ import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
+import { MockRole } from "./mocks/role";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -42,7 +43,7 @@ describe("MessageProcessor", () => {
             msg.content = "Hello *World*!";
             const result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "Hello *World*!");
-            Chai.assert.equal(result.formattedBody, "<p>Hello <em>World</em>!</p>");
+            Chai.assert.equal(result.formattedBody, "Hello <em>World</em>!");
         });
         it("processes non-discord markdown correctly.", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -51,14 +52,14 @@ describe("MessageProcessor", () => {
             msg.content = "> inb4 tests";
             let result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "> inb4 tests");
-            Chai.assert.equal(result.formattedBody, "<p>&gt; inb4 tests</p>");
+            Chai.assert.equal(result.formattedBody, "&gt; inb4 tests");
 
             msg.embeds = [];
             msg.content = "[test](http://example.com)";
             result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "[test](http://example.com)");
             Chai.assert.equal(result.formattedBody,
-                "<p>[test](<a href=\"http://example.com\">http://example.com</a>)</p>");
+                "[test](<a href=\"http://example.com\">http://example.com</a>)");
         });
         it("processes discord-specific markdown correctly.", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -67,7 +68,7 @@ describe("MessageProcessor", () => {
             msg.content = "_ italic _";
             const result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "_ italic _");
-            Chai.assert.equal(result.formattedBody, "<p><em> italic </em></p>");
+            Chai.assert.equal(result.formattedBody, "<em> italic </em>");
         });
     });
     describe("FormatEmbeds", () => {
@@ -98,8 +99,8 @@ describe("MessageProcessor", () => {
             msg.content = "message";
             const result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
-            Chai.assert.equal(result.formattedBody, "<p>message</p><hr><h5><a href=\"http://example.com\">Title</a>" +
-                "</h5><p>Description</p>");
+            Chai.assert.equal(result.formattedBody, "message<hr><h5><a href=\"http://example.com\">Title</a>" +
+                "</h5>Description");
         });
         it("should ignore same-url embeds", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -146,7 +147,7 @@ describe("MessageProcessor", () => {
 
             const result = await processor.FormatEdit(oldMsg, newMsg);
             Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
-            Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a</del> -&gt; b</p>");
+            Chai.assert.equal(result.formattedBody, "<em>edit:</em> <del>a</del> -&gt; b");
         });
 
         it("should format markdown heavy edits apropriately", async () => {
@@ -162,21 +163,25 @@ describe("MessageProcessor", () => {
 
             const result = await processor.FormatEdit(oldMsg, newMsg);
             Chai.assert.equal(result.body, "*edit:* ~~a slice of **cake**~~ -> *a* slice of cake");
-            Chai.assert.equal(result.formattedBody, "<p><em>edit:</em> <del>a slice of <strong>" +
-              "cake</strong></del> -&gt; <em>a</em> slice of cake</p>");
+            Chai.assert.equal(result.formattedBody, "<em>edit:</em> <del>a slice of <strong>" +
+              "cake</strong></del> -&gt; <em>a</em> slice of cake");
         });
 
     });
 
-    describe("ReplaceMembers", () => {
+    describe("InsertUser / HTML", () => {
         it("processes members missing from the guild correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <@!12345>";
-            content = processor.ReplaceMembers(content, msg);
-            Chai.assert.equal(content, "Hello @_discord_12345:localhost");
+            const content = { id: 12345 };
+            let reply = processor.InsertUser(content, msg);
+            Chai.assert.equal(reply, "@_discord_12345:localhost");
+
+            reply = processor.InsertUser(content, msg, true);
+            Chai.assert.equal(reply,
+                "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
         });
         it("processes members with usernames correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -184,9 +189,13 @@ describe("MessageProcessor", () => {
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <@!12345>";
-            content = processor.ReplaceMembers(content, msg);
-            Chai.assert.equal(content, "Hello TestUsername");
+            const content = { id: 12345 };
+            let reply = processor.InsertUser(content, msg);
+            Chai.assert.equal(reply, "TestUsername");
+
+            reply = processor.InsertUser(content, msg, true);
+            Chai.assert.equal(reply,
+                "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
         });
         it("processes members with nickname correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -194,43 +203,28 @@ describe("MessageProcessor", () => {
             guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
             const channel = new Discord.TextChannel(guild, {});
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <@!12345>";
-            content = processor.ReplaceMembers(content, msg);
-            Chai.assert.equal(content, "Hello TestNickname");
+            const content = { id: 12345 };
+            let reply = processor.InsertUser(content, msg);
+            Chai.assert.equal(reply, "TestNickname");
+
+            reply = processor.InsertUser(content, msg, true);
+            Chai.assert.equal(reply,
+                "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestNickname</a>");
         });
     });
-    describe("ReplaceMembersPostmark", () => {
-        it("processes members missing from the guild correctly", () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {});
-            const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;@!12345&gt;";
-            content = processor.ReplaceMembersPostmark(content, msg);
-            Chai.assert.equal(content,
-                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
-        });
-        it("processes members with usernames correctly", () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {});
-            const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;@!12345&gt;";
-            content = processor.ReplaceMembersPostmark(content, msg);
-            Chai.assert.equal(content,
-                "Hello <a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
-        });
-    });
-    describe("ReplaceChannels", () => {
+    describe("InsertChannel / HTML", () => {
         it("processes unknown channel correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <#123456789>";
-            content = processor.ReplaceChannels(content, msg);
-            Chai.assert.equal(content, "Hello #123456789");
+            const content = { id: 123456789 };
+            let reply = processor.InsertChannel(content, msg);
+            Chai.assert.equal(reply, "#123456789");
+
+            reply = processor.InsertChannel(content, msg, true);
+            Chai.assert.equal(reply,
+                "<a href=\"https://matrix.to/#/#_discord_123_123456789:localhost\">#123456789</a>");
         });
         it("processes channels correctly", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -238,43 +232,82 @@ describe("MessageProcessor", () => {
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <#456>";
-            content = processor.ReplaceChannels(content, msg);
-            Chai.assert.equal(content, "Hello #TestChannel");
+            const content = { id: 456 };
+            let reply = processor.InsertChannel(content, msg);
+            Chai.assert.equal(reply, "#TestChannel");
+
+            reply = processor.InsertChannel(content, msg, true);
+            Chai.assert.equal(reply,
+                "<a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
         });
     });
-    describe("ReplaceChannelsPostmark", () => {
-        it("processes unknown channel correctly", () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;#123456789&gt;";
-            content = processor.ReplaceChannelsPostmark(content, msg);
-            Chai.assert.equal(content,
-                "Hello <a href=\"https://matrix.to/#/#_discord_123_123456789:localhost\">#123456789</a>");
-        });
-        it("processes channels correctly", () => {
+    describe("InsertRole / HTML", () => {
+        it("ignores unknown roles", () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
+            const role = new MockRole("5678", "role");
+            guild.roles.set("5678", role);
             const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;#456&gt;";
-            content = processor.ReplaceChannelsPostmark(content, msg);
-            Chai.assert.equal(content,
-                "Hello <a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
+            const content = { id: 1234 };
+            let reply = processor.InsertRole(content, msg);
+            Chai.assert.equal(reply, "<@&1234>");
+
+            reply = processor.InsertRole(content, msg, true);
+            Chai.assert.equal(reply, "&lt;@&amp;1234&gt;");
+        });
+        it("parses known roles", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const ROLE_COLOR = 0xDEAD88;
+            const role = new MockRole("1234", "role", ROLE_COLOR);
+            guild.roles.set("1234", role);
+            const msg = new MockMessage(channel) as any;
+            const content = { id: 1234 };
+            let reply = processor.InsertRole(content, msg);
+            Chai.assert.equal(reply, "@role");
+
+            reply = processor.InsertRole(content, msg, true);
+            Chai.assert.equal(reply, "<span data-mx-color=\"#dead88\"><strong>@role</strong></span>");
         });
     });
-    describe("ReplaceEmoji", () => {
+    describe("InsertEmoji", () => {
+        it("inserts static emojis to their post-parse flag", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const content = {
+                animated: false,
+                id: 1234,
+                name: "blah",
+            };
+            const reply = processor.InsertEmoji(content);
+            Chai.assert.equal(reply, "\x01blah\x010\x011234\x01");
+        });
+        it("inserts animated emojis to their post-parse flag", () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const content = {
+                animated: true,
+                id: 1234,
+                name: "blah",
+            };
+            const reply = processor.InsertEmoji(content);
+            Chai.assert.equal(reply, "\x01blah\x011\x011234\x01");
+        });
+    });
+    describe("InsertMxcImages / HTML", () => {
         it("processes unknown emoji correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <:hello:123456789>";
-            content = await processor.ReplaceEmoji(content, msg);
-            Chai.assert.equal(content, "Hello <:hello:123456789>");
+            const content = "Hello \x01hello\x010\x01123456789\x01";
+            let reply = await processor.InsertMxcImages(content, msg);
+            Chai.assert.equal(reply, "Hello <:hello:123456789>");
+
+            reply = await processor.InsertMxcImages(content, msg, true);
+            Chai.assert.equal(reply, "Hello &lt;:hello:123456789&gt;");
         });
         it("processes emoji correctly", async () => {
             const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -282,30 +315,12 @@ describe("MessageProcessor", () => {
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
             const msg = new MockMessage(channel) as any;
-            let content = "Hello <:hello:3333333>";
-            content = await processor.ReplaceEmoji(content, msg);
-            Chai.assert.equal(content, "Hello :hello:");
-        });
-    });
-    describe("ReplaceEmojiPostmark", () => {
-        it("processes unknown emoji correctly", async () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;:hello:123456789&gt;";
-            content = await processor.ReplaceEmojiPostmark(content, msg);
-            Chai.assert.equal(content, "Hello &lt;:hello:123456789&gt;");
-        });
-        it("processes emoji correctly", async () => {
-            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
-            const msg = new MockMessage(channel) as any;
-            let content = "Hello &lt;:hello:3333333&gt;";
-            content = await processor.ReplaceEmojiPostmark(content, msg);
-            Chai.assert.equal(content, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
+            const content = "Hello \x01hello\x010\x013333333\x01";
+            let reply = await processor.InsertMxcImages(content, msg);
+            Chai.assert.equal(reply, "Hello :hello:");
+
+            reply = await processor.InsertMxcImages(content, msg, true);
+            Chai.assert.equal(reply, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertEmbeds", () => {

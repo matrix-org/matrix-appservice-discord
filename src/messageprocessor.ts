@@ -1,48 +1,18 @@
 import * as Discord from "discord.js";
-import * as marked from "marked";
+import * as markdown from "discord-markdown";
 import { DiscordBot } from "./bot";
 import * as escapeHtml from "escape-html";
+import { Util } from "./util";
 
 import { Log } from "./log";
 const log = new Log("MessageProcessor");
 
-const USER_REGEX = /<@!?([0-9]*)>/g;
-const USER_REGEX_POSTMARK = /&lt;@!?([0-9]*)&gt;/g;
-const CHANNEL_REGEX = /<#?([0-9]*)>/g;
-const CHANNEL_REGEX_POSTMARK = /&lt;#?([0-9]*)&gt;/g;
-const EMOJI_SIZE = 32;
-const EMOJI_REGEX = /<(a?):(\w+):([0-9]*)>/g;
-const EMOJI_REGEX_POSTMARK = /&lt;(a?):(\w+):([0-9]*)&gt;/g;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-
-const ANIMATED_EMOJI_REGEX_GROUP = 1;
-const NAME_EMOJI_REGEX_GROUP = 2;
-const ID_EMOJI_REGEX_GROUP = 3;
-
-function _setupMarked() {
-    marked.setOptions({
-        sanitize: true,
-        tables: false,
-    });
-
-    const markedLexer = new marked.Lexer();
-    // as discord doesn't support these markdown rules
-    // we want to disable them by setting their regexes to non-matchable ones
-    // deleting the regexes would lead to marked-internal errors
-    for (const r of ["hr", "heading", "lheading", "blockquote", "list", "item", "bullet", "def", "table", "lheading"]) {
-        markedLexer.rules[r] = /$^/;
-    }
-    // paragraph-end matching is different, as we don't have headers and thelike
-    markedLexer.rules.paragraph = /^((?:[^\n]+\n\n)+)\n*/;
-
-    const markedInlineLexer = new marked.InlineLexer(true);
-    // same again, remove tags discord doesn't support
-    for (const r of ["tag", "link", "reflink", "nolink", "br"]) {
-        markedInlineLexer.rules[r] = /$^/;
-    }
-    // discords em for underscores supports if there are spaces around the underscores, thus change that
-    markedInlineLexer.rules.em = /^_([^_](?:[^_]|__)*?[^_]?)_\b|^\*((?:\*\*|[^*])+?)\*(?!\*)/;
-}
+const MXC_INSERT_REGEX = /\x01(\w+)\x01([01])\x01([0-9]*)\x01/g;
+const NAME_MXC_INSERT_REGEX_GROUP = 1;
+const ANIMATED_MXC_INSERT_REGEX_GROUP = 2;
+const ID_MXC_INSERT_REGEX_GROUP = 3;
+const EMOJI_SIZE = 32;
 
 export class MessageProcessorOpts {
     constructor(readonly domain: string, readonly bot?: DiscordBot) {
@@ -54,6 +24,15 @@ export class MessageProcessorMatrixResult {
     public formattedBody: string;
     public body: string;
     public msgtype: string;
+}
+
+interface IDiscordNode {
+    id: number;
+}
+
+interface IEmojiNode extends IDiscordNode {
+    animated: boolean;
+    name: string;
 }
 
 export class MessageProcessor {
@@ -74,19 +53,21 @@ export class MessageProcessor {
 
         // for the formatted body we need to parse markdown first
         // as else it'll HTML escape the result of the discord syntax
-        let contentPostmark = marked(content).replace(/\n/g, "<br>").replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
+        let contentPostmark = markdown.toHTML(content, {
+            discordCallback: this.getDiscordParseCallbacksHTML(msg),
+        });
 
         // parse the plain text stuff
+        content = markdown.toHTML(content, {
+            discordCallback: this.getDiscordParseCallbacks(msg),
+            discordOnly: true,
+        });
         content = this.InsertEmbeds(content, msg);
-        content = this.ReplaceMembers(content, msg);
-        content = this.ReplaceChannels(content, msg);
-        content = await this.ReplaceEmoji(content, msg);
+        content = await this.InsertMxcImages(content, msg);
 
         // parse postmark stuff
         contentPostmark = this.InsertEmbedsPostmark(contentPostmark, msg);
-        contentPostmark = this.ReplaceMembersPostmark(contentPostmark, msg);
-        contentPostmark = this.ReplaceChannelsPostmark(contentPostmark, msg);
-        contentPostmark = await this.ReplaceEmojiPostmark(contentPostmark, msg);
+        contentPostmark = await this.InsertMxcImages(contentPostmark, msg, true);
 
         result.body = content;
         result.formattedBody = contentPostmark;
@@ -137,108 +118,86 @@ export class MessageProcessor {
                 embedContent += `<h5>${embedTitle}</h5>`; // h5 is probably best.
             }
             if (embed.description) {
-                embedContent += marked(embed.description).replace(/\n/g, "<br>")
-                    .replace(/(<br>)?<\/p>(<br>)?/g, "</p>");
+                embedContent += markdown.toHTML(embed.description, {
+                    discordCallback: this.getDiscordParseCallbacksHTML(msg),
+                    embed: true,
+                });
             }
             content += embedContent;
         }
         return content;
     }
 
-    public ReplaceMembers(content: string, msg: Discord.Message): string {
-        let results = USER_REGEX.exec(content);
-        while (results !== null) {
-            const id = results[1];
-            const member = msg.guild.members.get(id);
-            const memberId = `@_discord_${id}:${this.opts.domain}`;
-            const memberStr = member ? (member.displayName) : memberId;
-            content = content.replace(results[0], memberStr);
-            results = USER_REGEX.exec(content);
+    public InsertUser(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
+        const id = node.id;
+        const member = msg.guild.members.get(id.toString());
+        const memberId = `@_discord_${id}:${this.opts.domain}`;
+        const memberName = member ? member.displayName : memberId;
+        if (!html) {
+            return memberName;
         }
-        return content;
+        return `<a href="${MATRIX_TO_LINK}${escapeHtml(memberId)}">${escapeHtml(memberName)}</a>`;
     }
 
-    public ReplaceMembersPostmark(content: string, msg: Discord.Message): string {
-        let results = USER_REGEX_POSTMARK.exec(content);
-        while (results !== null) {
-            const id = results[1];
-            const member = msg.guild.members.get(id);
-            const memberId = escapeHtml(`@_discord_${id}:${this.opts.domain}`);
-            let memberName = memberId;
-            if (member) {
-                memberName = escapeHtml(member.displayName);
-            }
-            const memberStr = `<a href="${MATRIX_TO_LINK}${memberId}">${memberName}</a>`;
-            content = content.replace(results[0], memberStr);
-            results = USER_REGEX_POSTMARK.exec(content);
+    public InsertChannel(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
+        const id = node.id;
+        const channel = msg.guild.channels.get(id.toString());
+        const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
+        if (!html) {
+            return channelStr;
         }
-        return content;
+        const roomId = escapeHtml(`#_discord_${msg.guild.id}_${id}:${this.opts.domain}`);
+        return `<a href="${MATRIX_TO_LINK}${roomId}">${escapeHtml(channelStr)}</a>`;
     }
 
-    public ReplaceChannels(content: string, msg: Discord.Message): string {
-        let results = CHANNEL_REGEX.exec(content);
-        while (results !== null) {
-            const id = results[1];
-            const channel = msg.guild.channels.get(id);
-            const channelStr = channel ? "#" + channel.name : "#" + id;
-            content = content.replace(results[0], channelStr);
-            results = CHANNEL_REGEX.exec(content);
+    public InsertRole(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
+        const id = node.id;
+        const role = msg.guild.roles.get(id.toString());
+        if (!role) {
+            return html ? `&lt;@&amp;${id}&gt;` : `<@&${id}>`;
         }
-        return content;
+        if (!html) {
+            return `@${role.name}`;
+        }
+        const color = Util.NumberToHTMLColor(role.color);
+        return `<span data-mx-color="${color}"><strong>@${escapeHtml(role.name)}</strong></span>`;
     }
 
-    public ReplaceChannelsPostmark(content: string, msg: Discord.Message): string {
-        let results = CHANNEL_REGEX_POSTMARK.exec(content);
-        while (results !== null) {
-            const id = results[1];
-            const channel = msg.guild.channels.get(id);
-            const roomId = escapeHtml(`#_discord_${msg.guild.id}_${id}:${this.opts.domain}`);
-            const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
-            const replaceStr = `<a href="${MATRIX_TO_LINK}${roomId}">${channelStr}</a>`;
-            content = content.replace(results[0], replaceStr);
-            results = CHANNEL_REGEX_POSTMARK.exec(content);
-        }
-        return content;
+    public InsertEmoji(node: IEmojiNode): string {
+        // unfortunately these callbacks are sync, so we flag our url with some special stuff
+        // and later on grab the real url async
+        const FLAG = "\x01";
+        const name = escapeHtml(node.name);
+        return `${FLAG}${name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
     }
 
-    public async ReplaceEmoji(content: string, msg: Discord.Message): Promise<string> {
-        let results = EMOJI_REGEX.exec(content);
+    public async InsertMxcImages(content: string, msg: Discord.Message, html: boolean = false): Promise<string> {
+        let results = MXC_INSERT_REGEX.exec(content);
         while (results !== null) {
-            const animated = results[ANIMATED_EMOJI_REGEX_GROUP] === "a";
-            const name = results[NAME_EMOJI_REGEX_GROUP];
-            const id = results[ID_EMOJI_REGEX_GROUP];
+            const name = results[NAME_MXC_INSERT_REGEX_GROUP];
+            const animated = results[ANIMATED_MXC_INSERT_REGEX_GROUP] === "1";
+            const id = results[ID_MXC_INSERT_REGEX_GROUP];
+            let replace = "";
             try {
-                // we still fetch the mxcUrl to check if the emoji is valid=
                 const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
-                content = content.replace(results[0], `:${name}:`);
+                if (html) {
+                    replace = `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
+                } else {
+                    replace = `:${name}:`;
+                }
             } catch (ex) {
                 log.warn(
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
+                if (html) {
+                    replace = `&lt;${animated ? "a" : ""}:${name}:${id}&gt;`;
+                } else {
+                    replace = `<${animated ? "a" : ""}:${name}:${id}>`;
+                }
             }
-
-            results = EMOJI_REGEX.exec(content);
-
-        }
-        return content;
-    }
-
-    public async ReplaceEmojiPostmark(content: string, msg: Discord.Message): Promise<string> {
-        let results = EMOJI_REGEX_POSTMARK.exec(content);
-        while (results !== null) {
-            const animated = results[ANIMATED_EMOJI_REGEX_GROUP] === "a";
-            const name = escapeHtml(results[NAME_EMOJI_REGEX_GROUP]);
-            const id = results[ID_EMOJI_REGEX_GROUP];
-            try {
-                const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
-                content = content.replace(results[0],
-                    `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`);
-            } catch (ex) {
-                log.warn(
-                    `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
-                );
-            }
-            results = EMOJI_REGEX_POSTMARK.exec(content);
+            content = content.replace(results[0],
+                replace);
+            results = MXC_INSERT_REGEX.exec(content);
         }
         return content;
     }
@@ -249,6 +208,22 @@ export class MessageProcessor {
         }
         return msg.content.includes(embed.url);
     }
-}
 
-_setupMarked();
+    private getDiscordParseCallbacks(msg: Discord.Message) {
+        return {
+            channel: (node) => this.InsertChannel(node, msg),
+            emoji: (node) => this.InsertEmoji(node),
+            role: (node) => this.InsertRole(node, msg),
+            user: (node) => this.InsertUser(node, msg),
+        };
+    }
+
+    private getDiscordParseCallbacksHTML(msg: Discord.Message) {
+        return {
+            channel: (node) => this.InsertChannel(node, msg, true),
+            emoji: (node) => this.InsertEmoji(node), // are post-inserted
+            role: (node) => this.InsertRole(node, msg, true),
+            user: (node) => this.InsertUser(node, msg, true),
+        };
+    }
+}
