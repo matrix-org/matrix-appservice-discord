@@ -263,8 +263,8 @@ export class MatrixRoomHandler {
                 });
             }
 
-            const minArgs = 2;
-            if (args.length < minArgs) {
+            const MAXARGS = 2;
+            if (args.length > MAXARGS || args.length < 1) {
                 return this.bridge.getIntent().sendMessage(event.room_id, {
                     body: "Invalid syntax. For more information try !discord help bridge",
                     msgtype: "m.notice",
