@@ -149,4 +149,11 @@ there are even more lines here.`);
             expect(reply).to.equal("Test\nwith\nhalfy");
         });
     });
+    describe("NumberToHTMLColor", () => {
+        it("Should work", () => {
+            const COLOR = 0xdeadaf;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#deadaf");
+        });
+    });
 });

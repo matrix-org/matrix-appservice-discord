@@ -255,6 +255,14 @@ export class Util {
             await callback(arr[i], i, arr);
         }
     }
+
+    public static NumberToHTMLColor(color: number): string {
+        const HEX_BASE = 16;
+        const colorHex = color.toString(HEX_BASE);
+        const pad = "#000000";
+        const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
+        return htmlColor;
+    }
 }
 
 interface IUploadResult {
