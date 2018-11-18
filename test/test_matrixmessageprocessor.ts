@@ -193,7 +193,8 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const channel = new MockChannel("12345", guild, "text", "SomeChannel");
             guild.channels.set("12345", channel as any);
-            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_12345:localhost\">#SomeChannel</a>");
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_12345:" +
+                "localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<#12345>");
         });
@@ -202,7 +203,7 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const channel = new MockChannel("12345", guild, "text", "SomeChannel");
             guild.channels.set("12345", channel as any);
-            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_789:localhost\">#SomeChannel</a>");
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_789:localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("#SomeChannel");
         });

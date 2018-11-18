@@ -96,7 +96,7 @@ export class MatrixMessageProcessor {
     }
 
     private parseChannel(id: string): string {
-        const CHANNEL_REGEX = /^#_discord_([0-9]*)/;
+        const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*)/;
         const match = id.match(CHANNEL_REGEX);
         if (!match || !this.guild.channels.get(match[1])) {
             return "";
