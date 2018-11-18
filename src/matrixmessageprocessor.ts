@@ -56,6 +56,7 @@ export class MatrixMessageProcessor {
         if (this.opts.disableHere) {
             msg = msg.replace(/@here/g, "@ here");
         }
+        msg = msg.replace(/@room/g, "@here");
         const escapeChars = ["\\", "*", "_", "~", "`"];
         escapeChars.forEach((char) => {
             msg = msg.replace(new RegExp("\\" + char, "g"), "\\" + char);

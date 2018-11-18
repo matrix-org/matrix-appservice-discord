@@ -66,6 +66,13 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("wow \\\\\\*this\\\\\\* is cool");
         });
+        it("Converts @room to @here", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("hey @room");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("hey @here");
+        });
     });
     describe("FormatMessage / formatted_body / simple", () => {
         it("leaves blank stuff untouched", async () => {
@@ -227,6 +234,13 @@ describe("MatrixMessageProcessor", () => {
             const msg = getHtmlMessage("<a href=\"http://example.com\"><em>yay?</em></a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("*yay?*");
+        });
+        it("Converts @room to @here", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("hey @room");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("hey @here");
         });
     });
     describe("FormatMessage / formatted_body / emoji", () => {
