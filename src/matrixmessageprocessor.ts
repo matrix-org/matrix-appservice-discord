@@ -130,24 +130,30 @@ export class MatrixMessageProcessor {
         const EMOTE_NAME_REGEX = /^:?(\w+):?/;
         const attrs = node.attributes;
         const name = attrs.alt || attrs.title || "";
-        const match = name.match(EMOTE_NAME_REGEX);
-        let emojiName = "";
-        if (match) {
-            emojiName = match[1];
-        }
-        let emoji = this.guild.emojis.find((e) => e.name === emojiName);
-        if (!emoji) {
-            if (!attrs.src) {
-                return this.escapeDiscord(name);
-            }
+        let emoji: Discord.Emoji | null = null;
+        // first check for matching mxc url
+        if (attrs.src) {
             let id = "";
             try {
                 const emojiDb = await this.bot.GetEmojiByMxc(attrs.src);
                 id = emojiDb.EmojiId;
+                emoji = this.guild.emojis.find((e) => e.id === id);
             } catch (e) {
-                return this.escapeDiscord(name);
+                emoji = null;
             }
-            emoji = this.guild.emojis.find((e) => e.id === id);
+        }
+        // nexc check for matching alt text / title
+        if (!emoji) {
+            const match = name.match(EMOTE_NAME_REGEX);
+            let emojiName = "";
+            if (match) {
+                emojiName = match[1];
+                emoji = this.guild.emojis.find((e) => e.name === emojiName);
+            }
+        }
+
+        if (!emoji) {
+            return this.escapeDiscord(name);
         }
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
     }
@@ -179,11 +185,13 @@ export class MatrixMessageProcessor {
                 case "code":
                     return `\`${nodeHtml.text}\``;
                 case "pre":
-                    return `\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
+                    return `\`\`\`${this.parsePreContent(nodeHtml)}\`\`\``;
                 case "a":
                     return await this.parsePillContent(nodeHtml);
                 case "img":
                     return await this.parseImageContent(nodeHtml);
+                case "br":
+                    return "\n";
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }

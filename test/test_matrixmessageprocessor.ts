@@ -122,14 +122,21 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<p>here</p><pre><code>is\ncode\n</code></pre><p>yay</p>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("here```\nis\ncode\n```\nyay");
+            expect(result).is.equal("here```\nis\ncode\n```yay");
         });
         it("converts multiline language code", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<p>here</p><pre><code class=\"language-js\">is\ncode\n</code></pre><p>yay</p>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("here```js\nis\ncode\n```\nyay");
+            expect(result).is.equal("here```js\nis\ncode\n```yay");
+        });
+        it("handles linebreaks", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("line<br>break");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("line\nbreak");
         });
     });
     describe("FormatMessage / formatted_body / complex", () => {
@@ -145,7 +152,7 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<pre><code>wow &amp;</code></pre>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("```\nwow &```\n");
+            expect(result).is.equal("```\nwow &```");
         });
         it("doesn't parse inside of code", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
@@ -159,7 +166,7 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<pre><code>*yay*</code></pre>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("```\n*yay*```\n");
+            expect(result).is.equal("```\n*yay*```");
         });
     });
     describe("FormatMessage / formatted_body / discord", () => {
