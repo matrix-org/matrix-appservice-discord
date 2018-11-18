@@ -1,5 +1,4 @@
 import * as Discord from "discord.js";
-import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";

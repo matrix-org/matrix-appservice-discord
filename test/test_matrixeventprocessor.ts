@@ -10,7 +10,6 @@ import { MockMember } from "./mocks/member";
 import { MockEmoji } from "./mocks/emoji";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
-import { MessageProcessor, MessageProcessorOpts } from "../src/messageprocessor";
 import { MockChannel } from "./mocks/channel";
 import { IMatrixEvent } from "../src/matrixtypes";
 

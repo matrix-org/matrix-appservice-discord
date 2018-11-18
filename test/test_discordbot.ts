@@ -3,7 +3,6 @@ import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
 import { Log } from "../src/log";
 
-import { MessageProcessorMatrixResult } from "../src/messageprocessor";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { DiscordBot } from "../src/bot";
