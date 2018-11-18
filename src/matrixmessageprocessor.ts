@@ -99,7 +99,7 @@ export class MatrixMessageProcessor {
         const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*)/;
         const match = id.match(CHANNEL_REGEX);
         if (!match || !this.guild.channels.get(match[1])) {
-            return "";
+            return MATRIX_TO_LINK + id;
         }
         return `<#${match[1]}>`;
     }

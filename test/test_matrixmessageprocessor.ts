@@ -198,14 +198,21 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<#12345>");
         });
-        it("Ignores invalid channel pills", async () => {
+        it("Handles invalid channel pills", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
             const guild = new MockGuild("1234");
             const channel = new MockChannel("12345", guild, "text", "SomeChannel");
             guild.channels.set("12345", channel as any);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_789:localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("#SomeChannel");
+            expect(result).is.equal("https://matrix.to/#/#_discord_1234_789:localhost");
+        });
+        it("Handles external channel pills", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#matrix:matrix.org\">#SomeChannel</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("https://matrix.to/#/#matrix:matrix.org");
         });
         it("Ignores links without href", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
