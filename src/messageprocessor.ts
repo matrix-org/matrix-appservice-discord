@@ -100,7 +100,7 @@ export class MessageProcessor {
                     discordCallback: this.getDiscordParseCallbacks(msg),
                     discordOnly: true,
                     escapeHTML: false,
-                });;
+                });
             }
             content += embedContent;
         }
