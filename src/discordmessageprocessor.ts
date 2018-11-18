@@ -46,7 +46,7 @@ export class DiscordMessageProcessor {
         }
     }
 
-    public async FormatDiscordMessage(msg: Discord.Message): Promise<DiscordMessageProcessorMatrixResult> {
+    public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageProcessorMatrixResult> {
         const result = new DiscordMessageProcessorMatrixResult();
 
         let content = msg.content;
@@ -81,7 +81,7 @@ export class DiscordMessageProcessor {
     ): Promise<DiscordMessageProcessorMatrixResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
         oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
-        return this.FormatDiscordMessage(oldMsg);
+        return this.FormatMessage(oldMsg);
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {

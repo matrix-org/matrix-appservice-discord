@@ -588,7 +588,7 @@ export class DiscordBot {
             if (msg.content === null) {
                 return;
             }
-            const result = await this.discordMsgProcessor.FormatDiscordMessage(msg);
+            const result = await this.discordMsgProcessor.FormatMessage(msg);
             if (!result.body) {
                 return;
             }

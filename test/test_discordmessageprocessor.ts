@@ -26,14 +26,14 @@ describe("DiscordMessageProcessor", () => {
             const mp = new DiscordMessageProcessor(new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
         });
     });
-    describe("FormatDiscordMessage", () => {
+    describe("FormatMessage", () => {
         it("processes plain text messages correctly", async () => {
             const processor = new DiscordMessageProcessor(
                 new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "Hello World!";
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert(result.body, "Hello World!");
             Chai.assert(result.formattedBody, "Hello World!");
         });
@@ -43,7 +43,7 @@ describe("DiscordMessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "Hello *World*!";
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "Hello *World*!");
             Chai.assert.equal(result.formattedBody, "Hello <em>World</em>!");
         });
@@ -53,13 +53,13 @@ describe("DiscordMessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "> inb4 tests";
-            let result = await processor.FormatDiscordMessage(msg);
+            let result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "> inb4 tests");
             Chai.assert.equal(result.formattedBody, "&gt; inb4 tests");
 
             msg.embeds = [];
             msg.content = "[test](http://example.com)";
-            result = await processor.FormatDiscordMessage(msg);
+            result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "[test](http://example.com)");
             Chai.assert.equal(result.formattedBody,
                 "[test](<a href=\"http://example.com\">http://example.com</a>)");
@@ -70,7 +70,7 @@ describe("DiscordMessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "_ italic _";
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "_ italic _");
             Chai.assert.equal(result.formattedBody, "<em> italic </em>");
         });
@@ -102,7 +102,7 @@ describe("DiscordMessageProcessor", () => {
                 },
             ];
             msg.content = "message";
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
             Chai.assert.equal(result.formattedBody, "message<hr><h5><a href=\"http://example.com\">Title</a>" +
                 "</h5>Description");
@@ -133,7 +133,7 @@ describe("DiscordMessageProcessor", () => {
                 },
             ];
             msg.content = "message http://example.com";
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "message http://example.com");
             Chai.assert.equal(result.formattedBody, "message <a href=\"http://example.com\">" +
                 "http://example.com</a>");
@@ -452,7 +452,7 @@ TestDescription`,
             msg.embeds = [];
             msg.content = "no bot";
             msg.author.bot = false;
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.msgtype, "m.text");
         });
         it("sets bot messages as m.notice", async () => {
@@ -462,7 +462,7 @@ TestDescription`,
             msg.embeds = [];
             msg.content = "a bot";
             msg.author.bot = true;
-            const result = await processor.FormatDiscordMessage(msg);
+            const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.msgtype, "m.notice");
         });
     });
