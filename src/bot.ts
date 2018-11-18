@@ -439,6 +439,14 @@ export class DiscordBot {
         return dbEmoji.MxcUrl;
     }
 
+    public async GetEmojiByMxc(mxc: string): Promise<DbEmoji> {
+        const dbEmoji = await this.store.Get(DbEmoji, {mxc_url: mxc});
+        if (!dbEmoji || !dbEmoji.Result) {
+            throw new Error("Couldn't fetch from store");
+        }
+        return dbEmoji;
+    }
+
     public async GetRoomIdsFromGuild(guild: string): Promise<string[]> {
         const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
             discord_guild: guild,

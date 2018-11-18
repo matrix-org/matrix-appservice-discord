@@ -12,11 +12,19 @@ export class DbEmoji implements IDbData {
     public Result: boolean;
 
     public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
-        const row = await store.db.Get(`
+        let query = `
             SELECT *
             FROM emoji
-            WHERE emoji_id = $id`, {
+            WHERE emoji_id = $id`;
+        if (params.mxc_url) {
+            query = `
+                SELECT *
+                FROM emoji
+                WHERE mxc_url = $mxc`;
+        }
+        const row = await store.db.Get(query, {
                 id: params.emoji_id,
+                mxc: params.mxc_url,
             });
         this.Result = row !== undefined;
         if (this.Result) {

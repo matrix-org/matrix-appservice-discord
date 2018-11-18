@@ -2,11 +2,17 @@ import * as Discord from "discord.js";
 import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
+import { DiscordBot } from "./bot";
+
+export class MatrixMessageProcessorOpts {
+    constructor(readonly disableEveryone: boolean = true, readonly disableHere: boolean = true) { }
+}
 
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
 export class MatrixMessageProcessor {
     private guild: Discord.Guild;
+    constructor(public bot: DiscordBot, public opts: MatrixMessageProcessorOpts) { }
     public async FormatMessage(msg: IMatrixMessage, guild: Discord.Guild): Promise<string> {
         this.guild = guild;
         let reply = "";
@@ -97,6 +103,32 @@ export class MatrixMessageProcessor {
         return reply;
     }
 
+    private async parseImageContent(node: Parser.HTMLElement): Promise<string> {
+        const EMOTE_NAME_REGEX = /^:?(\w+):?/;
+        const attrs = node.attributes;
+        const name = attrs.alt || attrs.title || "";
+        const match = name.match(EMOTE_NAME_REGEX);
+        let emojiName = "";
+        if (match) {
+            emojiName = match[1];
+        }
+        let emoji = this.guild.emojis.find((e) => e.name === emojiName);
+        if (!emoji) {
+            if (!attrs.src) {
+                return this.escapeDiscord(name);
+            }
+            let id = "";
+            try {
+                const emojiDb = await this.bot.GetEmojiByMxc(attrs.src);
+                id = emojiDb.EmojiId;
+            } catch (e) {
+                return this.escapeDiscord(name);
+            }
+            emoji = this.guild.emojis.find((e) => e.id === id);
+        }
+        return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
+    }
+
     private async walkChildNodes(node: Parser.Node): Promise<string> {
         let reply = "";
         await Util.AsyncForEach(node.childNodes, async (child) => {
@@ -127,6 +159,8 @@ export class MatrixMessageProcessor {
                     return `\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
                 case "a":
                     return await this.parsePillContent(nodeHtml);
+                case "img":
+                    return await this.parseImageContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }

@@ -3,5 +3,5 @@
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 export class MockEmoji {
-    constructor(public id: string = "", public name = "") { }
+    constructor(public id: string = "", public name = "", public animated = false) { }
 }
