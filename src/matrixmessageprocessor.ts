@@ -66,7 +66,7 @@ export class MatrixMessageProcessor {
             return this.escapeDiscord((node as Parser.TextNode).text);
         } else if (node.nodeType === Parser.NodeType.ELEMENT_NODE) {
             const nodeHtml = node as Parser.HTMLElement;
-            switch (_node.tagName) {
+            switch (nodeHtml.tagName) {
                 case "em":
                 case "i":
                     return `*${await this.walkChildNodes(nodeHtml)}*`;
@@ -78,9 +78,9 @@ export class MatrixMessageProcessor {
                 case "del":
                     return `~~${await this.walkChildNodes(nodeHtml)}~~`;
                 case "code":
-                    return `\`${this.escapeDiscord(nodeHtml.innerHTML)}\``;
+                    return `\`${nodeHtml.text}\``;
                 case "pre":
-                    return `\n\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
+                    return `\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }

@@ -102,14 +102,44 @@ describe("MatrixMessageProcessor", () => {
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<p>here</p><pre><code>is\ncode\n</code></pre><p>yay</p>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("here\n```\nis\ncode\n```\nyay");
+            expect(result).is.equal("here```\nis\ncode\n```\nyay");
         });
         it("converts multiline language code", async () => {
             const mp = new MatrixMessageProcessor();
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<p>here</p><pre><code class=\"language-js\">is\ncode\n</code></pre><p>yay</p>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("here\n```js\nis\ncode\n```\nyay");
+            expect(result).is.equal("here```js\nis\ncode\n```\nyay");
+        });
+    });
+    describe("FormatMessage / formatted_body / complex", () => {
+        it("html unescapes stuff inside of code", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<code>is &lt;em&gt;italic&lt;/em&gt;?</code>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("`is <em>italic</em>?`");
+        });
+        it("html unescapes inside of pre", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<pre><code>wow &amp;</code></pre>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("```\nwow &```\n");
+        });
+        it("doesn't parse inside of code", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<code>*yay*</code>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("`*yay*`");
+        });
+        it("doesn't parse inside of pre", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<pre><code>*yay*</code></pre>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("```\n*yay*```\n");
         });
     });
 });
