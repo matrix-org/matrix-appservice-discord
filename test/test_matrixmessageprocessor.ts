@@ -13,11 +13,11 @@ import { MatrixMessageProcessor, MatrixMessageProcessorOpts } from "../src/matri
 
 const expect = Chai.expect;
 
-const opts = new MatrixMessageProcessorOpts;
+const opts = new MatrixMessageProcessorOpts();
 const bot = {
     GetEmojiByMxc: async (mxc: string): Promise<DbEmoji> => {
         if (mxc === "mxc://real_emote:localhost") {
-            const emoji = new DbEmoji;
+            const emoji = new DbEmoji();
             emoji.Name = "real_emote";
             emoji.EmojiId = "123456";
             emoji.Animated = false;

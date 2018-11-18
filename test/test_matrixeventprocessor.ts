@@ -361,32 +361,6 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should enable mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor();
-            const embeds = await processor.EventToEmbed({
-                content: {
-                    body: "@testuser2 Hello!",
-                },
-                sender: "@test:localhost",
-            } as IMatrixEvent, {
-                avatar_url: "test",
-            } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "<@!12345> Hello!");
-        });
-
-        it("Should disable mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(true);
-            const embeds = await processor.EventToEmbed({
-                content: {
-                    body: "@testuser2 Hello!",
-                },
-                sender: "@test:localhost",
-            } as IMatrixEvent, {
-                avatar_url: "test",
-            } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@testuser2 Hello!");
-        });
-
         it("Should remove everyone mentions if configured.", async () => {
             const processor = createMatrixEventProcessor(false, true);
             const embeds = await processor.EventToEmbed({
@@ -413,51 +387,6 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(embeds.messageEmbed.description, "@ here Hello!");
         });
 
-        it("Should process custom discord emojis.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
-            const mockEmoji = new MockEmoji("123", "supercake");
-            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
-            mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
-            const embeds = await processor.EventToEmbed({
-                content: {
-                    body: "I like :supercake:",
-                },
-                sender: "@test:localhost",
-            } as IMatrixEvent, {
-                avatar_url: "test",
-            } as IMatrixEvent, mockChannelEmojis as any);
-            Chai.assert.equal(
-                embeds.messageEmbed.description,
-                "I like <:supercake:123>",
-            );
-        });
-
-        it("Should not process invalid custom discord emojis.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
-            const mockEmoji = new MockEmoji("123", "supercake");
-            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
-            mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
-            const embeds = await processor.EventToEmbed({
-                content: {
-                    body: "I like :lamecake:",
-                },
-                sender: "@test:localhost",
-            } as IMatrixEvent, {
-                avatar_url: "test",
-            } as IMatrixEvent, mockChannelEmojis as any);
-            Chai.assert.equal(
-                embeds.messageEmbed.description,
-                "I like :lamecake:",
-            );
-        });
         it("Should replace /me with * displayname, and italicize message", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
@@ -471,7 +400,7 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
-                "*displayname likes puppies*",
+                "_displayname likes puppies_",
             );
         });
         it("Should handle stickers.", async () => {
@@ -487,112 +416,6 @@ describe("MatrixEventProcessor", () => {
                 avatar_url: "test",
             } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "");
-        });
-    });
-    describe("FindMentionsInPlainBody", () => {
-        it("processes mentioned username correctly", async () => {
-            const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                user: {
-                    discriminator: "54321",
-                    id: "12345",
-                    username: "TestUsername",
-                },
-            })];
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Hello TestUsername", members),
-                "Hello <@!12345>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
-                "Hello <@!12345>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to https://TestUsername.com", members),
-                "I really love going to https://TestUsername.com",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to www.TestUsername.com", members),
-                "I really love going to www.TestUsername.com",
-            );
-        });
-        it("processes mentioned nickname correctly", async () => {
-            const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                nick: "Test",
-                user: {
-                    id: "54321",
-                    username: "Test",
-                },
-            }), new Discord.GuildMember(guild, {
-                nick: "TestNickname",
-                user: {
-                    id: "12345",
-                    username: "TestUsername",
-                },
-            }), new Discord.GuildMember(guild, {
-                nick: "𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊",
-                user: {
-                    id: "66666",
-                    username: "SomeFancyNickname",
-                },
-            })];
-            Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊 Hello", members),
-                "<@!66666> Hello",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
-                "I wish <@!12345> was here",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I wish TestNickname was here, TestNickname is cool", members),
-                "I wish <@!12345> was here, <@!12345> is cool",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
-                "<@!12345> was here with <@!54321>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
-                "Fixing this issue provided by <@!54321>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to https://Test.com", members),
-                "I really love going to https://Test.com",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to www.Test.com", members),
-                "I really love going to www.Test.com",
-            );
-        });
-        it("processes non-mentions correctly", async () => {
-            const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                nick: "that",
-                user: {
-                    id: "12345",
-                    username: "TestUsername",
-                },
-            }),
-                new Discord.GuildMember(guild, {
-                    nick: "testingstring",
-                    user: {
-                        id: "12345",
-                        username: "that",
-                    },
-                })];
-            const msg = "Welcome thatman";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Welcome thatman");
         });
     });
     describe("HandleAttachment", () => {

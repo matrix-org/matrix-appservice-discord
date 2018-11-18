@@ -1,19 +1,25 @@
 import * as Discord from "discord.js";
-import { IMatrixMessage } from "./matrixtypes";
+import { IMatrixMessage, IMatrixEvent } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";
+
+const MIN_NAME_LENGTH = 2;
+const MAX_NAME_LENGTH = 32;
+const MATRIX_TO_LINK = "https://matrix.to/#/";
 
 export class MatrixMessageProcessorOpts {
     constructor(readonly disableEveryone: boolean = true, readonly disableHere: boolean = true) { }
 }
 
-const MATRIX_TO_LINK = "https://matrix.to/#/";
-
 export class MatrixMessageProcessor {
     private guild: Discord.Guild;
     constructor(public bot: DiscordBot, public opts: MatrixMessageProcessorOpts) { }
-    public async FormatMessage(msg: IMatrixMessage, guild: Discord.Guild): Promise<string> {
+    public async FormatMessage(
+        msg: IMatrixMessage,
+        guild: Discord.Guild,
+        profile?: IMatrixEvent | null,
+    ): Promise<string> {
         this.guild = guild;
         let reply = "";
         if (msg.formatted_body) {
@@ -29,10 +35,27 @@ export class MatrixMessageProcessor {
         } else {
             reply = this.escapeDiscord(msg.body);
         }
+
+        if (msg.msgtype === "m.emote") {
+            if (profile &&
+                profile.displayname &&
+                profile.displayname.length >= MIN_NAME_LENGTH &&
+                profile.displayname.length <= MAX_NAME_LENGTH) {
+                reply = `_${profile.displayname} ${reply}_`;
+            } else {
+                reply = `_${reply}_`;
+            }
+        }
         return reply;
     }
 
     private escapeDiscord(msg: string): string {
+        if (this.opts.disableEveryone) {
+            msg = msg.replace(/@everyone/g, "@ everyone");
+        }
+        if (this.opts.disableHere) {
+            msg = msg.replace(/@here/g, "@ here");
+        }
         const escapeChars = ["\\", "*", "_", "~", "`"];
         escapeChars.forEach((char) => {
             msg = msg.replace(new RegExp("\\" + char, "g"), "\\" + char);

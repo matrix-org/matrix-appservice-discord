@@ -7,7 +7,8 @@ import * as path from "path";
 import * as mime from "mime";
 import { MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
-import { IMatrixEvent, IMatrixEventContent } from "./matrixtypes";
+import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
+import { MatrixMessageProcessor, MatrixMessageProcessorOpts } from "./matrixmessageprocessor";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -15,7 +16,6 @@ const log = new Log("MatrixEventProcessor");
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
-const DISCORD_EMOJI_REGEX = /:(\w+):/g;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
 
@@ -38,11 +38,19 @@ export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: Bridge;
     private discord: DiscordBot;
+    private matrixMsgProcessor: MatrixMessageProcessor;
 
     constructor(opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
+        this.matrixMsgProcessor = new MatrixMessageProcessor(
+            this.discord,
+            new MatrixMessageProcessorOpts(
+                this.config.bridge.disableEveryoneMention,
+                this.config.bridge.disableHereMention,
+            ),
+        );
     }
 
     public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
@@ -86,49 +94,10 @@ export class MatrixEventProcessor {
     public async EventToEmbed(
         event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
     ): Promise<IMatrixEventProcessorResult> {
-        let body: string = this.config.bridge.disableDiscordMentions ? event.content!.body as string :
-            this.FindMentionsInPlainBody(
-                event.content!.body as string,
-                channel.members.array(),
-            );
-
-        if (event.type === "m.sticker") {
-            body = "";
+        let body: string = "";
+        if (event.type !== "m.sticker") {
+            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, profile);
         }
-
-        // Replace @everyone
-        if (this.config.bridge.disableEveryoneMention) {
-            body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
-        }
-
-        // Replace @here
-        if (this.config.bridge.disableHereMention) {
-            body = body.replace(new RegExp(`@here`, "g"), "@ here");
-        }
-
-        /* See issue #82
-        const isMarkdown = (event.content.format === "org.matrix.custom.html");
-        if (!isMarkdown) {
-          body = "\\" + body;
-        }*/
-
-        // Replace /me with * username ...
-        if (event.content!.msgtype === "m.emote") {
-            if (profile &&
-                profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                body = `*${profile.displayname} ${body}*`;
-            } else {
-                body = `*${body}*`;
-            }
-        }
-
-        // replace <del>blah</del> with ~~blah~~
-        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
-
-        // Handle discord custom emoji
-        body = this.ReplaceDiscordEmoji(body, channel.guild);
 
         const messageEmbed = new Discord.RichEmbed();
         const replyEmbedAndBody = await this.GetEmbedForReply(event);
@@ -138,37 +107,6 @@ export class MatrixEventProcessor {
             messageEmbed,
             replyEmbed: replyEmbedAndBody ? replyEmbedAndBody[0] : undefined,
         };
-    }
-
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
-        const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
-        for (const member of members) {
-            const matcher = `${escapeStringRegexp(`${member.user.username}#${member.user.discriminator}`)}|` +
-                `${escapeStringRegexp(member.displayName)}`;
-            const regex = new RegExp(
-                    `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
-                    , "igmu");
-
-            body = body.replace(regex, `$1<@!${member.id}>`);
-        }
-        return body;
-    }
-
-    public ReplaceDiscordEmoji(content: string, guild: Discord.Guild): string {
-        let results = DISCORD_EMOJI_REGEX.exec(content);
-        while (results !== null) {
-            const emojiName = results[1];
-            const emojiNameWithColons = results[0];
-
-            // Check if this emoji exists in the guild
-            const emoji = guild.emojis.find((e) => e.name === emojiName);
-            if (emoji) {
-                // Replace :a: with <:a:123ID123>
-                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emoji.id}>`);
-            }
-            results = DISCORD_EMOJI_REGEX.exec(content);
-        }
-        return content;
     }
 
     public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
