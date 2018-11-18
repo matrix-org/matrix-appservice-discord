@@ -65,24 +65,24 @@ export class MatrixMessageProcessor {
         if (node.nodeType === Parser.NodeType.TEXT_NODE) {
             return this.escapeDiscord((node as Parser.TextNode).text);
         } else if (node.nodeType === Parser.NodeType.ELEMENT_NODE) {
-            let _node = node as Parser.HTMLElement;
+            const nodeHtml = node as Parser.HTMLElement;
             switch (_node.tagName) {
-                case 'em':
-                case 'i':
-                    return `*${await this.walkChildNodes(_node)}*`;
-                case 'strong':
-                case 'b':
-                    return `**${await this.walkChildNodes(_node)}**`;
-                case 'u':
-                    return `__${await this.walkChildNodes(_node)}__`;
-                case 'del':
-                    return `~~${await this.walkChildNodes(_node)}~~`;
-                case 'code':
-                    return `\`${this.escapeDiscord(_node.innerHTML)}\``;
-                case 'pre':
-                    return `\n\`\`\`${this.parsePreContent(_node)}\`\`\`\n`;
+                case "em":
+                case "i":
+                    return `*${await this.walkChildNodes(nodeHtml)}*`;
+                case "strong":
+                case "b":
+                    return `**${await this.walkChildNodes(nodeHtml)}**`;
+                case "u":
+                    return `__${await this.walkChildNodes(nodeHtml)}__`;
+                case "del":
+                    return `~~${await this.walkChildNodes(nodeHtml)}~~`;
+                case "code":
+                    return `\`${this.escapeDiscord(nodeHtml.innerHTML)}\``;
+                case "pre":
+                    return `\n\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
                 default:
-                    return await this.walkChildNodes(_node);
+                    return await this.walkChildNodes(nodeHtml);
             }
         }
         return "";
