@@ -1,6 +1,8 @@
 import * as Chai from "chai";
 import * as Discord from "discord.js";
 import { MockGuild } from "./mocks/guild";
+import { MockMember } from "./mocks/member";
+import { MockChannel } from "./mocks/channel";
 import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
 // we are a test file and thus need those
@@ -140,6 +142,58 @@ describe("MatrixMessageProcessor", () => {
             const msg = getHtmlMessage("<pre><code>*yay*</code></pre>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("```\n*yay*```\n");
+        });
+    });
+    describe("FormatMessage / formatted_body / discord", () => {
+        it("Parses user pills", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const member = new MockMember("12345", "TestUsername", guild);
+            guild.members.set("12345", member);
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("<@12345>");
+        });
+        it("Ignores invalid user pills", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const member = new MockMember("12345", "TestUsername", guild);
+            guild.members.set("12345", member);
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_789:localhost\">TestUsername</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("TestUsername");
+        });
+        it("Parses channel pills", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const channel = new MockChannel("12345", guild, "text", "SomeChannel");
+            guild.channels.set("12345", channel as any);
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_12345:localhost\">#SomeChannel</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("<#12345>");
+        });
+        it("Ignores invalid channel pills", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const channel = new MockChannel("12345", guild, "text", "SomeChannel");
+            guild.channels.set("12345", channel as any);
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_789:localhost\">#SomeChannel</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("#SomeChannel");
+        });
+        it("Ignores links without href", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a><em>yay?</em></a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("*yay?*");
+        });
+        it("Ignores links with non-matrix href", async () => {
+            const mp = new MatrixMessageProcessor();
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"http://example.com\"><em>yay?</em></a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("*yay?*");
         });
     });
 });

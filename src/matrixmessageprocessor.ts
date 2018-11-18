@@ -3,8 +3,12 @@ import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
 
+const MATRIX_TO_LINK = "https://matrix.to/#/";
+
 export class MatrixMessageProcessor {
+    private guild: Discord.Guild;
     public async FormatMessage(msg: IMatrixMessage, guild: Discord.Guild): Promise<string> {
+        this.guild = guild;
         let reply = "";
         if (msg.formatted_body) {
             // parser needs everything wrapped in html elements
@@ -53,6 +57,46 @@ export class MatrixMessageProcessor {
         return text;
     }
 
+    private parseUser(id: string): string {
+        const USER_REGEX = /^@_discord_([0-9]*)/;
+        const match = id.match(USER_REGEX);
+        if (!match || !this.guild.members.get(match[1])) {
+            return "";
+        }
+        return `<@${match[1]}>`;
+    }
+
+    private parseChannel(id: string): string {
+        const CHANNEL_REGEX = /^#_discord_([0-9]*)/;
+        const match = id.match(CHANNEL_REGEX);
+        if (!match || !this.guild.channels.get(match[1])) {
+            return "";
+        }
+        return `<#${match[1]}>`;
+    }
+
+    private async parsePillContent(node: Parser.HTMLElement): Promise<string> {
+        const attrs = node.attributes;
+        if (!attrs.href || !attrs.href.startsWith(MATRIX_TO_LINK)) {
+            return await this.walkChildNodes(node);
+        }
+        const id = attrs.href.replace(MATRIX_TO_LINK, "");
+        let reply = "";
+        switch (id[0]) {
+            case "@":
+                // user pill
+                reply = this.parseUser(id);
+                break;
+            case "#":
+                reply = this.parseChannel(id);
+                break;
+        }
+        if (!reply) {
+            return await this.walkChildNodes(node);
+        }
+        return reply;
+    }
+
     private async walkChildNodes(node: Parser.Node): Promise<string> {
         let reply = "";
         await Util.AsyncForEach(node.childNodes, async (child) => {
@@ -81,6 +125,8 @@ export class MatrixMessageProcessor {
                     return `\`${nodeHtml.text}\``;
                 case "pre":
                     return `\`\`\`${this.parsePreContent(nodeHtml)}\`\`\`\n`;
+                case "a":
+                    return await this.parsePillContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }
