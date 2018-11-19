@@ -159,6 +159,14 @@ export class MatrixMessageProcessor {
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
     }
 
+    private async parseBlockquoteContent(node: Parser.HTMLElement): Promise<string> {
+        let msg = await this.walkChildNodes(node);
+        msg = msg.split("\n").map((s) => {
+            return "> " + s;
+        }).join("\n") + "\n";
+        return msg;
+    }
+
     private async walkChildNodes(node: Parser.Node): Promise<string> {
         let reply = "";
         await Util.AsyncForEach(node.childNodes, async (child) => {
@@ -193,6 +201,8 @@ export class MatrixMessageProcessor {
                     return await this.parseImageContent(nodeHtml);
                 case "br":
                     return "\n";
+                case "blockquote":
+                    return await this.parseBlockquoteContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }

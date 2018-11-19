@@ -281,4 +281,20 @@ describe("MatrixMessageProcessor", () => {
             expect(result).is.equal("");
         });
     });
+    describe("FormatMessage / formatted_body / blockquotes", () => {
+        it("parses single blockquotes", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<blockquote>hey</blockquote>\nthere");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("> hey\n\nthere");
+        });
+        it("parses double blockquotes", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<blockquote><blockquote>hey</blockquote>\nyou</blockquote>\nthere");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("> > hey\n> \n> you\n\nthere");
+        });
+    });
 });
