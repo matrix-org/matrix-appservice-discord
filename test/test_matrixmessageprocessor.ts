@@ -381,4 +381,76 @@ code
             expect(result).is.equal("foxes\n● awesome\n● floofy\n    ○ fur\n    ○ tail\n● cute\n\nyay!");
         });
     });
+    it("parses simple ordered lists", async () => {
+        const mp = new MatrixMessageProcessor(bot, opts);
+        const guild = new MockGuild("1234");
+        const msg = getHtmlMessage(`<p>oookay</p>
+<ol>
+<li>test</li>
+<li>test more</li>
+</ol>
+<p>ok?</p>
+`);
+        const result = await mp.FormatMessage(msg, guild as any);
+        expect(result).is.equal("oookay\n1. test\n2. test more\n\nok?");
+    });
+    it("parses nested ordered lists", async () => {
+        const mp = new MatrixMessageProcessor(bot, opts);
+        const guild = new MockGuild("1234");
+        const msg = getHtmlMessage(`<p>and now</p>
+<ol>
+<li>test</li>
+<li>test more
+<ol>
+<li>and more</li>
+<li>more?</li>
+</ol>
+</li>
+<li>done!</li>
+</ol>
+<p>ok?</p>
+`);
+        const result = await mp.FormatMessage(msg, guild as any);
+        expect(result).is.equal("and now\n1. test\n2. test more\n    1. and more\n    2. more?\n3. done!\n\nok?");
+    });
+    it("parses ordered lists with different start", async () => {
+        const mp = new MatrixMessageProcessor(bot, opts);
+        const guild = new MockGuild("1234");
+        const msg = getHtmlMessage(`<ol start="5">
+<li>test</li>
+<li>test more</li>
+</ol>`);
+        const result = await mp.FormatMessage(msg, guild as any);
+        expect(result).is.equal("\n5. test\n6. test more");
+    });
+    it("parses ul in ol", async () => {
+        const mp = new MatrixMessageProcessor(bot, opts);
+        const guild = new MockGuild("1234");
+        const msg = getHtmlMessage(`<ol>
+<li>test</li>
+<li>test more
+<ul>
+<li>asdf</li>
+<li>jklö</li>
+</ul>
+</li>
+</ol>`);
+        const result = await mp.FormatMessage(msg, guild as any);
+        expect(result).is.equal("\n1. test\n2. test more\n    ○ asdf\n    ○ jklö");
+    });
+    it("parses ol in ul", async () => {
+        const mp = new MatrixMessageProcessor(bot, opts);
+        const guild = new MockGuild("1234");
+        const msg = getHtmlMessage(`<ul>
+<li>test</li>
+<li>test more
+<ol>
+<li>asdf</li>
+<li>jklö</li>
+</ol>
+</li>
+</ul>`);
+        const result = await mp.FormatMessage(msg, guild as any);
+        expect(result).is.equal("\n● test\n● test more\n    1. asdf\n    2. jklö");
+    });
 });

@@ -183,7 +183,27 @@ export class MatrixMessageProcessor {
             return `${"    ".repeat(this.listDepth)}${bulletPoint} ${s}`;
         }).join("\n");
 
-        // thefuck?
+        if (this.listDepth === 0) {
+            msg = `\n${msg}\n\n`;
+        }
+        return msg;
+    }
+
+    private async parseOlContent(node: Parser.HTMLElement): Promise<string> {
+        this.listDepth++;
+        const entries = await this.arrayChildNodes(node, ["li"]);
+        this.listDepth--;
+        let entry = 0;
+        const attrs = node.attributes;
+        if (attrs.start && attrs.start.match(/^[0-9]+$/)) {
+            entry = parseInt(attrs.start, 10) - 1;
+        }
+
+        let msg = entries.map((s) => {
+            entry++;
+            return `${"    ".repeat(this.listDepth)}${entry}. ${s}`;
+        }).join("\n");
+
         if (this.listDepth === 0) {
             msg = `\n${msg}\n\n`;
         }
@@ -246,6 +266,8 @@ export class MatrixMessageProcessor {
                     return await this.parseBlockquoteContent(nodeHtml);
                 case "ul":
                     return await this.parseUlContent(nodeHtml);
+                case "ol":
+                    return await this.parseOlContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }
