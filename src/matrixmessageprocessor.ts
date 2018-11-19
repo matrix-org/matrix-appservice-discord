@@ -14,6 +14,8 @@ export class MatrixMessageProcessorOpts {
 
 export class MatrixMessageProcessor {
     private guild: Discord.Guild;
+    private listDepth: number = 0;
+    private listBulletPoints: string[] = ["●", "○", "■", "‣"];
     constructor(public bot: DiscordBot, public opts: MatrixMessageProcessorOpts) { }
     public async FormatMessage(
         msg: IMatrixMessage,
@@ -21,6 +23,7 @@ export class MatrixMessageProcessor {
         profile?: IMatrixEvent | null,
     ): Promise<string> {
         this.guild = guild;
+        this.listDepth = 0;
         let reply = "";
         if (msg.formatted_body) {
             // parser needs everything wrapped in html elements
@@ -170,6 +173,37 @@ export class MatrixMessageProcessor {
         return msg;
     }
 
+    private async parseUlContent(node: Parser.HTMLElement): Promise<string> {
+        this.listDepth++;
+        const entries = await this.arrayChildNodes(node, ["li"]);
+        this.listDepth--;
+        const bulletPoint = this.listBulletPoints[this.listDepth % this.listBulletPoints.length];
+
+        let msg = entries.map((s) => {
+            return `${"    ".repeat(this.listDepth)}${bulletPoint} ${s}`;
+        }).join("\n");
+
+        // thefuck?
+        if (this.listDepth === 0) {
+            msg = `\n${msg}\n\n`;
+        }
+        return msg;
+    }
+
+    private async arrayChildNodes(node: Parser.Node, types: string[] = []): Promise<string[]> {
+        const replies: string[] = [];
+        await Util.AsyncForEach(node.childNodes, async (child) => {
+            if (types.length && (
+                child.nodeType === Parser.NodeType.TEXT_NODE
+                || !types.includes((child as Parser.HTMLElement).tagName)
+            )) {
+                return;
+            }
+            replies.push(await this.walkNode(child));
+        });
+        return replies;
+    }
+
     private async walkChildNodes(node: Parser.Node): Promise<string> {
         let reply = "";
         await Util.AsyncForEach(node.childNodes, async (child) => {
@@ -210,6 +244,8 @@ export class MatrixMessageProcessor {
                     return "\n";
                 case "blockquote":
                     return await this.parseBlockquoteContent(nodeHtml);
+                case "ul":
+                    return await this.parseUlContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }

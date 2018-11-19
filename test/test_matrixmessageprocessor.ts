@@ -329,4 +329,56 @@ code
             expect(result).is.equal("> > spoky\n> \n> testing\n\ntest");
         });
     });
+    describe("FormatMessage / formatted_body / lists", () => {
+        it("parses simple unordered lists", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage(`<p>soru</p>
+<ul>
+<li>test</li>
+<li>ing</li>
+</ul>
+<p>more</p>
+`);
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("soru\n● test\n● ing\n\nmore");
+        });
+        it("parses nested unordered lists", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage(`<p>foxes</p>
+<ul>
+<li>awesome</li>
+<li>floofy
+<ul>
+<li>fur</li>
+<li>tail</li>
+</ul>
+</li>
+</ul>
+<p>yay!</p>
+`);
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("foxes\n● awesome\n● floofy\n    ○ fur\n    ○ tail\n\nyay!");
+        });
+        it("parses more nested unordered lists", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage(`<p>foxes</p>
+<ul>
+<li>awesome</li>
+<li>floofy
+<ul>
+<li>fur</li>
+<li>tail</li>
+</ul>
+</li>
+<li>cute</li>
+</ul>
+<p>yay!</p>
+`);
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("foxes\n● awesome\n● floofy\n    ○ fur\n    ○ tail\n● cute\n\nyay!");
+        });
+    });
 });
