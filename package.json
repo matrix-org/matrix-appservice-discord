@@ -38,7 +38,7 @@
     "bluebird": "^3.5.1",
     "command-line-args": "^4.0.1",
     "command-line-usage": "^4.1.0",
-    "discord-markdown": "git+https://github.com/Sorunome/discord-markdown.git#ca9d27039d977b35aba39cd9173e69a428118d3f",
+    "discord-markdown": "^2.0.0",
     "discord.js": "^11.4.2",
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
