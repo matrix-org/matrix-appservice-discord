@@ -134,7 +134,11 @@ describe("MatrixMessageProcessor", () => {
         it("converts multiline language code", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
             const guild = new MockGuild("1234");
-            const msg = getHtmlMessage("<p>here</p><pre><code class=\"language-js\">is\ncode\n</code></pre><p>yay</p>");
+            const msg = getHtmlMessage(`<p>here</p>
+<pre><code class="language-js">is
+code
+</code></pre>
+<p>yay</p>`);
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("here```js\nis\ncode\n```yay");
         });
@@ -174,6 +178,13 @@ describe("MatrixMessageProcessor", () => {
             const msg = getHtmlMessage("<pre><code>*yay*</code></pre>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("```\n*yay*```");
+        });
+        it("parses new lines", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<em>test</em><br><strong>ing</strong>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("*test*\n**ing**");
         });
     });
     describe("FormatMessage / formatted_body / discord", () => {
@@ -285,16 +296,37 @@ describe("MatrixMessageProcessor", () => {
         it("parses single blockquotes", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
             const guild = new MockGuild("1234");
-            const msg = getHtmlMessage("<blockquote>hey</blockquote>\nthere");
+            const msg = getHtmlMessage("<blockquote>hey</blockquote>there");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("> hey\n\nthere");
         });
         it("parses double blockquotes", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
             const guild = new MockGuild("1234");
-            const msg = getHtmlMessage("<blockquote><blockquote>hey</blockquote>\nyou</blockquote>\nthere");
+            const msg = getHtmlMessage("<blockquote><blockquote>hey</blockquote>you</blockquote>there");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("> > hey\n> \n> you\n\nthere");
+        });
+        it("parses blockquotes with <p>", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<blockquote>\n<p>spoky</p>\n</blockquote>\n<p>test</p>\n");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("> spoky\n\ntest");
+        });
+        it("parses double blockquotes with <p>", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage(`<blockquote>
+<blockquote>
+<p>spoky</p>
+</blockquote>
+<p>testing</p>
+</blockquote>
+<p>test</p>
+`);
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("> > spoky\n> \n> testing\n\ntest");
         });
     });
 });

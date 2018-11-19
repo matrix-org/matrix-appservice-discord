@@ -32,6 +32,7 @@ export class MatrixMessageProcessor {
             // tslint:disable-next-line no-any
             } as any);
             reply = await this.walkNode(parsed);
+            reply = reply.replace(/\s*$/, ""); // trim off whitespace at end
         } else {
             reply = this.escapeDiscord(msg.body);
         }
@@ -161,9 +162,11 @@ export class MatrixMessageProcessor {
 
     private async parseBlockquoteContent(node: Parser.HTMLElement): Promise<string> {
         let msg = await this.walkChildNodes(node);
+
         msg = msg.split("\n").map((s) => {
             return "> " + s;
-        }).join("\n") + "\n";
+        }).join("\n");
+        msg = msg + "\n\n";
         return msg;
     }
 
@@ -177,6 +180,10 @@ export class MatrixMessageProcessor {
 
     private async walkNode(node: Parser.Node): Promise<string> {
         if (node.nodeType === Parser.NodeType.TEXT_NODE) {
+            // ignore \n between single nodes
+            if ((node as Parser.TextNode).text === "\n") {
+                return "";
+            }
             return this.escapeDiscord((node as Parser.TextNode).text);
         } else if (node.nodeType === Parser.NodeType.ELEMENT_NODE) {
             const nodeHtml = node as Parser.HTMLElement;
