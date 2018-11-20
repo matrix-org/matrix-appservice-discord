@@ -186,6 +186,13 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("*test*\n**ing**");
         });
+        it("drops mx-reply", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<mx-reply><blockquote>message</blockquote></mx-reply>test reply");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("test reply");
+        });
     });
     describe("FormatMessage / formatted_body / discord", () => {
         it("Parses user pills", async () => {

@@ -92,20 +92,26 @@ export class MatrixEventProcessor {
     }
 
     public async EventToEmbed(
-        event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
+        event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        const profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
+        if (!profile) {
+            log.warn(`User ${event.sender} has no member state. That's odd.`);
+        }
+
         let body: string = "";
         if (event.type !== "m.sticker") {
             body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, profile);
         }
 
         const messageEmbed = new Discord.RichEmbed();
-        const replyEmbedAndBody = await this.GetEmbedForReply(event);
-        messageEmbed.setDescription(replyEmbedAndBody ? replyEmbedAndBody[1] : body);
+        messageEmbed.setDescription(body);
         await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
+        const replyEmbed = getReply ? (await this.GetEmbedForReply(event, channel)) : undefined;
         return {
             messageEmbed,
-            replyEmbed: replyEmbedAndBody ? replyEmbedAndBody[0] : undefined,
+            replyEmbed,
         };
     }
 
@@ -154,46 +160,36 @@ export class MatrixEventProcessor {
         return `[${name}](${url})`;
     }
 
-    public async GetEmbedForReply(event: IMatrixEvent): Promise<[Discord.RichEmbed, string]|undefined> {
+    public async GetEmbedForReply(
+        event: IMatrixEvent,
+        channel: Discord.TextChannel,
+    ): Promise<Discord.RichEmbed|undefined> {
         if (!event.content) {
             event.content = {};
         }
 
         const relatesTo = event.content["m.relates_to"];
-        let eventId = null;
+        let eventId = "";
         if (relatesTo && relatesTo["m.in_reply_to"]) {
             eventId = relatesTo["m.in_reply_to"].event_id;
         } else {
             return;
         }
-        let reponseText = Util.GetReplyFromReplyBody(event.content.body || "");
-        if (reponseText === "") {
-            reponseText = "Reply with unknown content";
-        }
 
         const intent = this.bridge.getIntent();
-        const embed = new Discord.RichEmbed();
         // Try to get the event.
         try {
             const sourceEvent = await intent.getEvent(event.room_id, eventId);
-            let replyText = sourceEvent.content.body  || "Reply with unknown content";
-            // Check if this is also a reply.
-            if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&
-                sourceEvent.content["m.relates_to"]["m.in_reply_to"]) {
-                replyText = Util.GetReplyFromReplyBody(sourceEvent.content.body);
-            }
-            embed.setDescription(replyText);
-            await this.SetEmbedAuthor(
-                embed,
-                sourceEvent.sender,
-            );
+            sourceEvent.content.body = sourceEvent.content.body  || "Reply with unknown content";
+            return (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
         } catch (ex) {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
-            // For some reason we failed to get the event, so using fallback.
-            embed.setDescription("Reply with unknown content");
-            embed.setAuthor("Unknown");
         }
-        return [embed, reponseText];
+        // For some reason we failed to get the event, so using fallback.
+        const embed = new Discord.RichEmbed();
+        embed.setDescription("Reply with unknown content");
+        embed.setAuthor("Unknown");
+        return embed;
     }
 
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {

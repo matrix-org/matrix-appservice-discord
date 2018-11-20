@@ -276,15 +276,8 @@ export class DiscordBot {
         const result = await this.LookupRoom(guildId, channelId, event.sender);
         const chan = result.channel;
         const botUser = result.botUser;
-        let profile = null;
-        if (result.botUser) {
-            // We are doing this through webhooks so fetch the user profile.
-            profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
-            if (profile === null) {
-                log.warn(`User ${event.sender} has no member state. That's odd.`);
-            }
-        }
-        const embedSet = await this.mxEventProcessor.EventToEmbed(event, profile, chan);
+
+        const embedSet = await this.mxEventProcessor.EventToEmbed(event, chan);
         const embed = embedSet.messageEmbed;
         const opts: Discord.MessageOptions = {};
         const file = await this.mxEventProcessor.HandleAttachment(event, mxClient);

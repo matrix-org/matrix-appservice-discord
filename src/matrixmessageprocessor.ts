@@ -268,6 +268,8 @@ export class MatrixMessageProcessor {
                     return await this.parseUlContent(nodeHtml);
                 case "ol":
                     return await this.parseOlContent(nodeHtml);
+                case "mx-reply":
+                    return "";
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }
