@@ -439,10 +439,12 @@ export class DiscordBot {
         if (member) {
             let rooms: string[] = [];
             await Util.AsyncForEach(guild.channels.array(), async (channel) => {
-                if (!channel.members.has(member.id)) {
+                if (channel.type !== "text" || !channel.members.has(member.id)) {
                     return;
                 }
-                rooms = rooms.concat(await this.channelSync.GetRoomIdsFromChannel(channel));
+                try {
+                    rooms = rooms.concat(await this.channelSync.GetRoomIdsFromChannel(channel));
+                } catch (e) { } // no bridged rooms for this channel
             });
             if (rooms.length === 0) {
                 log.verbose(`Couldn't find room(s) for guild id:${guild.id} with member id:${member.id}.`);
