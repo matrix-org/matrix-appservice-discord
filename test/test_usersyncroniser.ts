@@ -9,6 +9,7 @@ import {MockMember} from "./mocks/member";
 import {MockGuild} from "./mocks/guild";
 import { MockChannel } from "./mocks/channel";
 import { IMatrixEvent } from "../src/matrixtypes";
+import { Util } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -38,6 +39,7 @@ const GUILD_ROOM_IDS = ["!abc:localhost", "!def:localhost", "!ghi:localhost"];
 const UserSync = (Proxyquire("../src/usersyncroniser", {
     "./util": {
         Util: {
+            AsyncForEach: Util.AsyncForEach,
             UploadContentFromUrl: async () => {
                 UTIL_UPLOADED_AVATAR = true;
                 return {mxcUrl: "avatarset"};
@@ -452,18 +454,6 @@ describe("UserSyncroniser", () => {
             const state = await userSync.GetUserStateForGuildMember(member as any);
             expect(state.displayName).to.be.equal("BestDog");
         });
-        it("Will not apply if the nick has already been set", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            const guild = new MockGuild(
-                "654321");
-            const member = new MockMember(
-                "123456",
-                "username",
-                guild,
-                "BestDog");
-            const state = await userSync.GetUserStateForGuildMember(member as any, "BestDog");
-            expect(state.displayName).is.empty;
-        });
         it("Will correctly add roles", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
@@ -532,23 +522,6 @@ describe("UserSyncroniser", () => {
                 "FiddleDee");
             await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
             expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
-        });
-        it("will not update state for unchanged member", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            const guild = new MockGuild(
-                "654321");
-            const oldMember = new MockMember(
-                "123456",
-                "username",
-                guild,
-                "FiddleDee");
-            const newMember = new MockMember(
-                "123456",
-                "username",
-                guild,
-                "FiddleDee");
-            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
-            expect(SEV_COUNT).to.equal(0);
         });
     });
     describe("OnMemberState", () => {

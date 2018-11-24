@@ -435,15 +435,30 @@ export class DiscordBot {
         return dbEmoji.MxcUrl;
     }
 
-    public async GetRoomIdsFromGuild(guild: string): Promise<string[]> {
-        const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-            discord_guild: guild,
-        });
-        if (rooms.length === 0) {
-            log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
-            throw new Error("Room(s) not found.");
+    public async GetRoomIdsFromGuild(guild: Discord.Guild, member?: Discord.GuildMember): Promise<string[]> {
+        if (member) {
+            let rooms: string[] = [];
+            await Util.AsyncForEach(guild.channels.array(), async (channel) => {
+                if (!channel.members.has(member.id)) {
+                    return;
+                }
+                rooms = rooms.concat(await this.channelSync.GetRoomIdsFromChannel(channel));
+            });
+            if (rooms.length === 0) {
+                log.verbose(`Couldn't find room(s) for guild id:${guild.id} with member id:${member.id}.`);
+                throw new Error("Room(s) not found.");
+            }
+            return rooms;
+        } else {
+            const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+                discord_guild: guild.id,
+            });
+            if (rooms.length === 0) {
+                log.verbose(`Couldn't find room(s) for guild id:${guild.id}.`);
+                throw new Error("Room(s) not found.");
+            }
+            return rooms.map((room) => room.matrix.getId());
         }
-        return rooms.map((room) => room.matrix.getId());
     }
 
     private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
