@@ -278,13 +278,50 @@ export class UserSyncroniser {
         );
     }
 
-    public async OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember) {
-        log.info(`Got update for ${oldMember.id}.`);
-        const state = await this.GetUserStateForGuildMember(newMember);
-        const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild, newMember);
+    public async OnUpdateGuildMember(member: GuildMember, doJoin: boolean = false) {
+        log.info(`Got update for ${member.id}.`);
+        const state = await this.GetUserStateForGuildMember(member);
+        let wantRooms: string[] = [];
+        try {
+            wantRooms = await this.discord.GetRoomIdsFromGuild(member.guild, member);
+        } catch (err) { } // no want rooms
+        let allRooms: string[] = [];
+        try {
+            allRooms = await this.discord.GetRoomIdsFromGuild(member.guild);
+        } catch (err) { } // no all rooms
+
+        const leaveRooms: string[] = [];
+        await Util.AsyncForEach(allRooms, async (r) => {
+            if (wantRooms.includes(r)) {
+                return;
+            }
+            leaveRooms.push(r);
+        });
+
         await Promise.all(
-            rooms.map(
-                async (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
+            wantRooms.map(
+                async (roomId) => {
+                    if (doJoin) {
+                        await this.JoinRoom(member, roomId);
+                    } else {
+                        await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                    }
+                },
+            ),
+        );
+        await Promise.all(
+            leaveRooms.map(
+                async (roomId) => {
+                    try {
+                        const userId = state.mxUserId;
+                        const intent = this.bridge.getIntent(userId);
+                        if ([null, "join", "invite"]
+                            .includes(intent.opts.backingStore.getMembership(roomId, state.mxUserId))) {
+                            await intent.leave(roomId);
+                            intent.opts.backingStore.setMembership(roomId, state.mxUserId, "leave");
+                        }
+                    } catch (e) { } // not in room
+                },
             ),
         );
     }

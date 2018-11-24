@@ -511,16 +511,12 @@ describe("UserSyncroniser", () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
-            const oldMember = new MockMember(
-                "123456",
-                "username",
-                guild);
             const newMember = new MockMember(
                 "123456",
                 "username",
                 guild,
                 "FiddleDee");
-            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
+            await userSync.OnUpdateGuildMember(newMember as any);
             expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
         });
     });

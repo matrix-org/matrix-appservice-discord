@@ -159,8 +159,8 @@ export class DiscordBot {
         client.on("userUpdate", async (_, user) => this.userSync.OnUpdateUser(user));
         client.on("guildMemberAdd", async (user) => this.userSync.OnAddGuildMember(user));
         client.on("guildMemberRemove", async (user) =>  this.userSync.OnRemoveGuildMember(user));
-        client.on("guildMemberUpdate", async (oldUser, newUser) =>
-            this.userSync.OnUpdateGuildMember(oldUser, newUser));
+        client.on("guildMemberUpdate", async (_, member) =>
+            this.userSync.OnUpdateGuildMember(member));
         client.on("debug", (msg) => { jsLog.verbose(msg); });
         client.on("error", (msg) => { jsLog.error(msg); });
         client.on("warn", (msg) => { jsLog.warn(msg); });
