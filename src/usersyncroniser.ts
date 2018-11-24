@@ -309,12 +309,12 @@ export class UserSyncroniser {
                 },
             ),
         );
+        const userId = state.mxUserId;
+        const intent = this.bridge.getIntent(userId);
         await Promise.all(
             leaveRooms.map(
                 async (roomId) => {
                     try {
-                        const userId = state.mxUserId;
-                        const intent = this.bridge.getIntent(userId);
                         if ([null, "join", "invite"]
                             .includes(intent.opts.backingStore.getMembership(roomId, state.mxUserId))) {
                             await intent.leave(roomId);
