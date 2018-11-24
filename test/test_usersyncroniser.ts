@@ -495,7 +495,7 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild);
             await userSync.OnAddGuildMember(member as any);
-            expect(JOINS).to.equal(GUILD_ROOM_IDS.length);
+            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnRemoveGuildMember", () => {

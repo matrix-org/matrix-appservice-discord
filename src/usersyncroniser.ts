@@ -256,20 +256,13 @@ export class UserSyncroniser {
 
     public async OnAddGuildMember(member: GuildMember) {
         log.info(`Joining ${member.id} to all rooms for guild ${member.guild.id}`);
-        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild, member);
-        const intent = this.discord.GetIntentFromDiscordMember(member);
-        await this.OnUpdateUser(member.user);
-        return Promise.all(
-            rooms.map(
-                (roomId) => intent.join(roomId),
-            ),
-        );
+        await this.OnUpdateGuildMember(member, true);
     }
 
     public async OnRemoveGuildMember(member: GuildMember) {
         /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
         log.info(`Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
-        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild, member);
+        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
