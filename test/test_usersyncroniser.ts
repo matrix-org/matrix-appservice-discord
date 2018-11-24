@@ -67,6 +67,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
             return {
                 getClient: () => {
                     return {
+                        getUserId: () => "@user:localhost",
                         sendStateEvent: (roomId, type, content, key) => {
                             SEV_ROOM_ID = roomId;
                             SEV_CONTENT = content;
@@ -86,6 +87,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 opts: {
                     backingStore: {
                         getMembership: (roomId, userId) => "join",
+                        setMembership: (roomId, userId, membership) => { },
                     },
                 },
                 setAvatarUrl: async (ava) => {

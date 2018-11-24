@@ -1,7 +1,7 @@
 import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore, Intent } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
 import { Log } from "./log";
@@ -266,7 +266,7 @@ export class UserSyncroniser {
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
-                (roomId) => intent.leave(roomId),
+                async (roomId) => this.leave(intent, roomId, false),
             ),
         );
     }
@@ -308,11 +308,7 @@ export class UserSyncroniser {
             leaveRooms.map(
                 async (roomId) => {
                     try {
-                        if ([null, "join", "invite"]
-                            .includes(intent.opts.backingStore.getMembership(roomId, state.mxUserId))) {
-                            await intent.leave(roomId);
-                            intent.opts.backingStore.setMembership(roomId, state.mxUserId, "leave");
-                        }
+                        await this.leave(intent, roomId, true);
                     } catch (e) { } // not in room
                 },
             ),
@@ -393,5 +389,15 @@ export class UserSyncroniser {
 
     private displayNameForUser(discordUser): string {
         return `${discordUser.username}#${discordUser.discriminator}`;
+    }
+
+    private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {
+        const userId = intent.getClient().getUserId();
+        if (checkCache && ![null, "join", "invite"]
+            .includes(intent.opts.backingStore.getMembership(roomId, userId))) {
+            return;
+        }
+        await intent.leave(roomId);
+        intent.opts.backingStore.setMembership(roomId, userId, "leave");
     }
 }
