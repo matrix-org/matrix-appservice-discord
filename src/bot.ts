@@ -394,7 +394,7 @@ export class DiscordBot {
     }
 
     public async GetChannelFromRoomId(roomId: string): Promise<Discord.Channel> {
-        const entries = this.bridge.getRoomStore().getEntriesByMatrixId(
+        const entries = await this.bridge.getRoomStore().getEntriesByMatrixId(
             roomId,
         );
 
