@@ -61,6 +61,7 @@ export class MessageProcessor {
         content = markdown.toHTML(content, {
             discordCallback: this.getDiscordParseCallbacks(msg),
             discordOnly: true,
+            escapeHTML: false,
         });
         content = this.InsertEmbeds(content, msg);
         content = await this.InsertMxcImages(content, msg);
@@ -95,7 +96,11 @@ export class MessageProcessor {
                 embedContent += "\n##### " + embedTitle; // h5 is probably best.
             }
             if (embed.description) {
-                embedContent += "\n" + embed.description;
+                embedContent += "\n" + markdown.toHTML(embed.description, {
+                    discordCallback: this.getDiscordParseCallbacks(msg),
+                    discordOnly: true,
+                    escapeHTML: false,
+                });
             }
             content += embedContent;
         }
@@ -171,6 +176,10 @@ export class MessageProcessor {
         return `${FLAG}${name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
     }
 
+    public InsertRoom(msg: Discord.Message, def: string): string {
+        return msg.mentions.everyone ? "@room" : def;
+    }
+
     public async InsertMxcImages(content: string, msg: Discord.Message, html: boolean = false): Promise<string> {
         let results = MXC_INSERT_REGEX.exec(content);
         while (results !== null) {
@@ -213,6 +222,8 @@ export class MessageProcessor {
         return {
             channel: (node) => this.InsertChannel(node, msg),
             emoji: (node) => this.InsertEmoji(node),
+            everyone: (_) => this.InsertRoom(msg, "@everyone"),
+            here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg),
             user: (node) => this.InsertUser(node, msg),
         };
@@ -222,6 +233,8 @@ export class MessageProcessor {
         return {
             channel: (node) => this.InsertChannel(node, msg, true),
             emoji: (node) => this.InsertEmoji(node), // are post-inserted
+            everyone: (_) => this.InsertRoom(msg, "@everyone"),
+            here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg, true),
             user: (node) => this.InsertUser(node, msg, true),
         };
