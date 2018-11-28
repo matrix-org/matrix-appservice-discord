@@ -24,3 +24,10 @@ export interface IMatrixEvent {
     unsigned?: any; // tslint:disable-line no-any
     origin_server_ts?: number;
 }
+
+export interface IMatrixMessage {
+    body: string;
+    msgtype: string;
+    formatted_body?: string;
+    format?: string;
+}

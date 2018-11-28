@@ -1,5 +1,4 @@
 import * as Discord from "discord.js";
-import { MessageProcessorOpts, MessageProcessor } from "./messageprocessor";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
@@ -8,7 +7,8 @@ import * as path from "path";
 import * as mime from "mime";
 import { MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
-import { IMatrixEvent, IMatrixEventContent } from "./matrixtypes";
+import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
+import { MatrixMessageProcessor, MatrixMessageProcessorOpts } from "./matrixmessageprocessor";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -16,7 +16,6 @@ const log = new Log("MatrixEventProcessor");
 const MaxFileSize = 8000000;
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
-const DISCORD_EMOJI_REGEX = /:(\w+):/g;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
 
@@ -39,11 +38,19 @@ export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
     private bridge: Bridge;
     private discord: DiscordBot;
+    private matrixMsgProcessor: MatrixMessageProcessor;
 
     constructor(opts: MatrixEventProcessorOpts) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
+        this.matrixMsgProcessor = new MatrixMessageProcessor(
+            this.discord,
+            new MatrixMessageProcessorOpts(
+                this.config.bridge.disableEveryoneMention,
+                this.config.bridge.disableHereMention,
+            ),
+        );
     }
 
     public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
@@ -85,91 +92,27 @@ export class MatrixEventProcessor {
     }
 
     public async EventToEmbed(
-        event: IMatrixEvent, profile: IMatrixEvent|null, channel: Discord.TextChannel,
+        event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
-        let body: string = this.config.bridge.disableDiscordMentions ? event.content!.body as string :
-            this.FindMentionsInPlainBody(
-                event.content!.body as string,
-                channel.members.array(),
-            );
-
-        if (event.type === "m.sticker") {
-            body = "";
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        const profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
+        if (!profile) {
+            log.warn(`User ${event.sender} has no member state. That's odd.`);
         }
 
-        // Replace @everyone
-        if (this.config.bridge.disableEveryoneMention) {
-            body = body.replace(new RegExp(`@everyone`, "g"), "@ everyone");
+        let body: string = "";
+        if (event.type !== "m.sticker") {
+            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, profile);
         }
-
-        // Replace @here
-        if (this.config.bridge.disableHereMention) {
-            body = body.replace(new RegExp(`@here`, "g"), "@ here");
-        }
-
-        /* See issue #82
-        const isMarkdown = (event.content.format === "org.matrix.custom.html");
-        if (!isMarkdown) {
-          body = "\\" + body;
-        }*/
-
-        // Replace /me with * username ...
-        if (event.content!.msgtype === "m.emote") {
-            if (profile &&
-                profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                body = `*${profile.displayname} ${body}*`;
-            } else {
-                body = `*${body}*`;
-            }
-        }
-
-        // replace <del>blah</del> with ~~blah~~
-        body = body.replace(/<del>([^<]*)<\/del>/g, "~~$1~~");
-
-        // Handle discord custom emoji
-        body = this.ReplaceDiscordEmoji(body, channel.guild);
 
         const messageEmbed = new Discord.RichEmbed();
-        const replyEmbedAndBody = await this.GetEmbedForReply(event);
-        messageEmbed.setDescription(replyEmbedAndBody ? replyEmbedAndBody[1] : body);
+        messageEmbed.setDescription(body);
         await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
+        const replyEmbed = getReply ? (await this.GetEmbedForReply(event, channel)) : undefined;
         return {
             messageEmbed,
-            replyEmbed: replyEmbedAndBody ? replyEmbedAndBody[0] : undefined,
+            replyEmbed,
         };
-    }
-
-    public FindMentionsInPlainBody(body: string, members: Discord.GuildMember[]): string {
-        const WORD_BOUNDARY = "(^|\:|\#|```|\\s|$|,)";
-        for (const member of members) {
-            const matcher = `${escapeStringRegexp(`${member.user.username}#${member.user.discriminator}`)}|` +
-                `${escapeStringRegexp(member.displayName)}`;
-            const regex = new RegExp(
-                    `(${WORD_BOUNDARY})(@?(${matcher}))(?=${WORD_BOUNDARY})`
-                    , "igmu");
-
-            body = body.replace(regex, `$1<@!${member.id}>`);
-        }
-        return body;
-    }
-
-    public ReplaceDiscordEmoji(content: string, guild: Discord.Guild): string {
-        let results = DISCORD_EMOJI_REGEX.exec(content);
-        while (results !== null) {
-            const emojiName = results[1];
-            const emojiNameWithColons = results[0];
-
-            // Check if this emoji exists in the guild
-            const emoji = guild.emojis.find((e) => e.name === emojiName);
-            if (emoji) {
-                // Replace :a: with <:a:123ID123>
-                content = content.replace(emojiNameWithColons, `<${emojiNameWithColons}${emoji.id}>`);
-            }
-            results = DISCORD_EMOJI_REGEX.exec(content);
-        }
-        return content;
     }
 
     public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
@@ -217,46 +160,36 @@ export class MatrixEventProcessor {
         return `[${name}](${url})`;
     }
 
-    public async GetEmbedForReply(event: IMatrixEvent): Promise<[Discord.RichEmbed, string]|undefined> {
+    public async GetEmbedForReply(
+        event: IMatrixEvent,
+        channel: Discord.TextChannel,
+    ): Promise<Discord.RichEmbed|undefined> {
         if (!event.content) {
             event.content = {};
         }
 
         const relatesTo = event.content["m.relates_to"];
-        let eventId = null;
+        let eventId = "";
         if (relatesTo && relatesTo["m.in_reply_to"]) {
             eventId = relatesTo["m.in_reply_to"].event_id;
         } else {
             return;
         }
-        let reponseText = Util.GetReplyFromReplyBody(event.content.body || "");
-        if (reponseText === "") {
-            reponseText = "Reply with unknown content";
-        }
 
         const intent = this.bridge.getIntent();
-        const embed = new Discord.RichEmbed();
         // Try to get the event.
         try {
             const sourceEvent = await intent.getEvent(event.room_id, eventId);
-            let replyText = sourceEvent.content.body  || "Reply with unknown content";
-            // Check if this is also a reply.
-            if (sourceEvent.content && sourceEvent.content["m.relates_to"] &&
-                sourceEvent.content["m.relates_to"]["m.in_reply_to"]) {
-                replyText = Util.GetReplyFromReplyBody(sourceEvent.content.body);
-            }
-            embed.setDescription(replyText);
-            await this.SetEmbedAuthor(
-                embed,
-                sourceEvent.sender,
-            );
+            sourceEvent.content.body = sourceEvent.content.body  || "Reply with unknown content";
+            return (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
         } catch (ex) {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
-            // For some reason we failed to get the event, so using fallback.
-            embed.setDescription("Reply with unknown content");
-            embed.setAuthor("Unknown");
         }
-        return [embed, reponseText];
+        // For some reason we failed to get the event, so using fallback.
+        const embed = new Discord.RichEmbed();
+        embed.setDescription("Reply with unknown content");
+        embed.setAuthor("Unknown");
+        return embed;
     }
 
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {

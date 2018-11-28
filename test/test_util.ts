@@ -125,30 +125,6 @@ describe("Util", () => {
             }
         });
     });
-    describe("GetReplyFromReplyBody", () => {
-        it("Should get a reply from the body", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-
-This is where the reply goes`);
-            expect(reply).to.equal("This is where the reply goes");
-        });
-        it("Should get a multi-line reply from the body", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-
-This is where the reply goes and
-there are even more lines here.`);
-            expect(reply).to.equal("This is where the reply goes and\nthere are even more lines here.");
-        });
-        it("Should get empty string from an empty reply", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-`);
-            expect(reply).to.equal("");
-        });
-        it("Should return body if no reply found", () => {
-            const reply = Util.GetReplyFromReplyBody("Test\nwith\nhalfy");
-            expect(reply).to.equal("Test\nwith\nhalfy");
-        });
-    });
     describe("NumberToHTMLColor", () => {
         it("Should handle valid colors", () => {
             const COLOR = 0xdeadaf;
