@@ -103,64 +103,117 @@ export class DiscordBot {
         const client = await this.clientFactory.getClient();
 
         if (!this.config.bridge.disableTypingNotifications) {
-            client.on("typingStart", async (c, u) => this.OnTyping(c, u, true) );
-            client.on("typingStop", async (c, u) => this.OnTyping(c, u, false) );
+            client.on("typingStart", async (c, u) => {
+                try {
+                    await this.OnTyping(c, u, true);
+                } catch (err) { log.error("typingStart", err); }
+            });
+            client.on("typingStop", async (c, u) => {
+                try {
+                    await this.OnTyping(c, u, false);
+                } catch (err) { log.error("typingStop", err); }
+            });
         }
         if (!this.config.bridge.disablePresence) {
             client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
-                this.presenceHandler.EnqueueUser(newMember.user);
+                try {
+                    this.presenceHandler.EnqueueUser(newMember.user);
+                } catch (err) { log.error("presenceUpdate", err); }
             });
         }
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-        client.on("channelUpdate", async (_, newChannel) => this.channelSync.OnUpdate(newChannel) );
-        client.on("channelDelete", async (channel) => this.channelSync.OnDelete(channel) );
-        client.on("guildUpdate", async (_, newGuild) => this.channelSync.OnGuildUpdate(newGuild) );
-        client.on("guildDelete", async (guild) => this.channelSync.OnGuildDelete(guild) );
+        client.on("channelUpdate", async (_, newChannel) => {
+            try {
+                await this.channelSync.OnUpdate(newChannel);
+            } catch (err) { log.error("channelUpdate", err); }
+        });
+        client.on("channelDelete", async (channel) => {
+            try {
+                await this.channelSync.OnDelete(channel);
+            } catch (err) { log.error("channelDelete", err); }
+        });
+        client.on("guildUpdate", async (_, newGuild) => {
+            try {
+                await this.channelSync.OnGuildUpdate(newGuild);
+            } catch (err) { log.error("guildUpdate", err); }
+        });
+        client.on("guildDelete", async (guild) => {
+            try {
+                await this.channelSync.OnGuildDelete(guild);
+            } catch (err) { log.error("guildDelete", err); }
+        });
 
         // Due to messages often arriving before we get a response from the send call,
         // messages get delayed from discord. We use Bluebird.delay to handle this.
 
         client.on("messageDelete", async (msg: Discord.Message) => {
-            await Bluebird.delay(this.config.limits.discordSendDelay);
-            this.discordMessageQueue[msg.channel.id] = (async () => {
-                await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                try {
-                    await this.DeleteDiscordMessage(msg);
-                } catch (err) {
-                    log.error("Caught while handing 'messageDelete'", err);
-                }
-            })();
+            try {
+                await Bluebird.delay(this.config.limits.discordSendDelay);
+                this.discordMessageQueue[msg.channel.id] = (async () => {
+                    await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+                    try {
+                        await this.DeleteDiscordMessage(msg);
+                    } catch (err) {
+                        log.error("Caught while handing 'messageDelete'", err);
+                    }
+                })();
+            } catch (err) {
+                log.error("messageDelete", err);
+            }
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
-            await Bluebird.delay(this.config.limits.discordSendDelay);
-            this.discordMessageQueue[newMessage.channel.id] = (async () => {
-                await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
-                try {
-                    await this.OnMessageUpdate(oldMessage, newMessage);
-                } catch (err) {
-                    log.error("Caught while handing 'messageUpdate'", err);
-                }
-            })();
+            try {
+                await Bluebird.delay(this.config.limits.discordSendDelay);
+                this.discordMessageQueue[newMessage.channel.id] = (async () => {
+                    await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
+                    try {
+                        await this.OnMessageUpdate(oldMessage, newMessage);
+                    } catch (err) {
+                        log.error("Caught while handing 'messageUpdate'", err);
+                    }
+                })();
+            } catch (err) {
+                log.error("messageUpdate", err);
+            }
         });
         client.on("message", async (msg: Discord.Message) => {
-            await Bluebird.delay(this.config.limits.discordSendDelay);
-            this.discordMessageQueue[msg.channel.id] = (async () => {
-                await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
-                try {
-                    await this.OnMessage(msg);
-                } catch (err) {
-                    log.error("Caught while handing 'message'", err);
-                }
-            })();
+            try {
+                await Bluebird.delay(this.config.limits.discordSendDelay);
+                this.discordMessageQueue[msg.channel.id] = (async () => {
+                    await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
+                    try {
+                        await this.OnMessage(msg);
+                    } catch (err) {
+                        log.error("Caught while handing 'message'", err);
+                    }
+                })();
+            } catch (err) {
+                log.error("message", err);
+            }
         });
         const jsLog = new Log("discord.js");
 
         this.userSync = new UserSyncroniser(this.bridge, this.config, this);
-        client.on("userUpdate", async (_, user) => this.userSync.OnUpdateUser(user));
-        client.on("guildMemberAdd", async (user) => this.userSync.OnAddGuildMember(user));
-        client.on("guildMemberRemove", async (user) =>  this.userSync.OnRemoveGuildMember(user));
-        client.on("guildMemberUpdate", async (oldUser, newUser) =>
-            this.userSync.OnUpdateGuildMember(oldUser, newUser));
+        client.on("userUpdate", async (_, user) => {
+            try {
+                await this.userSync.OnUpdateUser(user);
+            } catch (err) { log.error("userUpdate", err); }
+        });
+        client.on("guildMemberAdd", async (user) => {
+            try {
+                await this.userSync.OnAddGuildMember(user);
+            } catch (err) { log.error("guildMemberAdd", err); }
+        });
+        client.on("guildMemberRemove", async (user) =>  {
+            try {
+                await this.userSync.OnRemoveGuildMember(user);
+            } catch (err) { log.error("guildMemberRemove", err); }
+        });
+        client.on("guildMemberUpdate", async (oldUser, newUser) => {
+            try {
+                await this.userSync.OnUpdateGuildMember(oldUser, newUser);
+            } catch (err) { log.error("guildMemberUpdate", err); }
+        });
         client.on("debug", (msg) => { jsLog.verbose(msg); });
         client.on("error", (msg) => { jsLog.error(msg); });
         client.on("warn", (msg) => { jsLog.warn(msg); });
