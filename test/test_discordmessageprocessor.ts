@@ -74,6 +74,34 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(result.body, "_ italic _");
             Chai.assert.equal(result.formattedBody, "<em> italic </em>");
         });
+        it("replaces @everyone correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "hey @everyone!";
+            let result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @everyone!");
+            Chai.assert.equal(result.formattedBody, "hey @everyone!");
+
+            msg.mentions.everyone = true;
+            result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @room!");
+            Chai.assert.equal(result.formattedBody, "hey @room!");
+        });
+        it("replaces @here correctly", async () => {
+            const processor = new MessageProcessor(new MessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [];
+            msg.content = "hey @here!";
+            let result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @here!");
+            Chai.assert.equal(result.formattedBody, "hey @here!");
+
+            msg.mentions.everyone = true;
+            result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @room!");
+            Chai.assert.equal(result.formattedBody, "hey @room!");
+        });
     });
     describe("FormatEmbeds", () => {
         it("should format embeds correctly", async () => {

@@ -10,7 +10,9 @@ export class MockMessage {
     public channel: Discord.TextChannel | undefined;
     public guild: Discord.Guild | undefined;
     public author: MockUser;
+    public mentions: any = {};
     constructor(channel?: Discord.TextChannel) {
+        this.mentions.everyone = false;
         this.channel = channel;
         if (channel && channel.guild) {
             this.guild = channel.guild;
