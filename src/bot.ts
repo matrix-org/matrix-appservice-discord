@@ -110,41 +110,41 @@ export class DiscordBot {
             client.on("typingStart", async (c, u) => {
                 try {
                     await this.OnTyping(c, u, true);
-                } catch (err) { log.error("typingStart", err); }
+                } catch (err) { log.warning("Exception thrown while handling \"typingStart\" event", err); }
             });
             client.on("typingStop", async (c, u) => {
                 try {
                     await this.OnTyping(c, u, false);
-                } catch (err) { log.error("typingStop", err); }
+                } catch (err) { log.warning("Exception thrown while handling \"typingStop\" event", err); }
             });
         }
         if (!this.config.bridge.disablePresence) {
             client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
                 try {
                     this.presenceHandler.EnqueueUser(newMember.user);
-                } catch (err) { log.error("presenceUpdate", err); }
+                } catch (err) { log.warning("Exception thrown while handling \"presenceUpdate\" event", err); }
             });
         }
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
         client.on("channelUpdate", async (_, newChannel) => {
             try {
                 await this.channelSync.OnUpdate(newChannel);
-            } catch (err) { log.error("channelUpdate", err); }
+            } catch (err) { log.error("Exception thrown while handling \"channelUpdate\" event", err); }
         });
         client.on("channelDelete", async (channel) => {
             try {
                 await this.channelSync.OnDelete(channel);
-            } catch (err) { log.error("channelDelete", err); }
+            } catch (err) { log.error("Exception thrown while handling \"channelDelete\" event", err); }
         });
         client.on("guildUpdate", async (_, newGuild) => {
             try {
                 await this.channelSync.OnGuildUpdate(newGuild);
-            } catch (err) { log.error("guildUpdate", err); }
+            } catch (err) { log.error("Exception thrown while handling \"guildUpdate\" event", err); }
         });
         client.on("guildDelete", async (guild) => {
             try {
                 await this.channelSync.OnGuildDelete(guild);
-            } catch (err) { log.error("guildDelete", err); }
+            } catch (err) { log.error("Exception thrown while handling \"guildDelete\" event", err); }
         });
 
         // Due to messages often arriving before we get a response from the send call,
@@ -162,7 +162,7 @@ export class DiscordBot {
                     }
                 })();
             } catch (err) {
-                log.error("messageDelete", err);
+                log.error("Exception thrown while handling \"messageDelete\" event", err);
             }
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
@@ -177,7 +177,7 @@ export class DiscordBot {
                     }
                 })();
             } catch (err) {
-                log.error("messageUpdate", err);
+                log.error("Exception thrown while handling \"messageUpdate\" event", err);
             }
         });
         client.on("message", async (msg: Discord.Message) => {
@@ -192,7 +192,7 @@ export class DiscordBot {
                     }
                 })();
             } catch (err) {
-                log.error("message", err);
+                log.error("Exception thrown while handling \"message\" event", err);
             }
         });
         const jsLog = new Log("discord.js");
@@ -201,22 +201,22 @@ export class DiscordBot {
         client.on("userUpdate", async (_, user) => {
             try {
                 await this.userSync.OnUpdateUser(user);
-            } catch (err) { log.error("userUpdate", err); }
+            } catch (err) { log.error("Exception thrown while handling \"userUpdate\" event", err); }
         });
         client.on("guildMemberAdd", async (user) => {
             try {
                 await this.userSync.OnAddGuildMember(user);
-            } catch (err) { log.error("guildMemberAdd", err); }
+            } catch (err) { log.error("Exception thrown while handling \"guildMemberAdd\" event", err); }
         });
         client.on("guildMemberRemove", async (user) =>  {
             try {
                 await this.userSync.OnRemoveGuildMember(user);
-            } catch (err) { log.error("guildMemberRemove", err); }
+            } catch (err) { log.error("Exception thrown while handling \"guildMemberRemove\" event", err); }
         });
         client.on("guildMemberUpdate", async (_, member) => {
             try {
                 await this.userSync.OnUpdateGuildMember(member);
-            } catch (err) { log.error("guildMemberUpdate", err); }
+            } catch (err) { log.error("Exception thrown while handling \"guildMemberUpdate\" event", err); }
         });
         client.on("debug", (msg) => { jsLog.verbose(msg); });
         client.on("error", (msg) => { jsLog.error(msg); });
