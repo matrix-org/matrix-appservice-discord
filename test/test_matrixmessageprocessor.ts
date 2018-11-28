@@ -149,6 +149,13 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("line\nbreak");
         });
+        it("handles <hr>", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("test<hr>foxes");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("test\n----------\nfoxes");
+        });
     });
     describe("FormatMessage / formatted_body / complex", () => {
         it("html unescapes stuff inside of code", async () => {
