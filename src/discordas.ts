@@ -70,18 +70,18 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             onAliasQueried: async (alias: string, roomId: string) => {
                 try {
                     await roomhandler.OnAliasQueried.bind(roomhandler);
-                } catch (err) { log.error("onAliasQueried", err); }
+                } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string) => {
                 try {
                     await roomhandler.OnAliasQuery.bind(roomhandler);
-                } catch (err) { log.error("onAliasQuery", err); }
+                } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request, context) => {
                 try {
                     await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
                 } catch (err) {
-                    log.error("onEvent", err);
+                    log.error("Exception thrown while handling \"onEvent\" event", err);
                 }
             },
             onLog: (line, isError) => {
