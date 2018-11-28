@@ -9,6 +9,7 @@ import { MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, MatrixMessageProcessorOpts } from "./matrixmessageprocessor";
+import { MatrixCommandHandler } from "./matrixcommandhandler";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -18,16 +19,9 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
-
-export class MatrixEventProcessorOpts {
-    constructor(
-        readonly config: DiscordBridgeConfig,
-        readonly bridge: Bridge,
-        readonly discord: DiscordBot,
-        ) {
-
-    }
-}
+const AGE_LIMIT = 900000; // 15 * 60 * 1000
+const USERSYNC_STATE_DELAY_MS = 5000;
+const ROOM_NAME_PARTS = 2;
 
 export interface IMatrixEventProcessorResult {
     messageEmbed: Discord.RichEmbed;
@@ -39,11 +33,11 @@ export class MatrixEventProcessor {
     private bridge: Bridge;
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
+    private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(opts: MatrixEventProcessorOpts) {
-        this.config = opts.config;
-        this.bridge = opts.bridge;
-        this.discord = opts.discord;
+    constructor(discord: DiscordBot, config: DiscordBridgeConfig) {
+        this.discord = discord;
+        this.config = config;
         this.matrixMsgProcessor = new MatrixMessageProcessor(
             this.discord,
             new MatrixMessageProcessorOpts(
@@ -51,9 +45,71 @@ export class MatrixEventProcessor {
                 this.config.bridge.disableHereMention,
             ),
         );
+        this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.config);
     }
 
-    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
+    public setBridge(bridge: Bridge) {
+        this.bridge = bridge;
+        this.mxCommandHandler.setBridge(bridge);
+    }
+
+    public async OnEvent(request, context): Promise<void> {
+        const event = request.getData() as IMatrixEvent;
+        if (event.unsigned.age > AGE_LIMIT) {
+            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            throw new Error("Event too old");
+        }
+        if (event.type === "m.room.member" && event.content!.membership === "invite" && event.state_key === this.discord.getBotId()) {
+            await this.mxCommandHandler.HandleInvite(event);
+            return;
+        } else if (event.type === "m.room.member" && event.content!.membership === "join") {
+            if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+                await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
+            } else {
+                await this.ProcessStateEvent(event);
+            }
+            return;
+        } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
+            await this.ProcessStateEvent(event);
+            return;
+        } else if (event.type === "m.room.redaction" && context.rooms.remote) {
+            await this.discord.ProcessMatrixRedact(event);
+            return;
+        } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+            log.verbose(`Got ${event.type} event`);
+            const isBotCommand = event.type === "m.room.message" &&
+                event.content!.body &&
+                event.content!.body!.startsWith("!discord");
+            if (isBotCommand) {
+                await this.mxCommandHandler.ProcessCommand(event, context);
+                return;
+            } else if (context.rooms.remote) {
+                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+                try {
+                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    return;
+                } catch (err) {
+                    log.warn("There was an error sending a matrix event", err);
+                    return;
+                }
+            }
+        } else if (event.type === "m.room.encryption" && context.rooms.remote) {
+            try {
+                await this.HandleEncryptionWarning(event.room_id);
+                return;
+            } catch (err) {
+                throw new Error(`Failed to handle encrypted room, ${err}`);
+            }
+        } else {
+            log.verbose("Got non m.room.message event");
+        }
+        throw new Error("Event not processed by bridge");
+    }
+
+    public async ProcessStateEvent(event: IMatrixEvent) {
+        log.verbose(`Got state event from ${event.room_id} ${event.type}`);
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
+
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -88,7 +144,45 @@ export class MatrixEventProcessor {
         }
 
         msg += " on Matrix.";
-        return msg;
+        await this.discord.sendAsBot(msg, channel, event);
+    }
+
+    public async HandleEncryptionWarning(roomId: string): Promise<void> {
+        const intent = this.bridge.getIntent();
+        log.info(`User has turned on encryption in ${roomId}, so leaving.`);
+        /* N.B 'status' is not specced but https://github.com/matrix-org/matrix-doc/pull/828
+         has been open for over a year with no resolution. */
+        const sendPromise = intent.sendMessage(roomId, {
+            body: "You have turned on encryption in this room, so the service will not bridge any new messages.",
+            msgtype: "m.notice",
+            status: "critical",
+        });
+        const channel = await this.discord.GetChannelFromRoomId(roomId);
+        await (channel as Discord.TextChannel).send(
+          "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
+        );
+        await sendPromise;
+        await intent.leave(roomId);
+        await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
+    }
+
+    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        log.verbose(`Looking up ${guildId}_${channelId}`);
+        const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
+        const chan = roomLookup.channel;
+        const botUser = roomLookup.botUser;
+
+        const embedSet = await this.EventToEmbed(event, chan);
+        const opts: Discord.MessageOptions = {};
+        const file = await this.HandleAttachment(event, mxClient);
+        if (typeof(file) === "string") {
+            embedSet.messageEmbed.description += " " + file;
+        } else {
+            opts.file = file;
+        }
+
+        await this.discord.send(embedSet, opts, roomLookup, event);
     }
 
     public async EventToEmbed(

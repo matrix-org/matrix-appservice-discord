@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
+import { MatrixEventProcessor } from "./matrixeventprocessor";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
 import { Provisioner } from "./provisioner";
@@ -61,7 +62,8 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     // Warn and deprecate old config options.
     const discordstore = new DiscordStore(config.database);
     const discordbot = new DiscordBot(config, discordstore, provisioner);
-    const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
+    const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId);
+    const eventprocessor = new MatrixEventProcessor(discordbot, config);
 
     const bridge = new Bridge({
         clientFactory,
@@ -79,7 +81,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             },
             onEvent: async (request, context) => {
                 try {
-                    await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
+                    await request.outcomeFrom(Bluebird.resolve(eventprocessor.OnEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                 }
@@ -107,7 +109,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     });
     provisioner.SetBridge(bridge);
     roomhandler.setBridge(bridge);
+    eventprocessor.setBridge(bridge);
     discordbot.setBridge(bridge);
+    discordbot.setEventProcessor(eventprocessor);
     discordbot.setRoomHandler(roomhandler);
     log.info("Initing bridge.");
     log.info(`Started listening on port ${port}.`);
