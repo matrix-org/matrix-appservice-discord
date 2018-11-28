@@ -176,8 +176,8 @@ export class MessageProcessor {
         return `${FLAG}${name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
     }
 
-    public InsertRoom(): string {
-        return "@room";
+    public InsertRoom(msg: Discord.Message, def: string): string {
+        return msg.mentions.everyone ? "@room" : def;
     }
 
     public async InsertMxcImages(content: string, msg: Discord.Message, html: boolean = false): Promise<string> {
@@ -222,8 +222,8 @@ export class MessageProcessor {
         return {
             channel: (node) => this.InsertChannel(node, msg),
             emoji: (node) => this.InsertEmoji(node),
-            everyone: (_) => this.InsertRoom(),
-            here: (_) => this.InsertRoom(),
+            everyone: (_) => this.InsertRoom(msg, "@everyone"),
+            here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg),
             user: (node) => this.InsertUser(node, msg),
         };
@@ -233,8 +233,8 @@ export class MessageProcessor {
         return {
             channel: (node) => this.InsertChannel(node, msg, true),
             emoji: (node) => this.InsertEmoji(node), // are post-inserted
-            everyone: (_) => this.InsertRoom(),
-            here: (_) => this.InsertRoom(),
+            everyone: (_) => this.InsertRoom(msg, "@everyone"),
+            here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg, true),
             user: (node) => this.InsertUser(node, msg, true),
         };

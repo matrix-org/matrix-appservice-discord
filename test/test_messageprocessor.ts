@@ -75,7 +75,12 @@ describe("MessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "hey @everyone!";
-            const result = await processor.FormatDiscordMessage(msg);
+            let result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @everyone!");
+            Chai.assert.equal(result.formattedBody, "hey @everyone!");
+
+            msg.mentions.everyone = true;
+            result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "hey @room!");
             Chai.assert.equal(result.formattedBody, "hey @room!");
         });
@@ -84,7 +89,12 @@ describe("MessageProcessor", () => {
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "hey @here!";
-            const result = await processor.FormatDiscordMessage(msg);
+            let result = await processor.FormatDiscordMessage(msg);
+            Chai.assert.equal(result.body, "hey @here!");
+            Chai.assert.equal(result.formattedBody, "hey @here!");
+
+            msg.mentions.everyone = true;
+            result = await processor.FormatDiscordMessage(msg);
             Chai.assert.equal(result.body, "hey @room!");
             Chai.assert.equal(result.formattedBody, "hey @room!");
         });
