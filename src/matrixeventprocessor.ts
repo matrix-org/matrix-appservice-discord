@@ -35,7 +35,7 @@ export class MatrixEventProcessor {
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(discord: DiscordBot, config: DiscordBridgeConfig) {
+    constructor(discord: DiscordBot, config: DiscordBridgeConfig, cm?: MatrixCommandHandler) {
         this.discord = discord;
         this.config = config;
         this.matrixMsgProcessor = new MatrixMessageProcessor(
@@ -45,7 +45,11 @@ export class MatrixEventProcessor {
                 this.config.bridge.disableHereMention,
             ),
         );
-        this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.config);
+        if (cm) {
+            this.mxCommandHandler = cm;
+        } else {
+            this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.config);
+        }
     }
 
     public setBridge(bridge: Bridge) {

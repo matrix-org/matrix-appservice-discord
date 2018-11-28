@@ -6,7 +6,7 @@ import { ISingleChannelState, IChannelState, ChannelSyncroniser } from "../src/c
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
-import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
+import { MatrixEventProcessor } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
 import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
