@@ -75,7 +75,9 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(result.formattedBody, "<em> italic </em>");
         });
         it("replaces @everyone correctly", async () => {
-            const processor = new DiscordMessageProcessor(new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"),
+                bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "hey @everyone!";
@@ -89,7 +91,9 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(result.formattedBody, "hey @room!");
         });
         it("replaces @here correctly", async () => {
-            const processor = new DiscordMessageProcessor(new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"),
+                bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];
             msg.content = "hey @here!";
