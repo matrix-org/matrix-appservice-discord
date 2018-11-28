@@ -1,4 +1,6 @@
+import {MockCollection} from "./collection";
 import {MockUser} from "./user";
+import {MockRole} from "./role";
 import * as Discord from "discord.js";
 
 // we are a test file and thus need those
@@ -9,7 +11,7 @@ export class MockMember {
     public presence: Discord.Presence;
     public user: MockUser;
     public nickname: string;
-    public roles: any[] = [];
+    public roles = new MockCollection<string, MockRole>();
     constructor(id: string, username: string, public guild: any = null, public displayName: string = username) {
         this.id = id;
         this.presence = new Discord.Presence({}, {} as any);

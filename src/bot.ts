@@ -213,9 +213,9 @@ export class DiscordBot {
                 await this.userSync.OnRemoveGuildMember(user);
             } catch (err) { log.error("guildMemberRemove", err); }
         });
-        client.on("guildMemberUpdate", async (oldUser, newUser) => {
+        client.on("guildMemberUpdate", async (_, member) => {
             try {
-                await this.userSync.OnUpdateGuildMember(oldUser, newUser);
+                await this.userSync.OnUpdateGuildMember(member);
             } catch (err) { log.error("guildMemberUpdate", err); }
         });
         client.on("debug", (msg) => { jsLog.verbose(msg); });
@@ -493,15 +493,32 @@ export class DiscordBot {
         return dbEmoji;
     }
 
-    public async GetRoomIdsFromGuild(guild: string): Promise<string[]> {
-        const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
-            discord_guild: guild,
-        });
-        if (rooms.length === 0) {
-            log.verbose(`Couldn't find room(s) for guild id:${guild}.`);
-            throw new Error("Room(s) not found.");
+    public async GetRoomIdsFromGuild(guild: Discord.Guild, member?: Discord.GuildMember): Promise<string[]> {
+        if (member) {
+            let rooms: string[] = [];
+            await Util.AsyncForEach(guild.channels.array(), async (channel) => {
+                if (channel.type !== "text" || !channel.members.has(member.id)) {
+                    return;
+                }
+                try {
+                    rooms = rooms.concat(await this.channelSync.GetRoomIdsFromChannel(channel));
+                } catch (e) { } // no bridged rooms for this channel
+            });
+            if (rooms.length === 0) {
+                log.verbose(`Couldn't find room(s) for guild id:${guild.id} with member id:${member.id}.`);
+                throw new Error("Room(s) not found.");
+            }
+            return rooms;
+        } else {
+            const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+                discord_guild: guild.id,
+            });
+            if (rooms.length === 0) {
+                log.verbose(`Couldn't find room(s) for guild id:${guild.id}.`);
+                throw new Error("Room(s) not found.");
+            }
+            return rooms.map((room) => room.matrix.getId());
         }
-        return rooms.map((room) => room.matrix.getId());
     }
 
     private async SendMatrixMessage(matrixMsg: DiscordMessageProcessorMatrixResult, chan: Discord.Channel,
