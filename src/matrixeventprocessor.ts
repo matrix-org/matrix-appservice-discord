@@ -63,7 +63,11 @@ export class MatrixEventProcessor {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
             throw new Error("Event too old");
         }
-        if (event.type === "m.room.member" && event.content!.membership === "invite" && event.state_key === this.discord.getBotId()) {
+        if (
+            event.type === "m.room.member"
+            && event.content!.membership === "invite"
+            && event.state_key === this.discord.getBotId()
+        ) {
             await this.mxCommandHandler.HandleInvite(event);
             return;
         } else if (event.type === "m.room.member" && event.content!.membership === "join") {

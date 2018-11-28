@@ -8,15 +8,17 @@ import { Util } from "./util";
 import * as Discord from "discord.js";
 const log = new Log("MatrixCommandHandler");
 
+/* tslint:disable:no-magic-numbers */
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
 const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
 const ROOM_CACHE_MAXAGE_MS = 15 * 60 * 1000;
+/* tslint:enable:no-magic-numbers */
 
 export class MatrixCommandHandler {
     private config: DiscordBridgeConfig;
     private bridge: Bridge;
     private discord: DiscordBot;
-    private provisioner: Provisioner
+    private provisioner: Provisioner;
     private botUserId: string;
     private botJoinedRooms: Set<string>; // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;

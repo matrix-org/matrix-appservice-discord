@@ -80,7 +80,6 @@ function createCH(opts: any = {}) {
         },
     };
     const bot = {
-        getBotId: () => "@botuser:localhost",
         LookupRoom: async (guildid, discordid) => {
             if (guildid !== "123") {
                 throw new Error("Guild not found");
@@ -91,6 +90,7 @@ function createCH(opts: any = {}) {
             return {channel, botUser: true };
         },
         Provisioner: provisioner,
+        getBotId: () => "@botuser:localhost",
     };
     const ch = new MatrixCommandHandler(bot as any, config);
     ch.setBridge(bridge);

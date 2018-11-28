@@ -28,18 +28,6 @@ function buildRequest(eventData) {
     };
 }
 
-const bot = {
-    GetIntentFromDiscordMember: (member) => {
-        return {
-            getClient: () => {
-                return {
-
-                };
-            },
-        };
-    },
-};
-
 const mxClient = {
     getStateEvent: async (roomId, stateType, stateKey) => {
         if (stateType === "m.room.member") {
@@ -159,19 +147,19 @@ function createMatrixEventProcessor(
     };
 
     const bot = {
-        getBotId: () => "@botuser:localhost",
         GetChannelFromRoomId: async (roomId) => {
             return new MockChannel("123456");
         },
         GetDiscordUserOrMember: async (userId, guildId?) => {
             return new MockMember("126456", "Test User");
         },
-        sendAsBot: async (msg, channel, event) => {
-            STATE_EVENT_MSG = msg;
-        },
-        UserSyncroniser: us,
         ProcessMatrixRedact: async (evt) => {
             MESSAGE_PROCCESS = "redacted";
+        },
+        UserSyncroniser: us,
+        getBotId: () => "@botuser:localhost",
+        sendAsBot: async (msg, channel, event) => {
+            STATE_EVENT_MSG = msg;
         },
     };
     const config = new DiscordBridgeConfig();
@@ -720,7 +708,6 @@ This is the reply`,
             const processor = createMatrixEventProcessor();
             let stateevent = false;
             processor.ProcessStateEvent = async (ev) => {
-                console.log("state");
                 stateevent = true;
             };
             await processor.OnEvent(buildRequest({
