@@ -8,7 +8,7 @@ import * as mime from "mime";
 import { MatrixUser, Bridge } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
-import { MatrixMessageProcessor } from "./matrixmessageprocessor";
+import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -102,9 +102,18 @@ export class MatrixEventProcessor {
             log.warn(`Trying to fetch member state or profile for ${event.sender} failed`, err);
         }
 
+        const params = {
+            mxClient,
+            roomId: event.room_id,
+            userId: event.sender,
+        } as IMatrixMessageProcessorParams;
+        if (profile) {
+            params.displayname = profile.displayname;
+        }
+
         let body: string = "";
         if (event.type !== "m.sticker") {
-            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, profile);
+            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, params);
         }
 
         const messageEmbed = new Discord.RichEmbed();

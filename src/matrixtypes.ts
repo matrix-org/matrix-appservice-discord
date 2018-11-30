@@ -23,6 +23,8 @@ export interface IMatrixEvent {
     content?: IMatrixEventContent;
     unsigned?: any; // tslint:disable-line no-any
     origin_server_ts?: number;
+    users?: any; // tslint:disable-line no-any
+    notifications?: any; // tslint:disable-line no-any
 }
 
 export interface IMatrixMessage {

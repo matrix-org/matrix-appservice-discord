@@ -13,6 +13,23 @@ import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
 const expect = Chai.expect;
 
+const mxClient = {
+    getStateEvent: async (roomId, stateType, _) => {
+        if (stateType === "m.room.power_levels") {
+            return {
+                notifications: {
+                    room: 50,
+                },
+                users: {
+                    "@nopower:localhost": 0,
+                    "@power:localhost": 100,
+                },
+            };
+        }
+        return null;
+    }
+};
+
 const bot = {
     GetEmojiByMxc: async (mxc: string): Promise<DbEmoji> => {
         if (mxc === "mxc://real_emote:localhost") {
@@ -64,13 +81,6 @@ describe("MatrixMessageProcessor", () => {
             const msg = getPlainMessage("wow \\*this\\* is cool");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("wow \\\\\\*this\\\\\\* is cool");
-        });
-        it("Converts @room to @here", async () => {
-            const mp = new MatrixMessageProcessor(bot);
-            const guild = new MockGuild("1234");
-            const msg = getPlainMessage("hey @room");
-            const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("hey @here");
         });
     });
     describe("FormatMessage / formatted_body / simple", () => {
@@ -259,13 +269,6 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("*yay?*");
         });
-        it("Converts @room to @here", async () => {
-            const mp = new MatrixMessageProcessor(bot);
-            const guild = new MockGuild("1234");
-            const msg = getHtmlMessage("hey @room");
-            const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("hey @here");
-        });
     });
     describe("FormatMessage / formatted_body / emoji", () => {
         it("Inserts emoji by name", async () => {
@@ -303,6 +306,76 @@ code
             const msg = getHtmlMessage("<img>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("");
+        });
+    });
+    describe("FormatMessage / formatted_body / matrix", () => {
+        it("escapes @everyone", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("hey @everyone");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("hey @\u200Beveryone");
+        });
+        it("escapes @here", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("hey @here");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("hey @\u200Bhere");
+        });
+        it("converts @room to @here, if sufficient power", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("hey @room");
+            const params = {
+                mxClient,
+                roomId: "!123456:localhost",
+                userId: "@power:localhost",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("hey @here");
+        });
+        it("ignores @room to @here conversion, if insufficient power", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("hey @room");
+            const params = {
+                mxClient,
+                roomId: "!123456:localhost",
+                userId: "@nopower:localhost",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("hey @room");
+        });
+        it("handles /me for normal names", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("floofs", "m.emote");
+            const params = {
+                displayname: "fox",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("_fox floofs_");
+        });
+        it("handles /me for short names", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("floofs", "m.emote");
+            const params = {
+                displayname: "f",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("_floofs_");
+        });
+        it("handles /me for long names", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("floofs", "m.emote");
+            const params = {
+                displayname: "foxfoxfoxfoxfoxfoxfoxfoxfoxfoxfoxfox",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("_floofs_");
         });
     });
     describe("FormatMessage / formatted_body / blockquotes", () => {
