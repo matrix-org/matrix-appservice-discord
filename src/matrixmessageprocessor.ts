@@ -8,15 +8,11 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
-export class MatrixMessageProcessorOpts {
-    constructor(readonly disableEveryone: boolean = true, readonly disableHere: boolean = true) { }
-}
-
 export class MatrixMessageProcessor {
     private guild: Discord.Guild;
     private listDepth: number = 0;
     private listBulletPoints: string[] = ["●", "○", "■", "‣"];
-    constructor(public bot: DiscordBot, public opts: MatrixMessageProcessorOpts) { }
+    constructor(public bot: DiscordBot) { }
     public async FormatMessage(
         msg: IMatrixMessage,
         guild: Discord.Guild,
@@ -54,12 +50,10 @@ export class MatrixMessageProcessor {
     }
 
     private escapeDiscord(msg: string): string {
-        if (this.opts.disableEveryone) {
-            msg = msg.replace(/@everyone/g, "@ everyone");
-        }
-        if (this.opts.disableHere) {
-            msg = msg.replace(/@here/g, "@ here");
-        }
+        // \u200B is the zero-width space --> they still look the same but don't mention
+        msg = msg.replace(/@everyone/g, "@\u200Beveryone");
+        msg = msg.replace(/@here/g, "@\u200Bhere");
+
         msg = msg.replace(/@room/g, "@here");
         const escapeChars = ["\\", "*", "_", "~", "`"];
         escapeChars.forEach((char) => {

@@ -59,11 +59,7 @@ const mxClient = {
     },
 };
 
-function createMatrixEventProcessor(
-    disableMentions: boolean = false,
-    disableEveryone = false,
-    disableHere = false,
-): MatrixEventProcessor {
+function createMatrixEventProcessor(): MatrixEventProcessor {
     const bridge = {
         getBot: () => {
             return {
@@ -134,9 +130,6 @@ function createMatrixEventProcessor(
         },
     };
     const config = new DiscordBridgeConfig();
-    config.bridge.disableDiscordMentions = disableMentions;
-    config.bridge.disableEveryoneMention = disableEveryone;
-    config.bridge.disableHereMention = disableHere;
 
     const Util = Object.assign(require("../src/util").Util, {
         DownloadFile: (name: string) => {
@@ -375,26 +368,26 @@ describe("MatrixEventProcessor", () => {
             Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should remove everyone mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(false, true);
+        it("Should remove everyone mentions.", async () => {
+            const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
                     body: "@everyone Hello!",
                 },
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@ everyone Hello!");
+            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Beveryone Hello!");
         });
 
-        it("Should remove here mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
+        it("Should remove here mentions.", async () => {
+            const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
                     body: "@here Hello!",
                 },
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@ here Hello!");
+            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Bhere Hello!");
         });
 
         it("Should replace /me with * displayname, and italicize message", async () => {

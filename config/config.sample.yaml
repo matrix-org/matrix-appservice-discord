@@ -19,20 +19,11 @@ bridge:
   disablePresence: false
   # Disable sending typing notifications when somebody on Discord types.
   disableTypingNotifications: false
-  # Disable parsing discord usernames out of matrix messages so
-  # that it highlights discord users.
-  # WARNING: Not always 100% accurate, but close enough usually.
-  disableDiscordMentions: false
   # Disable deleting messages on Discord if a message is redacted on Matrix.
   disableDeletionForwarding: false
   # Enable users to bridge rooms using !discord commands. See
   # https://t2bot.io/discord for instructions.
   enableSelfServiceBridging: false
-  # For both below, a space is inserted after @ to stop the mentions working.
-  # Disable relaying @everyone to Discord. Non-puppeted users can abuse this.
-  disableEveryoneMention: false
-  # Disable relaying @here to Discord. Non-puppeted users can abuse this.
-  disableHereMention: false
 # Authentication configuration for the discord bot.
 auth:
   clientID: "12345"
