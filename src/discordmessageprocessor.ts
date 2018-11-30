@@ -5,7 +5,7 @@ import * as escapeHtml from "escape-html";
 import { Util } from "./util";
 
 import { Log } from "./log";
-const log = new Log("MessageProcessor");
+const log = new Log("DiscordMessageProcessor");
 
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 const MXC_INSERT_REGEX = /\x01(\w+)\x01([01])\x01([0-9]*)\x01/g;
@@ -20,7 +20,7 @@ export class DiscordMessageProcessorOpts {
     }
 }
 
-export class DiscordMessageProcessorMatrixResult {
+export class DiscordMessageProcessorResult {
     public formattedBody: string;
     public body: string;
     public msgtype: string;
@@ -46,8 +46,8 @@ export class DiscordMessageProcessor {
         }
     }
 
-    public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageProcessorMatrixResult> {
-        const result = new DiscordMessageProcessorMatrixResult();
+    public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageProcessorResult> {
+        const result = new DiscordMessageProcessorResult();
 
         let content = msg.content;
 
@@ -78,7 +78,7 @@ export class DiscordMessageProcessor {
     public async FormatEdit(
         oldMsg: Discord.Message,
         newMsg: Discord.Message,
-    ): Promise<DiscordMessageProcessorMatrixResult> {
+    ): Promise<DiscordMessageProcessorResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
         oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
         return this.FormatMessage(oldMsg);

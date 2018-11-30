@@ -95,9 +95,17 @@ export class MatrixEventProcessor {
         event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
         const mxClient = this.bridge.getClientFactory().getClientAs();
-        const profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
-        if (!profile) {
-            log.warn(`User ${event.sender} has no member state. That's odd.`);
+        let profile: IMatrixEvent | null = null;
+        try {
+            profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
+            if (!profile) {
+                profile = await mxClient.getProfileInfo(event.sender);
+            }
+            if (!profile) {
+                log.warn(`User ${event.sender} has no member state and no profile. That's odd.`);
+            }
+        } catch (err) {
+            log.warn(`Trying to fetch member state or profile for ${event.sender} failed`, err);
         }
 
         let body: string = "";

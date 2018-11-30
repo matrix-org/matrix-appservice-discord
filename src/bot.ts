@@ -8,7 +8,7 @@ import { Util } from "./util";
 import {
     DiscordMessageProcessor,
     DiscordMessageProcessorOpts,
-    DiscordMessageProcessorMatrixResult,
+    DiscordMessageProcessorResult,
 } from "./discordmessageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
@@ -451,7 +451,7 @@ export class DiscordBot {
         return rooms.map((room) => room.matrix.getId());
     }
 
-    private async SendMatrixMessage(matrixMsg: DiscordMessageProcessorMatrixResult, chan: Discord.Channel,
+    private async SendMatrixMessage(matrixMsg: DiscordMessageProcessorResult, chan: Discord.Channel,
                                     guild: Discord.Guild, author: Discord.User,
                                     msgID: string): Promise<boolean> {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
