@@ -503,7 +503,7 @@ export class DiscordBot {
         return rooms.map((room) => room.matrix.getId());
     }
 
-    public async handleMatrixKickBan(
+    public async HandleMatrixKickBan(
         roomId: string, kickeeUserId: string, kicker: string, kickban: "kick"|"ban", reason?: string,
     ) {
         const kickeeUser = (await this.GetDiscordUserOrMember(

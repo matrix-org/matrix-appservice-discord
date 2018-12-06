@@ -40,6 +40,7 @@ let USERSBANNED = 0;
 let USERSUNBANNED = 0;
 let MESSAGESENT: any = {};
 let USERSYNC_HANDLED = false;
+let KICKBAN_HANDLED = false;
 let MESSAGE_PROCCESS = "";
 
 function buildRequest(eventData) {
@@ -57,6 +58,7 @@ function createRH(opts: any = {}) {
     USERSBANNED = 0;
     USERSUNBANNED = 0;
     USERSYNC_HANDLED = false;
+    KICKBAN_HANDLED = false;
     MESSAGE_PROCCESS = "";
     const bridge = {
         getBot: () => {
@@ -129,6 +131,9 @@ function createRH(opts: any = {}) {
             }
             const channel = new MockChannel();
             return {channel, botUser: true };
+        },
+        HandleMatrixKickBan: async () => {
+            KICKBAN_HANDLED = true;
         },
         ProcessMatrixMsgEvent: async () => {
             MESSAGE_PROCCESS = "processed";
@@ -243,13 +248,29 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.member"}), null);
             expect(invited).to.be.true;
         });
-        it("should handle own state updates", async () => {
+        it("should handle own state join updates", async () => {
             const handler = createRH();
             await handler.OnEvent(buildRequest({
                 content: {membership: "join"},
                 state_key: "@_discord_12345:localhost",
                 type: "m.room.member"}), null);
             expect(USERSYNC_HANDLED).to.be.true;
+        });
+        it("should handle kicks to own members", async () => {
+            const handler = createRH();
+            await handler.OnEvent(buildRequest({
+                content: {membership: "kick"},
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null);
+            expect(KICKBAN_HANDLED).to.be.true;
+        });
+        it("should handle bans to own members", async () => {
+            const handler = createRH();
+            await handler.OnEvent(buildRequest({
+                content: {membership: "ban"},
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null);
+            expect(KICKBAN_HANDLED).to.be.true;
         });
         it("should pass other member types to state event", async () => {
             const handler = createRH();

@@ -128,11 +128,12 @@ export class MatrixRoomHandler {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
             } else if (["kick", "ban"].includes(event.content!.membership!)) {
                 // Kick/Ban handling
-                await this.discord.handleMatrixKickBan(
+                await this.discord.HandleMatrixKickBan(
                     event.room_id,
                     event.state_key,
                     event.sender,
                     event.content!.membership as "kick"|"ban",
+                    event.content!.reason,
                 );
             }
             return;
