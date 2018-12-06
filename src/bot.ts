@@ -533,10 +533,11 @@ export class DiscordBot {
             log.warn("User isn't allowed to read anyway.");
             return;
         }
-        await tchan.send(
+        const res = await tchan.send(
             `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kickeeUserId}.`
             + (reason ? ` Reason: ${reason}` : ""),
         );
+        this.sentMessages.push((res as Discord.Message).id);
         log.info(`${kickban === "ban" ? "Banning" : "Kicking"} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
