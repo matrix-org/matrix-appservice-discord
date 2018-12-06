@@ -133,6 +133,7 @@ export class MatrixRoomHandler {
                     event.state_key,
                     event.sender,
                     event.content!.membership as "leave"|"ban",
+                    event.unsigned.prev_content.membership,
                     event.content!.reason,
                 );
             }

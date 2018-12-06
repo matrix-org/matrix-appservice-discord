@@ -504,8 +504,10 @@ export class DiscordBot {
     }
 
     public async HandleMatrixKickBan(
-        roomId: string, kickeeUserId: string, kicker: string, kickban: "leave"|"ban", reason?: string,
+        roomId: string, kickeeUserId: string, kicker: string, kickban: "leave"|"ban",
+        previousState: string, reason?: string,
     ) {
+        const restore = kickban === "leave" && previousState === "ban";
         const client = await this.clientFactory.getClient(kicker);
         let channel: Discord.Channel;
         try {
@@ -521,23 +523,39 @@ export class DiscordBot {
         const tchan = (channel as Discord.TextChannel);
         const kickeeUser = (await this.GetDiscordUserOrMember(
             new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length),
-            tchan.guild.id
+            tchan.guild.id,
         ))!;
         if (!kickeeUser) {
             log.error("Could not find discord user for", kickeeUserId);
             return;
         }
         const kickee = kickeeUser as Discord.GuildMember;
+        let res: Discord.Message;
+        const botChannel = await this.GetChannelFromRoomId(roomId) as Discord.TextChannel;
+        if (restore) {
+            await tchan.overwritePermissions(kickee,
+                {
+                  SEND_MESSAGES: null,
+                  VIEW_CHANNEL: null,
+                  /* tslint:disable: no-any */
+              } as any, // XXX: Discord.js typings are wrong.
+                `Lifting kick for since duration expired.`);
+            res = await botChannel.send(
+                `${kickee} was unbanned from this channel by ${kicker}.`,
+            ) as Discord.Message;
+            this.sentMessages.push(res.id);
+            return;
+        }
         const existingPerms = tchan.memberPermissions(kickee);
         if (existingPerms && existingPerms.has(Discord.Permissions.FLAGS.VIEW_CHANNEL as number) === false ) {
             log.warn("User isn't allowed to read anyway.");
             return;
         }
-        const res = await tchan.send(
-            `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kickeeUserId}.`
+        res = await botChannel.send(
+            `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
-        );
-        this.sentMessages.push((res as Discord.Message).id);
+        ) as Discord.Message;
+        this.sentMessages.push(res.id);
         log.info(`${kickban === "ban" ? "Banning" : "Kicking"} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
