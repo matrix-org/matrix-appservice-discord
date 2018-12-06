@@ -21,6 +21,7 @@ export interface IMatrixEvent {
     avatar_url?: string;
     displayname?: string;
     redacts?: string;
+    replaces_state?: string;
     content?: IMatrixEventContent;
     unsigned?: any; // tslint:disable-line no-any
     origin_server_ts?: number;

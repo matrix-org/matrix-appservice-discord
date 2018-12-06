@@ -128,12 +128,17 @@ export class MatrixRoomHandler {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
             } else if (["leave", "ban"].includes(event.content!.membership!) && event.sender !== event.state_key) {
                 // Kick/Ban handling
+                let prevContent;
+                if (event.content!.membership === "leave") {
+                    const intent = this.bridge.getIntent();
+                    prevContent = await intent.getEvent(event.room_id, event.replaces_state);
+                }
                 await this.discord.HandleMatrixKickBan(
                     event.room_id,
                     event.state_key,
                     event.sender,
                     event.content!.membership as "leave"|"ban",
-                    event.unsigned.prev_content.membership,
+                    prevContent ? prevContent.membership : "",
                     event.content!.reason,
                 );
             }
