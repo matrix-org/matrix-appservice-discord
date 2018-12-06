@@ -3,7 +3,6 @@ import { DiscordStore } from "./store";
 import { Client as DiscordClient } from "discord.js";
 import * as Bluebird from "bluebird";
 import { Log } from "./log";
-import { Client as MatrixClient } from "matrix-js-sdk";
 
 const log = new Log("ClientFactory");
 
@@ -12,8 +11,8 @@ const READY_TIMEOUT = 5000;
 export class DiscordClientFactory {
     private config: DiscordBridgeConfigAuth;
     private store: DiscordStore;
-    private botClient: MatrixClient;
-    private clients: Map<string, MatrixClient>;
+    private botClient: DiscordClient;
+    private clients: Map<string, DiscordClient>;
     constructor(store: DiscordStore, config?: DiscordBridgeConfigAuth) {
         this.config = config!;
         this.clients = new Map();
@@ -62,13 +61,13 @@ export class DiscordClientFactory {
         });
     }
 
-    public async getClient(userId: string | null = null): Promise<MatrixClient> {
+    public async getClient(userId: string | null = null): Promise<DiscordClient> {
         if (userId === null) {
             return this.botClient;
         }
         if (this.clients.has(userId)) {
             log.verbose("Returning cached user client for", userId);
-            return this.clients.get(userId);
+            return this.clients.get(userId) as DiscordClient;
         }
         const discordIds = await this.store.get_user_discord_ids(userId);
         if (discordIds.length === 0) {
@@ -76,11 +75,11 @@ export class DiscordClientFactory {
         }
         // TODO: Select a profile based on preference, not the first one.
         const token = await this.store.get_token(discordIds[0]);
-        const client = Bluebird.promisifyAll(new DiscordClient({
+        const client = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
             sync: true,
-        }));
+        });
         const jsLog = new Log("discord.js-ppt");
         client.on("debug", (msg) => { jsLog.verbose(msg); });
         client.on("error", (msg) => { jsLog.error(msg); });

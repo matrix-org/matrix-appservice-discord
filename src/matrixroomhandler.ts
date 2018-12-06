@@ -123,11 +123,17 @@ export class MatrixRoomHandler {
         if (event.type === "m.room.member" && event.content!.membership === "invite") {
             await this.HandleInvite(event);
             return;
-        } else if (event.type === "m.room.member" && event.content!.membership === "join") {
-            if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+        } else if (event.type === "m.room.member" && this.bridge.getBot().isRemoteUser(event.state_key)) {
+            if (event.content!.membership !== undefined && event.content!.membership === "join") {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
-            } else {
-                await this.discord.ProcessMatrixStateEvent(event);
+            } else if (["kick", "ban"].includes(event.content!.membership!)) {
+                // Kick/Ban handling
+                await this.discord.handleMatrixKickBan(
+                    event.room_id,
+                    event.state_key,
+                    event.sender,
+                    event.content!.membership as "kick"|"ban",
+                );
             }
             return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {

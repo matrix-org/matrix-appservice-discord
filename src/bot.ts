@@ -446,19 +446,23 @@ export class DiscordBot {
         }
     }
 
-    public async GetChannelFromRoomId(roomId: string): Promise<Discord.Channel> {
+    public async GetChannelFromRoomId(roomId: string, client?: Discord.Client): Promise<Discord.Channel> {
         const entries = await this.bridge.getRoomStore().getEntriesByMatrixId(
             roomId,
         );
+
+        if (!client) {
+            client = this.bot;
+        }
 
         if (entries.length === 0) {
             log.verbose(`Couldn"t find channel for roomId ${roomId}.`);
             throw Error("Room(s) not found.");
         }
         const entry = entries[0];
-        const guild = this.bot.guilds.get(entry.remote.get("discord_guild"));
+        const guild = client.guilds.get(entry.remote.get("discord_guild"));
         if (guild) {
-            const channel = this.bot.channels.get(entry.remote.get("discord_channel"));
+            const channel = client.channels.get(entry.remote.get("discord_channel"));
             if (channel) {
                 return channel;
             }
@@ -497,6 +501,60 @@ export class DiscordBot {
             throw new Error("Room(s) not found.");
         }
         return rooms.map((room) => room.matrix.getId());
+    }
+
+    public async handleMatrixKickBan(roomId: string, kickeeUserId: string, kicker: string, kickban: "kick"|"ban", reason?: string) {
+        const kickeeUser = (await this.GetDiscordUserOrMember(
+            new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length)
+        ))!;
+        if (!kickeeUser || kickeeUser instanceof Discord.User) {
+            log.error("Could not find discord user for", kicker);
+            return;
+        }
+        const kickee = kickeeUser as Discord.GuildMember;
+        const client = await this.clientFactory.getClient(kicker);
+        let channel: Discord.Channel;
+        try {
+            channel = await this.GetChannelFromRoomId(roomId, client);
+        } catch (ex) {
+            log.error("Failed to get channel for ", roomId, ex);
+            return;
+        }
+        if (channel.type !== "text") {
+            log.warn("Channel was not a text channel");
+            return;
+        }
+        const tchan = (channel as Discord.TextChannel);
+        const existingPerms = tchan.memberPermissions(kickee);
+        if (existingPerms && existingPerms.has(Discord.Permissions.FLAGS.VIEW_CHANNEL as number) === false ) {
+            log.warn("User isn't allowed to read anyway.");
+            return;
+        }
+        await tchan.send(
+            `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kickeeUserId}.`
+            + (reason ? ` Reason: ${reason}` : "")
+        );
+        log.info(`${kickban === "ban" ? "Banning" : "Kicking"} ${kickee}`);
+
+        await tchan.overwritePermissions(kickee,
+            {
+              VIEW_CHANNEL: false,
+              SEND_MESSAGES: false,
+            },
+            `Matrix user was ${kickban} by ${kicker}`);
+        if (kickban === "kick") {
+            // Kicks will let the user back in after ~30 seconds.
+            setTimeout(async () => {
+                log.info(`Kick was lifted for ${kickee.displayName}`);
+                await tchan.overwritePermissions(kickee,
+                    {
+                      VIEW_CHANNEL: null,
+                      SEND_MESSAGES: null,
+                  } as any, // XXX: Discord.js typings are wrong.
+                    `Lifting kick for since duration expired.`);
+            }, this.config.room.kickFor);
+        }
+
     }
 
     private async SendMatrixMessage(matrixMsg: MessageProcessorMatrixResult, chan: Discord.Channel,
