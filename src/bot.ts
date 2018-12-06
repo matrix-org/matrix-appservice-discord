@@ -504,7 +504,7 @@ export class DiscordBot {
     }
 
     public async HandleMatrixKickBan(
-        roomId: string, kickeeUserId: string, kicker: string, kickban: "kick"|"ban", reason?: string,
+        roomId: string, kickeeUserId: string, kicker: string, kickban: "leave"|"ban", reason?: string,
     ) {
         const client = await this.clientFactory.getClient(kicker);
         let channel: Discord.Channel;
@@ -545,7 +545,7 @@ export class DiscordBot {
               VIEW_CHANNEL: false,
             },
             `Matrix user was ${kickban} by ${kicker}`);
-        if (kickban === "kick") {
+        if (kickban === "leave") {
             // Kicks will let the user back in after ~30 seconds.
             setTimeout(async () => {
                 log.info(`Kick was lifted for ${kickee.displayName}`);
