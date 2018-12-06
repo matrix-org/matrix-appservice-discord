@@ -59,7 +59,7 @@ export class DiscordBridgeConfigLogging {
 
 class DiscordBridgeConfigRoom {
     public defaultVisibility: string;
-    public kickFor:number = 30000;
+    public kickFor: number = 30000;
 }
 
 class DiscordBridgeConfigChannel {

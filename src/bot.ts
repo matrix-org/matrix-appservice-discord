@@ -503,9 +503,11 @@ export class DiscordBot {
         return rooms.map((room) => room.matrix.getId());
     }
 
-    public async handleMatrixKickBan(roomId: string, kickeeUserId: string, kicker: string, kickban: "kick"|"ban", reason?: string) {
+    public async handleMatrixKickBan(
+        roomId: string, kickeeUserId: string, kicker: string, kickban: "kick"|"ban", reason?: string,
+    ) {
         const kickeeUser = (await this.GetDiscordUserOrMember(
-            new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length)
+            new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length),
         ))!;
         if (!kickeeUser || kickeeUser instanceof Discord.User) {
             log.error("Could not find discord user for", kicker);
@@ -532,14 +534,14 @@ export class DiscordBot {
         }
         await tchan.send(
             `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kickeeUserId}.`
-            + (reason ? ` Reason: ${reason}` : "")
+            + (reason ? ` Reason: ${reason}` : ""),
         );
         log.info(`${kickban === "ban" ? "Banning" : "Kicking"} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
             {
-              VIEW_CHANNEL: false,
               SEND_MESSAGES: false,
+              VIEW_CHANNEL: false,
             },
             `Matrix user was ${kickban} by ${kicker}`);
         if (kickban === "kick") {
@@ -548,8 +550,9 @@ export class DiscordBot {
                 log.info(`Kick was lifted for ${kickee.displayName}`);
                 await tchan.overwritePermissions(kickee,
                     {
-                      VIEW_CHANNEL: null,
                       SEND_MESSAGES: null,
+                      VIEW_CHANNEL: null,
+                      /* tslint:disable: no-any */
                   } as any, // XXX: Discord.js typings are wrong.
                     `Lifting kick for since duration expired.`);
             }, this.config.room.kickFor);
