@@ -78,6 +78,7 @@ function createRH(opts: any = {}) {
                 leave: () => { },
                 sendMessage: async (roomId, content) => { MESSAGESENT = content; return content; },
                 unban: async () => { USERSUNBANNED++; },
+                getEvent: () => { },
             };
         },
         getRoomStore: () => {
