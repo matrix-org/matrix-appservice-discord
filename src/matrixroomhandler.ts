@@ -126,7 +126,7 @@ export class MatrixRoomHandler {
         } else if (event.type === "m.room.member" && this.bridge.getBot().isRemoteUser(event.state_key)) {
             if (event.content!.membership !== undefined && event.content!.membership === "join") {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
-            } else if (["kick", "ban"].includes(event.content!.membership!)) {
+            } else if (["leave", "ban"].includes(event.content!.membership!) && event.sender !== event.state_key) {
                 // Kick/Ban handling
                 await this.discord.HandleMatrixKickBan(
                     event.room_id,

@@ -259,7 +259,8 @@ describe("MatrixRoomHandler", () => {
         it("should handle kicks to own members", async () => {
             const handler = createRH();
             await handler.OnEvent(buildRequest({
-                content: {membership: "kick"},
+                content: {membership: "leave"},
+                sender: "@badboy:localhost",
                 state_key: "@_discord_12345:localhost",
                 type: "m.room.member"}), null);
             expect(KICKBAN_HANDLED).to.be.true;
@@ -268,6 +269,7 @@ describe("MatrixRoomHandler", () => {
             const handler = createRH();
             await handler.OnEvent(buildRequest({
                 content: {membership: "ban"},
+                sender: "@badboy:localhost",
                 state_key: "@_discord_12345:localhost",
                 type: "m.room.member"}), null);
             expect(KICKBAN_HANDLED).to.be.true;
