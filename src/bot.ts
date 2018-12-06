@@ -279,9 +279,9 @@ export class DiscordBot {
                 throw new Error(`Guild "${server}" not found`);
             }
             const channel = guild.channels.get(room);
-            if (channel) {
+            if (channel && channel.type === "text") {
                 const lookupResult = new ChannelLookupResult();
-                lookupResult.channel = channel;
+                lookupResult.channel = channel as Discord.TextChannel;
                 lookupResult.botUser = this.bot.user.id === client.user.id;
                 return lookupResult;
             }
