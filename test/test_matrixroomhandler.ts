@@ -123,6 +123,9 @@ function createRH(opts: any = {}) {
         GetIntentFromDiscordMember: () => {
             return bridge.getIntent();
         },
+        HandleMatrixKickBan: async () => {
+            KICKBAN_HANDLED = true;
+        },
         LookupRoom: async (guildid, discordid) => {
             if (guildid !== "123") {
                 throw new Error("Guild not found");
@@ -131,9 +134,6 @@ function createRH(opts: any = {}) {
             }
             const channel = new MockChannel();
             return {channel, botUser: true };
-        },
-        HandleMatrixKickBan: async () => {
-            KICKBAN_HANDLED = true;
         },
         ProcessMatrixMsgEvent: async () => {
             MESSAGE_PROCCESS = "processed";
