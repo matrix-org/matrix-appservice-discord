@@ -521,13 +521,13 @@ export class DiscordBot {
         const tchan = (channel as Discord.TextChannel);
         const kickeeUser = (await this.GetDiscordUserOrMember(
             new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length),
-        ), tchan.guild.id)!;
+            tchan.guild.id
+        ))!;
         if (!kickeeUser) {
             log.error("Could not find discord user for", kickeeUserId);
             return;
         }
         const kickee = kickeeUser as Discord.GuildMember;
-
         const existingPerms = tchan.memberPermissions(kickee);
         if (existingPerms && existingPerms.has(Discord.Permissions.FLAGS.VIEW_CHANNEL as number) === false ) {
             log.warn("User isn't allowed to read anyway.");
