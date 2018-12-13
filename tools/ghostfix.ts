@@ -12,6 +12,7 @@ import { Provisioner } from "../src/provisioner";
 import { UserSyncroniser } from "../src/usersyncroniser";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
+import { TextChannel } from "discord.js";
 
 const log = new Log("GhostFix");
 
@@ -116,7 +117,7 @@ async function run() {
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
         client.guilds.forEach((guild) => {
-            guild.channels.forEach((channel) => {
+            guild.channels.forEach((channel: TextChannel) => {
                 if (channel.type !== "text") {
                     return;
                 }
