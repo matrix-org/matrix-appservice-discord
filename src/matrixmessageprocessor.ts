@@ -62,9 +62,15 @@ export class MatrixMessageProcessor {
         }
         msg = msg.replace(/@room/g, "@here");
         const escapeChars = ["\\", "*", "_", "~", "`"];
-        escapeChars.forEach((char) => {
-            msg = msg.replace(new RegExp("\\" + char, "g"), "\\" + char);
-        });
+        msg = msg.split(" ").map((s) => {
+            if (s.match(/^https?:\/\//)) {
+                return s;
+            }
+            escapeChars.forEach((char) => {
+                s = s.replace(new RegExp("\\" + char, "g"), "\\" + char);
+            });
+            return s;
+        }).join(" ");
         return msg;
     }
 
@@ -109,10 +115,19 @@ export class MatrixMessageProcessor {
         return `<#${match[1]}>`;
     }
 
+    private async parseLinkContent(node: Parser.HTMLElement): Promise<string> {
+        const attrs = node.attributes;
+        const content = await this.walkChildNodes(node);
+        if (!attrs.href || content === attrs.href) {
+            return content;
+        }
+        return `[${content}](${attrs.href})`;
+    }
+
     private async parsePillContent(node: Parser.HTMLElement): Promise<string> {
         const attrs = node.attributes;
         if (!attrs.href || !attrs.href.startsWith(MATRIX_TO_LINK)) {
-            return await this.walkChildNodes(node);
+            return await this.parseLinkContent(node);
         }
         const id = attrs.href.replace(MATRIX_TO_LINK, "");
         let reply = "";
@@ -126,7 +141,7 @@ export class MatrixMessageProcessor {
                 break;
         }
         if (!reply) {
-            return await this.walkChildNodes(node);
+            return await this.parseLinkContent(node);
         }
         return reply;
     }
