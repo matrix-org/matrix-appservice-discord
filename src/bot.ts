@@ -447,7 +447,7 @@ export class DiscordBot {
                 } catch (e) { } // no bridged rooms for this channel
             });
             if (rooms.length === 0) {
-                log.verbose(`Couldn't find room(s) for guild id:${guild.id} with member id:${member.id}.`);
+                log.verbose(`No rooms were found for this guild and member (guild:${guild.id} member:${member.id})`);
                 throw new Error("Room(s) not found.");
             }
             return rooms;
