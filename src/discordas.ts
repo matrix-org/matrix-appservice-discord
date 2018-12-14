@@ -67,10 +67,23 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         clientFactory,
         controller: {
             // onUserQuery: userQuery,
-            onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
-            onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
-            onEvent: (request, context) =>
-                request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context))),
+            onAliasQueried: async (alias: string, roomId: string) => {
+                try {
+                    return await roomhandler.OnAliasQueried.bind(roomhandler)(alias, roomId);
+                } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
+            },
+            onAliasQuery: async (alias: string, aliasLocalpart: string) => {
+                try {
+                    return await roomhandler.OnAliasQuery.bind(roomhandler)(alias, aliasLocalpart);
+                } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
+            },
+            onEvent: async (request, context) => {
+                try {
+                    await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
+                } catch (err) {
+                    log.error("Exception thrown while handling \"onEvent\" event", err);
+                }
+            },
             onLog: (line, isError) => {
                 log.verbose("matrix-appservice-bridge", line);
             },

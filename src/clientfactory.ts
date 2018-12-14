@@ -63,7 +63,7 @@ export class DiscordClientFactory {
     }
 
     public async getClient(userId: string | null = null): Promise<MatrixClient> {
-        if (userId === null) {
+        if (!userId) {
             return this.botClient;
         }
         if (this.clients.has(userId)) {
