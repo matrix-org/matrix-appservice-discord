@@ -76,6 +76,7 @@ export class DiscordBot {
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(this.config, bridge, this),
         );
+        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
     }
 
     public setRoomHandler(roomHandler: MatrixRoomHandler) {
@@ -111,7 +112,6 @@ export class DiscordBot {
                 this.presenceHandler.EnqueueUser(newMember.user);
             });
         }
-        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
         client.on("channelUpdate", async (_, newChannel) => this.channelSync.OnUpdate(newChannel) );
         client.on("channelDelete", async (channel) => this.channelSync.OnDelete(channel) );
         client.on("guildUpdate", async (_, newGuild) => this.channelSync.OnGuildUpdate(newGuild) );

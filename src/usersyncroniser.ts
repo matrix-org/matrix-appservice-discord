@@ -272,7 +272,7 @@ export class UserSyncroniser {
     }
 
     public async OnUpdateGuildMember(member: GuildMember, doJoin: boolean = false) {
-        log.info(`Got update for ${member.id}.`);
+        log.info(`Got update for ${member.id} (${member.user.username}).`);
         const state = await this.GetUserStateForGuildMember(member);
         let wantRooms: string[] = [];
         try {

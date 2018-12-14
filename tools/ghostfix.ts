@@ -106,7 +106,6 @@ async function run() {
     } catch (e) {
         await discordstore.init();
     }
-    const chanSync = new ChannelSyncroniser(bridge, config, discordbot);
     const userSync = new UserSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
     await discordbot.ClientFactory.init();
