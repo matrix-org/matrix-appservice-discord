@@ -107,7 +107,6 @@ async function run() {
     } catch (e) {
         await discordstore.init();
     }
-    const chanSync = new ChannelSyncroniser(bridge, config, discordbot);
     const userSync = new UserSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
     await discordbot.ClientFactory.init();
@@ -117,49 +116,40 @@ async function run() {
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
         client.guilds.forEach((guild) => {
-            guild.channels.forEach((channel: TextChannel) => {
-                if (channel.type !== "text") {
+            guild.members.forEach((member) => {
+                if (member.id === client.user.id) {
                     return;
                 }
-                channel.members.forEach((member) => {
-                    if (member.id === client.user.id) {
-                        return;
-                    }
-                    promiseList.push((async () => {
-                        await Bluebird.delay(curDelay);
-                        await Bluebird.each(chanSync.GetRoomIdsFromChannel(channel), async (room) => {
-                            let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-                            const doJoin = async () => {
-                                await Util.DelayedPromise(currentSchedule);
-                                await userSync.JoinRoom(member, room);
-                            };
-                            const errorHandler = async (err) => {
-                                log.error(`Error joining room ${room} as ${member.id}`);
-                                log.error(err);
-                                const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
-                                if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                                    log.warn(`Cannot join ${room} as ${member.id}`);
-                                    throw new Error(err);
-                                } else {
-                                    currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
-                                    try {
-                                        await doJoin();
-                                    } catch (e) {
-                                        await errorHandler(e);
-                                    }
-                                }
-                            };
+                promiseList.push((async () => {
+                    await Bluebird.delay(curDelay);
+                    let currentSchedule = JOIN_ROOM_SCHEDULE[0];
+                    const doJoin = async () => {
+                        await Util.DelayedPromise(currentSchedule);
+                        await userSync.OnUpdateGuildMember(member, true);
+                    };
+                    const errorHandler = async (err) => {
+                        log.error(`Error joining rooms for ${member.id}`);
+                        log.error(err);
+                        const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
+                        if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
+                            log.warn(`Cannot join rooms for ${member.id}`);
+                            throw new Error(err);
+                        } else {
+                            currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
                             try {
                                 await doJoin();
                             } catch (e) {
                                 await errorHandler(e);
                             }
-                        }).catch((err) => {
-                            log.warn(`No associated matrix rooms for discord room ${channel.id}`);
-                        });
-                    })());
-                    curDelay += config.limits.roomGhostJoinDelay;
-                });
+                        }
+                    };
+                    try {
+                        await doJoin();
+                    } catch (e) {
+                        await errorHandler(e);
+                    }
+                })());
+                curDelay += config.limits.roomGhostJoinDelay;
             });
         });
 

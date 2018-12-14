@@ -123,6 +123,9 @@ export class ChannelSyncroniser {
     }
 
     public async GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+        if (!this.roomStore) {
+            this.roomStore = this.bridge.getRoomStore();
+        }
         const rooms = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
         });
@@ -140,6 +143,9 @@ export class ChannelSyncroniser {
             mxChannels: [],
         });
 
+        if (!this.roomStore) {
+            this.roomStore = this.bridge.getRoomStore();
+        }
         const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
         if (remoteRooms.length === 0) {
             log.verbose(`Could not find any channels in room store.`);
