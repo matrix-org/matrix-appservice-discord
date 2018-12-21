@@ -66,7 +66,8 @@ export class MatrixMessageProcessor {
 
         if (msg.includes("@room") && this.params && this.params.mxClient && this.params.roomId && this.params.userId) {
             // let's check for more complex logic if @room should be replaced
-            const res: IMatrixEvent = await this.params.mxClient.getStateEvent(this.params.roomId, "m.room.power_levels");
+            const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
+                this.params.roomId, "m.room.power_levels");
             if (
                 res && res.users
                 && res.users[this.params.userId] !== undefined
