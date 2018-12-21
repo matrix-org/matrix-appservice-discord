@@ -73,6 +73,13 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("hey @here");
         });
+        it("doesn't discord-escape links", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("http://example.com/_test_/");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("http://example.com/_test_/");
+        });
     });
     describe("FormatMessage / formatted_body / simple", () => {
         it("leaves blank stuff untouched", async () => {
@@ -200,6 +207,34 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("test reply");
         });
+        it("parses links", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"http://example.com\">link</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("[link](http://example.com)");
+        });
+        it("parses links with same content", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"http://example.com\">http://example.com</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("http://example.com");
+        });
+        it("doesn't discord-escape links", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"http://example.com/_blah_/\">link</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("[link](http://example.com/_blah_/)");
+        });
+        it("doesn't discord-escape links with same content", async () => {
+            const mp = new MatrixMessageProcessor(bot, opts);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"http://example.com/_blah_/\">http://example.com/_blah_/</a>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("http://example.com/_blah_/");
+        });
     });
     describe("FormatMessage / formatted_body / discord", () => {
         it("Parses user pills", async () => {
@@ -218,7 +253,7 @@ code
             guild.members.set("12345", member);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_789:localhost\">TestUsername</a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("TestUsername");
+            expect(result).is.equal("[TestUsername](https://matrix.to/#/@_discord_789:localhost)");
         });
         it("Parses channel pills", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
@@ -258,7 +293,7 @@ code
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<a href=\"http://example.com\"><em>yay?</em></a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("*yay?*");
+            expect(result).is.equal("[*yay?*](http://example.com)");
         });
         it("Converts @room to @here", async () => {
             const mp = new MatrixMessageProcessor(bot, opts);
