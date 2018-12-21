@@ -16,15 +16,9 @@ properties:
             type: "boolean"
           disableTypingNotifications:
             type: "boolean"
-          disableDiscordMentions:
-            type: "boolean"
           disableDeletionForwarding:
             type: "boolean"
           enableSelfServiceBridging:
-            type: "boolean"
-          disableEveryoneMention:
-            type: "boolean"
-          disableHereMention:
             type: "boolean"
     auth:
         type: "object"

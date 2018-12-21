@@ -3,27 +3,33 @@ import { IMatrixMessage, IMatrixEvent } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";
+import { Client as MatrixClient } from "matrix-js-sdk";
 
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 
-export class MatrixMessageProcessorOpts {
-    constructor(readonly disableEveryone: boolean = true, readonly disableHere: boolean = true) { }
+export interface IMatrixMessageProcessorParams {
+    displayname?: string;
+    mxClient?: MatrixClient;
+    roomId?: string;
+    userId?: string;
 }
 
 export class MatrixMessageProcessor {
     private guild: Discord.Guild;
     private listDepth: number = 0;
     private listBulletPoints: string[] = ["●", "○", "■", "‣"];
-    constructor(public bot: DiscordBot, public opts: MatrixMessageProcessorOpts) { }
+    private params?: IMatrixMessageProcessorParams;
+    constructor(public bot: DiscordBot) { }
     public async FormatMessage(
         msg: IMatrixMessage,
         guild: Discord.Guild,
-        profile?: IMatrixEvent | null,
+        params?: IMatrixMessageProcessorParams,
     ): Promise<string> {
         this.guild = guild;
         this.listDepth = 0;
+        this.params = params;
         let reply = "";
         if (msg.formatted_body) {
             // parser needs everything wrapped in html elements
@@ -37,15 +43,15 @@ export class MatrixMessageProcessor {
             reply = await this.walkNode(parsed);
             reply = reply.replace(/\s*$/, ""); // trim off whitespace at end
         } else {
-            reply = this.escapeDiscord(msg.body);
+            reply = await this.escapeDiscord(msg.body);
         }
 
         if (msg.msgtype === "m.emote") {
-            if (profile &&
-                profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
-                reply = `_${profile.displayname} ${reply}_`;
+            if (params &&
+                params.displayname &&
+                params.displayname.length >= MIN_NAME_LENGTH &&
+                params.displayname.length <= MAX_NAME_LENGTH) {
+                reply = `_${params.displayname} ${reply}_`;
             } else {
                 reply = `_${reply}_`;
             }
@@ -53,14 +59,24 @@ export class MatrixMessageProcessor {
         return reply;
     }
 
-    private escapeDiscord(msg: string): string {
-        if (this.opts.disableEveryone) {
-            msg = msg.replace(/@everyone/g, "@ everyone");
+    private async escapeDiscord(msg: string): Promise<string> {
+        // \u200B is the zero-width space --> they still look the same but don't mention
+        msg = msg.replace(/@everyone/g, "@\u200Beveryone");
+        msg = msg.replace(/@here/g, "@\u200Bhere");
+
+        if (msg.includes("@room") && this.params && this.params.mxClient && this.params.roomId && this.params.userId) {
+            // let's check for more complex logic if @room should be replaced
+            const res: IMatrixEvent = await this.params.mxClient.getStateEvent(this.params.roomId, "m.room.power_levels");
+            if (
+                res && res.users
+                && res.users[this.params.userId] !== undefined
+                && res.notifications
+                && res.notifications.room !== undefined
+                && res.users[this.params.userId] >= res.notifications.room
+            ) {
+                msg = msg.replace(/@room/g, "@here");
+            }
         }
-        if (this.opts.disableHere) {
-            msg = msg.replace(/@here/g, "@ here");
-        }
-        msg = msg.replace(/@room/g, "@here");
         const escapeChars = ["\\", "*", "_", "~", "`"];
         msg = msg.split(" ").map((s) => {
             if (s.match(/^https?:\/\//)) {
@@ -173,7 +189,7 @@ export class MatrixMessageProcessor {
         }
 
         if (!emoji) {
-            return this.escapeDiscord(name);
+            return await this.escapeDiscord(name);
         }
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
     }
@@ -253,7 +269,7 @@ export class MatrixMessageProcessor {
             if ((node as Parser.TextNode).text === "\n") {
                 return "";
             }
-            return this.escapeDiscord((node as Parser.TextNode).text);
+            return await this.escapeDiscord((node as Parser.TextNode).text);
         } else if (node.nodeType === Parser.NodeType.ELEMENT_NODE) {
             const nodeHtml = node as Parser.HTMLElement;
             switch (nodeHtml.tagName) {
