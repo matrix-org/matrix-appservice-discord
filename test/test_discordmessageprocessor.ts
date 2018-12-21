@@ -6,6 +6,7 @@ import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
 import { MockRole } from "./mocks/role";
+import { MockChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -262,11 +263,11 @@ describe("DiscordMessageProcessor", () => {
             const msg = new MockMessage(channel) as any;
             const content = { id: "123456789" };
             let reply = processor.InsertChannel(content, msg);
-            Chai.assert.equal(reply, "#123456789");
+            Chai.assert.equal(reply, "<#123456789>");
 
             reply = processor.InsertChannel(content, msg, true);
             Chai.assert.equal(reply,
-                "<a href=\"https://matrix.to/#/#_discord_123_123456789:localhost\">#123456789</a>");
+                "&lt;#123456789&gt;");
         });
         it("processes channels correctly", () => {
             const processor = new DiscordMessageProcessor(
