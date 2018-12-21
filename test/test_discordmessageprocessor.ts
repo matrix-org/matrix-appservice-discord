@@ -6,7 +6,6 @@ import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
 import { MockRole } from "./mocks/role";
-import { MockChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
