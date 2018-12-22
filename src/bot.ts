@@ -20,7 +20,7 @@ import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import { IMatrixEvent } from "./matrixtypes";
+import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 
 const log = new Log("DiscordBot");
 
@@ -43,14 +43,6 @@ interface IThirdPartyLookup {
     alias: string;
     fields: IThirdPartyLookupField;
     protocol: string;
-}
-
-interface IMatrixMediaInfo {
-    w?: number;
-    h?: number;
-    mimetype: string;
-    size: number;
-    duration?: number;
 }
 
 export class DiscordBot {

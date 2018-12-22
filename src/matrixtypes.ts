@@ -33,3 +33,11 @@ export interface IMatrixMessage {
     formatted_body?: string;
     format?: string;
 }
+
+export interface IMatrixMediaInfo {
+    w?: number;
+    h?: number;
+    mimetype: string;
+    size: number;
+    duration?: number;
+}
