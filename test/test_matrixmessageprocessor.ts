@@ -165,6 +165,23 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("test\n----------\nfoxes");
         });
+        it("handles headings", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage(`<h1>fox</h1>
+<h2>floof</h2>
+<h3>pony</h3>
+<h4>hooves</h4>
+<h5>tail</h5>
+<h6>foxies</h6>`);
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal(`**# fox**
+**## floof**
+**### pony**
+**#### hooves**
+**##### tail**
+**###### foxies**`);
+        });
     });
     describe("FormatMessage / formatted_body / complex", () => {
         it("html unescapes stuff inside of code", async () => {
