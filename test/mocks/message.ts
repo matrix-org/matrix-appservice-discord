@@ -1,10 +1,12 @@
 import * as Discord from "discord.js";
 import { MockUser } from "./user";
+import { MockCollection } from "./collection";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 export class MockMessage {
+    public attachments = new MockCollection<string, any>();
     public embeds: any[] = [];
     public content = "";
     public channel: Discord.TextChannel | undefined;
