@@ -304,6 +304,14 @@ export class MatrixMessageProcessor {
                     return "";
                 case "hr":
                     return "\n----------\n";
+                case "h1":
+                case "h2":
+                case "h3":
+                case "h4":
+                case "h5":
+                case "h6":
+                    const level = parseInt(nodeHtml.tagName[1], 10);
+                    return `**${"#".repeat(level)} ${await this.walkChildNodes(nodeHtml)}**\n`;
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }
