@@ -150,6 +150,9 @@ export class DiscordMessageProcessor {
     public InsertChannel(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
         const channel = msg.guild.channels.get(id);
+        if (!channel) {
+            return html ? `&lt;#${escapeHtml(id)}&gt;` : `<#${id}>`;
+        }
         const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
         if (!html) {
             return channelStr;
