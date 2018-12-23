@@ -8,6 +8,7 @@ import { MockMember } from "./mocks/member";
 import { DiscordBot } from "../src/bot";
 import { MockDiscordClient } from "./mocks/discordclient";
 import { MockMessage } from "./mocks/message";
+import { Util } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -46,6 +47,14 @@ const mockBridge = {
 
 const modDiscordBot = Proxyquire("../src/bot", {
     "./clientfactory": require("./mocks/discordclientfactory"),
+    "./util": {
+        Util: {
+            AsyncForEach: Util.AsyncForEach,
+            UploadContentFromUrl: async () => {
+                return {mxcUrl: "uploaded"};
+            },
+        },
+    },
 });
 describe("DiscordBot", () => {
     let discordBot;
@@ -101,6 +110,169 @@ describe("DiscordBot", () => {
 
         it("should resolve a guild and channel id.", async () => {
             await discordBot.LookupRoom("123", "321");
+        });
+    });
+    describe("OnMessage()", () => {
+        let SENT_MESSAGE = false;
+        let MARKED = -1;
+        let HANDLE_COMMAND = false;
+        let ATTACHMENT = {} as any;
+        let MSGTYPE = "";
+        function getDiscordBot() {
+            SENT_MESSAGE = false;
+            MARKED = -1;
+            HANDLE_COMMAND = false;
+            ATTACHMENT = {};
+            MSGTYPE = "";
+            const discord = new modDiscordBot.DiscordBot(
+                config,
+                mockBridge,
+            );
+            discord.bot = { user: { id: "654" } };
+            discord.provisioner = {
+                HasPendingRequest: (chan) => true,
+                MarkApproved: async (chan, member, approved) => {
+                    MARKED = approved ? 1 : 0;
+                    return approved;
+                },
+            };
+            discord.GetIntentFromDiscordMember = (_) => {return {
+                sendMessage: async (room, msg) => {
+                    SENT_MESSAGE = true;
+                    if (msg.info) {
+                        ATTACHMENT = msg.info;
+                    }
+                    MSGTYPE = msg.msgtype;
+                    return {
+                        event_id: "$fox:localhost",
+                    };
+                },
+            }; };
+            discord.userSync = {
+                OnUpdateUser: async (user) => { },
+            };
+            discord.channelSync = {
+                GetRoomIdsFromChannel: async (chan) => ["!asdf:localhost"],
+            };
+            discord.roomHandler = {
+                HandleDiscordCommand: async (msg) => { HANDLE_COMMAND = true; },
+            };
+            discord.store = {
+                Insert: async (_) => { },
+            };
+            return discord;
+        }
+        it("ignores own messages", async () => {
+            discordBot = getDiscordBot();
+            const guild: any = new MockGuild("123", []);
+            const author = new MockMember("654", "TestUsername");
+            guild._mockAddMember(author);
+            const channel = new Discord.TextChannel(guild, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.author = author;
+            msg.content = "Hi!";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(SENT_MESSAGE, false);
+        });
+        it("accepts !approve", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "!approve";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MARKED, 1);
+        });
+        it("denies !deny", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "!deny";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MARKED, 0);
+        });
+        it("Passes on !matrix commands", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "!matrix test";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(HANDLE_COMMAND, true);
+        });
+        it("skips empty messages", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(SENT_MESSAGE, false);
+        });
+        it("sends normal messages", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "Foxies are amazing!";
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(SENT_MESSAGE, true);
+        });
+        it("uploads images", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.attachments.set("1234", {
+                filename: "someimage.png",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MSGTYPE, "m.image");
+            Chai.assert.equal(ATTACHMENT.mimetype, "image/png");
+        });
+        it("uploads videos", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.attachments.set("1234", {
+                filename: "foxes.mov",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MSGTYPE, "m.video");
+            Chai.assert.equal(ATTACHMENT.mimetype, "video/quicktime");
+        });
+        it("uploads audio", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.attachments.set("1234", {
+                filename: "meow.mp3",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MSGTYPE, "m.audio");
+            Chai.assert.equal(ATTACHMENT.mimetype, "audio/mpeg");
+        });
+        it("uploads other files", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.attachments.set("1234", {
+                filename: "meow.zip",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            Chai.assert.equal(MSGTYPE, "m.file");
+            Chai.assert.equal(ATTACHMENT.mimetype, "application/zip");
         });
     });
     describe("OnMessageUpdate()", () => {
@@ -231,8 +403,5 @@ describe("DiscordBot", () => {
     //   it("should resolve a known room.", () => {
     //     return assert.isFulfilled(discordBot.OnTyping( {id: "321"}, {id: "12345"}, true));
     //   });
-    // });
-    // describe("OnMessage()", () => {
-    //
     // });
 });

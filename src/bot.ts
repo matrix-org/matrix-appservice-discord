@@ -20,7 +20,7 @@ import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
-import { IMatrixEvent } from "./matrixtypes";
+import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 
 const log = new Log("DiscordBot");
 
@@ -629,14 +629,20 @@ export class DiscordBot {
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
                 const fileMime = mime.lookup(attachment.filename);
-                const msgtype = attachment.height ? "m.image" : "m.file";
+                const type = fileMime.split("/")[0];
+                let msgtype = {
+                    audio: "m.audio",
+                    image: "m.image",
+                    video: "m.video",
+                }[type];
+                if (!msgtype) {
+                    msgtype = "m.file";
+                }
                 const info = {
-                    h: null,
                     mimetype: fileMime,
                     size: attachment.filesize,
-                    w: null,
-                };
-                if (msgtype === "m.image") {
+                } as IMatrixMediaInfo;
+                if (msgtype === "m.image" || msgtype === "m.video") {
                     info.w = attachment.width;
                     info.h = attachment.height;
                 }
