@@ -192,7 +192,16 @@ export class MatrixEventProcessor {
         try {
             const sourceEvent = await intent.getEvent(event.room_id, eventId);
             sourceEvent.content.body = sourceEvent.content.body  || "Reply with unknown content";
-            return (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
+            const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
+/*
+            // if we reply to a discord member, ping them!
+            if (this.bridge.getBot().isRemoteUser(sourceEvent.sender)) {
+                const uid = new MatrixUser(sourceEvent.sender.replace("@", "")).localpart.substring("_discord".length);
+                replyEmbed.description += ` <@${uid}>`;
+            }
+*/
+            replyEmbed.timestamp = new Date(sourceEvent.origin_server_ts);
+            return replyEmbed;
         } catch (ex) {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
         }
