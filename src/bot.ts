@@ -702,9 +702,16 @@ export class DiscordBot {
         if (oldMsg.content === newMsg.content) {
             return;
         }
+        log.info(`Got edit event for ${newMsg.id}`);
+        let link = "";
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: oldMsg.id});
+        if (storeEvent && storeEvent.Result && storeEvent.Next()) {
+            const matrixIds = storeEvent.MatrixId.split(";");
+            link = `https://matrix.to/#/${matrixIds[1]}/${matrixIds[0]}`;
+        }
 
         // Create a new edit message using the old and new message contents
-        const editedMsg = await this.discordMsgProcessor.FormatEdit(oldMsg, newMsg);
+        const editedMsg = await this.discordMsgProcessor.FormatEdit(oldMsg, newMsg, link);
 
         // Send the message to all bridged matrix rooms
         if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {

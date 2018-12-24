@@ -186,7 +186,6 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(result.body, "*edit:* ~~a~~ -> b");
             Chai.assert.equal(result.formattedBody, "<em>edit:</em> <del>a</del> -&gt; b");
         });
-
         it("should format markdown heavy edits apropriately", async () => {
             const processor = new DiscordMessageProcessor(
                 new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
@@ -204,7 +203,56 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(result.formattedBody, "<em>edit:</em> <del>a slice of <strong>" +
               "cake</strong></del> -&gt; <em>a</em> slice of cake");
         });
+        it("should format discord fail edits correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const oldMsg = new MockMessage() as any;
+            const newMsg = new MockMessage() as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
 
+            // Content updated but not changed
+            oldMsg.content = "~~fail~";
+            newMsg.content = "~~fail~~";
+
+            const result = await processor.FormatEdit(oldMsg, newMsg);
+            Chai.assert.equal(result.body, "*edit:* ~~~~fail~~~ -> ~~fail~~");
+            Chai.assert.equal(result.formattedBody, "<em>edit:</em> <del>~~fail~</del> -&gt; <del>fail</del>");
+        });
+        it("should format multiline edits correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const oldMsg = new MockMessage() as any;
+            const newMsg = new MockMessage() as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
+
+            // Content updated but not changed
+            oldMsg.content = "multi\nline";
+            newMsg.content = "multi\nline\nfoxies";
+
+            const result = await processor.FormatEdit(oldMsg, newMsg);
+            Chai.assert.equal(result.body, "*edit:* ~~multi\nline~~ -> multi\nline\nfoxies");
+            Chai.assert.equal(result.formattedBody, "<p><em>edit:</em></p><p><del>multi<br>line</del></p><hr>" +
+                "<p>multi<br>line<br>foxies</p>");
+        });
+        it("should add old message link", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const oldMsg = new MockMessage() as any;
+            const newMsg = new MockMessage() as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
+
+            // Content updated but not changed
+            oldMsg.content = "fox";
+            newMsg.content = "foxies";
+
+            const result = await processor.FormatEdit(oldMsg, newMsg, "https://matrix.to/#/old");
+            Chai.assert.equal(result.body, "*edit:* ~~fox~~ -> foxies");
+            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/old\"><em>edit:</em></a>" +
+                " <del>fox</del> -&gt; foxies");
+        });
     });
 
     describe("InsertUser / HTML", () => {

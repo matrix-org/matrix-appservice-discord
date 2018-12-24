@@ -135,6 +135,7 @@ describe("DiscordBot", () => {
                 config,
                 mockBridge,
             );
+            discordBot.store.Get = (a, b) => null;
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
