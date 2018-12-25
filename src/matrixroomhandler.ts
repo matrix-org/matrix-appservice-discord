@@ -118,7 +118,7 @@ export class MatrixRoomHandler {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            throw new Error("Event too old");
+            return;
         }
         if (event.type === "m.room.member" && event.content!.membership === "invite") {
             await this.HandleInvite(event);
@@ -164,7 +164,7 @@ export class MatrixRoomHandler {
         } else {
             log.verbose("Got non m.room.message event");
         }
-        throw new Error("Event not processed by bridge");
+        log.verbose("Event not processed by bridge");
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
