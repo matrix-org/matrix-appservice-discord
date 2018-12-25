@@ -690,9 +690,7 @@ This is the reply`,
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
             let foundField = false;
-            // tslint:disable-next-line prefer-for-of
-            for (let i = 0; i < result!.fields!.length; i++) {
-                const f = result!.fields![i];
+            for (const f of result!.fields!) {
                 if (f.name === "ping") {
                     foundField = true;
                     expect(f.value).to.be.equal("<@1234>");
