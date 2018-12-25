@@ -16,6 +16,8 @@ import { IMatrixEvent } from "../src/matrixtypes";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
+const TEST_TIMESTAMP = 1337;
+
 const expect = Chai.expect;
 // const assert = Chai.assert;
 const bot = {
@@ -63,7 +65,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
     const bridge = {
         getBot: () => {
             return {
-                isRemoteUser: () => false,
+                isRemoteUser: (s) => s.includes("@_discord_"),
             };
         },
         getClientFactory: () => {
@@ -88,6 +90,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
                             content: {
                                 body: "Hello!",
                             },
+                            origin_server_ts: TEST_TIMESTAMP,
                             sender: "@doggo:localhost",
                         };
                     } else if (eventId === "$reply:localhost") {
@@ -114,6 +117,13 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
                             },
                             sender: "@doggo:localhost",
                         };
+                    } else if (eventId === "$discord:localhost") {
+                        return {
+                            content: {
+                                body: "Foxies",
+                            },
+                            sender: "@_discord_1234:localhost",
+                        };
                     }
                     return null;
                 },
@@ -137,6 +147,11 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
             return Buffer.alloc(size);
         },
     });
+    const discordbot = {
+        GetDiscordUserOrMember: async (s) => {
+            return new Discord.User({ } as any, { username: "Someuser" });
+        },
+    };
 
     return new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
@@ -146,7 +161,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         new MatrixEventProcessorOpts(
             config,
             bridge,
-            {} as any,
+            discordbot as any,
     ));
 }
 const mockChannel = new MockChannel();
@@ -416,6 +431,23 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "");
         });
+        it("Should ping the user on discord replies", async () => {
+            const processor = createMatrixEventProcessor();
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    "body": "Bunnies",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$discord:localhost",
+                        },
+                    },
+                    "url": "mxc://bunny",
+                },
+                sender: "@test:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent, mockChannel as any);
+            Chai.assert.equal(embeds.messageEmbed.description, "Bunnies\n(<@1234>)");
+        });
     });
     describe("HandleAttachment", () => {
         const SMALL_FILE = 200;
@@ -626,6 +658,48 @@ This is the reply`,
             expect(result!.author!.name).to.be.equal("Doggo!");
             expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
             expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+        });
+        it("should add the reply time", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$goodEvent:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.timestamp!.getTime()).to.be.equal(TEST_TIMESTAMP);
+        });
+        it("should add field for discord replies", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "foxfoxfox",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$discord:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            let foundField = false;
+            // tslint:disable-next-line prefer-for-of
+            for (let i = 0; i < result!.fields!.length; i++) {
+                const f = result!.fields![i];
+                if (f.name === "ping") {
+                    foundField = true;
+                    expect(f.value).to.be.equal("<@1234>");
+                    break;
+                }
+            }
+            expect(foundField).to.be.true;
         });
     });
 });

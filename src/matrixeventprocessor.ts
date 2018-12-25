@@ -210,7 +210,7 @@ export class MatrixEventProcessor {
                 replyEmbed.addField("ping", `<@${uid}>`);
             }
 
-            replyEmbed.timestamp = new Date(sourceEvent.origin_server_ts);
+            replyEmbed.setTimestamp(new Date(sourceEvent.origin_server_ts));
             return replyEmbed;
         } catch (ex) {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
