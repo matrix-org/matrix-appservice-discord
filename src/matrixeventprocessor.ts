@@ -137,21 +137,12 @@ export class MatrixEventProcessor {
     }
 
     public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
-        if (!event.content) {
-            event.content = {};
+        if (!this.HasAttachment(event)) {
+            return "";
         }
 
-        const hasAttachment = [
-            "m.image",
-            "m.audio",
-            "m.video",
-            "m.file",
-            "m.sticker",
-        ].includes(event.content.msgtype as string) || [
-            "m.sticker",
-        ].includes(event.type);
-        if (!hasAttachment) {
-            return "";
+        if (!event.content) {
+            event.content = {};
         }
 
         if (!event.content.info) {
@@ -211,6 +202,19 @@ export class MatrixEventProcessor {
             }
 
             replyEmbed.setTimestamp(new Date(sourceEvent.origin_server_ts));
+
+            if (this.HasAttachment(sourceEvent)) {
+                const mxClient = this.bridge.getClientFactory().getClientAs();
+                const url = mxClient.mxcUrlToHttp(sourceEvent.content.url);
+                if (["m.image", "m.sticker"].includes(sourceEvent.content.msgtype as string)
+                    || sourceEvent.type === "m.sticker") {
+                    // we have an image reply
+                    replyEmbed.setImage(url);
+                } else {
+                    const name = this.GetFilenameForMediaEvent(sourceEvent.content);
+                    replyEmbed.description = `[${name}](${url})`;
+                }
+            }
             return replyEmbed;
         } catch (ex) {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
@@ -220,6 +224,23 @@ export class MatrixEventProcessor {
         embed.setDescription("Reply with unknown content");
         embed.setAuthor("Unknown");
         return embed;
+    }
+
+    private HasAttachment(event: IMatrixEvent): boolean {
+        if (!event.content) {
+            event.content = {};
+        }
+
+        const hasAttachment = [
+            "m.image",
+            "m.audio",
+            "m.video",
+            "m.file",
+            "m.sticker",
+        ].includes(event.content.msgtype as string) || [
+            "m.sticker",
+        ].includes(event.type);
+        return hasAttachment;
     }
 
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {

@@ -124,6 +124,24 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
                             },
                             sender: "@_discord_1234:localhost",
                         };
+                    } else if (eventId === "$image:localhost") {
+                        return {
+                            content: {
+                                body: "fox.jpg",
+                                msgtype: "m.image",
+                                url: "mxc://fox/localhost",
+                            },
+                            sender: "@fox:localhost",
+                        };
+                    } else if (eventId === "$file:localhost") {
+                        return {
+                            content: {
+                                body: "package.zip",
+                                msgtype: "m.file",
+                                url: "mxc://package/localhost",
+                            },
+                            sender: "@fox:localhost",
+                        };
                     }
                     return null;
                 },
@@ -698,6 +716,39 @@ This is the reply`,
                 }
             }
             expect(foundField).to.be.true;
+        });
+        it("should handle replies to images", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$image:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.image!.url!).to.be.equal("https://fox/localhost");
+            expect(result!.description).to.be.equal("fox.jpg");
+        });
+        it("should handle replies to files", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$file:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("[package.zip](https://package/localhost)");
         });
     });
 });
