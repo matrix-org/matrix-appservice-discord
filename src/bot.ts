@@ -321,6 +321,9 @@ export class DiscordBot {
             evt.ChannelId = channel.id;
             await this.store.Insert(evt);
         });
+        if (!this.config.bridge.disableReadReceipts) {
+            await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+        }
     }
 
     public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<void> {
@@ -393,6 +396,9 @@ export class DiscordBot {
             evt.ChannelId = channelId;
             await this.store.Insert(evt);
         });
+        if (!this.config.bridge.disableReadReceipts) {
+            await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+        }
         return;
     }
 
