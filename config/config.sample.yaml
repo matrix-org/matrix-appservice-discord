@@ -24,6 +24,9 @@ bridge:
   # Enable users to bridge rooms using !discord commands. See
   # https://t2bot.io/discord for instructions.
   enableSelfServiceBridging: false
+  # Disable sending of read receipts for Matrix events which have been
+  # successfully bridged to Discord.
+  disableReadReceipts: false
 # Authentication configuration for the discord bot.
 auth:
   clientID: "12345"

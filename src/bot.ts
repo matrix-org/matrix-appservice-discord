@@ -321,6 +321,13 @@ export class DiscordBot {
             evt.ChannelId = channel.id;
             await this.store.Insert(evt);
         });
+        if (!this.config.bridge.disableReadReceipts) {
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
+        }
     }
 
     public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<void> {
@@ -393,6 +400,13 @@ export class DiscordBot {
             evt.ChannelId = channelId;
             await this.store.Insert(evt);
         });
+        if (!this.config.bridge.disableReadReceipts) {
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
+        }
         return;
     }
 
