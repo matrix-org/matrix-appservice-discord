@@ -322,7 +322,11 @@ export class DiscordBot {
             await this.store.Insert(evt);
         });
         if (!this.config.bridge.disableReadReceipts) {
-            await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
         }
     }
 
@@ -397,7 +401,11 @@ export class DiscordBot {
             await this.store.Insert(evt);
         });
         if (!this.config.bridge.disableReadReceipts) {
-            await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id)
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
         }
         return;
     }
