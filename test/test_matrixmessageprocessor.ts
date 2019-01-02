@@ -334,14 +334,14 @@ code
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<:test_emoji:123456>");
         });
-        it("ignores unknown mxc urls", async () => {
+        it("parses unknown mxc urls", async () => {
             const mp = new MatrixMessageProcessor(bot);
             const guild = new MockGuild("1234");
             const emoji = new MockEmoji("123456", "test_emoji");
             guild.emojis.set("123456", emoji);
             const msg = getHtmlMessage("<img alt=\"yay\" src=\"mxc://unreal_emote:localhost\">");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("yay");
+            expect(result).is.equal("[yay](mxc://unreal_emote:localhost)");
         });
         it("ignores with no alt / title, too", async () => {
             const mp = new MatrixMessageProcessor(bot);

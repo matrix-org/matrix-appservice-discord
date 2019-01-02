@@ -190,7 +190,9 @@ export class MatrixMessageProcessor {
         }
 
         if (!emoji) {
-            return await this.escapeDiscord(name);
+            const content = await this.escapeDiscord(name);
+            const url = this.params && this.params.mxClient ? this.params.mxClient.mxcUrlToHttp(attrs.src) : attrs.src;
+            return attrs.src ? `[${content}](${url})` : content;
         }
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
     }
