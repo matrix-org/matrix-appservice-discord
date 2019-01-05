@@ -40,8 +40,8 @@ export class Provisioner {
 
         let responded = false;
         let resolve: (msg: string) => void;
-        let reject: (err: string) => void;
-        const deferP: Promise<string> = new Promise((res, rej) => {resolve = res; reject = rej;});
+        let reject: (err: Error) => void;
+        const deferP: Promise<string> = new Promise((res, rej) => {resolve = res; reject = rej; });
 
         const approveFn = (approved: boolean, expired = false) => {
             if (responded) {
@@ -54,9 +54,9 @@ export class Provisioner {
                 resolve("Approved");
             } else {
                 if (expired) {
-                    reject("Timed out waiting for a response from the Discord owners");
+                    reject(Error("Timed out waiting for a response from the Discord owners"));
                 } else {
-                    reject("The bridge has been declined by the Discord guild");
+                    reject(Error("The bridge has been declined by the Discord guild"));
                 }
             }
         };
