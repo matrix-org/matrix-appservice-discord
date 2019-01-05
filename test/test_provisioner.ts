@@ -1,7 +1,4 @@
 import * as Chai from "chai";
-import * as Discord from "discord.js";
-import * as Proxyquire from "proxyquire";
-
 import { Provisioner } from "../src/provisioner";
 import { MockChannel } from "./mocks/channel";
 import { MockMember } from "./mocks/member";
@@ -10,25 +7,6 @@ import { MockMember } from "./mocks/member";
 /* tslint:disable:no-any */
 
 const expect = Chai.expect;
-const INTERVAL = 250;
-let lastStatus = null;
-// const assert = Chai.assert;
-const bot = {
-    GetBotId: () => {
-        return "1234";
-    },
-    GetIntentFromDiscordMember: (member) => {
-        return {
-            getClient: () => {
-                return {
-                    setPresence: async (status) => {
-                        lastStatus = status;
-                    },
-                };
-            },
-        };
-    },
-};
 
 const TIMEOUT_MS = 1000;
 
