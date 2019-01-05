@@ -20,7 +20,7 @@ describe("Provisioner", () => {
                     new MockChannel("foo", "bar") as any,
                     "Mark",
                     TIMEOUT_MS,
-                )
+                );
                 throw Error("Should have thrown an error");
             } catch (err) {
                 expect(err.message).to.eq("Timed out waiting for a response from the Discord owners");
