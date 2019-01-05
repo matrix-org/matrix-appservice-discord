@@ -15,19 +15,20 @@ describe("Provisioner", () => {
         it("should fail to bridge a room that timed out", async () => {
             const p = new Provisioner();
             const startAt = Date.now();
-            await p.AskBridgePermission(
-                new MockChannel("foo", "bar") as any,
-                "Mark",
-                TIMEOUT_MS,
-            ).then(() => {
+            try {
+                await p.AskBridgePermission(
+                    new MockChannel("foo", "bar") as any,
+                    "Mark",
+                    TIMEOUT_MS,
+                )
                 throw Error("Should have thrown an error");
-            }).catch((err) => {
+            } catch (err) {
                 expect(err.message).to.eq("Timed out waiting for a response from the Discord owners");
                 const delay = Date.now() - startAt;
                 if (delay < TIMEOUT_MS) {
                     throw Error(`Should have waited for timeout before resolving, waited: ${delay}ms`);
                 }
-            });
+            }
         });
         it("should fail to bridge a room that was declined", async () => {
             const p = new Provisioner();
@@ -35,13 +36,15 @@ describe("Provisioner", () => {
                 new MockChannel("foo", "bar") as any,
                 "Mark",
                 TIMEOUT_MS,
-            ).then(() => {
-                throw Error("Should have thrown an error");
-            }).catch((err) => {
-                expect(err.message).to.eq("The bridge has been declined by the Discord guild");
-            });
+            );
             await p.MarkApproved(new MockChannel("foo", "bar") as any, new MockMember("abc", "Mark") as any, false);
-            await promise;
+            try {
+                await promise;
+                throw Error("Should have thrown an error");
+            } catch (err) {
+                expect(err.message).to.eq("The bridge has been declined by the Discord guild");
+            }
+
         });
         it("should bridge a room that was approved", async () => {
             const p = new Provisioner();
@@ -49,11 +52,9 @@ describe("Provisioner", () => {
                 new MockChannel("foo", "bar") as any,
                 "Mark",
                 TIMEOUT_MS,
-            ).then((msg) => {
-                expect(msg).to.eq("Approved");
-            });
+            );
             await p.MarkApproved(new MockChannel("foo", "bar") as any, new MockMember("abc", "Mark") as any, true);
-            await promise;
+            expect(await promise).to.eq("Approved");
         });
     });
 });
