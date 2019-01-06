@@ -597,9 +597,6 @@ export class DiscordBot {
               // Filter out our own webhook messages.
                 return;
             }
-            console.log("=======");
-            console.log(msg);
-            console.log(msg.author);
         }
 
         // Check if there's an ongoing bridge request
@@ -711,14 +708,14 @@ export class DiscordBot {
                     res = await trySend();
                     await afterSend(res);
                 } catch (e) {
-                    if (e.errcode !== "M_FORBIDDEN") {
+                    if (e.errcode !== "M_FORBIDDEN" && e.errcode !==  "M_GUEST_ACCESS_FORBIDDEN") {
                         log.error("DiscordBot", "Failed to send message into room.", e);
                         return;
                     }
                     if (msg.member) {
                         await this.userSync.JoinRoom(msg.member, room);
                     } else {
-                        await intent.join(room);
+                        await this.userSync.JoinRoom(msg.author, room, msg.webhookID);
                     }
                     res = await trySend();
                     await afterSend(res);

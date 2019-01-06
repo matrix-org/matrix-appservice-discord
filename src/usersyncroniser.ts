@@ -44,7 +44,7 @@ export interface IGuildMemberRole {
 
 export interface IGuildMemberState {
     bot: boolean;
-    displayColor: number;
+    displayColor?: number;
     displayName: string;
     id: string;
     mxUserId: string;
@@ -141,11 +141,17 @@ export class UserSyncroniser {
         }
     }
 
-    public async JoinRoom(member: GuildMember, roomId: string) {
-        const state = await this.GetUserStateForGuildMember(member);
+    public async JoinRoom(member: GuildMember | User, roomId: string, webhookID?: string) {
+        let state: IGuildMemberState;
+        if (member instanceof GuildMember) {
+            state = await this.GetUserStateForGuildMember(member);
+        } else {
+            state = await this.GetUserStateForDiscordUser(member, webhookID);
+        }
         log.info(`Joining ${state.id} in ${roomId}`);
+        const guildId = member instanceof GuildMember ? member.guild.id : undefined;
         try {
-            await this.ApplyStateToRoom(state, roomId, member.guild.id);
+            await this.ApplyStateToRoom(state, roomId, guildId);
         } catch (e) {
             if (e.errcode !== "M_FORBIDDEN") {
                 log.error(`Failed to join ${state.id} to ${roomId}`, e);
@@ -154,7 +160,7 @@ export class UserSyncroniser {
                 log.info(`User not in room ${roomId}, inviting`);
                 try {
                     await this.bridge.getIntent().invite(roomId, state.mxUserId);
-                    await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                    await this.ApplyStateToRoom(state, roomId, guildId);
                 } catch (e) {
                     log.error(`Failed to join ${state.id} to ${roomId}`, e);
                     throw e;
@@ -169,13 +175,12 @@ export class UserSyncroniser {
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
 
-    public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId: string) {
+    public async ApplyStateToRoom(memberState: IGuildMemberState, roomId: string, guildId?: string) {
         log.info(`Applying new room state for ${memberState.mxUserId} to ${roomId}`);
         if (!memberState.displayName) {
             // Nothing to do. Quitting
             return;
         }
-        const nickKey = `nick_${guildId}`;
         const remoteUser = await this.userStore.getRemoteUser(memberState.id);
         const intent = this.bridge.getIntent(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
@@ -193,7 +198,10 @@ export class UserSyncroniser {
             },
         }, memberState.mxUserId);
 
-        remoteUser.set(nickKey, memberState.displayName);
+        if (guildId) {
+            const nickKey = `nick_${guildId}`;
+            remoteUser.set(nickKey, memberState.displayName);
+        }
         await this.userStore.setRemoteUser(remoteUser);
     }
 
@@ -255,6 +263,25 @@ export class UserSyncroniser {
                 position: role.position,
             }; }),
             username: newMember.user.tag,
+        });
+        return guildState;
+    }
+
+    public async GetUserStateForDiscordUser(
+        user: User,
+        webhookID?: string,
+    ): Promise<IGuildMemberState> {
+        let mxidExtra = "";
+        if (webhookID) {
+            mxidExtra = `_${Util.str2mxid(user.username)}`;
+        }
+        const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
+            bot: user.bot,
+            displayName: user.username,
+            id: user.id,
+            mxUserId: `@_discord_${user.id}${mxidExtra}:${this.config.bridge.domain}`,
+            roles: [],
+            username: user.tag,
         });
         return guildState;
     }
