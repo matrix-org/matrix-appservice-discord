@@ -66,6 +66,7 @@
     "istanbul": "^0.4.5",
     "mocha": "^5.2.0",
     "proxyquire": "^1.7.11",
+    "source-map-support": "^0.5.9",
     "why-is-node-running": "^2.0.3"
   }
 }

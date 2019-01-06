@@ -8,6 +8,7 @@ import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
+import "source-map-support/register";
 
 const log = new Log("DiscordAS");
 
