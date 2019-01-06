@@ -32,11 +32,12 @@ These instructions were tested against Node.js v8.11.1 and the Synapse homeserve
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
   * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
   While localhost would work, it does not resolve correctly with Webhooks/Avatars.
+  Please note that a self-signed SSL certificate (e.g. what is commonly found on port `8448`) won't work, either.
 
   ```yaml
   bridge:
       domain: "example.com"
-      homeserverUrl: "https://example.com:8448"
+      homeserverUrl: "https://example.com"
   ```
 
 * Run ``node build/src/discordas.js -r -u "http://localhost:9005" -c config.yaml``
