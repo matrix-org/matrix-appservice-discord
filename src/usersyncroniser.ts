@@ -143,13 +143,13 @@ export class UserSyncroniser {
 
     public async JoinRoom(member: GuildMember | User, roomId: string, webhookID?: string) {
         let state: IGuildMemberState;
-        if (member instanceof GuildMember) {
-            state = await this.GetUserStateForGuildMember(member);
-        } else {
+        if (member instanceof User) {
             state = await this.GetUserStateForDiscordUser(member, webhookID);
+        } else {
+            state = await this.GetUserStateForGuildMember(member);
         }
         log.info(`Joining ${state.id} in ${roomId}`);
-        const guildId = member instanceof GuildMember ? member.guild.id : undefined;
+        const guildId = member instanceof User ? undefined : member.guild.id;
         try {
             await this.ApplyStateToRoom(state, roomId, guildId);
         } catch (e) {
