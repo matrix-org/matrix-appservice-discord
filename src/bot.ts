@@ -99,7 +99,12 @@ export class DiscordBot {
         return this.channelSync;
     }
 
-    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User): Intent {
+    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
+        if (webhookID) {
+            // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
+            const name = member instanceof Discord.User ? member.username : member.user.username;
+            return this.bridge.getIntentFromLocalpart(`_discord_${webhookID}_${Util.str2mxid(name)}`);
+        }
         return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
     }
 
@@ -584,14 +589,17 @@ export class DiscordBot {
             // We don't support double bridging.
             return;
         }
-        // Issue #57: Detect webhooks
-        if (msg.webhookID != null) {
+        // Test for webhooks
+        if (msg.webhookID) {
             const webhook = (await chan.fetchWebhooks())
                             .filterArray((h) => h.name === "_matrix").pop();
-            if (webhook != null && msg.webhookID === webhook.id) {
+            if (webhook && msg.webhookID === webhook.id) {
               // Filter out our own webhook messages.
                 return;
             }
+            console.log("=======");
+            console.log(msg);
+            console.log(msg.author);
         }
 
         // Check if there's an ongoing bridge request
@@ -626,7 +634,7 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        await this.userSync.OnUpdateUser(msg.author);
+        await this.userSync.OnUpdateUser(msg.author, msg.webhookID);
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
@@ -638,7 +646,7 @@ export class DiscordBot {
             if (rooms === null) {
               return null;
             }
-            const intent = this.GetIntentFromDiscordMember(msg.author);
+            const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
@@ -741,7 +749,7 @@ export class DiscordBot {
         }
         while (storeEvent.Next()) {
             log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
-            const intent = this.GetIntentFromDiscordMember(msg.author);
+            const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             const matrixIds = storeEvent.MatrixId.split(";");
             try {
                 await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);

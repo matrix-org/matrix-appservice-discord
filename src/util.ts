@@ -258,6 +258,51 @@ export class Util {
         const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
         return htmlColor;
     }
+
+    public static str2mxid(a: string): string {
+        let buf = new Buffer(a);
+        let encoded = '';
+        for (let b of buf) {
+            if (b == 0x5F) {
+                // underscore
+                encoded += '__';
+            } else if ((b >= 0x61 && b <= 0x7A) || (b >= 0x30 && b <= 0x39)) {
+                // [a-z0-9]
+                encoded += String.fromCharCode(b);
+            } else if (b >= 0x41 && b <= 0x5A) {
+                encoded += '_' + String.fromCharCode(b + 0x20);
+            } else if (b < 16) {
+                encoded += '=0' + b.toString(16);
+            } else {
+                encoded += '=' + b.toString(16);
+            }
+        }
+        return encoded;
+    }
+
+    public static mxid2str(b: string): string {
+        let decoded = new Buffer(b.length);
+        let j = 0;
+        for (let i = 0; i < b.length; i++) {
+            let char = b[i];
+            if (char == '_') {
+                i++;
+                if (b[i] == '_') {
+                    decoded[j] = 0x5F;
+                } else {
+                    decoded[j] = b[i].charCodeAt(0) - 0x20;
+                }
+            } else if (char == '=') {
+                i++;
+                decoded[j] = parseInt(b[i]+b[i+1], 16);
+                i++;
+            } else {
+                decoded[j] = b[i].charCodeAt(0);
+            }
+            j++;
+        }
+        return decoded.toString('utf8', 0, j);
+    }
 }
 
 interface IUploadResult {

@@ -81,8 +81,8 @@ export class UserSyncroniser {
      * @returns {Promise<void>}
      * @constructor
      */
-    public async OnUpdateUser(discordUser: User) {
-        const userState = await this.GetUserUpdateState(discordUser);
+    public async OnUpdateUser(discordUser: User, webhookID?: string) {
+        const userState = await this.GetUserUpdateState(discordUser, webhookID);
         try {
             await this.ApplyStateToProfile(userState);
         } catch (e) {
@@ -197,15 +197,20 @@ export class UserSyncroniser {
         await this.userStore.setRemoteUser(remoteUser);
     }
 
-    public async GetUserUpdateState(discordUser: User): Promise<IUserState> {
+    public async GetUserUpdateState(discordUser: User, webhookID?: string): Promise<IUserState> {
         log.verbose(`State update requested for ${discordUser.id}`);
+        let mxidExtra = "";
+        if (webhookID) {
+            mxidExtra = `_${Util.str2mxid(webhookID)}`;
+        }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
-            mxUserId: `@_discord_${discordUser.id}:${this.config.bridge.domain}`,
+            mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
         const displayName = this.displayNameForUser(discordUser);
         // Determine if the user exists.
-        const remoteUser = await this.userStore.getRemoteUser(discordUser.id);
+        const remoteId = discordUser.id + mxidExtra;
+        const remoteUser = await this.userStore.getRemoteUser(remoteId);
         if (remoteUser === null) {
             log.verbose(`Could not find user in remote user store.`);
             userState.createUser = true;
