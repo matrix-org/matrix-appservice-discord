@@ -46,6 +46,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
                 UTIL_UPLOADED_AVATAR = true;
                 return {mxcUrl: "avatarset"};
             },
+            str2mxid: Util.str2mxid,
         },
     },
 })).UserSyncroniser;
@@ -485,6 +486,27 @@ describe("UserSyncroniser", () => {
             expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
             expect(state.roles[0].color).to.be.equal(TESTROLE_COLOR);
             expect(state.roles[0].position).to.be.equal(TESTROLE_POSITION);
+        });
+    });
+    describe("GetUserStateForDiscordUser", () => {
+        it("Will apply a new nick", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const member = new MockUser(
+                "123456",
+                "username",
+                "1234");
+            const state = await userSync.GetUserStateForDiscordUser(member as any);
+            expect(state.displayName).to.be.equal("username");
+        });
+        it("Will handle webhooks", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const member = new MockUser(
+                "123456",
+                "username",
+                "1234");
+            const state = await userSync.GetUserStateForDiscordUser(member as any, "654321");
+            expect(state.displayName).to.be.equal("username");
+            expect(state.mxUserId).to.be.equal("@_discord_123456_username:localhost");
         });
     });
     describe("OnAddGuildMember", () => {
