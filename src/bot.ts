@@ -121,8 +121,8 @@ export class DiscordBot {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.User ? member.username : member.user.username;
-            // no need to escape the mxid as getIntentFromLocalpart does that alreaddy down the road
-            return this.bridge.getIntentFromLocalpart(`_discord_${webhookID}_${name}`);
+            const nameId = new MatrixUser(`@${name}`).localpart;
+            return this.bridge.getIntentFromLocalpart(`_discord_${webhookID}_${nameId}`);
         }
         return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
     }
