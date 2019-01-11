@@ -210,7 +210,7 @@ export class UserSyncroniser {
         let mxidExtra = "";
         if (webhookID) {
             // no need to escape as this mxid is only used to create an intent
-            mxidExtra = `_${webhookID}`;
+            mxidExtra = `_${new MatrixUser(`@${webhookID}`).localpart}`;
         }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
@@ -275,7 +275,7 @@ export class UserSyncroniser {
         let mxidExtra = "";
         if (webhookID) {
             // no need to escape as this mxid is only used to create an Intent
-            mxidExtra = `_${user.username}`;
+            mxidExtra = `_${new MatrixUser(`@${user.username}`).localpart}`;
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
