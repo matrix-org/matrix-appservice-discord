@@ -552,7 +552,7 @@ export class DiscordBot {
         const kickeeUser = (await this.GetDiscordUserOrMember(
             new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length),
             tchan.guild.id,
-        ))!;
+        ));
         if (!kickeeUser) {
             log.error("Could not find discord user for", kickeeUserId);
             return;
@@ -565,9 +565,9 @@ export class DiscordBot {
                 {
                   SEND_MESSAGES: null,
                   VIEW_CHANNEL: null,
-                  /* tslint:disable: no-any */
+                  /* tslint:disable-next-line no-any */
               } as any, // XXX: Discord.js typings are wrong.
-                `Lifting kick for since duration expired.`);
+                `Unbanned.`);
             res = await botChannel.send(
                 `${kickee} was unbanned from this channel by ${kicker}.`,
             ) as Discord.Message;
@@ -579,19 +579,20 @@ export class DiscordBot {
             log.warn("User isn't allowed to read anyway.");
             return;
         }
+        const word = `${kickban === "ban" ? "banned" : "kicked"}`;
         res = await botChannel.send(
-            `${kickee} was ${kickban === "ban" ? "banned" : "kicked"} from this channel by ${kicker}.`
+            `${kickee} was ${word} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
         ) as Discord.Message;
         this.sentMessages.push(res.id);
-        log.info(`${kickban === "ban" ? "Banning" : "Kicking"} ${kickee}`);
+        log.info(`${word} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
             {
               SEND_MESSAGES: false,
               VIEW_CHANNEL: false,
             },
-            `Matrix user was ${kickban} by ${kicker}`);
+            `Matrix user was ${word} by ${kicker}`);
         if (kickban === "leave") {
             // Kicks will let the user back in after ~30 seconds.
             setTimeout(async () => {
@@ -602,7 +603,7 @@ export class DiscordBot {
                       VIEW_CHANNEL: null,
                       /* tslint:disable: no-any */
                   } as any, // XXX: Discord.js typings are wrong.
-                    `Lifting kick for since duration expired.`);
+                    `Lifting kick since duration expired.`);
             }, this.config.room.kickFor);
         }
     }
