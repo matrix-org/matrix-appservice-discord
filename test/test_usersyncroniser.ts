@@ -46,7 +46,6 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
                 UTIL_UPLOADED_AVATAR = true;
                 return {mxcUrl: "avatarset"};
             },
-            str2mxid: Util.str2mxid,
         },
     },
 })).UserSyncroniser;

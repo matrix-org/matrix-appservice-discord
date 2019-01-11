@@ -142,40 +142,4 @@ describe("Util", () => {
             expect(reply).to.equal("#000000");
         });
     });
-    describe("str2mxid", () => {
-        it("should leave lowercase stuff untouched", () => {
-            const reply = Util.str2mxid("foxies");
-            expect(reply).to.equal("foxies");
-        });
-        it("should handle uppercase stuff", () => {
-            const reply = Util.str2mxid("Foxies");
-            expect(reply).to.equal("_foxies");
-        });
-        it("should handle underscores", () => {
-            const reply = Util.str2mxid("fox_ies");
-            expect(reply).to.equal("fox__ies");
-        });
-        it("should handle misc. characters", () => {
-            const reply = Util.str2mxid("föxies");
-            expect(reply).to.equal("f=c3=b6xies");
-        });
-    });
-    describe("mxid2str", () => {
-        it("should leave lowercase stuff untouched", () => {
-            const reply = Util.mxid2str("foxies");
-            expect(reply).to.equal("foxies");
-        });
-        it("should handle uppercase stuff", () => {
-            const reply = Util.mxid2str("_foxies");
-            expect(reply).to.equal("Foxies");
-        });
-        it("should handle underscores", () => {
-            const reply = Util.mxid2str("fox__ies");
-            expect(reply).to.equal("fox_ies");
-        });
-        it("should handle misc. characters", () => {
-            const reply = Util.mxid2str("f=c3=b6xies");
-            expect(reply).to.equal("föxies");
-        });
-    });
 });

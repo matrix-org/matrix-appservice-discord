@@ -209,7 +209,8 @@ export class UserSyncroniser {
         log.verbose(`State update requested for ${discordUser.id}`);
         let mxidExtra = "";
         if (webhookID) {
-            mxidExtra = `_${Util.str2mxid(webhookID)}`;
+            // no need to escape as this mxid is only used to create an intent
+            mxidExtra = `_${webhookID}`;
         }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id,
@@ -273,7 +274,8 @@ export class UserSyncroniser {
     ): Promise<IGuildMemberState> {
         let mxidExtra = "";
         if (webhookID) {
-            mxidExtra = `_${Util.str2mxid(user.username)}`;
+            // no need to escape as this mxid is only used to create an Intent
+            mxidExtra = `_${user.username}`;
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
