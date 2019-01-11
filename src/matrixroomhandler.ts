@@ -139,11 +139,24 @@ export class MatrixRoomHandler {
         if (event.type === "m.room.member" && event.content!.membership === "invite") {
             await this.HandleInvite(event);
             return;
-        } else if (event.type === "m.room.member" && event.content!.membership === "join") {
-            if (this.bridge.getBot().isRemoteUser(event.state_key)) {
+        } else if (event.type === "m.room.member" && this.bridge.getBot().isRemoteUser(event.state_key)) {
+            if (event.content!.membership !== undefined && event.content!.membership === "join") {
                 await this.discord.UserSyncroniser.OnMemberState(event, USERSYNC_STATE_DELAY_MS);
-            } else {
-                await this.discord.ProcessMatrixStateEvent(event);
+            } else if (["leave", "ban"].includes(event.content!.membership!) && event.sender !== event.state_key) {
+                // Kick/Ban handling
+                let prevMembership = "";
+                if (event.content!.membership === "leave") {
+                    const intent = this.bridge.getIntent();
+                    prevMembership = (await intent.getEvent(event.room_id, event.replaces_state)).content.membership;
+                }
+                await this.discord.HandleMatrixKickBan(
+                    event.room_id,
+                    event.state_key,
+                    event.sender,
+                    event.content!.membership as "leave"|"ban",
+                    prevMembership,
+                    event.content!.reason,
+                );
             }
             return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
