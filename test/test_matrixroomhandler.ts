@@ -73,12 +73,12 @@ function createRH(opts: any = {}) {
             return {
                 ban: async () => { USERSBANNED++; },
                 getClient: () => mxClient,
+                getEvent: () => ({ content: { } }),
                 join: () => { USERSJOINED++; },
                 kick: async () => { USERSKICKED++; },
                 leave: () => { },
                 sendMessage: async (roomId, content) => { MESSAGESENT = content; return content; },
                 unban: async () => { USERSUNBANNED++; },
-                getEvent: () => { return { content: { } } },
             };
         },
         getRoomStore: () => {
