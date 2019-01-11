@@ -1,7 +1,7 @@
 import { User, GuildMember, GuildChannel } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore } from "matrix-appservice-bridge";
+import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore, Intent } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 import * as Bluebird from "bluebird";
 import { Log } from "./log";
@@ -142,7 +142,7 @@ export class UserSyncroniser {
     }
 
     public async JoinRoom(member: GuildMember, roomId: string) {
-        const state = await this.GetUserStateForGuildMember(member, "");
+        const state = await this.GetUserStateForGuildMember(member);
         log.info(`Joining ${state.id} in ${roomId}`);
         try {
             await this.ApplyStateToRoom(state, roomId, member.guild.id);
@@ -164,7 +164,7 @@ export class UserSyncroniser {
     }
 
     public async SetRoomState(member: GuildMember, roomId: string) {
-        const state = await this.GetUserStateForGuildMember(member, "");
+        const state = await this.GetUserStateForGuildMember(member);
         log.info(`Setting room state for ${state.id} in ${roomId}`);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
     }
@@ -237,14 +237,11 @@ export class UserSyncroniser {
 
     public async GetUserStateForGuildMember(
         newMember: GuildMember,
-        displayname?: string,
     ): Promise<IGuildMemberState> {
-        if (!displayname) {
-            displayname = "";
-        }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: newMember.user.bot,
             displayColor: newMember.displayColor,
+            displayName: newMember.displayName,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
@@ -254,45 +251,66 @@ export class UserSyncroniser {
             }; }),
             username: newMember.user.tag,
         });
-
-        // Check guild nick.
-        if (displayname !== newMember.displayName) {
-            guildState.displayName = newMember.displayName;
-        }
         return guildState;
     }
 
     public async OnAddGuildMember(member: GuildMember) {
         log.info(`Joining ${member.id} to all rooms for guild ${member.guild.id}`);
-        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
-        const intent = this.discord.GetIntentFromDiscordMember(member);
-        await this.OnUpdateUser(member.user);
-        return Promise.all(
-            rooms.map(
-                (roomId) => intent.join(roomId),
-            ),
-        );
+        await this.OnUpdateGuildMember(member, true);
     }
 
     public async OnRemoveGuildMember(member: GuildMember) {
         /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
         log.info(`Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
-        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild.id);
+        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
-                (roomId) => intent.leave(roomId),
+                async (roomId) => this.leave(intent, roomId, false),
             ),
         );
     }
 
-    public async OnUpdateGuildMember(oldMember: GuildMember, newMember: GuildMember) {
-        log.info(`Got update for ${oldMember.id}.`);
-        const state = await this.GetUserStateForGuildMember(newMember, oldMember.displayName);
-        const rooms = await this.discord.GetRoomIdsFromGuild(newMember.guild.id);
+    public async OnUpdateGuildMember(member: GuildMember, doJoin: boolean = false) {
+        log.info(`Got update for ${member.id} (${member.user.username}).`);
+        const state = await this.GetUserStateForGuildMember(member);
+        let wantRooms: string[] = [];
+        try {
+            wantRooms = await this.discord.GetRoomIdsFromGuild(member.guild, member);
+        } catch (err) { } // no want rooms
+        let allRooms: string[] = [];
+        try {
+            allRooms = await this.discord.GetRoomIdsFromGuild(member.guild);
+        } catch (err) { } // no all rooms
+
+        const leaveRooms: string[] = [];
+        await Util.AsyncForEach(allRooms, async (r) => {
+            if (wantRooms.includes(r)) {
+                return;
+            }
+            leaveRooms.push(r);
+        });
+
         await Promise.all(
-            rooms.map(
-                async (roomId) => this.ApplyStateToRoom(state, roomId, newMember.guild.id),
+            wantRooms.map(
+                async (roomId) => {
+                    if (doJoin) {
+                        await this.JoinRoom(member, roomId);
+                    } else {
+                        await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                    }
+                },
+            ),
+        );
+        const userId = state.mxUserId;
+        const intent = this.bridge.getIntent(userId);
+        await Promise.all(
+            leaveRooms.map(
+                async (roomId) => {
+                    try {
+                        await this.leave(intent, roomId, true);
+                    } catch (e) { } // not in room
+                },
             ),
         );
     }
@@ -301,13 +319,13 @@ export class UserSyncroniser {
         const id = remoteUser.getId();
         log.info(`Got update for ${id}.`);
 
-        return this.discord.GetGuilds().map(async (guild) => {
+        await Util.AsyncForEach(this.discord.GetGuilds(), async (guild) => {
             if (guild.members.has(id)) {
                 log.info(`Updating user ${id} in guild ${guild.id}.`);
                 const member = guild.members.get(id);
-                const state = await this.GetUserStateForGuildMember(member!, remoteUser.get("displayname"));
-                const rooms = await this.discord.GetRoomIdsFromGuild(guild.id);
-                return Promise.all(
+                const state = await this.GetUserStateForGuildMember(member!);
+                const rooms = await this.discord.GetRoomIdsFromGuild(guild, member!);
+                await Promise.all(
                     rooms.map(
                         async (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
                     ),
@@ -345,7 +363,7 @@ export class UserSyncroniser {
             log.warn(`Got member update for ${roomId}, but no channel or guild member could be found.`);
             return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
         }
-        const state = await this.GetUserStateForGuildMember(member, ev.content!.displayname);
+        const state = await this.GetUserStateForGuildMember(member);
         await this.ApplyStateToRoom(state, roomId, member.guild.id);
         return UserSyncroniser.ERR_NO_ERROR;
     }
@@ -371,5 +389,15 @@ export class UserSyncroniser {
 
     private displayNameForUser(discordUser): string {
         return `${discordUser.username}#${discordUser.discriminator}`;
+    }
+
+    private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {
+        const userId = intent.getClient().getUserId();
+        if (checkCache && ![null, "join", "invite"]
+            .includes(intent.opts.backingStore.getMembership(roomId, userId))) {
+            return;
+        }
+        await intent.leave(roomId);
+        intent.opts.backingStore.setMembership(roomId, userId, "leave");
     }
 }

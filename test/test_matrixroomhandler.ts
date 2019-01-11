@@ -216,27 +216,18 @@ describe("MatrixRoomHandler", () => {
         it("should reject old events", async () => {
             const AGE = 900001; // 15 * 60 * 1000
             const handler = createRH();
-            try {
-                await handler.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-                expect(e.message).equals("Event too old");
-            }
+            await handler.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
+            expect(MESSAGE_PROCCESS).equals("");
         });
         it("should reject un-processable events", async () => {
             const AGE = 900000; // 15 * 60 * 1000
             const handler = createRH();
-            try {
-                await handler.OnEvent(buildRequest({
-                    content: {},
-                    type: "m.potato",
-                    unsigned: {age: AGE}}), null);
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-                expect(e.message).equals("Event not processed by bridge");
-            }
+            // check if nothing is thrown
+            await handler.OnEvent(buildRequest({
+                content: {},
+                type: "m.potato",
+                unsigned: {age: AGE}}), null);
+            expect(MESSAGE_PROCCESS).equals("");
         });
         it("should handle invites", async () => {
             const handler = createRH();
@@ -306,14 +297,9 @@ describe("MatrixRoomHandler", () => {
                     remote: null,
                 },
             };
-            try {
-                await handler.OnEvent(buildRequest({
+            await handler.OnEvent(buildRequest({
                     type: "m.room.redaction"}), context);
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-                expect(e.message).equals("Event not processed by bridge");
-            }
+            expect(MESSAGE_PROCCESS).equals("");
         });
         it("should process regular messages", async () => {
             const handler = createRH();
@@ -363,16 +349,11 @@ describe("MatrixRoomHandler", () => {
                     remote: null,
                 },
             };
-            try {
-                await handler.OnEvent(buildRequest({
-                    content: {body: "abc"},
-                    type: "m.room.message",
-                }), context);
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-                expect(e.message).equals("Event not processed by bridge");
-            }
+            await handler.OnEvent(buildRequest({
+                content: {body: "abc"},
+                type: "m.room.message",
+            }), context);
+            expect(MESSAGE_PROCCESS).equals("");
         });
         it("should process stickers", async () => {
             const handler = createRH();

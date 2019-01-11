@@ -8,7 +8,9 @@ import * as Proxyquire from "proxyquire";
 import {MockMember} from "./mocks/member";
 import {MockGuild} from "./mocks/guild";
 import { MockChannel } from "./mocks/channel";
+import { MockRole } from "./mocks/role";
 import { IMatrixEvent } from "../src/matrixtypes";
+import { Util } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -34,10 +36,12 @@ let LEAVES: any = 0;
 let SEV_COUNT: any = 0;
 
 const GUILD_ROOM_IDS = ["!abc:localhost", "!def:localhost", "!ghi:localhost"];
+const GUILD_ROOM_IDS_WITH_ROLE = ["!abc:localhost", "!def:localhost"];
 
 const UserSync = (Proxyquire("../src/usersyncroniser", {
     "./util": {
         Util: {
+            AsyncForEach: Util.AsyncForEach,
             UploadContentFromUrl: async () => {
                 UTIL_UPLOADED_AVATAR = true;
                 return {mxcUrl: "avatarset"};
@@ -63,6 +67,7 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
             return {
                 getClient: () => {
                     return {
+                        getUserId: () => "@user:localhost",
                         sendStateEvent: (roomId, type, content, key) => {
                             SEV_ROOM_ID = roomId;
                             SEV_CONTENT = content;
@@ -78,6 +83,12 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 leave: (roomId) => {
                     LEAVE_ROOM_ID = roomId;
                     LEAVES++;
+                },
+                opts: {
+                    backingStore: {
+                        getMembership: (roomId, userId) => "join",
+                        setMembership: (roomId, userId, membership) => { },
+                    },
                 },
                 setAvatarUrl: async (ava) => {
                     AVATAR_SET = ava;
@@ -129,7 +140,10 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
         GetIntentFromDiscordMember: (id) => {
             return bridge.getIntent(id);
         },
-        GetRoomIdsFromGuild: async () => {
+        GetRoomIdsFromGuild: async (guild, member?) => {
+            if (member && member.roles.get("1234")) {
+                return GUILD_ROOM_IDS_WITH_ROLE;
+            }
             return GUILD_ROOM_IDS;
         },
     };
@@ -452,18 +466,6 @@ describe("UserSyncroniser", () => {
             const state = await userSync.GetUserStateForGuildMember(member as any);
             expect(state.displayName).to.be.equal("BestDog");
         });
-        it("Will not apply if the nick has already been set", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            const guild = new MockGuild(
-                "654321");
-            const member = new MockMember(
-                "123456",
-                "username",
-                guild,
-                "BestDog");
-            const state = await userSync.GetUserStateForGuildMember(member as any, "BestDog");
-            expect(state.displayName).is.empty;
-        });
         it("Will correctly add roles", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
@@ -476,13 +478,8 @@ describe("UserSyncroniser", () => {
             const TESTROLE_NAME = "testrole";
             const TESTROLE_COLOR = 1337;
             const TESTROLE_POSITION = 42;
-            member.roles = [
-                {
-                    color: TESTROLE_COLOR,
-                    name: TESTROLE_NAME,
-                    position: TESTROLE_POSITION,
-                },
-            ];
+            const role = new MockRole("123", TESTROLE_NAME, TESTROLE_COLOR, TESTROLE_POSITION);
+            member.roles.set("123", role);
             const state = await userSync.GetUserStateForGuildMember(member as any);
             expect(state.roles.length).to.be.equal(1);
             expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
@@ -500,7 +497,7 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild);
             await userSync.OnAddGuildMember(member as any);
-            expect(JOINS).to.equal(GUILD_ROOM_IDS.length);
+            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnRemoveGuildMember", () => {
@@ -521,34 +518,29 @@ describe("UserSyncroniser", () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
-            const oldMember = new MockMember(
-                "123456",
-                "username",
-                guild);
             const newMember = new MockMember(
                 "123456",
                 "username",
                 guild,
                 "FiddleDee");
-            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
+            await userSync.OnUpdateGuildMember(newMember as any);
             expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
         });
-        it("will not update state for unchanged member", async () => {
+        it("will part rooms based on role removal", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const role = new MockRole("1234", "role");
             const guild = new MockGuild(
                 "654321");
-            const oldMember = new MockMember(
-                "123456",
-                "username",
-                guild,
-                "FiddleDee");
             const newMember = new MockMember(
                 "123456",
                 "username",
                 guild,
                 "FiddleDee");
-            await userSync.OnUpdateGuildMember(oldMember as any, newMember as any);
-            expect(SEV_COUNT).to.equal(0);
+            newMember.roles.set("1234", role);
+            await userSync.OnUpdateGuildMember(newMember as any);
+            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS_WITH_ROLE.length);
+            expect(LEAVES).to.equal(GUILD_ROOM_IDS.length - GUILD_ROOM_IDS_WITH_ROLE.length);
+            expect(LEAVE_ROOM_ID).to.equal("!ghi:localhost");
         });
     });
     describe("OnMemberState", () => {

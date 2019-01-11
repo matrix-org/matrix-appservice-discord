@@ -72,12 +72,12 @@ export class MatrixRoomHandler {
     }
 
     public async OnAliasQueried(alias: string, roomId: string) {
-        log.verbose("OnAliasQueried", `Got OnAliasQueried for ${alias} ${roomId}`);
+        log.verbose(`Got OnAliasQueried for ${alias} ${roomId}`);
         let channel: Discord.GuildChannel;
         try {
             channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
         } catch (err) {
-            log.error("OnAliasQueried", `Cannot find discord channel for ${alias} ${roomId}`, err);
+            log.error(`Cannot find discord channel for ${alias} ${roomId}`, err);
             throw err;
         }
 
@@ -98,14 +98,14 @@ export class MatrixRoomHandler {
             }
             promiseList.push((async () => {
                 await Bluebird.delay(delay);
-                log.info("OnAliasQueried", `UserSyncing ${member.id}`);
+                log.info(`UserSyncing ${member.id}`);
                 try {
                     // Ensure the profile is up to date.
                     await this.discord.UserSyncroniser.OnUpdateUser(member.user);
                 } catch (err) {
-                    log.warn("OnAliasQueried", `Failed to update profile of user ${member.id}`, err);
+                    log.warn(`Failed to update profile of user ${member.id}`, err);
                 }
-                log.info("OnAliasQueried", `Joining ${member.id} to ${roomId}`);
+                log.info(`Joining ${member.id} to ${roomId}`);
 
                 await this.joinRoom(this.discord.GetIntentFromDiscordMember(member), roomId, member);
             })());
@@ -118,7 +118,7 @@ export class MatrixRoomHandler {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            throw new Error("Event too old");
+            return;
         }
         if (event.type === "m.room.member" && event.content!.membership === "invite") {
             await this.HandleInvite(event);
@@ -177,7 +177,7 @@ export class MatrixRoomHandler {
         } else {
             log.verbose("Got non m.room.message event");
         }
-        throw new Error("Event not processed by bridge");
+        log.verbose("Event not processed by bridge");
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {

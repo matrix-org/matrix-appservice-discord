@@ -94,7 +94,6 @@ async function run() {
     } catch (e) {
         await discordstore.init();
     }
-    const chanSync = new ChannelSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
     bridge._botClient = bridge._clientFactory.getClientAs();
     bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
@@ -129,7 +128,7 @@ async function run() {
         promiseList2.push((async () => {
             await Bluebird.delay(curDelay);
             try {
-                await chanSync.OnGuildUpdate(guild, true);
+                await discordbot.ChannelSyncroniser.OnGuildUpdate(guild, true);
             } catch (err) {
                 log.warn(`Couldn't update rooms of guild ${guild.id}`, err);
             }

@@ -238,17 +238,6 @@ export class Util {
         return {command, args};
     }
 
-    public static GetReplyFromReplyBody(body: string) {
-        const lines = body.split("\n");
-        while (lines[0].startsWith("> ") || lines[0].trim().length === 0) {
-            lines.splice(0, 1);
-            if (lines.length === 0) {
-                return "";
-            }
-        }
-        return lines.join("\n").trim();
-    }
-
     public static async AsyncForEach(arr, callback) {
         for (let i = 0; i < arr.length; i++) {
             await callback(arr[i], i, arr);

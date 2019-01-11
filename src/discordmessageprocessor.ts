@@ -5,7 +5,7 @@ import * as escapeHtml from "escape-html";
 import { Util } from "./util";
 
 import { Log } from "./log";
-const log = new Log("MessageProcessor");
+const log = new Log("DiscordMessageProcessor");
 
 const MATRIX_TO_LINK = "https://matrix.to/#/";
 const MXC_INSERT_REGEX = /\x01(\w+)\x01([01])\x01([0-9]*)\x01/g;
@@ -14,13 +14,13 @@ const ANIMATED_MXC_INSERT_REGEX_GROUP = 2;
 const ID_MXC_INSERT_REGEX_GROUP = 3;
 const EMOJI_SIZE = 32;
 
-export class MessageProcessorOpts {
+export class DiscordMessageProcessorOpts {
     constructor(readonly domain: string, readonly bot?: DiscordBot) {
 
     }
 }
 
-export class MessageProcessorMatrixResult {
+export class DiscordMessageProcessorResult {
     public formattedBody: string;
     public body: string;
     public msgtype: string;
@@ -35,19 +35,19 @@ interface IEmojiNode extends IDiscordNode {
     name: string;
 }
 
-export class MessageProcessor {
-    private readonly opts: MessageProcessorOpts;
-    constructor(opts: MessageProcessorOpts, bot: DiscordBot | null = null) {
+export class DiscordMessageProcessor {
+    private readonly opts: DiscordMessageProcessorOpts;
+    constructor(opts: DiscordMessageProcessorOpts, bot: DiscordBot | null = null) {
         // Backwards compat
         if (bot !== null) {
-            this.opts = new MessageProcessorOpts(opts.domain, bot);
+            this.opts = new DiscordMessageProcessorOpts(opts.domain, bot);
         } else {
             this.opts = opts;
         }
     }
 
-    public async FormatDiscordMessage(msg: Discord.Message): Promise<MessageProcessorMatrixResult> {
-        const result = new MessageProcessorMatrixResult();
+    public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageProcessorResult> {
+        const result = new DiscordMessageProcessorResult();
 
         let content = msg.content;
 
@@ -76,10 +76,13 @@ export class MessageProcessor {
         return result;
     }
 
-    public async FormatEdit(oldMsg: Discord.Message, newMsg: Discord.Message): Promise<MessageProcessorMatrixResult> {
+    public async FormatEdit(
+        oldMsg: Discord.Message,
+        newMsg: Discord.Message,
+    ): Promise<DiscordMessageProcessorResult> {
         // TODO: Produce a nice, colored diff between the old and new message content
         oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
-        return this.FormatDiscordMessage(oldMsg);
+        return this.FormatMessage(oldMsg);
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {
@@ -147,6 +150,9 @@ export class MessageProcessor {
     public InsertChannel(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
         const channel = msg.guild.channels.get(id);
+        if (!channel) {
+            return html ? `&lt;#${escapeHtml(id)}&gt;` : `<#${id}>`;
+        }
         const channelStr = escapeHtml(channel ? "#" + channel.name : "#" + id);
         if (!html) {
             return channelStr;
