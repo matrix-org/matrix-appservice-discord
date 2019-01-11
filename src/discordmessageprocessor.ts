@@ -29,6 +29,7 @@ const NAME_MXC_INSERT_REGEX_GROUP = 1;
 const ANIMATED_MXC_INSERT_REGEX_GROUP = 2;
 const ID_MXC_INSERT_REGEX_GROUP = 3;
 const EMOJI_SIZE = 32;
+const MAX_EDIT_MSG_LENGTH = 50;
 
 export class DiscordMessageProcessorOpts {
     constructor(readonly domain: string, readonly bot?: DiscordBot) {
@@ -95,10 +96,26 @@ export class DiscordMessageProcessor {
     public async FormatEdit(
         oldMsg: Discord.Message,
         newMsg: Discord.Message,
+        link?: string,
     ): Promise<DiscordMessageProcessorResult> {
-        // TODO: Produce a nice, colored diff between the old and new message content
+        oldMsg.embeds = []; // we don't want embeds on old msg
+        const oldMsgParsed = await this.FormatMessage(oldMsg);
+        const newMsgParsed = await this.FormatMessage(newMsg);
+        const result = new DiscordMessageProcessorResult();
+        result.body = `*edit:* ~~${oldMsgParsed.body}~~ -> ${newMsgParsed.body}`;
+        result.msgtype = newMsgParsed.msgtype;
         oldMsg.content = `*edit:* ~~${oldMsg.content}~~ -> ${newMsg.content}`;
-        return this.FormatMessage(oldMsg);
+        const linkStart = link ? `<a href="${escapeHtml(link)}">` : "";
+        const linkEnd = link ? "</a>" : "";
+        if (oldMsg.content.includes("\n") || newMsg.content.includes("\n")
+            || newMsg.content.length > MAX_EDIT_MSG_LENGTH) {
+            result.formattedBody = `<p>${linkStart}<em>edit:</em>${linkEnd}</p><p><del>${oldMsgParsed.formattedBody}` +
+                `</del></p><hr><p>${newMsgParsed.formattedBody}</p>`;
+        } else {
+            result.formattedBody = `${linkStart}<em>edit:</em>${linkEnd} <del>${oldMsgParsed.formattedBody}</del>` +
+                ` -&gt; ${newMsgParsed.formattedBody}`;
+        }
+        return result;
     }
 
     public InsertEmbeds(content: string, msg: Discord.Message): string {

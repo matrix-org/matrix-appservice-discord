@@ -317,12 +317,12 @@ describe("DiscordBot", () => {
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             Chai.assert.equal(checkMsgSent, false);
         });
-
         it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
             );
+            discordBot.store.Get = (a, b) => null;
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
@@ -342,6 +342,39 @@ describe("DiscordBot", () => {
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             Chai.assert.equal(checkMsgSent, true);
+        });
+        it("should delete and re-send if it is the newest message", async () => {
+            discordBot = new modDiscordBot.DiscordBot(
+                config,
+                mockBridge,
+            );
+            discordBot.store.Get = (a, b) => { return {
+                MatrixId: "$event:localhost;!room:localhost",
+                Next: () => true,
+                Result: true,
+            }; };
+            discordBot.lastEventIds["!room:localhost"] = "$event:localhost";
+
+            const guild: any = new MockGuild("123", []);
+            guild._mockAddMember(new MockMember("12345", "TestUsername"));
+            const channel = new Discord.TextChannel(guild, {} as any);
+            const oldMsg = new MockMessage(channel) as any;
+            const newMsg = new MockMessage(channel) as any;
+            oldMsg.embeds = [];
+            newMsg.embeds = [];
+
+            // Content updated and edited
+            oldMsg.content = "a";
+            newMsg.content = "b";
+
+            let deletedMessage = false;
+            discordBot.DeleteDiscordMessage = async (_) => { deletedMessage = true; };
+            let sentMessage = false;
+            discordBot.OnMessage = async (_) => { sentMessage = true; };
+
+            await discordBot.OnMessageUpdate(oldMsg, newMsg);
+            Chai.assert.equal(deletedMessage, true);
+            Chai.assert.equal(sentMessage, true);
         });
     });
     describe("event:message", () => {

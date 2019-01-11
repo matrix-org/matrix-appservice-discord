@@ -69,6 +69,7 @@ export class DiscordBot {
     private bridge: Bridge;
     private presenceInterval: number;
     private sentMessages: string[];
+    private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
     private mxEventProcessor: MatrixEventProcessor;
     private presenceHandler: PresenceHandler;
@@ -89,6 +90,7 @@ export class DiscordBot {
         );
         this.presenceHandler = new PresenceHandler(this);
         this.discordMessageQueue = {};
+        this.lastEventIds = {};
     }
 
     public setBridge(bridge: Bridge) {
@@ -330,6 +332,7 @@ export class DiscordBot {
         await Util.AsyncForEach(res, async (m: Discord.Message) => {
             log.verbose("Sent (state msg) ", m.id);
             this.sentMessages.push(m.id);
+            this.lastEventIds[event.room_id] = event.event_id;
             const evt = new DbEvent();
             evt.MatrixId = `${event.event_id};${event.room_id}`;
             evt.DiscordId = m.id;
@@ -408,6 +411,7 @@ export class DiscordBot {
         await Util.AsyncForEach(msg, async (m: Discord.Message) => {
             log.verbose("Sent ", m.id);
             this.sentMessages.push(m.id);
+            this.lastEventIds[event.room_id] = event.event_id;
             const evt = new DbEvent();
             evt.MatrixId = `${event.event_id};${event.room_id}`;
             evt.DiscordId = m.id;
@@ -564,6 +568,7 @@ export class DiscordBot {
                 formatted_body: matrixMsg.formattedBody,
                 msgtype: "m.text",
             });
+            this.lastEventIds[room] = res.event_id;
             const evt = new DbEvent();
             evt.MatrixId = `${res.event_id};${room}`;
             evt.DiscordId = msgID;
@@ -684,6 +689,7 @@ export class DiscordBot {
                         msgtype,
                         url: content.mxcUrl,
                     });
+                    this.lastEventIds[room] = res.event_id;
                     const evt = new DbEvent();
                     evt.MatrixId = `${res.event_id};${room}`;
                     evt.DiscordId = msg.id;
@@ -707,6 +713,7 @@ export class DiscordBot {
                     msgtype: result.msgtype,
                 });
                 const afterSend = async (re) => {
+                    this.lastEventIds[room] = re.event_id;
                     const evt = new DbEvent();
                     evt.MatrixId = `${re.event_id};${room}`;
                     evt.DiscordId = msg.id;
@@ -738,9 +745,24 @@ export class DiscordBot {
         if (oldMsg.content === newMsg.content) {
             return;
         }
+        log.info(`Got edit event for ${newMsg.id}`);
+        let link = "";
+        const storeEvent = await this.store.Get(DbEvent, {discord_id: oldMsg.id});
+        if (storeEvent && storeEvent.Result) {
+            while (storeEvent.Next()) {
+                const matrixIds = storeEvent.MatrixId.split(";");
+                if (matrixIds[0] === this.lastEventIds[matrixIds[1]]) {
+                    log.info("Immediate edit, deleting and re-sending");
+                    await this.DeleteDiscordMessage(oldMsg);
+                    await this.OnMessage(newMsg);
+                    return;
+                }
+                link = `https://matrix.to/#/${matrixIds[1]}/${matrixIds[0]}`;
+            }
+        }
 
         // Create a new edit message using the old and new message contents
-        const editedMsg = await this.discordMsgProcessor.FormatEdit(oldMsg, newMsg);
+        const editedMsg = await this.discordMsgProcessor.FormatEdit(oldMsg, newMsg, link);
 
         // Send the message to all bridged matrix rooms
         if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {
