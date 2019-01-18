@@ -256,14 +256,6 @@ describe("MatrixRoomHandler", () => {
                 type: "m.room.member"}), null);
             expect(invited).to.be.true;
         });
-        it("should handle own state join updates", async () => {
-            const handler = createRH();
-            await handler.OnEvent(buildRequest({
-                content: {membership: "join"},
-                state_key: "@_discord_12345:localhost",
-                type: "m.room.member"}), null);
-            expect(USERSYNC_HANDLED).to.be.true;
-        });
         it("should handle kicks to own members", async () => {
             const handler = createRH();
             await handler.OnEvent(buildRequest({
