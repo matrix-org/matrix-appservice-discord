@@ -384,59 +384,6 @@ export class UserSyncroniser {
         });
     }
 
-    public async OnMemberState(ev: IMatrixEvent, delayMs: number = 0): Promise<string> {
-        // Avoid tripping over multiple state events.
-        if (await this.memberStateLock(ev, delayMs) === false) {
-            // We're igorning this update because we have a newer one.
-            return UserSyncroniser.ERR_NEWER_EVENT;
-        }
-        log.verbose(`m.room.member was updated for ${ev.state_key}, checking if nickname needs updating.`);
-        const roomId = ev.room_id;
-        let discordId;
-        try {
-            const remoteUsers = await this.userStore.getRemoteUsersFromMatrixId(ev.state_key);
-            if (remoteUsers.length === 0) {
-                throw Error("User not found");
-            }
-            discordId = remoteUsers[0].getId();
-        } catch (e) {
-            log.warn(`Got member update for ${ev.state_key}, but no user is linked in the store`);
-            return UserSyncroniser.ERR_USER_NOT_FOUND;
-        }
-
-        // Fetch guild member by roomId;
-        let member;
-        try {
-            const channel = await this.discord.GetChannelFromRoomId(roomId) as GuildChannel;
-            member = await channel.guild.fetchMember(discordId);
-        } catch (e) {
-            log.warn(`Got member update for ${roomId}, but no channel or guild member could be found.`);
-            return UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND;
-        }
-        const state = await this.GetUserStateForGuildMember(member);
-        await this.ApplyStateToRoom(state, roomId, member.guild.id);
-        return UserSyncroniser.ERR_NO_ERROR;
-    }
-
-    private async memberStateLock(ev: IMatrixEvent, delayMs: number = -1): Promise<boolean> {
-        const userStateKey = `${ev.room_id}${ev.state_key}`;
-        if (this.userStateHold.has(userStateKey)) {
-            const oldEv = this.userStateHold.get(userStateKey);
-            if (ev.origin_server_ts! > oldEv!.origin_server_ts!) {
-                return false; // New event is older
-            }
-        }
-        this.userStateHold.set(userStateKey, ev);
-        // tslint:disable-next-line:await-promise
-        await Bluebird.delay(delayMs);
-        if (this.userStateHold.get(userStateKey)!.event_id !== ev.event_id) {
-            // Event has changed and we are out of date.
-            return false;
-        }
-        this.userStateHold.delete(userStateKey);
-        return true;
-    }
-
     private displayNameForUser(discordUser): string {
         return `${discordUser.username}#${discordUser.discriminator}`;
     }

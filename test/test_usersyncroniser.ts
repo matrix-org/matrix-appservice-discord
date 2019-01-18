@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import { Bridge, RemoteUser } from "matrix-appservice-bridge";
 import {IGuildMemberState, IUserState, UserSyncroniser} from "../src/usersyncroniser";
 import {MockUser} from "./mocks/user";
@@ -30,8 +29,6 @@ import { Util } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 
 let DISPLAYNAME_SET: any = null;
@@ -580,93 +577,4 @@ describe("UserSyncroniser", () => {
             expect(LEAVE_ROOM_ID).to.equal("!ghi:localhost");
         });
     });
-    describe("OnMemberState", () => {
-        it("will update state for rooms", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            await userSync.OnMemberState({
-                content: {
-
-                },
-                room_id: "!found:localhost",
-                state_key: "123456",
-            } as IMatrixEvent, 0);
-            expect(SEV_COUNT).to.equal(1);
-        });
-        it("will not update state for a unknown user", async () => {
-            const userSync = CreateUserSync([]);
-            const ret = await userSync.OnMemberState({
-                content: {
-
-                },
-                room_id: "!abcdef:localhost",
-                state_key: "123456",
-            } as IMatrixEvent, 0);
-            expect(ret).equals(UserSyncroniser.ERR_USER_NOT_FOUND);
-        });
-        it("will not update state for a unknown room", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            const ret = await userSync.OnMemberState({
-                content: {
-
-                },
-                room_id: "!notfound:localhost",
-                state_key: "123456",
-            } as IMatrixEvent, 0);
-            expect(ret).equals(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
-        });
-        it("will not update state for a member not found in the channel", async () => {
-            const userSync = CreateUserSync([new RemoteUser("111222")]);
-            const ret = await userSync.OnMemberState({
-                content: {
-
-                },
-                room_id: "!found:localhost",
-                state_key: "111222",
-            } as IMatrixEvent, 0);
-            expect(ret).equals(UserSyncroniser.ERR_CHANNEL_MEMBER_NOT_FOUND);
-        });
-        it("will not process old events", async () => {
-            const DELAY_MS = 250;
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
-            return Promise.all([
-                expect(userSync.OnMemberState({
-                    content: { },
-                    event_id: "Anicent:localhost",
-                    origin_server_ts: 10000,
-                    room_id: "!found:localhost",
-                    state_key: "123456",
-                } as IMatrixEvent, DELAY_MS))
-                    .to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 1 Failed"),
-                expect(userSync.OnMemberState({
-                    content: { },
-                    event_id: "QuiteOld:localhost",
-                    origin_server_ts: 7000,
-                    room_id: "!found:localhost",
-                    state_key: "123456",
-                } as IMatrixEvent, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 2 Failed"),
-                expect(userSync.OnMemberState({
-                    content: { },
-                    event_id: "FreshEnough:localhost",
-                    origin_server_ts: 3000,
-                    room_id: "!found:localhost",
-                    state_key: "123456",
-                } as IMatrixEvent, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 3 Failed"),
-                expect(userSync.OnMemberState({
-                    content: { },
-                    event_id: "GettingOnABit:localhost",
-                    origin_server_ts: 4000,
-                    room_id: "!found:localhost",
-                    state_key: "123456",
-                } as IMatrixEvent, DELAY_MS)).to.eventually.equal(UserSyncroniser.ERR_NEWER_EVENT, "State 4 Failed"),
-                expect(userSync.OnMemberState({
-                    content: { },
-                    event_id: "FreshOutTheOven:localhost",
-                    origin_server_ts: 100,
-                    room_id: "!found:localhost",
-                    state_key: "123456",
-                } as IMatrixEvent, DELAY_MS)).to.eventually.be.fulfilled,
-            ]);
-        });
-    });
-    // TODO: Add test to ensure onMemberState doesn't recurse.
 });
