@@ -1,5 +1,22 @@
+/*
+Copyright 2017, 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { DiscordStore } from "../store";
 import { IDbDataMany } from "./dbdatainterface";
+import { ISqlCommandParameters } from "./connector";
 
 export class DbEvent implements IDbDataMany {
     public MatrixId: string;
@@ -7,15 +24,17 @@ export class DbEvent implements IDbDataMany {
     public GuildId: string;
     public ChannelId: string;
     public Result: boolean;
+    // tslint:disable-next-line no-any
     private rows: any[];
 
     get ResultCount(): number {
         return this.rows.length;
     }
 
-    public async RunQuery(store: DiscordStore, params: any): Promise<null> {
+    public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
         this.rows = [];
-        let rowsM = null;
+        // tslint:disable-next-line no-any
+        let rowsM: any[] | null = null;
         if (params.matrix_id) {
             rowsM = await store.db.All(`
                 SELECT *
@@ -36,8 +55,8 @@ export class DbEvent implements IDbDataMany {
 
         for (const rowM of rowsM) {
             const row = {
-                matrix_id: rowM.matrix_id,
                 discord_id: rowM.discord_id,
+                matrix_id: rowM.matrix_id,
             };
             for (const rowD of await store.db.All(`
                     SELECT *
@@ -45,6 +64,7 @@ export class DbEvent implements IDbDataMany {
                     WHERE msg_id = $id`, {
                         id: rowM.discord_id,
             })) {
+                // tslint:disable-next-line no-any
                 const insertRow: any = Object.assign({}, row);
                 insertRow.guild_id = rowD.guild_id;
                 insertRow.channel_id = rowD.channel_id;
@@ -52,7 +72,6 @@ export class DbEvent implements IDbDataMany {
             }
         }
         this.Result = this.rows.length !== 0;
-        return null;
     }
 
     public Next(): boolean {
@@ -67,13 +86,13 @@ export class DbEvent implements IDbDataMany {
         return true;
     }
 
-    public async Insert(store: DiscordStore): Promise<null> {
+    public async Insert(store: DiscordStore): Promise<void> {
         await store.db.Run(`
             INSERT INTO event_store
             (matrix_id,discord_id)
             VALUES ($matrix_id,$discord_id);`, {
-                matrix_id: this.MatrixId,
                 discord_id: this.DiscordId,
+                matrix_id: this.MatrixId,
         });
         // Check if the discord item exists?
         const msgExists = await store.db.Get(`
@@ -89,23 +108,23 @@ export class DbEvent implements IDbDataMany {
             INSERT INTO discord_msg_store
             (msg_id, guild_id, channel_id)
             VALUES ($msg_id, $guild_id, $channel_id);`, {
-                msg_id: this.DiscordId,
-                guild_id: this.GuildId,
                 channel_id: this.ChannelId,
+                guild_id: this.GuildId,
+                msg_id: this.DiscordId,
         });
     }
 
-    public Update(store: DiscordStore): Promise<null> {
+    public async Update(store: DiscordStore): Promise<void> {
         throw new Error("Update is not implemented");
     }
 
-    public async Delete(store: DiscordStore): Promise<null> {
+    public async Delete(store: DiscordStore): Promise<void> {
         await store.db.Run(`
             DELETE FROM event_store
             WHERE matrix_id = $matrix_id
             AND discord_id = $discord_id;`, {
-                matrix_id: this.MatrixId,
                 discord_id: this.DiscordId,
+                matrix_id: this.MatrixId,
         });
         return store.db.Run(`
             DELETE FROM discord_msg_store

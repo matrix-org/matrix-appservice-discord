@@ -1,9 +1,26 @@
+/*
+Copyright 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 
 import { Util, ICommandAction, ICommandParameters } from "../src/util";
 
-Chai.use(ChaiAsPromised);
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
 const expect = Chai.expect;
 
 function CreateMockIntent(members) {
@@ -12,14 +29,14 @@ function CreateMockIntent(members) {
             return {
                 _http: {
                     authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
-                        const ret = [];
+                        const ret: any[] = [];
                         for (const member of members[url]) {
                             ret.push({
-                                membership: member.membership,
-                                state_key: member.mxid,
                                 content: {
                                     displayname: member.displayname,
                                 },
+                                membership: member.membership,
+                                state_key: member.mxid,
                             });
                         }
                         return {
@@ -44,7 +61,7 @@ describe("Util", () => {
         });
     });
     describe("ParseCommand", () => {
-        it("parses commands", () => {
+        it("parses commands", async () => {
             const action: ICommandAction = {
                 params: ["param1", "param2"],
                 run: async ({param1, param2}) => {
@@ -63,81 +80,82 @@ describe("Util", () => {
                     },
                 },
             };
-            return Util.ParseCommand(action, parameters, ["hello", "world"]).then((retStr) => {
-                expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
-            });
+            const retStr = await Util.ParseCommand(action, parameters, ["hello", "world"]);
+            expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
         });
     });
     describe("GetMxidFromName", () => {
-        it("Finds a single member", () => {
+        it("Finds a single member", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return Util.GetMxidFromName(intent, "goodboy", ["abc"]).then((mxid) => {
-                expect(mxid).equal("@123:localhost");
-            });
+            const mxid = await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
+            expect(mxid).equal("@123:localhost");
         });
-        it("Errors on multiple members", () => {
+        it("Errors on multiple members", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@456:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return expect(Util.GetMxidFromName(intent, "goodboy", ["abc"])).to.eventually.be.rejected;
+            try {
+                await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
-        it("Errors on no member", () => {
+        it("Errors on no member", async () => {
             const mockRooms = {
                 "/rooms/abc/members": [
                     {
+                        displayname: "GoodBoy",
                         membership: "join",
                         mxid: "@123:localhost",
-                        displayname: "GoodBoy",
                     },
                 ],
             };
             const intent = CreateMockIntent(mockRooms);
-            return expect(Util.GetMxidFromName(intent, "badboy", ["abc"])).to.eventually.be.rejected;
+            try {
+                await Util.GetMxidFromName(intent, "badboy", ["abc"]);
+                throw new Error("didn't fail");
+            } catch (e) {
+                expect(e.message).to.not.equal("didn't fail");
+            }
         });
     });
-    describe("GetReplyFromReplyBody", () => {
-        it("Should get a reply from the body", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-
-This is where the reply goes`);
-            return expect(reply).to.equal("This is where the reply goes");
+    describe("NumberToHTMLColor", () => {
+        it("Should handle valid colors", () => {
+            const COLOR = 0xdeadaf;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#deadaf");
         });
-        it("Should get a multi-line reply from the body", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-
-This is where the reply goes and
-there are even more lines here.`);
-            return expect(reply).to.equal("This is where the reply goes and\nthere are even more lines here.");
+        it("Should reject too large colors", () => {
+            const COLOR = 0xFFFFFFFF;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#ffffff");
         });
-        it("Should get empty string from an empty reply", () => {
-            const reply = Util.GetReplyFromReplyBody(`> <@alice:example.org> This is the original body
-`);
-            return expect(reply).to.equal("");
-        });
-        it("Should return body if no reply found", () => {
-            const reply = Util.GetReplyFromReplyBody("Test\nwith\nhalfy");
-            return expect(reply).to.equal("Test\nwith\nhalfy");
+        it("Should reject too small colors", () => {
+            const COLOR = -1;
+            const reply = Util.NumberToHTMLColor(COLOR);
+            expect(reply).to.equal("#000000");
         });
     });
 });

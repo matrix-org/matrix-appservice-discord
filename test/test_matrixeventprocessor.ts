@@ -1,5 +1,20 @@
+/*
+Copyright 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
@@ -9,12 +24,16 @@ import { MockGuild } from "./mocks/guild";
 import { MockCollection } from "./mocks/collection";
 import { MockMember } from "./mocks/member";
 import { MockEmoji } from "./mocks/emoji";
-import {MatrixEventProcessor, MatrixEventProcessorOpts} from "../src/matrixeventprocessor";
-import {DiscordBridgeConfig} from "../src/config";
-import {MessageProcessor, MessageProcessorOpts} from "../src/messageprocessor";
-import {MockChannel} from "./mocks/channel";
+import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
+import { DiscordBridgeConfig } from "../src/config";
+import { MockChannel } from "./mocks/channel";
+import { IMatrixEvent } from "../src/matrixtypes";
 
-Chai.use(ChaiAsPromised);
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+
+const TEST_TIMESTAMP = 1337;
+
 const expect = Chai.expect;
 // const assert = Chai.assert;
 const bot = {
@@ -30,24 +49,46 @@ const bot = {
 };
 
 const mxClient = {
+    getStateEvent: async (roomId, stateType, stateKey) => {
+        if (stateType === "m.room.member") {
+            switch (stateKey) {
+                case "@test:localhost":
+                    return {
+                        avatar_url: "mxc://localhost/avatarurl",
+                        displayname: "Test User",
+                    };
+                case "@test_short:localhost":
+                    return {
+                        avatar_url: "mxc://localhost/avatarurl",
+                        displayname: "t",
+                    };
+                case "@test_long:localhost":
+                    return {
+                        avatar_url: "mxc://localhost/avatarurl",
+                        displayname: "this is a very very long displayname that should be capped",
+                    };
+            }
+            return null;
+        }
+        return { };
+    },
     mxcUrlToHttp: (url) => {
         return url.replace("mxc://", "https://");
     },
 };
 
-function createMatrixEventProcessor
-   (disableMentions: boolean = false, disableEveryone = false, disableHere = false): MatrixEventProcessor {
+function createMatrixEventProcessor(): MatrixEventProcessor {
     const bridge = {
+        getBot: () => {
+            return {
+                isRemoteUser: (s) => s.includes("@_discord_"),
+            };
+        },
         getClientFactory: () => {
             return {
                 getClientAs: () => {
                     return mxClient;
                 },
-            };
-        },
-        getBot: () => {
-            return {
-                isRemoteUser: () => false,
             };
         },
         getIntent: () => {
@@ -62,31 +103,60 @@ function createMatrixEventProcessor
                 getEvent: async (_, eventId: string) => {
                     if (eventId === "$goodEvent:localhost") {
                         return {
-                            sender: "@doggo:localhost",
                             content: {
                                 body: "Hello!",
                             },
+                            origin_server_ts: TEST_TIMESTAMP,
+                            sender: "@doggo:localhost",
                         };
                     } else if (eventId === "$reply:localhost") {
                         return {
-                            sender: "@doggo:localhost",
                             content: {
                                 "body": `> <@doggo:localhost> This is the original body
 
-This is the first reply`,
+                                This is the first reply`,
+                                "formatted_body": `
+<mx-reply><blockquote><a>In Reply to</a> <a>@doggo:localhost</a>
+<br>This is the original body</blockquote></mx-reply>This is the first reply`,
                                 "m.relates_to": {
                                     "m.in_reply_to": {
                                         event_id: "$goodEvent:localhost",
                                     },
                                 },
                             },
+                            sender: "@doggo:localhost",
                         };
                     } else if (eventId === "$nontext:localhost") {
                         return {
-                            sender: "@doggo:localhost",
                             content: {
                                 something: "not texty",
                             },
+                            sender: "@doggo:localhost",
+                        };
+                    } else if (eventId === "$discord:localhost") {
+                        return {
+                            content: {
+                                body: "Foxies",
+                            },
+                            sender: "@_discord_1234:localhost",
+                        };
+                    } else if (eventId === "$image:localhost") {
+                        return {
+                            content: {
+                                body: "fox.jpg",
+                                msgtype: "m.image",
+                                url: "mxc://fox/localhost",
+                            },
+                            sender: "@fox:localhost",
+                        };
+                    } else if (eventId === "$file:localhost") {
+                        return {
+                            content: {
+                                body: "package.zip",
+                                msgtype: "m.file",
+                                url: "mxc://package/localhost",
+                            },
+                            sender: "@fox:localhost",
                         };
                     }
                     return null;
@@ -96,17 +166,14 @@ This is the first reply`,
                         return null;
                     }
                     return {
-                        displayname: "Doggo!",
                         avatar_url: "mxc://fakeurl.com",
+                        displayname: "Doggo!",
                     };
                 },
             };
         },
     };
     const config = new DiscordBridgeConfig();
-    config.bridge.disableDiscordMentions = disableMentions;
-    config.bridge.disableEveryoneMention = disableEveryone;
-    config.bridge.disableHereMention = disableHere;
 
     const Util = Object.assign(require("../src/util").Util, {
         DownloadFile: (name: string) => {
@@ -114,6 +181,11 @@ This is the first reply`,
             return Buffer.alloc(size);
         },
     });
+    const discordbot = {
+        GetDiscordUserOrMember: async (s) => {
+            return new Discord.User({ } as any, { username: "Someuser" });
+        },
+    };
 
     return new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
@@ -123,7 +195,7 @@ This is the first reply`,
         new MatrixEventProcessorOpts(
             config,
             bridge,
-            null,
+            discordbot as any,
     ));
 }
 const mockChannel = new MockChannel();
@@ -136,7 +208,7 @@ describe("MatrixEventProcessor", () => {
             const event = {
                 sender: "@user:localhost",
                 type: "m.room.nonexistant",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, undefined);
@@ -146,7 +218,7 @@ describe("MatrixEventProcessor", () => {
             const event = {
                 sender: "@botuser:localhost",
                 type: "m.room.member",
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, undefined);
@@ -154,12 +226,12 @@ describe("MatrixEventProcessor", () => {
         it("Should echo name changes", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.name",
                 content: {
                     name: "Test Name",
                 },
-            };
+                sender: "@user:localhost",
+                type: "m.room.name",
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the name to `Test Name` on Matrix.");
@@ -167,12 +239,12 @@ describe("MatrixEventProcessor", () => {
         it("Should echo topic changes", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.topic",
                 content: {
                     topic: "Test Topic",
                 },
-            };
+                sender: "@user:localhost",
+                type: "m.room.topic",
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` set the topic to `Test Topic` on Matrix.");
@@ -180,13 +252,13 @@ describe("MatrixEventProcessor", () => {
         it("Should echo joins", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.member",
                 content: {
                     membership: "join",
                 },
+                sender: "@user:localhost",
+                type: "m.room.member",
                 unsigned: {},
-            };
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` joined the room on Matrix.");
@@ -194,14 +266,14 @@ describe("MatrixEventProcessor", () => {
         it("Should echo invites", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.member",
                 content: {
                     membership: "invite",
                 },
-                unsigned: {},
+                sender: "@user:localhost",
                 state_key: "@user2:localhost",
-            };
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
@@ -209,14 +281,14 @@ describe("MatrixEventProcessor", () => {
         it("Should echo kicks", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.member",
                 content: {
                     membership: "leave",
                 },
-                unsigned: {},
+                sender: "@user:localhost",
                 state_key: "@user2:localhost",
-            };
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
@@ -224,14 +296,14 @@ describe("MatrixEventProcessor", () => {
         it("Should echo leaves", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.member",
                 content: {
                     membership: "leave",
                 },
-                unsigned: {},
+                sender: "@user:localhost",
                 state_key: "@user:localhost",
-            };
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` left the room on Matrix.");
@@ -239,14 +311,14 @@ describe("MatrixEventProcessor", () => {
         it("Should echo bans", () => {
             const processor = createMatrixEventProcessor();
             const event = {
-                sender: "@user:localhost",
-                type: "m.room.member",
                 content: {
                     membership: "ban",
                 },
-                unsigned: {},
+                sender: "@user:localhost",
                 state_key: "@user2:localhost",
-            };
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
             const channel = new MockChannel("123456");
             const msg = processor.StateEventToMessage(event, channel as any);
             Chai.assert.equal(msg, "`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
@@ -256,436 +328,271 @@ describe("MatrixEventProcessor", () => {
         it("Should contain a profile.", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, {
-                displayname: "Test User",
-                avatar_url: "mxc://localhost/avatarurl",
-            }, mockChannel as any);
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "Test User");
-            Chai.assert.equal(author.icon_url, "https://localhost/avatarurl");
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "Test User");
+            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users displayname if it exists.", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, {
-                displayname: "Test User"}, mockChannel as any);
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "Test User");
-            Chai.assert.isUndefined(author.icon_url);
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "Test User");
+            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users userid if the displayname is not set", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, null, mockChannel as any);
+                sender: "@test_nonexistant:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
-            Chai.assert.isUndefined(author.icon_url);
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "@test_nonexistant:localhost");
+            Chai.assert.isUndefined(author!.icon_url);
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test_nonexistant:localhost");
         });
 
         it("Should use the userid when the displayname is too short", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, {
-                displayname: "t"}, mockChannel as any);
+                sender: "@test_short:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
+            Chai.assert.equal(author!.name, "@test_short:localhost");
         });
 
         it("Should use the userid when displayname is too long", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, {
-                displayname: "this is a very very long displayname that should be capped",
-            }, mockChannel as any);
+                sender: "@test_long:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
+            Chai.assert.equal(author!.name, "@test_long:localhost");
         });
 
         it("Should cap the sender name if it is too long", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, null, mockChannel as any);
+                sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@testwithalottosayaboutitselftha");
+            Chai.assert.equal(author!.name, "@testwithalottosayaboutitselftha");
         });
 
         it("Should contain the users avatar if it exists.", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "testcontent",
                 },
-            }, {avatar_url: "mxc://localhost/test"}, mockChannel as any);
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author.name, "@test:localhost");
-            Chai.assert.equal(author.icon_url, "https://localhost/test");
-            Chai.assert.equal(author.url, "https://matrix.to/#/@test:localhost");
+            Chai.assert.equal(author!.name, "Test User");
+            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
+            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
         });
 
-        it("Should enable mentions if configured.", async () => {
+        it("Should remove everyone mentions.", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
-                content: {
-                    body: "@testuser2 Hello!",
-                },
-            }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "<@!12345> Hello!");
-        });
-
-        it("Should disable mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(true);
-            const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
-                content: {
-                    body: "@testuser2 Hello!",
-                },
-            }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@testuser2 Hello!");
-        });
-
-        it("Should remove everyone mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(false, true);
-            const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "@everyone Hello!",
                 },
-            }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@ everyone Hello!");
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Beveryone Hello!");
         });
 
-        it("Should remove here mentions if configured.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
+        it("Should remove here mentions.", async () => {
+            const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "@here Hello!",
                 },
-            }, {avatar_url: "test"}, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@ here Hello!");
-        });
-
-        it("Should process custom discord emojis.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
-            const mockEmoji = new MockEmoji("123", "supercake");
-            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
-            mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
-            const embeds = await processor.EventToEmbed({
                 sender: "@test:localhost",
-                content: {
-                    body: "I like :supercake:",
-                },
-            }, {avatar_url: "test"}, mockChannelEmojis as any);
-            Chai.assert.equal(
-                embeds.messageEmbed.description,
-                "I like <:supercake:123>",
-            );
+            } as IMatrixEvent, mockChannel as any);
+            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Bhere Hello!");
         });
 
-        it("Should not process invalid custom discord emojis.", async () => {
-            const processor = createMatrixEventProcessor(false, false, true);
-            const mockEmoji = new MockEmoji("123", "supercake");
-            const mockCollectionEmojis = new MockCollection<string, MockEmoji>();
-            mockCollectionEmojis.set("123", mockEmoji);
-
-            const mockChannelEmojis = new MockChannel("test", {
-                emojis: mockCollectionEmojis,
-            });
-            const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
-                content: {
-                    body: "I like :lamecake:",
-                },
-            }, {avatar_url: "test"}, mockChannelEmojis as any);
-            Chai.assert.equal(
-                embeds.messageEmbed.description,
-                "I like :lamecake:",
-            );
-        });
         it("Should replace /me with * displayname, and italicize message", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
                 content: {
                     body: "likes puppies",
                     msgtype: "m.emote",
                 },
-            }, {
-                displayname: "displayname",
-            }, mockChannel as any);
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(
                 embeds.messageEmbed.description,
-                "*displayname likes puppies*",
+                "_Test User likes puppies_",
             );
         });
         it("Should handle stickers.", async () => {
             const processor = createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
-                sender: "@test:localhost",
-                type: "m.sticker",
                 content: {
                     body: "Bunnies",
                     url: "mxc://bunny",
                 },
-            }, {avatar_url: "test"}, mockChannel as any);
+                sender: "@test:localhost",
+                type: "m.sticker",
+            } as IMatrixEvent, mockChannel as any);
             Chai.assert.equal(embeds.messageEmbed.description, "");
         });
-    });
-    describe("FindMentionsInPlainBody", () => {
-        it("processes mentioned username correctly", async () => {
+        it("Should ping the user on discord replies", async () => {
             const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                user: {
-                    username: "TestUsername",
-                    id: "12345",
-                    discriminator: "54321",
-                },
-            })];
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Hello TestUsername", members),
-                "Hello <@!12345>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Hello TestUsername#54321", members),
-                "Hello <@!12345>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to https://TestUsername.com", members),
-                "I really love going to https://TestUsername.com",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to www.TestUsername.com", members),
-                "I really love going to www.TestUsername.com",
-            );
-        });
-        it("processes mentioned nickname correctly", async () => {
-            const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                nick: "Test",
-                user: {
-                    username: "Test",
-                    id: "54321",
-                },
-            }), new Discord.GuildMember(guild, {
-                nick: "TestNickname",
-                user: {
-                    username: "TestUsername",
-                    id: "12345",
-                },
-            }), new Discord.GuildMember(guild, {
-                nick: "𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊",
-                user: {
-                    username: "SomeFancyNickname",
-                    id: "66666",
-                },
-            })];
-            Chai.assert.equal(processor.FindMentionsInPlainBody("Hello TestNickname", members), "Hello <@!12345>");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname: Hello", members), "<@!12345>: Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname, Hello", members), "<@!12345>, Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("TestNickname Hello", members), "<@!12345> Hello");
-            Chai.assert.equal(processor.FindMentionsInPlainBody("testNicKName Hello", members), "<@!12345> Hello");
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("𝖘𝖔𝖒𝖊𝖋𝖆𝖓𝖈𝖞𝖓𝖎𝖈𝖐𝖓𝖆𝖒𝖊 Hello", members),
-                "<@!66666> Hello",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I wish TestNickname was here", members),
-                "I wish <@!12345> was here",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I wish TestNickname was here, TestNickname is cool", members),
-                "I wish <@!12345> was here, <@!12345> is cool",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("TestNickname was here with Test", members),
-                "<@!12345> was here with <@!54321>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("Fixing this issue provided by @Test", members),
-                "Fixing this issue provided by <@!54321>",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to https://Test.com", members),
-                "I really love going to https://Test.com",
-            );
-            Chai.assert.equal(
-                processor.FindMentionsInPlainBody("I really love going to www.Test.com", members),
-                "I really love going to www.Test.com",
-            );
-        });
-        it("processes non-mentions correctly", async () => {
-            const processor = createMatrixEventProcessor();
-            const guild: any = new MockGuild("123", []);
-            const members: Discord.GuildMember[] = [new Discord.GuildMember(guild, {
-                nick: "that",
-                user: {
-                    username: "TestUsername",
-                    id: "12345",
-                },
-            }),
-                new Discord.GuildMember(guild, {
-                    nick: "testingstring",
-                    user: {
-                        username: "that",
-                        id: "12345",
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    "body": "Bunnies",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$discord:localhost",
+                        },
                     },
-                })];
-            const msg = "Welcome thatman";
-            const content = processor.FindMentionsInPlainBody(msg, members);
-            Chai.assert.equal(content, "Welcome thatman");
+                    "url": "mxc://bunny",
+                },
+                sender: "@test:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent, mockChannel as any);
+            Chai.assert.equal(embeds.messageEmbed.description, "Bunnies\n(<@1234>)");
         });
     });
     describe("HandleAttachment", () => {
         const SMALL_FILE = 200;
-        it("message without an attachment", () => {
+        it("message without an attachment", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
                     msgtype: "m.text",
                 },
-            }, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("");
         });
-        it("message without an info", () => {
+        it("message without an info", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const attachment = (await processor.HandleAttachment({
                 content: {
-                    msgtype: "m.video",
                     body: "filename.webm",
+                    msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            }, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("filename.webm");
-                expect(attachment.attachment.length).to.eq(SMALL_FILE);
-                return true;
-            });
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("filename.webm");
+            expect(attachment.attachment.length).to.eq(SMALL_FILE);
         });
-        it("message without a url", () => {
+        it("message without a url", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
-                    msgtype: "m.video",
                     info: {
                         size: 1,
                     },
+                    msgtype: "m.video",
                 },
-            }, mxClient)).to.eventually.eq("");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("");
         });
-        it("message with a large info.size", () => {
+        it("message with a large info.size", async () => {
             const LARGE_FILE = 8000000;
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
-                    msgtype: "m.video",
+                    body: "filename.webm",
                     info: {
                         size: LARGE_FILE,
                     },
-                    body: "filename.webm",
+                    msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
-        it("message with a small info.size", () => {
+        it("message with a small info.size", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const attachment = (await processor.HandleAttachment({
                 content: {
-                    msgtype: "m.video",
+                    body: "filename.webm",
                     info: {
                         size: SMALL_FILE,
                     },
-                    body: "filename.webm",
+                    msgtype: "m.video",
                     url: "mxc://localhost/200",
                 },
-            }, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("filename.webm");
-                expect(attachment.attachment.length).to.eq(SMALL_FILE);
-                return true;
-            });
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("filename.webm");
+            expect(attachment.attachment.length).to.eq(SMALL_FILE);
         });
-        it("message with a small info.size but a larger file", () => {
+        it("message with a small info.size but a larger file", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
+            const ret = await processor.HandleAttachment({
                 content: {
-                    msgtype: "m.video",
+                    body: "filename.webm",
                     info: {
                         size: 200,
                     },
-                    body: "filename.webm",
+                    msgtype: "m.video",
                     url: "mxc://localhost/8000000",
                 },
-            }, mxClient)).to.eventually.eq("[filename.webm](https://localhost/8000000)");
+            } as IMatrixEvent, mxClient);
+            expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
-        it("Should handle stickers.", () => {
+        it("Should handle stickers.", async () => {
             const processor = createMatrixEventProcessor();
-            return expect(processor.HandleAttachment({
-                sender: "@test:localhost",
-                type: "m.sticker",
+            const attachment = (await processor.HandleAttachment({
                 content: {
                     body: "Bunnies",
-                    url: "mxc://bunny",
                     info: {
                         mimetype: "image/png",
                     },
+                    url: "mxc://bunny",
                 },
-            }, mxClient)).to.eventually.satisfy((attachment) => {
-                expect(attachment.name).to.eq("Bunnies.png");
-                return true;
-            });
+                sender: "@test:localhost",
+                type: "m.sticker",
+            } as IMatrixEvent, mxClient)) as Discord.FileOptions;
+            expect(attachment.name).to.eq("Bunnies.png");
         });
     });
     describe("GetEmbedForReply", () => {
         it("should handle reply-less events", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     body: "Test",
                 },
-            });
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
             expect(result).to.be.undefined;
         });
         it("should handle replies without a fallback", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     "body": "Test",
                     "m.relates_to": {
@@ -694,18 +601,17 @@ describe("MatrixEventProcessor", () => {
                         },
                     },
                 },
-            });
-            expect(result[0].description).to.be.equal("Hello!");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("Test");
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("Hello!");
+            expect(result!.author!.name).to.be.equal("Doggo!");
+            expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
         });
         it("should handle replies with a missing event", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     "body": `> <@doggo:localhost> This is the fake body
 
@@ -716,18 +622,17 @@ This is where the reply goes`,
                         },
                     },
                 },
-            });
-            expect(result[0].description).to.be.equal("Reply with unknown content");
-            expect(result[0].author.name).to.be.equal("Unknown");
-            expect(result[0].author.icon_url).to.be.undefined;
-            expect(result[0].author.url).to.be.undefined;
-            expect(result[1]).to.be.equal("This is where the reply goes");
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("Reply with unknown content");
+            expect(result!.author!.name).to.be.equal("Unknown");
+            expect(result!.author!.icon_url).to.be.undefined;
+            expect(result!.author!.url).to.be.undefined;
         });
         it("should handle replies with a valid reply event", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     "body": `> <@doggo:localhost> This is the original body
 
@@ -738,18 +643,17 @@ This is where the reply goes`,
                         },
                     },
                 },
-            });
-            expect(result[0].description).to.be.equal("Hello!");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is where the reply goes");
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("Hello!");
+            expect(result!.author!.name).to.be.equal("Doggo!");
+            expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
         });
         it("should handle replies on top of replies", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     "body": `> <@doggo:localhost> This is the first reply
 
@@ -760,18 +664,17 @@ This is the second reply`,
                         },
                     },
                 },
-            });
-            expect(result[0].description).to.be.equal("This is the first reply");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is the second reply");
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("This is the first reply");
+            expect(result!.author!.name).to.be.equal("Doggo!");
+            expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
         });
         it("should handle replies with non text events", async () => {
             const processor = createMatrixEventProcessor();
             const result = await processor.GetEmbedForReply({
-                sender: "@test:localhost",
-                type: "m.room.message",
                 content: {
                     "body": `> <@doggo:localhost> sent an image.
 
@@ -782,12 +685,86 @@ This is the reply`,
                         },
                     },
                 },
-            });
-            expect(result[0].description).to.be.equal("Reply with unknown content");
-            expect(result[0].author.name).to.be.equal("Doggo!");
-            expect(result[0].author.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result[0].author.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
-            expect(result[1]).to.be.equal("This is the reply");
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("Reply with unknown content");
+            expect(result!.author!.name).to.be.equal("Doggo!");
+            expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
+            expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+        });
+        it("should add the reply time", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$goodEvent:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.timestamp!.getTime()).to.be.equal(TEST_TIMESTAMP);
+        });
+        it("should add field for discord replies", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "foxfoxfox",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$discord:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            let foundField = false;
+            for (const f of result!.fields!) {
+                if (f.name === "ping") {
+                    foundField = true;
+                    expect(f.value).to.be.equal("<@1234>");
+                    break;
+                }
+            }
+            expect(foundField).to.be.true;
+        });
+        it("should handle replies to images", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$image:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.image!.url!).to.be.equal("https://fox/localhost");
+            expect(result!.description).to.be.equal("fox.jpg");
+        });
+        it("should handle replies to files", async () => {
+            const processor = createMatrixEventProcessor();
+            const result = await processor.GetEmbedForReply({
+                content: {
+                    "body": "Test",
+                    "m.relates_to": {
+                        "m.in_reply_to": {
+                            event_id: "$file:localhost",
+                        },
+                    },
+                },
+                sender: "@test:localhost",
+                type: "m.room.message",
+            } as IMatrixEvent, mockChannel as any);
+            expect(result!.description).to.be.equal("[package.zip](https://package/localhost)");
         });
     });
 });

@@ -14,29 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {MockMember} from "./member";
-import {MockCollection} from "./collection";
-import {Permissions, PermissionResolvable} from "discord.js";
+import * as Discord from "discord.js";
+import { MockUser } from "./user";
+import { MockCollection } from "./collection";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-// Mocking TextChannel
-export class MockChannel {
-    public members = new MockCollection<string, MockMember>();
-    constructor(
-        public id: string = "",
-        public guild: any = null,
-        public type: string = "text",
-        public name: string = "",
-        public topic: string = "",
-    ) { }
-
-    public async send(data: any): Promise<any> {
-        return data;
-    }
-
-    public permissionsFor(member: MockMember) {
-        return new Permissions(Permissions.FLAGS.MANAGE_WEBHOOKS as PermissionResolvable);
+export class MockMessage {
+    public attachments = new MockCollection<string, any>();
+    public embeds: any[] = [];
+    public content = "";
+    public channel: Discord.TextChannel | undefined;
+    public guild: Discord.Guild | undefined;
+    public author: MockUser;
+    public mentions: any = {};
+    constructor(channel?: Discord.TextChannel) {
+        this.mentions.everyone = false;
+        this.channel = channel;
+        if (channel && channel.guild) {
+            this.guild = channel.guild;
+        }
+        this.author = new MockUser("123456");
     }
 }

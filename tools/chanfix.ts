@@ -1,3 +1,19 @@
+/*
+Copyright 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { AppServiceRegistration, ClientFactory, Bridge, Intent } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -16,18 +32,18 @@ const log = new Log("ChanFix");
 
 const optionDefinitions = [
     {
-        name: "help",
         alias: "h",
-        type: Boolean,
         description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
     },
     {
-      name: "config",
-      alias: "c",
-      type: String,
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      typeLabel: "<config.yaml>",
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
+        type: String,
+        typeLabel: "<config.yaml>",
     },
 ];
 
@@ -37,9 +53,10 @@ if (options.help) {
     /* tslint:disable:no-console */
     console.log(usage([
     {
-        header: "Fix bridged channels",
         content: "A tool to fix channels of rooms already bridged " +
-            "to matrix, to make sure their names, icons etc. are correctly."},
+        "to matrix, to make sure their names, icons etc. are correctly.",
+        header: "Fix bridged channels",
+    },
     {
         header: "Options",
         optionList: optionDefinitions,
@@ -57,7 +74,7 @@ if (registration === null) {
     throw new Error("Failed to parse registration file");
 }
 
-const botUserId = "@" + registration.sender_localpart + ":" + config.bridge.domain;
+const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
 const clientFactory = new ClientFactory({
     appServiceUserId: botUserId,
     token: registration.as_token,
@@ -72,44 +89,40 @@ const bridge = new Bridge({
     controller: {
         onEvent: () => { },
     },
+    domain: config.bridge.domain,
+    homeserverUrl: config.bridge.homeserverUrl,
     intentOptions: {
         clients: {
             dontJoin: true, // handled manually
       },
     },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
     registration,
-    userStore: config.database.userStorePath,
     roomStore: config.database.roomStorePath,
+    userStore: config.database.userStorePath,
 });
 
 provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
-let chanSync;
 
-let client;
-bridge.loadDatabases().catch((e) => {
-    return discordstore.init();
-}).then(() => {
-    chanSync = new ChannelSyncroniser(bridge, config, discordbot);
+async function run() {
+    try {
+        await bridge.loadDatabases();
+    } catch (e) {
+        await discordstore.init();
+    }
     bridge._clientFactory = clientFactory;
     bridge._botClient = bridge._clientFactory.getClientAs();
     bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
-    return discordbot.ClientFactory.init().then(() => {
-        return discordbot.ClientFactory.getClient();
-    });
-}).then((clientTmp: any) => {
-    client = clientTmp;
+    await discordbot.ClientFactory.init();
+    const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
-    return bridge.getRoomStore().getEntriesByRemoteRoomData({
+    const mxRoomEntries = await bridge.getRoomStore().getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
     });
-}).then((mxRoomEntries) => {
-    const promiseList = [];
 
+    const promiseList: Promise<void>[] = [];
     mxRoomEntries.forEach((entry) => {
         if (entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
@@ -121,23 +134,29 @@ bridge.loadDatabases().catch((e) => {
         entry.remote.set("update_icon", true);
         promiseList.push(bridge.getRoomStore().upsertEntry(entry));
     });
-    return Promise.all(promiseList);
-}).then(() => {
-    // now it is time to actually run the updates
-    let promiseChain: Bluebird<any> = Bluebird.resolve();
+    await Promise.all(promiseList);
 
-    let delay = config.limits.roomGhostJoinDelay; // we'll just re-use this
+    // now it is time to actually run the updates
+    const promiseList2: Promise<void>[] = [];
+
+    let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
-        promiseChain = promiseChain.return(Bluebird.delay(delay).then(() => {
-            return chanSync.OnGuildUpdate(guild, true).catch((err) => {
+        promiseList2.push((async () => {
+            await Bluebird.delay(curDelay);
+            try {
+                await discordbot.ChannelSyncroniser.OnGuildUpdate(guild, true);
+            } catch (err) {
                 log.warn(`Couldn't update rooms of guild ${guild.id}`, err);
-            });
-        }));
-        delay += config.limits.roomGhostJoinDelay;
+            }
+        })());
+        curDelay += config.limits.roomGhostJoinDelay;
     });
-    return promiseChain;
-}).catch((err) => {
-    log.error(err);
-}).then(() => {
+    try {
+        await Promise.all(promiseList2);
+    } catch (err) {
+        log.error(err);
+    }
     process.exit(0);
-});
+}
+
+run(); // tslint:disable-line no-floating-promises

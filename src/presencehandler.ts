@@ -1,4 +1,20 @@
-import {User, Presence} from "discord.js";
+/*
+Copyright 2017, 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { User, Presence } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 const log = new Log("PresenceHandler");
@@ -10,10 +26,15 @@ export class PresenceHandlerStatus {
     public ShouldDrop: boolean = false;
 }
 
+interface IMatrixPresence {
+    presence?: string;
+    status_msg?: string;
+}
+
 export class PresenceHandler {
     private readonly bot: DiscordBot;
     private presenceQueue: User[];
-    private interval: number;
+    private interval: NodeJS.Timeout | null;
     constructor(bot: DiscordBot) {
         this.bot = bot;
         this.presenceQueue = [];
@@ -23,18 +44,20 @@ export class PresenceHandler {
         return this.presenceQueue.length;
     }
 
-    public Start(intervalTime: number) {
+    public async Start(intervalTime: number) {
         if (this.interval) {
             log.info("Restarting presence handler...");
             this.Stop();
         }
         log.info(`Starting presence handler with new interval ${intervalTime}ms`);
-        this.interval = setInterval(this.processIntervalThread.bind(this), intervalTime);
+        this.interval = setInterval(await this.processIntervalThread.bind(this),
+            intervalTime);
     }
 
     public Stop() {
         if (!this.interval) {
             log.info("Can not stop interval, not running.");
+            return;
         }
         log.info("Stopping presence handler");
         clearInterval(this.interval);
@@ -61,16 +84,17 @@ export class PresenceHandler {
         }
     }
 
-    public ProcessUser(user: User): boolean {
+    public async ProcessUser(user: User): Promise<boolean> {
         const status = this.getUserPresence(user.presence);
-        this.setMatrixPresence(user, status);
+        await this.setMatrixPresence(user, status);
         return status.ShouldDrop;
     }
 
-    private processIntervalThread() {
+    private async processIntervalThread() {
         const user = this.presenceQueue.shift();
         if (user) {
-            if (!this.ProcessUser(user)) {
+            const proccessed = await this.ProcessUser(user);
+            if (!proccessed) {
                 this.presenceQueue.push(user);
             } else {
                 log.info(`Dropping ${user.id} from the presence queue.`);
@@ -102,20 +126,24 @@ export class PresenceHandler {
         return status;
     }
 
-    private setMatrixPresence(user: User, status: PresenceHandlerStatus) {
+    private async setMatrixPresence(user: User, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(user);
-        const statusObj: any = {presence: status.Presence};
+        const statusObj: IMatrixPresence = {presence: status.Presence};
         if (status.StatusMsg) {
             statusObj.status_msg = status.StatusMsg;
         }
-        intent.getClient().setPresence(statusObj).catch((ex) => {
+        try {
+            await intent.getClient().setPresence(statusObj);
+        } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);
                 return;
             }
-            return this.bot.UserSyncroniser.OnUpdateUser(user).catch((err) => {
+            try {
+                await this.bot.UserSyncroniser.OnUpdateUser(user);
+            } catch (err) {
                 log.warn(`Could not register new Matrix user for ${user.id}`);
-            });
-        });
+            }
+        }
     }
 }

@@ -4,9 +4,10 @@
         "moduleResolution": "node",
         "target": "es2016",
         "noImplicitAny": false,
-        "sourceMap": false,
+        "inlineSourceMap": true,
         "outDir": "./build",
-        "types": ["mocha", "node"]
+        "types": ["mocha", "node"],
+        "strictNullChecks": true
     },
     "compileOnSave": true,
     "include": [

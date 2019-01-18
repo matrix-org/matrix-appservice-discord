@@ -1,5 +1,5 @@
 /*
-Copyright 2017, 2018 matrix-appservice-discord
+Copyright 2018 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,18 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { DiscordStore } from "../store";
-
-export interface IDbData {
-    Result: boolean;
-    // tslint:disable-next-line no-any
-    RunQuery(store: DiscordStore, params: any): Promise<void|Error>;
-    Insert(store: DiscordStore): Promise<void|Error>;
-    Update(store: DiscordStore): Promise<void|Error>;
-    Delete(store: DiscordStore): Promise<void|Error>;
-}
-
-export interface IDbDataMany extends IDbData {
-    ResultCount: number;
-    Next(): boolean;
+// we are a test file and thus need those
+/* tslint:disable:no-unused-expression max-file-line-count no-any */
+export class MockRole {
+    constructor(public id: string = "", public name = "", public color = 0, public position = 0) { }
 }
