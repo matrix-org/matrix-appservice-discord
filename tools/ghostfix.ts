@@ -111,7 +111,6 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-
 async function run() {
     try {
         await bridge.loadDatabases();
