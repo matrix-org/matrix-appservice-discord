@@ -119,9 +119,9 @@ function createRH(opts: any = {}) {
         OnUpdate: async () => { },
     };
     const bot = {
+        BotUserId: "@botuser:localhost",
         ChannelSyncroniser: cs,
         GetBotId: () => "bot12345",
-        BotUserId: "@botuser:localhost",
         GetChannelFromRoomId: async (roomid: string) => {
             if (roomid === "!accept:localhost") {
                 const guild = new MockGuild("666666");

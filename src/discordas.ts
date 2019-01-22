@@ -57,9 +57,8 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
-interface ICallbackFn {
-    (...args: any[]): Promise<any>;
-}
+// tslint:disable-next-line no-any
+type callbackFn = (...args: any[]) => Promise<any>;
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
@@ -79,7 +78,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         url: config.bridge.homeserverUrl,
     });
 
-    const callbacks: {[id: string]: ICallbackFn;} = {};
+    const callbacks: { [id: string]: callbackFn; } = {};
 
     const bridge = new Bridge({
         clientFactory,
@@ -87,17 +86,17 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             // onUserQuery: userQuery,
             onAliasQueried: async (alias: string, roomId: string) => {
                 try {
-                    return await callbacks["onAliasQueried"](alias, roomId)
+                    return await callbacks.onAliasQueried(alias, roomId);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string) => {
                 try {
-                    return await callbacks["onAliasQuery"](alias, aliasLocalpart);
+                    return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request, context) => {
                 try {
-                    await request.outcomeFrom(Bluebird.resolve(callbacks["onEvent"](request, context)));
+                    await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                 }
@@ -107,7 +106,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             },
             thirdPartyLookup: async () => {
                 try {
-                    return await callbacks["thirdPartyLookup"]();
+                    return await callbacks.thirdPartyLookup();
                 } catch (err) {
                     log.error("Exception thrown while handling \"thirdPartyLookup\" event", err);
                 }
@@ -134,10 +133,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const roomhandler = discordbot.RoomHandler;
 
     try {
-        callbacks["onAliasQueried"] = roomhandler.OnAliasQueried.bind(roomhandler);
-        callbacks["onAliasQuery"] = roomhandler.OnAliasQuery.bind(roomhandler);
-        callbacks["onEvent"] = roomhandler.OnEvent.bind(roomhandler);
-        callbacks["thirdPartyLookup"] = roomhandler.ThirdPartyLookup;
+        callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
+        callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
+        callbacks.onEvent = roomhandler.OnEvent.bind(roomhandler);
+        callbacks.thirdPartyLookup = async () => {
+            return roomhandler.ThirdPartyLookup;
+        };
     } catch (err) {
         log.error("Failed to register callbacks. Exiting.", err);
         process.exit(1);

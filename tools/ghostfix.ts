@@ -118,7 +118,7 @@ async function run() {
         await bridge.loadDatabases();
     } catch (e) { }
     await discordbot.init();
-    //bridge._clientFactory = clientFactory;
+    // bridge._clientFactory = clientFactory;
     const client = await discordbot.ClientFactory.getClient();
 
     const promiseList: Promise<void>[] = [];
