@@ -133,10 +133,15 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const discordbot = new DiscordBot(botUserId, config, bridge);
     const roomhandler = discordbot.RoomHandler;
 
-    callbacks["onAliasQueried"] = roomhandler.OnAliasQueried.bind(roomhandler);
-    callbacks["onAliasQuery"] = roomhandler.OnAliasQuery.bind(roomhandler);
-    callbacks["onEvent"] = roomhandler.OnEvent;
-    callbacks["thirdPartyLookup"] = roomhandler.ThirdPartyLookup;
+    try {
+        callbacks["onAliasQueried"] = roomhandler.OnAliasQueried.bind(roomhandler);
+        callbacks["onAliasQuery"] = roomhandler.OnAliasQuery.bind(roomhandler);
+        callbacks["onEvent"] = roomhandler.OnEvent.bind(roomhandler);
+        callbacks["thirdPartyLookup"] = roomhandler.ThirdPartyLookup;
+    } catch (err) {
+        log.error("Failed to register callbacks. Exiting.", err);
+        process.exit(1);
+    }
 
     log.info("Initing bridge.");
 
