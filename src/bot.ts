@@ -100,6 +100,7 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(this.config, this.bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
 
         // init vars
         this.sentMessages = [];
@@ -235,7 +236,6 @@ export class DiscordBot {
         });
         const jsLog = new Log("discord.js");
 
-        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
         client.on("userUpdate", async (_, user) => {
             try {
                 await this.userSync.OnUpdateUser(user);

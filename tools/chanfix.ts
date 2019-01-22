@@ -104,9 +104,9 @@ async function run() {
     try {
         await bridge.loadDatabases();
     } catch (e) { }
-//    bridge._clientFactory = clientFactory;
-//    bridge._botClient = bridge._clientFactory.getClientAs();
-//    bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
+    bridge._clientFactory = clientFactory;
+    bridge._botClient = bridge._clientFactory.getClientAs();
+    bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
     await discordbot.init();
     const client = await discordbot.ClientFactory.getClient();
 

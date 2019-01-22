@@ -111,14 +111,14 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-const discordbot = new DiscordBot(botUserId, config, bridge);
 
 async function run() {
     try {
         await bridge.loadDatabases();
     } catch (e) { }
+    const discordbot = new DiscordBot(botUserId, config, bridge);
     await discordbot.init();
-    // bridge._clientFactory = clientFactory;
+    bridge._clientFactory = clientFactory;
     const client = await discordbot.ClientFactory.getClient();
 
     const promiseList: Promise<void>[] = [];
