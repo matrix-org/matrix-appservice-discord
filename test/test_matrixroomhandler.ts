@@ -121,6 +121,7 @@ function createRH(opts: any = {}) {
     const bot = {
         ChannelSyncroniser: cs,
         GetBotId: () => "bot12345",
+        BotUserId: "@botuser:localhost",
         GetChannelFromRoomId: async (roomid: string) => {
             if (roomid === "!accept:localhost") {
                 const guild = new MockGuild("666666");
@@ -201,8 +202,7 @@ function createRH(opts: any = {}) {
             }
         },
     };
-    const handler = new RoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge(bridge);
+    const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any);
     return handler;
 }
 

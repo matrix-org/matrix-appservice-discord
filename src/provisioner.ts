@@ -28,7 +28,7 @@ export class Provisioner {
     private bridge: Bridge;
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
 
-    public SetBridge(bridge: Bridge): void {
+    constructor(bridge: Bridge) {
         this.bridge = bridge;
     }
 

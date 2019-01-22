@@ -65,10 +65,13 @@ export class MatrixRoomHandler {
     private botUserId: string;
     private botJoinedRooms: Set<string>; // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;
-    constructor(discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
+    private provisioner: Provisioner;
+    constructor(discord: DiscordBot, config: DiscordBridgeConfig, provisioner: Provisioner, bridge: Bridge) {
         this.discord = discord;
         this.config = config;
-        this.botUserId = botUserId;
+        this.provisioner = provisioner;
+        this.bridge = bridge;
+        this.botUserId = this.discord.BotUserId;
         this.botJoinedRooms = new Set();
     }
 
@@ -81,10 +84,6 @@ export class MatrixRoomHandler {
             parseUser: this.tpParseUser.bind(this),
             protocols: ["discord"],
         };
-    }
-
-    public setBridge(bridge: Bridge) {
-        this.bridge = bridge;
     }
 
     public async OnAliasQueried(alias: string, roomId: string) {

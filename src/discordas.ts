@@ -57,6 +57,10 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
+interface ICallbackFn {
+    (...args: any[]): Promise<any>;
+}
+
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
     config.ApplyConfig(fileConfig);
@@ -74,11 +78,8 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         token: registration.as_token,
         url: config.bridge.homeserverUrl,
     });
-    const provisioner = new Provisioner();
-    // Warn and deprecate old config options.
-    const discordstore = new DiscordStore(config.database);
-    const discordbot = new DiscordBot(config, discordstore, provisioner);
-    const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
+
+    const callbacks: {[id: string]: ICallbackFn;} = {};
 
     const bridge = new Bridge({
         clientFactory,
@@ -86,17 +87,17 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             // onUserQuery: userQuery,
             onAliasQueried: async (alias: string, roomId: string) => {
                 try {
-                    return await roomhandler.OnAliasQueried.bind(roomhandler)(alias, roomId);
+                    return await callbacks["onAliasQueried"](alias, roomId)
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string) => {
                 try {
-                    return await roomhandler.OnAliasQuery.bind(roomhandler)(alias, aliasLocalpart);
+                    return await callbacks["onAliasQuery"](alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request, context) => {
                 try {
-                    await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
+                    await request.outcomeFrom(Bluebird.resolve(callbacks["onEvent"](request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                 }
@@ -104,7 +105,13 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             onLog: (line, isError) => {
                 log.verbose("matrix-appservice-bridge", line);
             },
-            thirdPartyLookup: roomhandler.ThirdPartyLookup,
+            thirdPartyLookup: async () => {
+                try {
+                    return await callbacks["thirdPartyLookup"]();
+                } catch (err) {
+                    log.error("Exception thrown while handling \"thirdPartyLookup\" event", err);
+                }
+            },
         },
         domain: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
@@ -122,17 +129,22 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         userStore: config.database.userStorePath,
         // To avoid out of order message sending.
     });
-    provisioner.SetBridge(bridge);
-    roomhandler.setBridge(bridge);
-    discordbot.setBridge(bridge);
-    discordbot.setRoomHandler(roomhandler);
+    // Warn and deprecate old config options.
+    const discordbot = new DiscordBot(botUserId, config, bridge);
+    const roomhandler = discordbot.RoomHandler;
+
+    callbacks["onAliasQueried"] = roomhandler.OnAliasQueried.bind(roomhandler);
+    callbacks["onAliasQuery"] = roomhandler.OnAliasQuery.bind(roomhandler);
+    callbacks["onEvent"] = roomhandler.OnEvent;
+    callbacks["thirdPartyLookup"] = roomhandler.ThirdPartyLookup;
+
     log.info("Initing bridge.");
-    log.info(`Started listening on port ${port}.`);
 
     try {
-        await bridge.run(port, config);
         log.info("Initing store.");
-        await discordstore.init();
+        await discordbot.init();
+        await bridge.run(port, config);
+        log.info(`Started listening on port ${port}.`);
         log.info("Initing bot.");
         await discordbot.run();
         log.info("Discordbot started successfully.");
