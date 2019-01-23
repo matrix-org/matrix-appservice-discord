@@ -67,7 +67,7 @@ export class MatrixMessageProcessor {
                 params.displayname &&
                 params.displayname.length >= MIN_NAME_LENGTH &&
                 params.displayname.length <= MAX_NAME_LENGTH) {
-                reply = `_${params.displayname} ${reply}_`;
+                reply = `_${await this.escapeDiscord(params.displayname)} ${reply}_`;
             } else {
                 reply = `_${reply}_`;
             }
