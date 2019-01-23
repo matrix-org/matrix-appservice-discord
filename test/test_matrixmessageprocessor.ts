@@ -438,6 +438,16 @@ code
             const result = await mp.FormatMessage(msg, guild as any, params as any);
             expect(result).is.equal("_floofs_");
         });
+        it("discord escapes nicks in /me", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("floofs", "m.emote");
+            const params = {
+                displayname: "fox_floof",
+            };
+            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("_fox\\_floof floofs_");
+        });
     });
     describe("FormatMessage / formatted_body / blockquotes", () => {
         it("parses single blockquotes", async () => {
