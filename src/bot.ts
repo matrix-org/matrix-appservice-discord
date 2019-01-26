@@ -41,6 +41,7 @@ import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 const log = new Log("DiscordBot");
 
 const MIN_PRESENCE_UPDATE_DELAY = 250;
+const CACHE_LIFETIME = 90000;
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
@@ -76,6 +77,8 @@ export class DiscordBot {
     private userSync: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
+    /* Caches */
+    private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}>;
 
     /* Handles messages queued up to be sent to discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
@@ -529,7 +532,15 @@ export class DiscordBot {
         return dbEmoji.MxcUrl;
     }
 
-    public async GetRoomIdsFromGuild(guild: Discord.Guild, member?: Discord.GuildMember): Promise<string[]> {
+    public async GetRoomIdsFromGuild(
+            guild: Discord.Guild, member?: Discord.GuildMember, useCache: boolean = true): Promise<string[]> {
+        if (useCache) {
+            const res = this.roomIdsForGuildCache.get(`${guild.id}:${member ? member.id : ""}`);
+            if (res && res.ts > Date.now() - CACHE_LIFETIME) {
+                return res.roomIds;
+            }
+        }
+
         if (member) {
             let rooms: string[] = [];
             await Util.AsyncForEach(guild.channels.array(), async (channel) => {
@@ -544,6 +555,7 @@ export class DiscordBot {
                 log.verbose(`No rooms were found for this guild and member (guild:${guild.id} member:${member.id})`);
                 throw new Error("Room(s) not found.");
             }
+            this.roomIdsForGuildCache.set(`${guild.id}:${guild.member}`, {roomIds: rooms, ts: Date.now()});
             return rooms;
         } else {
             const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
@@ -553,7 +565,9 @@ export class DiscordBot {
                 log.verbose(`Couldn't find room(s) for guild id:${guild.id}.`);
                 throw new Error("Room(s) not found.");
             }
-            return rooms.map((room) => room.matrix.getId());
+            const roomIds = rooms.map((room) => room.matrix.getId());
+            this.roomIdsForGuildCache.set(`${guild.id}:`, {roomIds, ts: Date.now()});
+            return roomIds;
         }
     }
 

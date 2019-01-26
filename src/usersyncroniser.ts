@@ -306,13 +306,13 @@ export class UserSyncroniser {
 
     public async OnAddGuildMember(member: GuildMember) {
         log.info(`Joining ${member.id} to all rooms for guild ${member.guild.id}`);
-        await this.OnUpdateGuildMember(member, true);
+        await this.OnUpdateGuildMember(member, true, false);
     }
 
     public async OnRemoveGuildMember(member: GuildMember) {
         /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
         log.info(`Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
-        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild);
+        const rooms = await this.discord.GetRoomIdsFromGuild(member.guild, undefined, false);
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
@@ -321,16 +321,16 @@ export class UserSyncroniser {
         );
     }
 
-    public async OnUpdateGuildMember(member: GuildMember, doJoin: boolean = false) {
+    public async OnUpdateGuildMember(member: GuildMember, doJoin: boolean = false, useCache: boolean = true) {
         log.info(`Got update for ${member.id} (${member.user.username}).`);
         const state = await this.GetUserStateForGuildMember(member);
         let wantRooms: string[] = [];
         try {
-            wantRooms = await this.discord.GetRoomIdsFromGuild(member.guild, member);
+            wantRooms = await this.discord.GetRoomIdsFromGuild(member.guild, member, useCache);
         } catch (err) { } // no want rooms
         let allRooms: string[] = [];
         try {
-            allRooms = await this.discord.GetRoomIdsFromGuild(member.guild);
+            allRooms = await this.discord.GetRoomIdsFromGuild(member.guild, undefined, useCache);
         } catch (err) { } // no all rooms
 
         const leaveRooms: string[] = [];
