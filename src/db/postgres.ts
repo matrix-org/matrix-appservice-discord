@@ -17,7 +17,7 @@ limitations under the License.
 import * as pgPromise from "pg-promise";
 import { Log } from "../log";
 import { IDatabaseConnector, ISqlCommandParameters, ISqlRow } from "./connector";
-const log = new Log("SQLite3");
+const log = new Log("Postgres");
 
 const pgp: pgPromise.IMain = pgPromise({
     // Initialization Options
