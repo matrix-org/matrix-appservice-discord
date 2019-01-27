@@ -101,7 +101,7 @@ export class DiscordBot {
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(this.config, bridge, this),
         );
-        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
+        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this, this.store.roomStore);
     }
 
     public setRoomHandler(roomHandler: MatrixRoomHandler) {
@@ -487,7 +487,7 @@ export class DiscordBot {
     }
 
     public async GetChannelFromRoomId(roomId: string, client?: Discord.Client): Promise<Discord.Channel> {
-        const entries = await this.bridge.getRoomStore().getEntriesByMatrixId(
+        const entries = await this.store.roomStore.getEntriesByMatrixId(
             roomId,
         );
 
@@ -500,9 +500,9 @@ export class DiscordBot {
             throw Error("Room(s) not found.");
         }
         const entry = entries[0];
-        const guild = client.guilds.get(entry.remote.get("discord_guild"));
+        const guild = client.guilds.get(entry.remote!.get("discord_guild") as string);
         if (guild) {
-            const channel = client.channels.get(entry.remote.get("discord_channel"));
+            const channel = client.channels.get(entry.remote!.get("discord_channel") as string);
             if (channel) {
                 return channel;
             }
@@ -558,14 +558,14 @@ export class DiscordBot {
             this.roomIdsForGuildCache.set(`${guild.id}:${guild.member}`, {roomIds: rooms, ts: Date.now()});
             return rooms;
         } else {
-            const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+            const rooms = await this.store.roomStore.getEntriesByRemoteRoomData({
                 discord_guild: guild.id,
             });
             if (rooms.length === 0) {
                 log.verbose(`Couldn't find room(s) for guild id:${guild.id}.`);
                 throw new Error("Room(s) not found.");
             }
-            const roomIds = rooms.map((room) => room.matrix.getId());
+            const roomIds = rooms.map((room) => room.matrix!.getId());
             this.roomIdsForGuildCache.set(`${guild.id}:`, {roomIds, ts: Date.now()});
             return roomIds;
         }
