@@ -18,23 +18,22 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 7;
+export const CURRENT_SCHEMA = 8;
 
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
+import { DbRoomStore } from "./db/roomstore";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
  */
 export class DiscordStore {
-    /**
-     * @param  {string} filepath Location of the SQLite database file.
-     */
     public db: IDatabaseConnector;
     private version: number;
     private config: DiscordBridgeConfigDatabase;
+    private pRoomStore: DbRoomStore;
     constructor(private configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
@@ -43,6 +42,10 @@ export class DiscordStore {
             this.config = configOrFile;
         }
         this.version = 0;
+    }
+
+    get roomStore() {
+        return this.pRoomStore;
     }
 
     public async backup_database(): Promise<void|{}> {
@@ -327,6 +330,7 @@ export class DiscordStore {
         }
         try {
             this.db.Open();
+            this.pRoomStore = new DbRoomStore(this.db);
         } catch (ex) {
             log.error("Error opening database:", ex);
             throw new Error("Couldn't open database. The appservice won't be able to continue.");
