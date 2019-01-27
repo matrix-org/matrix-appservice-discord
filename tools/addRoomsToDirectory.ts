@@ -98,7 +98,7 @@ async function run() {
     } catch (e) {
         log.error(`Failed to load database`, e);
     }
-
+    // This will be broken.
     let rooms = await bridge.getRoomStore().getEntriesByRemoteRoomData({
         discord_type: "text",
     });
