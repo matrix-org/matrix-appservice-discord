@@ -75,7 +75,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         url: config.bridge.homeserverUrl,
     });
     const provisioner = new Provisioner();
-    // Warn and deprecate old config options.
     const discordstore = new DiscordStore(config.database);
     const discordbot = new DiscordBot(config, discordstore, provisioner);
     const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
@@ -94,8 +93,17 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     return await roomhandler.OnAliasQuery.bind(roomhandler)(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
-            onEvent: async (request, context) => {
+            onEvent: async (request) => {
                 try {
+                    // Build our own context.
+                    const roomId = request.getData().room_id;
+                    let context = {};
+                    if (roomId) {
+                        const entries  = await discordstore.roomStore.getEntriesByMatrixId(request.getData().room_id);
+                        context = {
+                            rooms: entries[0],
+                        };
+                    }
                     await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
@@ -106,6 +114,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             },
             thirdPartyLookup: roomhandler.ThirdPartyLookup,
         },
+        disableContext: true,
         domain: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
         intentOptions: {
@@ -113,17 +122,14 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 dontJoin: true, // handled manually
             },
         },
+        // To avoid out of order message sending.
         queue: {
             perRequest: true,
             type: "per_room",
         },
         registration,
-        roomStore: config.database.roomStorePath,
         userStore: config.database.userStorePath,
-        // To avoid out of order message sending.
     });
-    discordbot.setBridge(bridge);
-    discordbot.setRoomHandler(roomhandler);
     log.info("Initing bridge.");
     log.info(`Started listening on port ${port}.`);
 
@@ -134,6 +140,8 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.info("Initing bot.");
         provisioner.setStore(discordstore.roomStore);
         roomhandler.setBridge(bridge, discordstore.roomStore);
+        discordbot.setBridge(bridge);
+        discordbot.setRoomHandler(roomhandler);
         await discordbot.run();
         log.info("Discordbot started successfully.");
     } catch (err) {
