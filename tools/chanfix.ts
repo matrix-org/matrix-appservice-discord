@@ -101,7 +101,8 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-provisioner.SetBridge(bridge);
+// Broken
+//provisioner.setStore(null);
 discordbot.setBridge(bridge);
 
 async function run() {
@@ -117,6 +118,7 @@ async function run() {
     const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
+    // This will be broken
     const mxRoomEntries = await bridge.getRoomStore().getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
@@ -132,6 +134,7 @@ async function run() {
             return; // skipping because something was set manually
         }
         entry.remote.set("update_icon", true);
+        // This will be broken
         promiseList.push(bridge.getRoomStore().upsertEntry(entry));
     });
     await Promise.all(promiseList);

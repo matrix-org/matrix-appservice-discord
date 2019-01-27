@@ -114,7 +114,8 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-provisioner.SetBridge(bridge);
+// This will not work.
+//provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
 
 async function run() {
