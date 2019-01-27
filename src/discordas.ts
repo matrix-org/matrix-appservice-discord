@@ -122,7 +122,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         userStore: config.database.userStorePath,
         // To avoid out of order message sending.
     });
-    provisioner.SetBridge(bridge);
     roomhandler.setBridge(bridge);
     discordbot.setBridge(bridge);
     discordbot.setRoomHandler(roomhandler);
@@ -134,6 +133,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.info("Initing store.");
         await discordstore.init();
         log.info("Initing bot.");
+        provisioner.setStore(discordstore.roomStore);
         await discordbot.run();
         log.info("Discordbot started successfully.");
     } catch (err) {
