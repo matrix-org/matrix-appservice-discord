@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { DiscordStore } from "../../store";
+import { DiscordBridgeConfigDatabase } from "../../config";
 export interface IDbSchema {
     description: string;
     run(store: DiscordStore): Promise<null|void|Error|Error[]>;

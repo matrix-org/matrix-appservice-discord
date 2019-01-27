@@ -17,11 +17,19 @@ limitations under the License.
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 import { Log } from "../../log";
-
+import {
+    RoomStore,
+} from "matrix-appservice-bridge";
+import { RemoteStoreRoom, MatrixStoreRoom } from "../roomstore";
 const log = new Log("SchemaV8");
 
 export class Schema implements IDbSchema {
     public description = "create room store tables";
+
+    constructor(private roomStore: RoomStore|null) {
+
+    }
+
     public async run(store: DiscordStore): Promise<void> {
         await store.create_table(`
             CREATE TABLE remote_room_data (
@@ -47,6 +55,25 @@ export class Schema implements IDbSchema {
                 remote_id TEXT,
                 PRIMARY KEY(id)
         );`, "room_entries");
+
+        if (this.roomStore === null) {
+            log.warn("Not migrating rooms from room store, room store is null");
+            return;
+        }
+        log.warn("Migrating rooms from roomstore, this may take a while...");
+        const rooms = await this.roomStore.select({});
+        // Matrix room only entrys are useless.
+        const entrys = rooms.filter((r) => r.remote);
+        for (const e of entrys) {
+            const matrix = new MatrixStoreRoom(e.matrix_id);
+            try {
+                const remote = new RemoteStoreRoom(e.remote_id, e.remote);
+                await store.roomStore.linkRooms(matrix, remote);
+                log.info(`Migrated ${matrix.roomId}`);
+            } catch (ex) {
+                log.error(`Failed to link ${matrix.roomId}: `, ex);
+            }
+        }
     }
 
     public async rollBack(store: DiscordStore): Promise<void> {

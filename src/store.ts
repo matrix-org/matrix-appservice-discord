@@ -25,6 +25,9 @@ import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
+import {
+    RoomStore,
+} from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -83,7 +86,8 @@ export class DiscordStore {
     /**
      * Checks the database has all the tables needed.
      */
-    public async init(overrideSchema: number = 0): Promise<void> {
+    public async init(overrideSchema: number = 0, roomStore: RoomStore = null): Promise<void> {
+        const SCHEMA_ROOM_STORE_REQUIRED = 8;
         log.info("Starting DB Init");
         await this.open_database();
         let version = await this.getSchemaVersion();
@@ -91,7 +95,13 @@ export class DiscordStore {
         while (version < targetSchema) {
             version++;
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
-            const schema = (new schemaClass() as IDbSchema);
+            let schema: IDbSchema;
+            if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
+                console.log(roomStore);
+                schema = (new schemaClass(roomStore) as IDbSchema);
+            } else {
+                schema = (new schemaClass() as IDbSchema);
+            }
             log.info(`Updating database to v${version}, "${schema.description}"`);
             try {
                 await schema.run(this);
