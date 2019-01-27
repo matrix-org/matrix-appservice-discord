@@ -35,6 +35,7 @@ import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 import { IMatrixEvent } from "./matrixtypes";
+import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
@@ -58,14 +59,16 @@ const JOIN_ROOM_SCHEDULE = [
 /* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
-
-    private config: DiscordBridgeConfig;
     private bridge: Bridge;
-    private discord: DiscordBot;
-    private botUserId: string;
+    private roomStore: DbRoomStore;
     private botJoinedRooms: Set<string>; // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;
-    constructor(discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
+    constructor(
+        private discord: DiscordBot,
+        private config: DiscordBridgeConfig,
+        private botUserId: string,
+        private provisioner: Provisioner,
+    ) {
         this.discord = discord;
         this.config = config;
         this.botUserId = botUserId;
@@ -83,14 +86,28 @@ export class MatrixRoomHandler {
         };
     }
 
-    public setBridge(bridge: Bridge) {
+    public setBridge(bridge: Bridge, roomStore: DbRoomStore) {
         this.bridge = bridge;
+        this.roomStore = roomStore;
     }
 
     public async OnAliasQueried(alias: string, roomId: string) {
         log.verbose(`Got OnAliasQueried for ${alias} ${roomId}`);
         let channel: Discord.GuildChannel;
         try {
+            // We previously stored the room as an alias.
+            const entry = (await this.roomStore.getEntriesByMatrixId(alias))[0];
+            if (!entry) {
+                throw new Error("Entry was not found");
+            }
+            // Remove the old entry
+            await this.roomStore.removeEntriesByMatrixRoomId(
+                entry.matrix!.roomId,
+            );
+            await this.roomStore.linkRooms(
+                new MatrixStoreRoom(roomId),
+                entry.remote!,
+            );
             channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
         } catch (err) {
             log.error(`Cannot find discord channel for ${alias} ${roomId}`, err);
@@ -130,7 +147,7 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
-    public async OnEvent(request, context): Promise<void> {
+    public async OnEvent(request, context: BridgeContext): Promise<void> {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
@@ -210,7 +227,7 @@ export class MatrixRoomHandler {
         );
         await sendPromise;
         await intent.leave(roomId);
-        await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
+        await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 
     public async HandleInvite(event: IMatrixEvent) {
@@ -405,7 +422,7 @@ export class MatrixRoomHandler {
         try {
             const result = await this.discord.LookupRoom(srvChanPair[0], srvChanPair[1]);
             log.info("Creating #", aliasLocalpart);
-            return this.createMatrixRoom(result.channel, aliasLocalpart);
+            return this.createMatrixRoom(result.channel, alias, aliasLocalpart);
         } catch (err) {
             log.error(`Couldn't find discord room '${aliasLocalpart}'.`, err);
         }
@@ -622,14 +639,16 @@ export class MatrixRoomHandler {
         }
     }
 
-    private createMatrixRoom(channel: Discord.TextChannel, alias: string): ProvisionedRoom {
-        const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}`);
-        remote.set("discord_type", "text");
-        remote.set("discord_guild", channel.guild.id);
-        remote.set("discord_channel", channel.id);
-        remote.set("update_name", true);
-        remote.set("update_topic", true);
-        remote.set("update_icon", true);
+    private async createMatrixRoom(channel: Discord.TextChannel,
+                                   alias: string, aliasLocalpart: string): ProvisionedRoom {
+        const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}`, {
+            discord_channel: channel.id,
+            discord_guild: channel.guild.id,
+            discord_type: "text",
+            update_icon: 1,
+            update_name: 1,
+            update_topic: 1,
+        });
         const creationOpts = {
             initial_state: [
                 {
@@ -640,12 +659,16 @@ export class MatrixRoomHandler {
                     type: "m.room.join_rules",
                 },
             ],
-            room_alias_name: alias,
+            room_alias_name: aliasLocalpart,
             visibility: this.config.room.defaultVisibility,
         };
+        // We need to tempoarily store this until we know the room_id.
+        await this.roomStore.linkRooms(
+            new MatrixStoreRoom(alias),
+            remote,
+        );
         return {
             creationOpts,
-            remote,
         } as ProvisionedRoom;
     }
 
