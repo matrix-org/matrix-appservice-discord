@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+type SQLTYPES = number | boolean | string | null;
+
 export interface ISqlCommandParameters {
-    [paramKey: string]: number | boolean | string | Promise<number | boolean | string>;
+    [paramKey: string]: SQLTYPES | Promise<SQLTYPES>;
 }
 
 export interface ISqlRow {
-    [key: string]: number | boolean | string;
+    [key: string]: SQLTYPES;
 }
 
 export interface IDatabaseConnector {
