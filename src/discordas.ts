@@ -136,7 +136,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     try {
         await bridge.run(port, config);
         log.info("Initing store.");
-        await discordstore.init();
+        await discordstore.init(0, bridge.getRoomStore());
         log.info("Initing bot.");
         provisioner.setStore(discordstore.roomStore);
         roomhandler.setBridge(bridge, discordstore.roomStore);
