@@ -175,7 +175,9 @@ export class DbRoomStore {
                 remote: remoteId ? new RemoteStoreRoom(remoteId, row as any) : null,
             });
         }
-        this.entriesMatrixIdCache.set(matrixId, {e: res, ts: Date.now()});
+        if (res.length > 0) {
+            this.entriesMatrixIdCache.set(matrixId, {e: res, ts: Date.now()});
+        }
         return res;
     }
 
