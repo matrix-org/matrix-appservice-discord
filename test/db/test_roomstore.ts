@@ -26,7 +26,7 @@ const expect = Chai.expect;
 
 // const assert = Chai.assert;
 let store: DiscordStore;
-describe("DiscordStore", () => {
+describe("RoomStore", () => {
     before(async () => {
         store = new DiscordStore(":memory:");
         await store.init();
@@ -82,38 +82,40 @@ describe("DiscordStore", () => {
         });
         it("will replace data on an existing entry", async () => {
             await store.roomStore.upsertEntry({
-                id: "test3",
-                matrix: new MatrixStoreRoom("test3_m"),
-                remote: new RemoteStoreRoom("test3_r", {discord_guild: "123", discord_channel: "456"}),
+                id: "test3.1",
+                matrix: new MatrixStoreRoom("test3.1_m"),
+                remote: new RemoteStoreRoom("test3.1_r", {discord_guild: "123", discord_channel: "456"}),
             });
             await store.roomStore.upsertEntry({
-                id: "test3",
-                matrix: new MatrixStoreRoom("test3_m"),
-                remote: new RemoteStoreRoom("test3_r", {discord_guild: "-100", discord_channel: "seventythousand"}),
+                id: "test3.1",
+                matrix: new MatrixStoreRoom("test3.1_m"),
+                remote: new RemoteStoreRoom("test3.1_r", {discord_guild: "-100", discord_channel: "seventythousand"}),
             });
-            const entry = (await store.roomStore.getEntriesByMatrixId("test3_m"))[0];
-            expect(entry.id).to.equal("test3");
-            expect(entry.matrix!.roomId).to.equal("test3_m");
-            expect(entry.remote!.roomId).to.equal("test3_r");
+            const entry = (await store.roomStore.getEntriesByMatrixId("test3.1_m"))[0];
+            expect(entry.id).to.equal("test3.1");
+            expect(entry.matrix!.roomId).to.equal("test3.1_m");
+            expect(entry.remote!.roomId).to.equal("test3.1_r");
             expect(entry.remote!.get("discord_guild")).to.equal("-100");
             expect(entry.remote!.get("discord_channel")).to.equal("seventythousand");
         });
         it("will delete data on an existing entry", async () => {
             await store.roomStore.upsertEntry({
-                id: "test3",
-                matrix: new MatrixStoreRoom("test3_m"),
-                remote: new RemoteStoreRoom("test3_r", {discord_guild: "123", discord_channel: "456"}),
+                id: "test3.2",
+                matrix: new MatrixStoreRoom("test3.2_m"),
+                remote: new RemoteStoreRoom("test3.2_r", {
+                    discord_channel: "456", discord_guild: "123",  update_icon: true,
+                }),
             });
             await store.roomStore.upsertEntry({
-                id: "test3",
-                matrix: new MatrixStoreRoom("test3_m"),
-                remote: new RemoteStoreRoom("test3_r", {discord_guild: "123", discord_channel: "456"}),
+                id: "test3.2",
+                matrix: new MatrixStoreRoom("test3.2_m"),
+                remote: new RemoteStoreRoom("test3.2_r", {discord_guild: "123", discord_channel: "456"}),
             });
-            const entry = (await store.roomStore.getEntriesByMatrixId("test3_m"))[0];
-            expect(entry.id).to.equal("test3");
-            expect(entry.matrix!.roomId).to.equal("test3_m");
-            expect(entry.remote!.roomId).to.equal("test3_r");
-            expect(entry.remote!.get("baz")).to.be.undefined;
+            const entry = (await store.roomStore.getEntriesByMatrixId("test3.2_m"))[0];
+            expect(entry.id).to.equal("test3.2");
+            expect(entry.matrix!.roomId).to.equal("test3.2_m");
+            expect(entry.remote!.roomId).to.equal("test3.2_r");
+            expect(entry.remote!.get("update_icon")).to.be.eq(0);
         });
     });
     describe("getEntriesByMatrixIds", () => {
@@ -150,7 +152,7 @@ describe("DiscordStore", () => {
         });
     });
     describe("getEntriesByRemoteRoomData", () => {
-        it("will link a room", async () => {
+        it("will get an entry", async () => {
             await store.roomStore.upsertEntry({
                 id: "test6",
                 matrix: new MatrixStoreRoom("test6_m"),

@@ -26,7 +26,6 @@ import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeve
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
 import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
-
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
@@ -109,50 +108,48 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                 },
             };
         },
-        getRoomStore: () => {
-            REMOTECHANNEL_SET = false;
-            REMOTECHANNEL_REMOVED = false;
-            return {
-                getEntriesByMatrixId: (roomid) => {
-                    const entries: any[] = [];
-                    remoteChannels.forEach((c) => {
-                        const mxid = c.matrix.getId();
-                        if (roomid === mxid) {
-                            entries.push(c);
-                        }
-                    });
-                    return entries;
-                },
-                getEntriesByMatrixIds: (roomids) => {
-                    const entries = {};
-                    remoteChannels.forEach((c) => {
-                        const mxid = c.matrix.getId();
-                        if (roomids.includes(mxid)) {
-                            if (!entries[mxid]) {
-                                entries[mxid] = [];
-                            }
-                            entries[mxid].push(c);
-                        }
-                    });
-                    return entries;
-                },
-                getEntriesByRemoteRoomData: (data) => {
-                    return remoteChannels.filter((c) => {
-                        for (const d of Object.keys(data)) {
-                            if (c.remote.get(d) !== data[d]) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    });
-                },
-                removeEntriesByMatrixRoomId: (room) => {
-                    REMOTECHANNEL_REMOVED = true;
-                },
-                upsertEntry: (room) => {
-                    REMOTECHANNEL_SET = true;
-                },
-            };
+    };
+    REMOTECHANNEL_REMOVED = false;
+    REMOTECHANNEL_SET = false;
+    const roomStore = {
+        getEntriesByMatrixId: (roomid) => {
+            const entries: any[] = [];
+            remoteChannels.forEach((c) => {
+                const mxid = c.matrix.getId();
+                if (roomid === mxid) {
+                    entries.push(c);
+                }
+            });
+            return entries;
+        },
+        getEntriesByMatrixIds: (roomids) => {
+            const entries = {};
+            remoteChannels.forEach((c) => {
+                const mxid = c.matrix.getId();
+                if (roomids.includes(mxid)) {
+                    if (!entries[mxid]) {
+                        entries[mxid] = [];
+                    }
+                    entries[mxid].push(c);
+                }
+            });
+            return entries;
+        },
+        getEntriesByRemoteRoomData: (data) => {
+            return remoteChannels.filter((c) => {
+                for (const d of Object.keys(data)) {
+                    if (c.remote.get(d) !== data[d]) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        },
+        removeEntriesByMatrixRoomId: (room) => {
+            REMOTECHANNEL_REMOVED = true;
+        },
+        upsertEntry: (room) => {
+            REMOTECHANNEL_SET = true;
         },
     };
     const discordbot: any = {
@@ -161,7 +158,8 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.channel.namePattern = "[Discord] :guild :name";
-    return new ChannelSync(bridge as Bridge, config, discordbot);
+    const cs = new ChannelSync(bridge as Bridge, config, discordbot, roomStore) as ChannelSyncroniser;
+    return cs;
 }
 
 describe("ChannelSyncroniser", () => {

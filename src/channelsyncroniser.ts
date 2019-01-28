@@ -279,7 +279,7 @@ export class ChannelSyncroniser {
         const options = this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
 
-        this.roomStore.upsertEntry(entry);
+        await this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
             for (const member of channel.members.array()) {
                 try {

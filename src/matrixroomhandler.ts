@@ -345,7 +345,7 @@ export class MatrixRoomHandler {
                 });
 
                 await this.provisioner.AskBridgePermission(channel, event.sender);
-                this.provisioner.BridgeMatrixRoom(channel, event.room_id);
+                await this.provisioner.BridgeMatrixRoom(channel, event.room_id);
                 return this.bridge.getIntent().sendMessage(event.room_id, {
                     body: "I have bridged this room to your channel",
                     msgtype: "m.notice",
