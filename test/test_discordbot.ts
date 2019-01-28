@@ -89,10 +89,10 @@ describe("DiscordBot", () => {
     describe("run()", () => {
         it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
-                null,
+                mockBridge,
             );
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
         });
     });
@@ -100,10 +100,10 @@ describe("DiscordBot", () => {
     describe("LookupRoom()", () => {
         beforeEach( async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
-                null,
+                mockBridge,
             );
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
         });
         it("should reject a missing guild.", async () => {
@@ -141,6 +141,7 @@ describe("DiscordBot", () => {
             ATTACHMENT = {};
             MSGTYPE = "";
             const discord = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -294,6 +295,7 @@ describe("DiscordBot", () => {
     describe("OnMessageUpdate()", () => {
         it("should return on an unchanged message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -319,6 +321,7 @@ describe("DiscordBot", () => {
         });
         it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -345,6 +348,7 @@ describe("DiscordBot", () => {
         });
         it("should delete and re-send if it is the newest message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -380,6 +384,7 @@ describe("DiscordBot", () => {
     describe("event:message", () => {
         it("should delay messages so they arrive in order", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -389,7 +394,6 @@ describe("DiscordBot", () => {
                 expected++;
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
             const ITERATIONS = 25;
             const CHANID = 123;
@@ -401,6 +405,7 @@ describe("DiscordBot", () => {
         });
         it("should handle messages that reject in the queue", async () => {
             discordBot = new modDiscordBot.DiscordBot(
+                "",
                 config,
                 mockBridge,
             );
@@ -415,7 +420,6 @@ describe("DiscordBot", () => {
                 return Promise.resolve();
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
             const ITERATIONS = 25;
             const CHANID = 123;
@@ -444,7 +448,6 @@ describe("DiscordBot", () => {
     //   const discordBot = new modDiscordBot.DiscordBot(
     //     config,
     //   );
-    //   discordBot.setBridge(mockBridge);
     //   discordBot.run();
     //   it("should reject an unknown room.", () => {
     //     return assert.isRejected(discordBot.OnTyping( {id: "512"}, {id: "12345"}, true));

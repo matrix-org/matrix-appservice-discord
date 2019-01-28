@@ -58,17 +58,15 @@ const JOIN_ROOM_SCHEDULE = [
 /* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
-
-    private config: DiscordBridgeConfig;
-    private bridge: Bridge;
-    private discord: DiscordBot;
     private botUserId: string;
     private botJoinedRooms: Set<string>; // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;
-    constructor(discord: DiscordBot, config: DiscordBridgeConfig, botUserId: string, private provisioner: Provisioner) {
-        this.discord = discord;
-        this.config = config;
-        this.botUserId = botUserId;
+    constructor(
+        private discord: DiscordBot,
+        private config: DiscordBridgeConfig,
+        private provisioner: Provisioner,
+        private bridge: Bridge) {
+        this.botUserId = this.discord.BotUserId;
         this.botJoinedRooms = new Set();
     }
 
@@ -81,10 +79,6 @@ export class MatrixRoomHandler {
             parseUser: this.tpParseUser.bind(this),
             protocols: ["discord"],
         };
-    }
-
-    public setBridge(bridge: Bridge) {
-        this.bridge = bridge;
     }
 
     public async OnAliasQueried(alias: string, roomId: string) {

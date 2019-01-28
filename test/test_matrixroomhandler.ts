@@ -119,6 +119,7 @@ function createRH(opts: any = {}) {
         OnUpdate: async () => { },
     };
     const bot = {
+        BotUserId: "@botuser:localhost",
         ChannelSyncroniser: cs,
         GetBotId: () => "bot12345",
         GetChannelFromRoomId: async (roomid: string) => {
@@ -201,8 +202,7 @@ function createRH(opts: any = {}) {
             }
         },
     };
-    const handler = new RoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge(bridge);
+    const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any);
     return handler;
 }
 

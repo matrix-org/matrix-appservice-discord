@@ -29,7 +29,7 @@ const TIMEOUT_MS = 1000;
 describe("Provisioner", () => {
     describe("AskBridgePermission", () => {
         it("should fail to bridge a room that timed out", async () => {
-            const p = new Provisioner();
+            const p = new Provisioner(null);
             const startAt = Date.now();
             try {
                 await p.AskBridgePermission(
@@ -47,7 +47,7 @@ describe("Provisioner", () => {
             }
         });
         it("should fail to bridge a room that was declined", async () => {
-            const p = new Provisioner();
+            const p = new Provisioner(null);
             const promise = p.AskBridgePermission(
                 new MockChannel("foo", "bar") as any,
                 "Mark",
@@ -63,7 +63,7 @@ describe("Provisioner", () => {
 
         });
         it("should bridge a room that was approved", async () => {
-            const p = new Provisioner();
+            const p = new Provisioner(null);
             const promise = p.AskBridgePermission(
                 new MockChannel("foo", "bar") as any,
                 "Mark",

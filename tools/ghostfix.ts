@@ -93,9 +93,6 @@ const clientFactory = new ClientFactory({
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
 });
-const provisioner = new Provisioner();
-const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
-const discordbot = new DiscordBot(config, discordstore, provisioner);
 
 const bridge = new Bridge({
     clientFactory,
@@ -114,18 +111,13 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-provisioner.SetBridge(bridge);
-discordbot.setBridge(bridge);
-
 async function run() {
     try {
         await bridge.loadDatabases();
-    } catch (e) {
-        await discordstore.init();
-    }
-    const userSync = new UserSyncroniser(bridge, config, discordbot);
+    } catch (e) { }
+    const discordbot = new DiscordBot(botUserId, config, bridge);
+    await discordbot.init();
     bridge._clientFactory = clientFactory;
-    await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
     const promiseList: Promise<void>[] = [];
@@ -141,7 +133,7 @@ async function run() {
                     let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                     const doJoin = async () => {
                         await Util.DelayedPromise(currentSchedule);
-                        await userSync.OnUpdateGuildMember(member, true);
+                        await discordbot.UserSyncroniser.OnUpdateGuildMember(member, true);
                     };
                     const errorHandler = async (err) => {
                         log.error(`Error joining rooms for ${member.id}`);

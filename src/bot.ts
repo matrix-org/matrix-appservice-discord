@@ -63,11 +63,9 @@ interface IThirdPartyLookup {
 }
 
 export class DiscordBot {
-    private config: DiscordBridgeConfig;
     private clientFactory: DiscordClientFactory;
     private store: DiscordStore;
     private bot: Discord.Client;
-    private bridge: Bridge;
     private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
@@ -77,35 +75,34 @@ export class DiscordBot {
     private userSync: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
+    private provisioner: Provisioner;
     /* Caches */
     private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}>;
 
     /* Handles messages queued up to be sent to discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
 
-    constructor(config: DiscordBridgeConfig, store: DiscordStore, private provisioner: Provisioner) {
-        this.config = config;
-        this.store = store;
-        this.sentMessages = [];
-        this.clientFactory = new DiscordClientFactory(store, config.auth);
+    constructor(private botUserId: string, private config: DiscordBridgeConfig, private bridge: Bridge) {
+
+        // create classes
+        this.store = new DiscordStore(config.database);
+        this.provisioner = new Provisioner(this.bridge);
+        this.clientFactory = new DiscordClientFactory(this.store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(
             new DiscordMessageProcessorOpts(this.config.bridge.domain, this),
         );
         this.presenceHandler = new PresenceHandler(this);
-        this.discordMessageQueue = {};
-        this.lastEventIds = {};
-    }
-
-    public setBridge(bridge: Bridge) {
-        this.bridge = bridge;
+        this.roomHandler = new MatrixRoomHandler(this, this.config, this.provisioner, this.bridge);
         this.mxEventProcessor = new MatrixEventProcessor(
-            new MatrixEventProcessorOpts(this.config, bridge, this),
+            new MatrixEventProcessorOpts(this.config, this.bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-    }
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
 
-    public setRoomHandler(roomHandler: MatrixRoomHandler) {
-        this.roomHandler = roomHandler;
+        // init vars
+        this.sentMessages = [];
+        this.discordMessageQueue = {};
+        this.lastEventIds = {};
     }
 
     get ClientFactory(): DiscordClientFactory {
@@ -120,6 +117,14 @@ export class DiscordBot {
         return this.channelSync;
     }
 
+    get BotUserId(): string {
+        return this.botUserId;
+    }
+
+    get RoomHandler(): MatrixRoomHandler {
+        return this.roomHandler;
+    }
+
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
@@ -130,8 +135,12 @@ export class DiscordBot {
         return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
     }
 
-    public async run(): Promise<void> {
+    public async init(): Promise<void> {
+        await this.store.init();
         await this.clientFactory.init();
+    }
+
+    public async run(): Promise<void> {
         const client = await this.clientFactory.getClient();
 
         if (!this.config.bridge.disableTypingNotifications) {
@@ -224,7 +233,6 @@ export class DiscordBot {
         });
         const jsLog = new Log("discord.js");
 
-        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
         client.on("userUpdate", async (_, user) => {
             try {
                 await this.userSync.OnUpdateUser(user);
