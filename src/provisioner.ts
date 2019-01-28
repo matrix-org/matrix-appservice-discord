@@ -25,12 +25,9 @@ const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
 export class Provisioner {
 
-    private bridge: Bridge;
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
 
-    constructor(bridge: Bridge) {
-        this.bridge = bridge;
-    }
+    constructor(private bridge: Bridge) { }
 
     public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
         const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}_bridged`);

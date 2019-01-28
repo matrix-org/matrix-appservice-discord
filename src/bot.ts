@@ -62,11 +62,9 @@ interface IThirdPartyLookup {
 }
 
 export class DiscordBot {
-    private config: DiscordBridgeConfig;
     private clientFactory: DiscordClientFactory;
     private store: DiscordStore;
     private bot: Discord.Client;
-    private bridge: Bridge;
     private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
@@ -77,15 +75,11 @@ export class DiscordBot {
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
-    private botUserId: string;
 
     /* Handles messages queued up to be sent to discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
 
-    constructor(botUserId: string, config: DiscordBridgeConfig, bridge: Bridge) {
-        this.config = config;
-        this.bridge = bridge;
-        this.botUserId = botUserId;
+    constructor(private botUserId: string, private config: DiscordBridgeConfig, private bridge: Bridge) {
 
         // create classes
         this.store = new DiscordStore(config.database);

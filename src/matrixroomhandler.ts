@@ -58,19 +58,14 @@ const JOIN_ROOM_SCHEDULE = [
 /* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
-
-    private config: DiscordBridgeConfig;
-    private bridge: Bridge;
-    private discord: DiscordBot;
     private botUserId: string;
     private botJoinedRooms: Set<string>; // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;
-    private provisioner: Provisioner;
-    constructor(discord: DiscordBot, config: DiscordBridgeConfig, provisioner: Provisioner, bridge: Bridge) {
-        this.discord = discord;
-        this.config = config;
-        this.provisioner = provisioner;
-        this.bridge = bridge;
+    constructor(
+        private discord: DiscordBot,
+        private config: DiscordBridgeConfig,
+        private provisioner: Provisioner,
+        private bridge: Bridge) {
         this.botUserId = this.discord.BotUserId;
         this.botJoinedRooms = new Set();
     }
