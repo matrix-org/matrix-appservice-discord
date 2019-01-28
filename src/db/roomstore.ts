@@ -1,3 +1,18 @@
+/*
+Copyright 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 import { Log } from "../log";
 import { IDatabaseConnector } from "./connector";
 
@@ -11,18 +26,23 @@ const log = new Log("DbRoomStore");
  * that accesses the database instead.
  */
 
-interface IRemoteRoomData {
+interface IRemoteRoomData extends IRemoteRoomDataLazy {
     discord_guild: string;
     discord_channel: string;
+}
+
+interface IRemoteRoomDataLazy  {
+    discord_guild?: string;
+    discord_channel?: string;
     discord_name?: string|null;
     discord_topic?: string|null;
     discord_type?: string|null;
     discord_iconurl?: string|null;
     discord_iconurl_mxc?: string|null;
-    update_name?: number|null;
-    update_topic?: number|null;
-    update_icon?: number|null;
-    plumbed?: number|null;
+    update_name?: number|boolean|null;
+    update_topic?: number|boolean|null;
+    update_icon?: number|boolean|null;
+    plumbed?: number|boolean|null;
 }
 
 export class RemoteStoreRoom {
@@ -78,7 +98,7 @@ export class DbRoomStore {
 
     public async upsertEntry(entry: IRoomStoreEntry) {
         const promises: Promise<void>[] = [];
-        // N.b. Sqlite and postgres don't really have a easy way to do upserts.
+
         const row = (await this.db.Get("SELECT * FROM room_entries WHERE id = $id", {id: entry.id})) || {};
 
         if (!row.id) {
@@ -103,6 +123,9 @@ export class DbRoomStore {
         const rmIdDifferent = remoteId !== row.remote_id;
         // Did the room ids change?
         if (row.id && (mxIdDifferent || rmIdDifferent)) {
+            if (matrixId) {
+                this.entriesMatrixIdCache.delete(matrixId);
+            }
             const items: string[] = [];
 
             if (mxIdDifferent) {
@@ -123,7 +146,6 @@ export class DbRoomStore {
         }
 
         // Matrix room doesn't store any data.
-
         if (entry.remote) {
             await this.upsertRoom(entry.remote);
         }
@@ -203,7 +225,7 @@ export class DbRoomStore {
         // This no-ops, because we don't store anything interesting.
     }
 
-    public async getEntriesByRemoteRoomData(data: {[key: string]: string}): Promise<IRoomStoreEntry[]> {
+    public async getEntriesByRemoteRoomData(data: IRemoteRoomDataLazy): Promise<IRoomStoreEntry[]> {
         const whereClaues = Object.keys(data).map((key) => {
             return `${key} = $${key}`;
         }).join(" AND ");

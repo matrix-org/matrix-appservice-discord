@@ -33,7 +33,7 @@ export class Provisioner {
         this.roomStore = roomStore;
     }
 
-    public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
+    public async BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
         const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}_bridged`);
         remote.set("discord_type", "text");
         remote.set("discord_guild", channel.guild.id);
@@ -41,10 +41,10 @@ export class Provisioner {
         remote.set("plumbed", true);
 
         const local = new MatrixRoom(roomId);
-        this.roomStore.linkRooms(local, remote);
+        return this.roomStore.linkRooms(local, remote);
     }
 
-    public UnbridgeRoom(remoteRoom: RemoteRoom) {
+    public async UnbridgeRoom(remoteRoom: RemoteRoom) {
         return this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 

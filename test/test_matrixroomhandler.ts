@@ -97,13 +97,6 @@ function createRH(opts: any = {}) {
                 unban: async () => { USERSUNBANNED++; },
             };
         },
-        getRoomStore: () => {
-            return {
-                removeEntriesByMatrixRoomId: () => {
-
-                },
-            };
-        },
     };
     const us = {
         JoinRoom: async () => { USERSJOINED++; },
@@ -202,7 +195,20 @@ function createRH(opts: any = {}) {
         },
     };
     const handler = new RoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge(bridge);
+    handler.setBridge(bridge, {
+        getEntriesByMatrixId: (matrixId) => {
+            return [{
+                matrix: {},
+                remote: {},
+            }];
+        },
+        linkRooms: () => {
+
+        },
+        removeEntriesByMatrixRoomId: () => {
+
+        },
+    });
     return handler;
 }
 
@@ -740,12 +746,11 @@ describe("MatrixRoomHandler", () => {
         });
     });
     describe("createMatrixRoom", () => {
-        it("will return an object", () => {
+        it("will return an object", async () => {
             const handler: any = createRH({});
             const channel = new MockChannel("123", new MockGuild("456"));
-            const roomOpts = handler.createMatrixRoom(channel, "#test:localhost");
+            const roomOpts = await handler.createMatrixRoom(channel, "#test:localhost");
             expect(roomOpts.creationOpts).to.exist;
-            expect(roomOpts.remote).to.exist;
         });
     });
     describe("HandleDiscordCommand", () => {

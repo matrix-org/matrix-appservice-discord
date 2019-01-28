@@ -101,16 +101,11 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-// Broken
-//provisioner.setStore(null);
 discordbot.setBridge(bridge);
 
 async function run() {
-    try {
-        await bridge.loadDatabases();
-    } catch (e) {
-        await discordstore.init();
-    }
+    await discordstore.init();
+    provisioner.setStore(discordstore.roomStore);
     bridge._clientFactory = clientFactory;
     bridge._botClient = bridge._clientFactory.getClientAs();
     bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
@@ -118,24 +113,23 @@ async function run() {
     const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
-    // This will be broken
-    const mxRoomEntries = await bridge.getRoomStore().getEntriesByRemoteRoomData({
+    // first set update_icon to true if needed
+    const mxRoomEntries = await discordstore.roomStore.getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
     });
 
     const promiseList: Promise<void>[] = [];
     mxRoomEntries.forEach((entry) => {
-        if (entry.remote.get("plumbed")) {
+        if (entry.remote && entry.remote.get("plumbed")) {
             return; // skipping plumbed rooms
         }
-        const updateIcon = entry.remote.get("update_icon");
+        const updateIcon = entry.remote!.get("update_icon");
         if (updateIcon !== undefined && updateIcon !== null) {
             return; // skipping because something was set manually
         }
-        entry.remote.set("update_icon", true);
-        // This will be broken
-        promiseList.push(bridge.getRoomStore().upsertEntry(entry));
+        entry.remote!.set("update_icon", true);
+        promiseList.push(discordstore.roomStore.upsertEntry(entry));
     });
     await Promise.all(promiseList);
 

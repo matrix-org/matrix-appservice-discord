@@ -97,7 +97,6 @@ export class DiscordStore {
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
             let schema: IDbSchema;
             if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
-                console.log(roomStore);
                 schema = (new schemaClass(roomStore) as IDbSchema);
             } else {
                 schema = (new schemaClass() as IDbSchema);

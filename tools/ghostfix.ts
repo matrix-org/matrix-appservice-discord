@@ -113,17 +113,11 @@ const bridge = new Bridge({
     roomStore: config.database.roomStorePath,
     userStore: config.database.userStorePath,
 });
-
-// This will not work.
-//provisioner.SetBridge(bridge);
 discordbot.setBridge(bridge);
 
 async function run() {
-    try {
-        await bridge.loadDatabases();
-    } catch (e) {
-        await discordstore.init();
-    }
+    await discordstore.init();
+    provisioner.setStore(discordstore.roomStore);
     const userSync = new UserSyncroniser(bridge, config, discordbot);
     bridge._clientFactory = clientFactory;
     await discordbot.ClientFactory.init();

@@ -90,7 +90,7 @@ describe("DiscordBot", () => {
         it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
-                null,
+                { },
             );
             discordBot.setBridge(mockBridge);
             await discordBot.run();
@@ -101,7 +101,7 @@ describe("DiscordBot", () => {
         beforeEach( async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
-                null,
+                { },
             );
             discordBot.setBridge(mockBridge);
             await discordBot.run();
