@@ -22,7 +22,7 @@ import { Log } from "./log";
 
 const log = new Log("ClientFactory");
 
-const READY_TIMEOUT = 5000;
+const READY_TIMEOUT = 30000;
 
 export class DiscordClientFactory {
     private config: DiscordBridgeConfigAuth;
