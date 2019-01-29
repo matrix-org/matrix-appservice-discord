@@ -107,6 +107,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
+                    await request.outcomeFrom(Bluebird.reject("Failed to handle"));
                 }
             },
             onLog: (line, isError) => {
