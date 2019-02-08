@@ -92,11 +92,15 @@ export class DiscordStore {
         await this.open_database();
         let version = await this.getSchemaVersion();
         const targetSchema = overrideSchema || CURRENT_SCHEMA;
+        log.info(`Database schema version is ${version}, latest version is ${targetSchema}`);
         while (version < targetSchema) {
             version++;
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
             let schema: IDbSchema;
             if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
+                if (!roomStore) {
+                    throw Error("Schema 8 requires the room store, but it was not provided");
+                }
                 schema = (new schemaClass(roomStore) as IDbSchema);
             } else {
                 schema = (new schemaClass() as IDbSchema);

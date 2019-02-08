@@ -141,7 +141,19 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         registration,
         userStore: config.database.userStorePath,
     });
-    // Warn and deprecate old config options.
+
+    if (config.database.roomStorePath) {
+        log.warn("[DEPRECATED] The room store is now part of the SQL database."
+               + "The config option roomStorePath no longer has any use.");
+    }
+
+    try {
+        await store.init(undefined, bridge.getRoomStore());
+    } catch (ex) {
+        log.error("Failed to init database. Exiting.", ex);
+        process.exit(1);
+    }
+
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
 
@@ -162,8 +174,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     try {
         await bridge.run(port, config);
         log.info(`Started listening on port ${port}`);
-        await store.init(undefined, bridge.getRoomStore());
-        log.info("Initing bot");
         await discordbot.init();
         await discordbot.run();
         log.info("Discordbot started successfully");

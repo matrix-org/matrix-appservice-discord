@@ -71,7 +71,7 @@ export class DiscordBot {
     private discordMsgProcessor: DiscordMessageProcessor;
     private mxEventProcessor: MatrixEventProcessor;
     private presenceHandler: PresenceHandler;
-    private userSync: UserSyncroniser;
+    private userSync!: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
@@ -100,8 +100,6 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(config, bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
-        this.userSync = new UserSyncroniser(bridge, config, this);
-
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
@@ -140,6 +138,8 @@ export class DiscordBot {
 
     public async init(): Promise<void> {
         await this.clientFactory.init();
+        // This immediately pokes UserStore, so it must be created after the bridge has started.
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
     }
 
     public async run(): Promise<void> {
