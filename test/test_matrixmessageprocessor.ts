@@ -98,6 +98,13 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("wow \\\\\\*this\\\\\\* is cool");
         });
+        it("escapes ALL the stuff", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getPlainMessage("\\ * _ ~ ` |");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("\\\\ \\* \\_ \\~ \\` \\|");
+        });
     });
     describe("FormatMessage / formatted_body / simple", () => {
         it("leaves blank stuff untouched", async () => {

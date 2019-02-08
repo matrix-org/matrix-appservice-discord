@@ -20,9 +20,7 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
-import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
-import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 import "source-map-support/register";
 
@@ -57,6 +55,9 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
+// tslint:disable-next-line no-any
+type callbackFn = (...args: any[]) => Promise<any>;
+
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
     config.ApplyConfig(fileConfig);
@@ -74,10 +75,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         token: registration.as_token,
         url: config.bridge.homeserverUrl,
     });
-    const provisioner = new Provisioner();
-    const discordstore = new DiscordStore(config.database);
-    const discordbot = new DiscordBot(config, discordstore, provisioner);
-    const roomhandler = new MatrixRoomHandler(discordbot, config, botUserId, provisioner);
+    const store = new DiscordStore(config.database);
+
+    const callbacks: { [id: string]: callbackFn; } = {};
 
     const bridge = new Bridge({
         clientFactory,
@@ -85,26 +85,30 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             // onUserQuery: userQuery,
             onAliasQueried: async (alias: string, roomId: string) => {
                 try {
-                    return await roomhandler.OnAliasQueried.bind(roomhandler)(alias, roomId);
+                    return await callbacks.onAliasQueried(alias, roomId);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string) => {
                 try {
-                    return await roomhandler.OnAliasQuery.bind(roomhandler)(alias, aliasLocalpart);
+                    return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
                 try {
                     // Build our own context.
+                    if (!store.roomStore) {
+                        log.warn("Discord store not ready yet, dropping message");
+                        return;
+                    }
                     const roomId = request.getData().room_id;
                     let context = {};
                     if (roomId) {
-                        const entries  = await discordstore.roomStore.getEntriesByMatrixId(request.getData().room_id);
+                        const entries  = await store.roomStore.getEntriesByMatrixId(request.getData().room_id);
                         context = {
                             rooms: entries[0],
                         };
                     }
-                    await request.outcomeFrom(Bluebird.resolve(roomhandler.OnEvent(request, context)));
+                    await request.outcomeFrom(Bluebird.resolve(callbacks.OnEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                     await request.outcomeFrom(Bluebird.reject("Failed to handle"));
@@ -113,7 +117,13 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             onLog: (line, isError) => {
                 log.verbose("matrix-appservice-bridge", line);
             },
-            thirdPartyLookup: roomhandler.ThirdPartyLookup,
+            thirdPartyLookup: async () => {
+                try {
+                    return await callbacks.thirdPartyLookup();
+                } catch (err) {
+                    log.error("Exception thrown while handling \"thirdPartyLookup\" event", err);
+                }
+            },
         },
         disableContext: true,
         domain: config.bridge.domain,
@@ -131,23 +141,35 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         registration,
         userStore: config.database.userStorePath,
     });
-    log.info("Initing bridge.");
-    log.info(`Started listening on port ${port}.`);
+    // Warn and deprecate old config options.
+    const discordbot = new DiscordBot(botUserId, config, bridge, store);
+    const roomhandler = discordbot.RoomHandler;
+
+    try {
+        callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
+        callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
+        callbacks.onEvent = roomhandler.OnEvent.bind(roomhandler);
+        callbacks.thirdPartyLookup = async () => {
+            return roomhandler.ThirdPartyLookup;
+        };
+    } catch (err) {
+        log.error("Failed to register callbacks. Exiting.", err);
+        process.exit(1);
+    }
+
+    log.info("Initing bridge");
 
     try {
         await bridge.run(port, config);
-        log.info("Initing store.");
-        await discordstore.init(0, bridge.getRoomStore());
-        log.info("Initing bot.");
-        provisioner.setStore(discordstore.roomStore);
-        roomhandler.setBridge(bridge, discordstore.roomStore);
-        discordbot.setBridge(bridge);
-        discordbot.setRoomHandler(roomhandler);
+        log.info(`Started listening on port ${port}`);
+        await store.init(undefined, bridge.getRoomStore());
+        log.info("Initing bot");
+        await discordbot.init();
         await discordbot.run();
-        log.info("Discordbot started successfully.");
+        log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
-        log.error("Failure during startup. Exiting.");
+        log.error("Failure during startup. Exiting");
         process.exit(1);
     }
 }

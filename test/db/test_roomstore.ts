@@ -123,20 +123,20 @@ describe("RoomStore", () => {
             const EXPECTED_ROOMS = 2;
             await store.roomStore.upsertEntry({
                 id: "test4_1",
-                matrix: new MatrixStoreRoom("test4_m1"),
+                matrix: new MatrixStoreRoom("!test_mOne:eggs.com"),
                 remote: new RemoteStoreRoom("test4_r", {discord_guild: "five", discord_channel: "five"}),
             });
             await store.roomStore.upsertEntry({
                 id: "test4_2",
-                matrix: new MatrixStoreRoom("test4_m2"),
+                matrix: new MatrixStoreRoom("!test_mTwo:eggs.com"),
                 remote: new RemoteStoreRoom("test4_r", {discord_guild: "nine", discord_channel: "nine"}),
             });
-            const entries = await store.roomStore.getEntriesByMatrixIds(["test4_m1", "test4_m2"]);
+            const entries = await store.roomStore.getEntriesByMatrixIds(["!test_mOne:eggs.com", "!test_mTwo:eggs.com"]);
             expect(entries).to.have.lengthOf(EXPECTED_ROOMS);
             expect(entries[0].id).to.equal("test4_1");
-            expect(entries[0].matrix!.roomId).to.equal("test4_m1");
+            expect(entries[0].matrix!.roomId).to.equal("!test_mOne:eggs.com");
             expect(entries[1].id).to.equal("test4_2");
-            expect(entries[1].matrix!.roomId).to.equal("test4_m2");
+            expect(entries[1].matrix!.roomId).to.equal("!test_mTwo:eggs.com");
         });
     });
     describe("linkRooms", () => {

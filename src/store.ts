@@ -37,7 +37,7 @@ export class DiscordStore {
     private version: number;
     private config: DiscordBridgeConfigDatabase;
     private pRoomStore: DbRoomStore;
-    constructor(private configOrFile: DiscordBridgeConfigDatabase|string) {
+    constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
             this.config.filename = configOrFile;

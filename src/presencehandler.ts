@@ -32,11 +32,9 @@ interface IMatrixPresence {
 }
 
 export class PresenceHandler {
-    private readonly bot: DiscordBot;
     private presenceQueue: User[];
     private interval: NodeJS.Timeout | null;
-    constructor(bot: DiscordBot) {
-        this.bot = bot;
+    constructor(private bot: DiscordBot) {
         this.presenceQueue = [];
     }
 

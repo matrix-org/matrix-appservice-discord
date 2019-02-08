@@ -17,25 +17,15 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Proxyquire from "proxyquire";
 import {DiscordBridgeConfig} from "../src/config";
-import {MockDiscordClient} from "./mocks/discordclient";
-import {PresenceHandler} from "../src/presencehandler";
-import {DiscordBot} from "../src/bot";
-import {MatrixRoomHandler} from "../src/matrixroomhandler";
 import {MockChannel} from "./mocks/channel";
 import {MockMember} from "./mocks/member";
-import * as Bluebird from "bluebird";
 import {MockGuild} from "./mocks/guild";
-import {Guild} from "discord.js";
 import { Util } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const expect = Chai.expect;
-
-// const DiscordClientFactory = Proxyquire("../src/clientfactory", {
-//     "discord.js": { Client: require("./mocks/discordclient").MockDiscordClient },
-// }).DiscordClientFactory;
 
 const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
     "./util": {
@@ -112,6 +102,7 @@ function createRH(opts: any = {}) {
         OnUpdate: async () => { },
     };
     const bot = {
+        BotUserId: "@botuser:localhost",
         ChannelSyncroniser: cs,
         GetBotId: () => "bot12345",
         GetChannelFromRoomId: async (roomid: string) => {
@@ -194,8 +185,7 @@ function createRH(opts: any = {}) {
             }
         },
     };
-    const handler = new RoomHandler(bot as any, config, "@botuser:localhost", provisioner as any);
-    handler.setBridge(bridge, {
+    const store = {
         getEntriesByMatrixId: (matrixId) => {
             return [{
                 matrix: {},
@@ -208,7 +198,8 @@ function createRH(opts: any = {}) {
         removeEntriesByMatrixRoomId: () => {
 
         },
-    });
+    }
+    const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any, store);
     return handler;
 }
 
