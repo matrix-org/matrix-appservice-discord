@@ -500,6 +500,9 @@ export class DiscordBot {
             throw Error("Room(s) not found.");
         }
         const entry = entries[0];
+        if (!entry.remote) {
+            throw Error("Room had no remote component");
+        }
         const guild = client.guilds.get(entry.remote!.get("discord_guild") as string);
         if (guild) {
             const channel = client.channels.get(entry.remote!.get("discord_channel") as string);

@@ -19,6 +19,7 @@ import { IDatabaseConnector } from "./connector";
 import * as uuid from "uuid/v4";
 
 const log = new Log("DbRoomStore");
+const ROOM_ID_REGEX = /!([A-z]|_)+:(\d|[A-z]|-|\.|\:)+/;
 
 /**
  * A RoomStore compatible with
@@ -122,7 +123,7 @@ export class DbRoomStore {
         const mxIdDifferent = matrixId !== row.matrix_id;
         const rmIdDifferent = remoteId !== row.remote_id;
         // Did the room ids change?
-        if (row.id && (mxIdDifferent || rmIdDifferent)) {
+        if (mxIdDifferent || rmIdDifferent) {
             if (matrixId) {
                 this.entriesMatrixIdCache.delete(matrixId);
             }
@@ -161,18 +162,23 @@ export class DbRoomStore {
         );
         const res: IRoomStoreEntry[] = [];
         for (const entry of entries) {
-            const remoteId = entry.remote_id as string || "";
-            const row = await this.db.Get(
-                "SELECT * FROM remote_room_data WHERE room_id = $rid",
-                {rid: remoteId},
-            );
-            if (!row) { continue; }
+            let remote: RemoteStoreRoom|null = null;
+            if (entry.remote_id) {
+                const remoteId = entry.remote_id as string;
+                const row = await this.db.Get(
+                    "SELECT * FROM remote_room_data WHERE room_id = $remoteId",
+                    {remoteId},
+                );
+                if (row) {
+                    // tslint:disable-next-line no-any
+                    remote = new RemoteStoreRoom(remoteId, row as any);
+                }
+            }
 
             res.push({
                 id: (entry.id as string),
-                matrix: matrixId ? new MatrixStoreRoom(matrixId) : null,
-                // tslint:disable-next-line no-any
-                remote: remoteId ? new RemoteStoreRoom(remoteId, row as any) : null,
+                matrix: new MatrixStoreRoom(matrixId),
+                remote,
             });
         }
         if (res.length > 0) {
@@ -182,24 +188,38 @@ export class DbRoomStore {
     }
 
     public async getEntriesByMatrixIds(matrixIds: string[]): Promise<IRoomStoreEntry[]> {
+        // Validate matrixIds to prevent injections.
+        matrixIds = matrixIds.filter((id) => {
+            if (!ROOM_ID_REGEX.exec(id)) {
+                log.warn(`${id} was excluded for not looking like a real roomID`);
+                return false;
+            }
+            return true;
+        });
         const entries = await this.db.All(
             `SELECT * FROM room_entries WHERE matrix_id IN ('${matrixIds.join("','")}')`,
         );
         const res: IRoomStoreEntry[] = [];
         for (const entry of entries) {
+            let remote: RemoteStoreRoom|null = null;
             const matrixId = entry.matrix_id as string || "";
-            const remoteId = entry.remote_id as string || "";
-            const row = await this.db.Get(
-                "SELECT * FROM remote_room_data WHERE room_id = $rid",
-                {rid: remoteId},
-            );
-            if (!row) { continue; }
+            const remoteId = entry.remote_id as string;
+            if (remoteId) {
+                const row = await this.db.Get(
+                    "SELECT * FROM remote_room_data WHERE room_id = $rid",
+                    {rid: remoteId},
+                );
+                if (row) {
+                    // tslint:disable-next-line no-any
+                    remote = new RemoteStoreRoom(remoteId, row as any);
+                }
+            }
 
             res.push({
                 id: (entry.id as string),
                 matrix: matrixId ? new MatrixStoreRoom(matrixId) : null,
                 // tslint:disable-next-line no-any
-                remote: remoteId ? new RemoteStoreRoom(remoteId, row as any) : null,
+                remote,
             });
         }
         return res;
@@ -255,19 +275,25 @@ export class DbRoomStore {
     }
 
     public async removeEntriesByMatrixRoomId(matrixId: string) {
-        await this.db.Run(`DELETE FROM room_entries WHERE matrix_id = $matrixId`, {matrixId});
-        await this.db.Run(`DELETE FROM remote_room_data WHERE room_id = $matrixId`, {matrixId});
+        const entries = (await this.db.All(`SELECT * room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
+        entries.map((entry) => {
+            if (entry.remote_id) {
+                return this.removeEntriesByRemoteRoomId(entry.remote_id as string);
+            } else if (entry.matrix_id) {
+                return this.db.Run(`DELETE FROM room_entries WHERE matrix_id = $matrixId`, {matrixId: entry.matrix_id});
+            }
+        });
     }
 
     private async upsertRoom(room: RemoteStoreRoom) {
+        if (!room.data) {
+            throw new Error("Tried to upsert a room with undefined data");
+        }
+
         const existingRow = await this.db.Get(
             "SELECT * FROM remote_room_data WHERE room_id = $id",
             {id: room.roomId},
         );
-
-        if (!room.data) {
-            throw new Error("Tried to upsert a room with undefined data");
-        }
 
         const data = {
             discord_channel:     room.data.discord_channel,
@@ -309,7 +335,7 @@ export class DbRoomStore {
             return;
         }
 
-        const keysToUpdate = { };
+        const keysToUpdate = { } as IRemoteRoomDataLazy;
 
         // New keys
         Object.keys(room.data).filter(
@@ -336,7 +362,7 @@ export class DbRoomStore {
             {
                 id: room.roomId,
                 // tslint:disable-next-line no-any
-                ...keysToUpdate,
+                ...keysToUpdate as any,
             });
             log.verbose("Upserted room " + room.roomId);
         } catch (ex) {

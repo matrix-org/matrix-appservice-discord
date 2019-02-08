@@ -29,7 +29,7 @@ export class Provisioner {
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
     private roomStore: DbRoomStore;
 
-    public setStore(roomStore: DbRoomStore) {
+    constructor(roomStore: DbRoomStore) {
         this.roomStore = roomStore;
     }
 
