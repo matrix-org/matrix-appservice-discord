@@ -198,7 +198,7 @@ function createRH(opts: any = {}) {
         removeEntriesByMatrixRoomId: () => {
 
         },
-    }
+    };
     const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any, store);
     return handler;
 }
