@@ -19,7 +19,6 @@ import { IDatabaseConnector } from "./connector";
 import * as uuid from "uuid/v4";
 
 const log = new Log("DbRoomStore");
-const ROOM_ID_REGEX = /!([A-z]|_)+:(\d|[A-z]|-|\.|\:)+/;
 
 /**
  * A RoomStore compatible with
@@ -188,17 +187,10 @@ export class DbRoomStore {
     }
 
     public async getEntriesByMatrixIds(matrixIds: string[]): Promise<IRoomStoreEntry[]> {
-        // Validate matrixIds to prevent injections.
-        matrixIds = matrixIds.filter((id) => {
-            if (!ROOM_ID_REGEX.exec(id)) {
-                log.warn(`${id} was excluded for not looking like a real roomID`);
-                return false;
-            }
-            return true;
-        });
-        const entries = await this.db.All(
-            `SELECT * FROM room_entries WHERE matrix_id IN ('${matrixIds.join("','")}')`,
-        );
+        const mxIdMap = { };
+        matrixIds.forEach((mxId, i) => mxIdMap[i] = mxId);
+        const sql = `SELECT * FROM room_entries WHERE matrix_id IN (${matrixIds.map((_, id) => `\$${id}`).join(", ")})`;
+        const entries = await this.db.All(sql, mxIdMap);
         const res: IRoomStoreEntry[] = [];
         for (const entry of entries) {
             let remote: RemoteStoreRoom|null = null;
