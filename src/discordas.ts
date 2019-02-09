@@ -147,6 +147,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                + "The config option roomStorePath no longer has any use.");
     }
 
+    await bridge.run(port, config);
+    log.info(`Started listening on port ${port}`);
+
     try {
         await store.init(undefined, bridge.getRoomStore());
     } catch (ex) {
@@ -172,8 +175,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     log.info("Initing bridge");
 
     try {
-        await bridge.run(port, config);
-        log.info(`Started listening on port ${port}`);
         await discordbot.init();
         await discordbot.run();
         log.info("Discordbot started successfully");
