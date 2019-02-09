@@ -183,7 +183,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
     try {
         log.info("Initing store.");
-        await bridge.run(port, config);
         await discordbot.init();
         log.info(`Started listening on port ${port}.`);
         log.info("Initing bot.");
