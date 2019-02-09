@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, GuildMember, GuildChannel } from "discord.js";
+import { User, GuildMember } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { MatrixUser, RemoteUser, Bridge, Entry, UserBridgeStore, Intent } from "matrix-appservice-bridge";
+import { Bridge, Intent, MatrixUser } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
-import * as Bluebird from "bluebird";
 import { Log } from "./log";
 import { IMatrixEvent } from "./matrixtypes";
+import { DbUserStore, RemoteUser } from "./db/userstore";
 
 const log = new Log("UserSync");
 
@@ -81,12 +81,11 @@ export class UserSyncroniser {
 
     // roomId+userId => ev
     public userStateHold: Map<string, IMatrixEvent>;
-    private userStore: UserBridgeStore;
     constructor(
         private bridge: Bridge,
         private config: DiscordBridgeConfig,
-        private discord: DiscordBot) {
-        this.userStore = this.bridge.getUserStore();
+        private discord: DiscordBot,
+        private userStore: DbUserStore) {
         this.userStateHold = new Map<string, IMatrixEvent>();
     }
 
@@ -115,18 +114,19 @@ export class UserSyncroniser {
             log.info(`Creating new user ${userState.mxUserId}`);
             remoteUser = new RemoteUser(userState.id);
             await this.userStore.linkUsers(
-                new MatrixUser(userState.mxUserId.substr("@".length)),
-                remoteUser,
+                userState.mxUserId.substr("@".length),
+                userState.id,
             );
 
         } else {
-            remoteUser = await this.userStore.getRemoteUser(userState.id);
+            const rUser = await this.userStore.getRemoteUser(userState.id);
+            remoteUser = rUser ? rUser : new RemoteUser(userState.id);
         }
 
         if (userState.displayName !== null) {
             log.verbose(`Updating displayname for ${userState.mxUserId} to "${userState.displayName}"`);
             await intent.setDisplayName(userState.displayName);
-            remoteUser.set("displayname", userState.displayName);
+            remoteUser.displayname = userState.displayName;
             userUpdated = true;
         }
 
@@ -138,16 +138,16 @@ export class UserSyncroniser {
                 userState.avatarId,
             );
             await intent.setAvatarUrl(avatarMxc.mxcUrl);
-            remoteUser.set("avatarurl", userState.avatarUrl);
-            remoteUser.set("avatarurl_mxc", avatarMxc.mxcUrl);
+            remoteUser.avatarurl = userState.avatarUrl;
+            remoteUser.avatarurlMxc = avatarMxc.mxcUrl;
             userUpdated = true;
         }
 
         if (userState.removeAvatar) {
             log.verbose(`Clearing avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
             await intent.setAvatarUrl(null);
-            remoteUser.set("avatarurl", null);
-            remoteUser.set("avatarurl_mxc", null);
+            remoteUser.avatarurl = null;
+            remoteUser.avatarurlMxc = null;
             userUpdated = true;
         }
 
@@ -198,11 +198,14 @@ export class UserSyncroniser {
             return;
         }
         const remoteUser = await this.userStore.getRemoteUser(memberState.id);
+        if (!remoteUser) {
+            throw Error("Remote user not found");
+        }
         const intent = this.bridge.getIntent(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         await intent.getClient().sendStateEvent(roomId, "m.room.member", {
-            "avatar_url": remoteUser.get("avatarurl_mxc"),
+            "avatar_url": remoteUser.avatarurlMxc,
             "displayname": memberState.displayName,
             "membership": "join",
             "uk.half-shot.discord.member": {
@@ -215,8 +218,7 @@ export class UserSyncroniser {
         }, memberState.mxUserId);
 
         if (guildId) {
-            const nickKey = `nick_${guildId}`;
-            remoteUser.set(nickKey, memberState.displayName);
+            remoteUser.guildNicks.set(guildId, memberState.displayName);
         }
         await this.userStore.setRemoteUser(remoteUser);
     }
@@ -245,13 +247,13 @@ export class UserSyncroniser {
             return userState;
         }
 
-        const oldDisplayName = remoteUser.get("displayname");
+        const oldDisplayName = remoteUser.displayname;
         if (oldDisplayName !== displayName) {
             log.verbose(`User ${discordUser.id} displayname should be updated`);
             userState.displayName = displayName;
         }
 
-        const oldAvatarUrl = remoteUser.get("avatarurl");
+        const oldAvatarUrl = remoteUser.avatarurl;
         if (oldAvatarUrl !== discordUser.avatarURL) {
             log.verbose(`User ${discordUser.id} avatarurl should be updated`);
             if (discordUser.avatarURL !== null) {
@@ -366,7 +368,7 @@ export class UserSyncroniser {
     }
 
     public async UpdateStateForGuilds(remoteUser: RemoteUser) {
-        const id = remoteUser.getId();
+        const id = remoteUser.id;
         log.info(`Got update for ${id}.`);
 
         await Util.AsyncForEach(this.discord.GetGuilds(), async (guild) => {
