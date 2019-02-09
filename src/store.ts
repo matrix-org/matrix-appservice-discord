@@ -91,7 +91,7 @@ export class DiscordStore {
      * Checks the database has all the tables needed.
      */
     public async init(
-        overrideSchema: number = 0, roomStore: RoomStore = null, userStore: UserStore = null
+        overrideSchema: number = 0, roomStore: RoomStore = null, userStore: UserStore = null,
     ): Promise<void> {
         const SCHEMA_ROOM_STORE_REQUIRED = 8;
         const SCHEMA_USER_STORE_REQUIRED = 9;
