@@ -139,6 +139,8 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             type: "per_room",
         },
         registration,
+        // These must be kept for a while yet since we use them for migrations.
+        roomStore: config.database.roomStorePath,
         userStore: config.database.userStorePath,
     });
 
