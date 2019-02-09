@@ -97,7 +97,6 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(this.config, this.bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
 
         // init vars
         this.sentMessages = [];
@@ -137,6 +136,8 @@ export class DiscordBot {
 
     public async init(): Promise<void> {
         await this.store.init();
+        // This uses userStore which needs to be accessed after the bridge has started.
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
         await this.clientFactory.init();
     }
 
