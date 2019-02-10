@@ -21,7 +21,9 @@ import {
     UserStore,
 } from "matrix-appservice-bridge";
 import { RemoteUser } from "../userstore";
+import * as Queue from "p-queue";
 const log = new Log("SchemaV9");
+
 
 export class Schema implements IDbSchema {
     public description = "create user store tables";
@@ -63,6 +65,10 @@ export class Schema implements IDbSchema {
         const remoteUsers = await this.userStore.select({type: "remote"});
         log.info(`Found ${remoteUsers.length} remote users in the DB`);
         let migrated = 0;
+        const processQueue = new Queue({
+        autoStart: true,
+            concurrency: 1000,
+        });
         for (const user of remoteUsers) {
             const matrixIds = await this.userStore.getMatrixLinks(user.id);
             if (!matrixIds || matrixIds.length === 0) {
@@ -80,14 +86,18 @@ export class Schema implements IDbSchema {
                 Object.keys(user.data).filter((k) => k.startsWith("nick_")).forEach((k) => {
                     remote.guildNicks.set(k.substr("nick_".length), user.data[k]);
                 });
-                await store.userStore.linkUsers(matrixId, remote.id);
-                await store.userStore.setRemoteUser(remote);
-                log.info(`Migrated ${matrixId}`);
-                migrated++;
+                processQueue.add(async () => {
+                    await store.userStore.linkUsers(matrixId, remote.id);
+                    return store.userStore.setRemoteUser(remote);
+                }).then(() => {
+                    log.info(`Migrated ${matrixId}, ${processQueue.pending} to go.`);
+                    migrated++;
+                });
             } catch (ex) {
                 log.error(`Failed to link ${matrixId}: `, ex);
             }
         }
+        await processQueue.onIdle();
         if (migrated !== remoteUsers.length) {
             log.error(`Didn't migrate all users, ${remoteUsers.length - migrated} failed to be migrated.`);
         } else {

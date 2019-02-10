@@ -34,6 +34,7 @@
   },
   "homepage": "https://github.com/Half-Shot/matrix-appservice-discord#readme",
   "dependencies": {
+    "@types/p-queue": "^3.0.0",
     "better-sqlite3": "^5.0.1",
     "bluebird": "^3.5.1",
     "command-line-args": "^4.0.1",
@@ -47,6 +48,7 @@
     "mime": "^1.6.0",
     "moment": "^2.22.2",
     "node-html-parser": "^1.1.11",
+    "p-queue": "^3.0.0",
     "pg-promise": "^8.5.1",
     "tslint": "^5.11.0",
     "typescript": "^3.1.3",
