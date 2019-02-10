@@ -67,7 +67,7 @@ export class Schema implements IDbSchema {
         let migrated = 0;
         const processQueue = new Queue({
         autoStart: true,
-            concurrency: 1000,
+            concurrency: 100,
         });
         for (const user of remoteUsers) {
             const matrixIds = await this.userStore.getMatrixLinks(user.id);
