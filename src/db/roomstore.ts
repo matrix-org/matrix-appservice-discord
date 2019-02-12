@@ -173,12 +173,14 @@ export class DbRoomStore {
                     remote = new RemoteStoreRoom(remoteId, row as any);
                 }
             }
-
-            res.push({
-                id: (entry.id as string),
-                matrix: new MatrixStoreRoom(matrixId),
-                remote,
-            });
+            if (remote) {
+                // Only push rooms with a remote
+                res.push({
+                    id: (entry.id as string),
+                    matrix: new MatrixStoreRoom(matrixId),
+                    remote,
+                });
+            }
         }
         if (res.length > 0) {
             this.entriesMatrixIdCache.set(matrixId, {e: res, ts: Date.now()});
@@ -206,13 +208,14 @@ export class DbRoomStore {
                     remote = new RemoteStoreRoom(remoteId, row as any);
                 }
             }
-
-            res.push({
-                id: (entry.id as string),
-                matrix: matrixId ? new MatrixStoreRoom(matrixId) : null,
-                // tslint:disable-next-line no-any
-                remote,
-            });
+            if (remote) {
+                // Only push rooms with a remote
+                res.push({
+                    id: (entry.id as string),
+                    matrix: new MatrixStoreRoom(matrixId) : null,
+                    remote,
+                });
+            }
         }
         return res;
     }
