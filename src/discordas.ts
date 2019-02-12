@@ -20,9 +20,7 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordBot } from "./bot";
-import { MatrixRoomHandler } from "./matrixroomhandler";
 import { DiscordStore } from "./store";
-import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 import "source-map-support/register";
 
@@ -77,6 +75,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         token: registration.as_token,
         url: config.bridge.homeserverUrl,
     });
+    const store = new DiscordStore(config.database);
 
     const callbacks: { [id: string]: callbackFn; } = {};
 
@@ -94,11 +93,25 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
-            onEvent: async (request, context) => {
+            onEvent: async (request) => {
                 try {
+                    // Build our own context.
+                    if (!store.roomStore) {
+                        log.warn("Discord store not ready yet, dropping message");
+                        return;
+                    }
+                    const roomId = request.getData().room_id;
+                    let context = {};
+                    if (roomId) {
+                        const entries  = await store.roomStore.getEntriesByMatrixId(request.getData().room_id);
+                        context = {
+                            rooms: entries[0],
+                        };
+                    }
                     await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
+                    await request.outcomeFrom(Bluebird.reject("Failed to handle"));
                 }
             },
             onLog: (line, isError) => {
@@ -112,6 +125,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 }
             },
         },
+        disableContext: true,
         domain: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
         intentOptions: {
@@ -119,17 +133,33 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 dontJoin: true, // handled manually
             },
         },
+        // To avoid out of order message sending.
         queue: {
             perRequest: true,
             type: "per_room",
         },
         registration,
+        // These must be kept for a while yet since we use them for migrations.
         roomStore: config.database.roomStorePath,
         userStore: config.database.userStorePath,
-        // To avoid out of order message sending.
     });
-    // Warn and deprecate old config options.
-    const discordbot = new DiscordBot(botUserId, config, bridge);
+
+    if (config.database.roomStorePath) {
+        log.warn("[DEPRECATED] The room store is now part of the SQL database."
+               + "The config option roomStorePath no longer has any use.");
+    }
+
+    await bridge.run(port, config);
+    log.info(`Started listening on port ${port}`);
+
+    try {
+        await store.init(undefined, bridge.getRoomStore());
+    } catch (ex) {
+        log.error("Failed to init database. Exiting.", ex);
+        process.exit(1);
+    }
+
+    const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
 
     try {
@@ -144,19 +174,18 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         process.exit(1);
     }
 
-    log.info("Initing bridge.");
+    log.info("Initing bridge");
 
     try {
         log.info("Initing store.");
-        await bridge.run(port, config);
         await discordbot.init();
         log.info(`Started listening on port ${port}.`);
         log.info("Initing bot.");
         await discordbot.run();
-        log.info("Discordbot started successfully.");
+        log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
-        log.error("Failure during startup. Exiting.");
+        log.error("Failure during startup. Exiting");
         process.exit(1);
     }
 }

@@ -18,24 +18,26 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 7;
+export const CURRENT_SCHEMA = 8;
 
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
+import { DbRoomStore } from "./db/roomstore";
+import {
+    RoomStore,
+} from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
  */
 export class DiscordStore {
-    /**
-     * @param  {string} filepath Location of the SQLite database file.
-     */
     public db: IDatabaseConnector;
     private version: number;
     private config: DiscordBridgeConfigDatabase;
-    constructor(private configOrFile: DiscordBridgeConfigDatabase|string) {
+    private pRoomStore: DbRoomStore;
+    constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
             this.config.filename = configOrFile;
@@ -43,6 +45,10 @@ export class DiscordStore {
             this.config = configOrFile;
         }
         this.version = 0;
+    }
+
+    get roomStore() {
+        return this.pRoomStore;
     }
 
     public async backup_database(): Promise<void|{}> {
@@ -80,15 +86,22 @@ export class DiscordStore {
     /**
      * Checks the database has all the tables needed.
      */
-    public async init(overrideSchema: number = 0): Promise<void> {
+    public async init(overrideSchema: number = 0, roomStore: RoomStore = null): Promise<void> {
+        const SCHEMA_ROOM_STORE_REQUIRED = 8;
         log.info("Starting DB Init");
         await this.open_database();
         let version = await this.getSchemaVersion();
         const targetSchema = overrideSchema || CURRENT_SCHEMA;
+        log.info(`Database schema version is ${version}, latest version is ${targetSchema}`);
         while (version < targetSchema) {
             version++;
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
-            const schema = (new schemaClass() as IDbSchema);
+            let schema: IDbSchema;
+            if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
+                schema = (new schemaClass(roomStore) as IDbSchema);
+            } else {
+                schema = (new schemaClass() as IDbSchema);
+            }
             log.info(`Updating database to v${version}, "${schema.description}"`);
             try {
                 await schema.run(this);
@@ -327,6 +340,7 @@ export class DiscordStore {
         }
         try {
             this.db.Open();
+            this.pRoomStore = new DbRoomStore(this.db);
         } catch (ex) {
             log.error("Error opening database:", ex);
             throw new Error("Couldn't open database. The appservice won't be able to continue.");

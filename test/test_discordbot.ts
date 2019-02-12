@@ -92,6 +92,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             await discordBot.run();
         });
@@ -103,6 +104,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             await discordBot.run();
         });
@@ -144,6 +146,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             discord.bot = { user: { id: "654" } };
             discord.provisioner = {
@@ -298,6 +301,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
 
             const guild: any = new MockGuild("123", []);
@@ -324,6 +328,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             discordBot.store.Get = (a, b) => null;
 
@@ -351,6 +356,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             discordBot.store.Get = (a, b) => { return {
                 MatrixId: "$event:localhost;!room:localhost",
@@ -387,6 +393,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             let expected = 0;
             discordBot.OnMessage = async (msg: any) => {
@@ -408,6 +415,7 @@ describe("DiscordBot", () => {
                 "",
                 config,
                 mockBridge,
+                {},
             );
             let expected = 0;
             const THROW_EVERY = 5;

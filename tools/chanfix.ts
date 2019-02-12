@@ -80,6 +80,8 @@ const clientFactory = new ClientFactory({
     token: registration.as_token,
     url: config.bridge.homeserverUrl,
 });
+const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
+const discordbot = new DiscordBot("", config, null, discordstore);
 
 const bridge = new Bridge({
     clientFactory,
@@ -98,16 +100,13 @@ const bridge = new Bridge({
     userStore: config.database.userStorePath,
 });
 
-const discordbot = new DiscordBot(botUserId, config, bridge);
-
 async function run() {
-    try {
-        await bridge.loadDatabases();
-    } catch (e) { }
+    await bridge.loadDatabases();
+    await discordstore.init();
     bridge._clientFactory = clientFactory;
     bridge._botClient = bridge._clientFactory.getClientAs();
     bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
-    await discordbot.init();
+    await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed

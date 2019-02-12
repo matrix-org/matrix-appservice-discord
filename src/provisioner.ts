@@ -20,6 +20,7 @@ import {
     MatrixRoom,
 } from "matrix-appservice-bridge";
 import * as Discord from "discord.js";
+import { DbRoomStore } from "./db/roomstore";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
@@ -27,9 +28,9 @@ export class Provisioner {
 
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
 
-    constructor(private bridge: Bridge) { }
+    constructor(private roomStore: DbRoomStore) { }
 
-    public BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
+    public async BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
         const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}_bridged`);
         remote.set("discord_type", "text");
         remote.set("discord_guild", channel.guild.id);
@@ -37,12 +38,11 @@ export class Provisioner {
         remote.set("plumbed", true);
 
         const local = new MatrixRoom(roomId);
-        this.bridge.getRoomStore().linkRooms(local, remote);
-        this.bridge.getRoomStore().setMatrixRoom(local); // Needs to be done after linking
+        return this.roomStore.linkRooms(local, remote);
     }
 
-    public UnbridgeRoom(remoteRoom: RemoteRoom) {
-        return this.bridge.getRoomStore().removeEntriesByRemoteRoomId(remoteRoom.getId());
+    public async UnbridgeRoom(remoteRoom: RemoteRoom) {
+        return this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
     public async AskBridgePermission(

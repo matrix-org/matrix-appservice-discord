@@ -27,6 +27,7 @@ import * as usage from "command-line-usage";
 import { DiscordBridgeConfig } from "../src/config";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
+import { DiscordStore } from "../src/store";
 const log = new Log("AddRoomsToDirectory");
 const optionDefinitions = [
     {
@@ -89,20 +90,20 @@ const bridge = new Bridge({
     domain: "rubbish",
     homeserverUrl: true,
     registration: true,
-    roomStore: options.store,
 });
+
+const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
 
 async function run() {
     try {
-        await bridge.loadDatabases();
+        await discordstore.init();
     } catch (e) {
         log.error(`Failed to load database`, e);
     }
-
-    let rooms = await bridge.getRoomStore().getEntriesByRemoteRoomData({
+    let rooms = await discordstore.roomStore.getEntriesByRemoteRoomData({
         discord_type: "text",
     });
-    rooms = rooms.filter((r) => r.remote.get("plumbed") !== true );
+    rooms = rooms.filter((r) => r.remote && r.remote.get("plumbed") !== true );
     const client = clientFactory.getClientAs();
     log.info(`Got ${rooms.length} rooms to set`);
     try {

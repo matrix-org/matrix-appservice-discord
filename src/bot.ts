@@ -64,7 +64,6 @@ interface IThirdPartyLookup {
 
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
-    private store: DiscordStore;
     private bot: Discord.Client;
     private presenceInterval: number;
     private sentMessages: string[];
@@ -72,7 +71,7 @@ export class DiscordBot {
     private discordMsgProcessor: DiscordMessageProcessor;
     private mxEventProcessor: MatrixEventProcessor;
     private presenceHandler: PresenceHandler;
-    private userSync: UserSyncroniser;
+    private userSync!: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
@@ -82,22 +81,25 @@ export class DiscordBot {
     /* Handles messages queued up to be sent to discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
 
-    constructor(private botUserId: string, private config: DiscordBridgeConfig, private bridge: Bridge) {
+    constructor(
+        private botUserId: string,
+        private config: DiscordBridgeConfig,
+        private bridge: Bridge,
+        private store: DiscordStore,
+    ) {
 
-        // create classes
-        this.store = new DiscordStore(config.database);
-        this.provisioner = new Provisioner(this.bridge);
-        this.clientFactory = new DiscordClientFactory(this.store, config.auth);
+        // create handlers
+        this.provisioner = new Provisioner(store.roomStore);
+        this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(
-            new DiscordMessageProcessorOpts(this.config.bridge.domain, this),
+            new DiscordMessageProcessorOpts(config.bridge.domain, this),
         );
         this.presenceHandler = new PresenceHandler(this);
-        this.roomHandler = new MatrixRoomHandler(this, this.config, this.provisioner, this.bridge);
+        this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
         this.mxEventProcessor = new MatrixEventProcessor(
-            new MatrixEventProcessorOpts(this.config, this.bridge, this),
+            new MatrixEventProcessorOpts(config, bridge, this),
         );
-        this.channelSync = new ChannelSyncroniser(this.bridge, this.config, this);
-
+        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
@@ -135,10 +137,9 @@ export class DiscordBot {
     }
 
     public async init(): Promise<void> {
-        await this.store.init();
-        // This uses userStore which needs to be accessed after the bridge has started.
-        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
         await this.clientFactory.init();
+        // This immediately pokes UserStore, so it must be created after the bridge has started.
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
     }
 
     public async run(): Promise<void> {
@@ -496,7 +497,7 @@ export class DiscordBot {
     }
 
     public async GetChannelFromRoomId(roomId: string, client?: Discord.Client): Promise<Discord.Channel> {
-        const entries = await this.bridge.getRoomStore().getEntriesByMatrixId(
+        const entries = await this.store.roomStore.getEntriesByMatrixId(
             roomId,
         );
 
@@ -509,9 +510,12 @@ export class DiscordBot {
             throw Error("Room(s) not found.");
         }
         const entry = entries[0];
-        const guild = client.guilds.get(entry.remote.get("discord_guild"));
+        if (!entry.remote) {
+            throw Error("Room had no remote component");
+        }
+        const guild = client.guilds.get(entry.remote!.get("discord_guild") as string);
         if (guild) {
-            const channel = client.channels.get(entry.remote.get("discord_channel"));
+            const channel = client.channels.get(entry.remote!.get("discord_channel") as string);
             if (channel) {
                 return channel;
             }
@@ -567,14 +571,14 @@ export class DiscordBot {
             this.roomIdsForGuildCache.set(`${guild.id}:${guild.member}`, {roomIds: rooms, ts: Date.now()});
             return rooms;
         } else {
-            const rooms = await this.bridge.getRoomStore().getEntriesByRemoteRoomData({
+            const rooms = await this.store.roomStore.getEntriesByRemoteRoomData({
                 discord_guild: guild.id,
             });
             if (rooms.length === 0) {
                 log.verbose(`Couldn't find room(s) for guild id:${guild.id}.`);
                 throw new Error("Room(s) not found.");
             }
-            const roomIds = rooms.map((room) => room.matrix.getId());
+            const roomIds = rooms.map((room) => room.matrix!.getId());
             this.roomIdsForGuildCache.set(`${guild.id}:`, {roomIds, ts: Date.now()});
             return roomIds;
         }
@@ -837,7 +841,7 @@ export class DiscordBot {
                     await afterSend(res);
                 } catch (e) {
                     if (e.errcode !== "M_FORBIDDEN" && e.errcode !==  "M_GUEST_ACCESS_FORBIDDEN") {
-                        log.error("DiscordBot", "Failed to send message into room.", e);
+                        log.error("Failed to send message into room.", e);
                         return;
                     }
                     if (msg.member) {

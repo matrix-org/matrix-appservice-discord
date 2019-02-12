@@ -20,15 +20,11 @@ import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import * as Bluebird from "bluebird";
-import { ChannelSyncroniser } from "../src/channelsyncroniser";
 import { DiscordBridgeConfig } from "../src/config";
-import { DiscordBot } from "../src/bot";
-import { DiscordStore } from "../src/store";
-import { Provisioner } from "../src/provisioner";
-import { UserSyncroniser } from "../src/usersyncroniser";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
-import { TextChannel } from "discord.js";
+import { DiscordBot } from "../src/bot";
+import { DiscordStore } from "../src/store";
 
 const log = new Log("GhostFix");
 
@@ -112,10 +108,9 @@ const bridge = new Bridge({
 });
 
 async function run() {
-    try {
-        await bridge.loadDatabases();
-    } catch (e) { }
-    const discordbot = new DiscordBot(botUserId, config, bridge);
+    await bridge.loadDatabases();
+    const store = new DiscordStore(config.database);
+    const discordbot = new DiscordBot(botUserId, config, bridge, store);
     await discordbot.init();
     bridge._clientFactory = clientFactory;
     const client = await discordbot.ClientFactory.getClient();
