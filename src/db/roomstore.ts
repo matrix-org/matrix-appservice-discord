@@ -212,7 +212,7 @@ export class DbRoomStore {
                 // Only push rooms with a remote
                 res.push({
                     id: (entry.id as string),
-                    matrix: new MatrixStoreRoom(matrixId) : null,
+                    matrix: matrixId ? new MatrixStoreRoom(matrixId) : null,
                     remote,
                 });
             }
