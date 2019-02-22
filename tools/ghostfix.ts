@@ -110,6 +110,7 @@ const bridge = new Bridge({
 async function run() {
     await bridge.loadDatabases();
     const store = new DiscordStore(config.database);
+    await store.init(undefined, bridge.getRoomStore());
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     await discordbot.init();
     bridge._clientFactory = clientFactory;
@@ -128,7 +129,7 @@ async function run() {
                     let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                     const doJoin = async () => {
                         await Util.DelayedPromise(currentSchedule);
-                        await discordbot.UserSyncroniser.OnUpdateGuildMember(member, true);
+                        await discordbot.UserSyncroniser.OnUpdateGuildMember(member, true, false);
                     };
                     const errorHandler = async (err) => {
                         log.error(`Error joining rooms for ${member.id}`);

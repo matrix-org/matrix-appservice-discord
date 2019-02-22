@@ -76,7 +76,7 @@ export class DiscordBot {
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
     /* Caches */
-    private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}>;
+    private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}> = new Map();
 
     /* Handles messages queued up to be sent to discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
