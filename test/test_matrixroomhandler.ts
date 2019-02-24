@@ -189,7 +189,9 @@ function createRH(opts: any = {}) {
         getEntriesByMatrixId: (matrixId) => {
             return [{
                 matrix: {},
-                remote: {},
+                remote: {
+                    data: {},
+                },
             }];
         },
         linkRooms: () => {
@@ -311,7 +313,10 @@ describe("MatrixRoomHandler", () => {
             const context = {
                 rooms: {
                     remote: {
-                        roomId: "_discord_123_456",
+                        data: {
+                            guild_id: "1234",
+                            room_id: "456",
+                        },
                     },
                 },
             };
@@ -326,7 +331,10 @@ describe("MatrixRoomHandler", () => {
             const context = {
                 rooms: {
                     remote: {
-                        roomId: "_discord_123_456",
+                        data: {
+                            guild_id: "1234",
+                            room_id: "456",
+                        },
                     },
                 },
             };
@@ -365,7 +373,10 @@ describe("MatrixRoomHandler", () => {
             const context = {
                 rooms: {
                     remote: {
-                        roomId: "_discord_123_456",
+                        data: {
+                            guild_id: "1234",
+                            room_id: "456",
+                        },
                     },
                 },
             };
