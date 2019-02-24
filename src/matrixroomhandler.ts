@@ -181,10 +181,9 @@ export class MatrixRoomHandler {
                 await this.ProcessCommand(event, context);
                 return;
             } else if (context.rooms.remote) {
-                const guildId = context.rooms.remote.data.discord_guild;
-                const chanId = context.rooms.remote.data.discord_channel;
+                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
-                    await this.discord.ProcessMatrixMsgEvent(event, guildId, chanId);
+                    await this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
                     return;
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
