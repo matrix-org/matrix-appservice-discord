@@ -270,7 +270,7 @@ export class DbRoomStore {
     }
 
     public async removeEntriesByMatrixRoomId(matrixId: string) {
-        const entries = (await this.db.All(`SELECT * room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
+        const entries = (await this.db.All(`SELECT * FROM room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
         entries.map((entry) => {
             if (entry.remote_id) {
                 return this.removeEntriesByRemoteRoomId(entry.remote_id as string);
