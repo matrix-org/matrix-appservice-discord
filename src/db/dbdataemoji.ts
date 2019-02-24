@@ -1,5 +1,5 @@
 /*
-Copyright 2017, 2018 matrix-appservice-discord
+Copyright 2017 - 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ export class DbEmoji implements IDbData {
                 id: params.emoji_id,
                 mxc: params.mxc_url,
             });
-        this.Result = row !== undefined;
+        this.Result = Boolean(row); // check if row exists
         if (this.Result) {
             this.EmojiId = row.emoji_id as string;
             this.Name = row.name as string;
