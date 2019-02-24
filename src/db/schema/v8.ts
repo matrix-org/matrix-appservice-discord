@@ -70,7 +70,7 @@ export class Schema implements IDbSchema {
         for (const e of entrys) {
             const matrix = new MatrixStoreRoom(e.matrix_id);
             try {
-                const remote = new RemoteStoreRoom(e.matrix_id, e.remote);
+                const remote = new RemoteStoreRoom(e.remote_id, e.remote);
                 await store.roomStore.linkRooms(matrix, remote);
                 log.info(`Migrated ${matrix.roomId}`);
                 migrated++;

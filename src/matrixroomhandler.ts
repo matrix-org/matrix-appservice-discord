@@ -98,7 +98,7 @@ export class MatrixRoomHandler {
             );
             await this.roomStore.linkRooms(
                 new MatrixStoreRoom(roomId),
-                new RemoteStoreRoom(roomId, entry.remote!.data),
+                entry.remote!,
             );
             channel = await this.discord.GetChannelFromRoomId(roomId) as Discord.GuildChannel;
         } catch (err) {
