@@ -15,6 +15,7 @@ limitations under the License.
 */
 import { Log } from "../log";
 import { IDatabaseConnector } from "./connector";
+import { Util } from "../util";
 
 import * as uuid from "uuid/v4";
 
@@ -271,11 +272,11 @@ export class DbRoomStore {
 
     public async removeEntriesByMatrixRoomId(matrixId: string) {
         const entries = (await this.db.All(`SELECT * FROM room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
-        entries.map((entry) => {
+        await Util.AsyncForEach(entries, async (entry) => {
             if (entry.remote_id) {
-                return this.removeEntriesByRemoteRoomId(entry.remote_id as string);
+                await this.removeEntriesByRemoteRoomId(entry.remote_id as string);
             } else if (entry.matrix_id) {
-                return this.db.Run(`DELETE FROM room_entries WHERE matrix_id = $matrixId`, {matrixId: entry.matrix_id});
+                await this.db.Run(`DELETE FROM room_entries WHERE matrix_id = $matrixId`, {matrixId: entry.matrix_id});
             }
         });
     }
