@@ -88,7 +88,7 @@ export class MatrixEventProcessor {
                     if (!this.config.bridge.disableJoinLeaveNotifications) {
                         msg += `joined the room`;
                     } else {
-                        return
+                        return;
                     }
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
@@ -98,7 +98,7 @@ export class MatrixEventProcessor {
                 if (!this.config.bridge.disableJoinLeaveNotifications) {
                     msg += `left the room`;
                 } else {
-                    return
+                    return;
                 }
             } else if (membership === "ban") {
                 msg += `banned \`${event.state_key}\` from the room`;
