@@ -27,6 +27,8 @@ bridge:
   # Disable sending of read receipts for Matrix events which have been
   # successfully bridged to Discord.
   disableReadReceipts: false
+  # Disable Join Leave echos from matrix
+  disableJoinLeaveNotifications: false
 # Authentication configuration for the discord bot.
 auth:
   clientID: "12345"

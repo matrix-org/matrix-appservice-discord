@@ -31,6 +31,7 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
                 disableDiscordMentions: false,
                 disableTypingNotifications: true,
                 enableSelfServiceBridging: false,
+                disableJoinLeaveNotifications: true,
                 homeserverUrl: "blah",
             },
             logging: {
@@ -42,6 +43,7 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
         expect(config.bridge.disableDiscordMentions).to.be.false;
         expect(config.bridge.disableDeletionForwarding).to.be.true;
         expect(config.bridge.enableSelfServiceBridging).to.be.false;
+        expect(config.brdge.disableJoinLeaveNotifications).to.be.true
         expect(config.logging.console, "warn");
     });
     it("should merge logging.files correctly", () => {

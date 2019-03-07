@@ -85,13 +85,21 @@ export class MatrixEventProcessor {
             const membership = event.content!.membership;
             if (membership === "join"
                 && event.unsigned.prev_content === undefined) {
-                msg += `joined the room`;
+                    if (!this.config.bridge.disableJoinLeaveNotifications) {
+                        msg += `joined the room`;
+                    } else {
+                        return
+                    }
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
             } else if (membership === "leave" && event.state_key !== event.sender) {
                 msg += `kicked \`${event.state_key}\` from the room`;
             } else if (membership === "leave") {
-                msg += `left the room`;
+                if (!this.config.bridge.disableJoinLeaveNotifications) {
+                    msg += `left the room`;
+                } else {
+                    return
+                }
             } else if (membership === "ban") {
                 msg += `banned \`${event.state_key}\` from the room`;
             }
@@ -302,7 +310,7 @@ export class MatrixEventProcessor {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
                 avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url, DISCORD_AVATAR_WIDTH, DISCORD_AVATAR_HEIGHT);
             }
-        }
+        }disablePresence
         embed.setAuthor(
             displayName.substr(0, MAX_NAME_LENGTH),
             avatarUrl,
