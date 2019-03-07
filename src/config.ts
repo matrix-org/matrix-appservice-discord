@@ -54,6 +54,7 @@ class DiscordBridgeConfigBridge {
     public disableReadReceipts: boolean;
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
+    public disableJoinLeaveNotifications: boolean = false;
 }
 
 export class DiscordBridgeConfigDatabase {
