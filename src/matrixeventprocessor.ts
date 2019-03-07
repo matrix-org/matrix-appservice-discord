@@ -310,7 +310,7 @@ export class MatrixEventProcessor {
                 const mxClient = this.bridge.getClientFactory().getClientAs();
                 avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url, DISCORD_AVATAR_WIDTH, DISCORD_AVATAR_HEIGHT);
             }
-        }disablePresence
+        }
         embed.setAuthor(
             displayName.substr(0, MAX_NAME_LENGTH),
             avatarUrl,
