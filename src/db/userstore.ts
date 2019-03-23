@@ -93,8 +93,7 @@ export class DbUserStore {
             await this.db.Run(
 `UPDATE remote_user_data SET displayname = $displayname,
 avatarurl = $avatarurl,
-avatarurl_mxc = $avatarurl_mxc,
-WHERE remote_id = $remote_id`,
+avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
             {
                 avatarurl: user.avatarurl,
                 avatarurl_mxc: user.avatarurlMxc,
