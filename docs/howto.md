@@ -18,6 +18,9 @@ is formatted as https://discordapp.com/channels/``guildid``/``channelid``
   * ``npm run adminme -- -r '!AbcdefghijklmnopqR:example.com' -u '@Alice:example.com' -p '100'``
   * Run ``npm run adminme -- -h`` for usage.
 
+Please note that `!AbcdefghijklmnopqR:example.com` is the internal room id and will always begin with `!`.
+You can find this internal id in the room settings in Riot.
+
 ### Migrate to postgres from sqlite
 * Stop the bridge.
 * Create a new database on postgres and create a user for it with a password.
