@@ -140,7 +140,7 @@ export class DiscordMessageProcessor {
             }
             if (embed.fields) {
                 for (const field of embed.fields) {
-                    embedContent += `\n${field.name}\n`;
+                    embedContent += `\n**${field.name}**\n`;
                     embedContent += markdown.toHTML(field.value, {
                         discordCallback: this.getDiscordParseCallbacks(msg),
                         discordOnly: true,
@@ -187,7 +187,7 @@ export class DiscordMessageProcessor {
             }
             if (embed.fields) {
                 for (const field of embed.fields) {
-                    embedContent += `<p>${escapeHtml(field.name)}<br>`;
+                    embedContent += `<p><strong>${escapeHtml(field.name)}</strong><br>`;
                     embedContent += markdown.toHTML(field.value, {
                         discordCallback: this.getDiscordParseCallbacks(msg),
                         embed: true,

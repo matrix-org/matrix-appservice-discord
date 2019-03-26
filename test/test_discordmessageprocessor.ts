@@ -565,7 +565,7 @@ TestDescription`,
 ----
 ##### [TestTitle](testurl)
 TestDescription
-fox
+**fox**
 floof`,
             );
         });
