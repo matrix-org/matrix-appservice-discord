@@ -138,6 +138,16 @@ export class DiscordMessageProcessor {
                     escapeHTML: false,
                 });
             }
+            if (embed.image) {
+                embedContent += "\nImage: " + embed.image.url;
+            }
+            if (embed.footer) {
+                embedContent += "\n" + markdown.toHTML(embed.footer.text, {
+                    discordCallback: this.getDiscordParseCallbacks(msg),
+                    discordOnly: true,
+                    escapeHTML: false,
+                });
+            }
             content += embedContent;
         }
         return content;
@@ -154,15 +164,27 @@ export class DiscordMessageProcessor {
             let embedContent = "<hr>"; // Horizontal rule. Two to make sure the content doesn't become a title.
             const embedTitle = embed.url ?
                 `<a href="${escapeHtml(embed.url)}">${escapeHtml(embed.title)}</a>`
-                : escapeHtml(embed.title);
+                : (embed.title ? escapeHtml(embed.title) : undefined);
             if (embedTitle) {
                 embedContent += `<h5>${embedTitle}</h5>`; // h5 is probably best.
             }
             if (embed.description) {
+                embedContent += "<p>";
                 embedContent += markdown.toHTML(embed.description, {
                     discordCallback: this.getDiscordParseCallbacksHTML(msg),
                     embed: true,
-                });
+                }) + "</p>";
+            }
+            if (embed.image) {
+                const imgUrl = escapeHtml(embed.image.url);
+                embedContent += `<p>Image: <a href="${imgUrl}">${imgUrl}</a></p>`;
+            }
+            if (embed.footer) {
+                embedContent += "<p>";
+                embedContent += markdown.toHTML(embed.footer.text, {
+                    discordCallback: this.getDiscordParseCallbacksHTML(msg),
+                    embed: true,
+                }) + "</p>";
             }
             content += embedContent;
         }

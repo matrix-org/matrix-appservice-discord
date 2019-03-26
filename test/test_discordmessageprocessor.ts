@@ -135,9 +135,9 @@ describe("DiscordMessageProcessor", () => {
                     createdTimestamp: {} as any,
                     description: "Description",
                     fields: {} as any,
-                    footer: {} as any,
+                    footer: undefined as any,
                     hexColor: {} as any,
-                    image: {} as any,
+                    image: undefined as any,
                     message: {} as any,
                     provider: {} as any,
                     thumbnail: {} as any,
@@ -151,7 +151,7 @@ describe("DiscordMessageProcessor", () => {
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "message\n\n----\n##### [Title](http://example.com)\nDescription");
             Chai.assert.equal(result.formattedBody, "message<hr><h5><a href=\"http://example.com\">Title</a>" +
-                "</h5>Description");
+                "</h5><p>Description</p>");
         });
         it("should ignore same-url embeds", async () => {
             const processor = new DiscordMessageProcessor(
@@ -535,6 +535,54 @@ describe("DiscordMessageProcessor", () => {
 ----
 ##### [TestTitle](testurl)
 TestDescription`,
+            );
+        });
+        it("adds images properly", () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
+                    title: "TestTitle",
+                    url: "testurl",
+                }),
+            ];
+            msg.embeds[0].image = { url: "http://example.com" } as any;
+            const inContent = "Content that goes in the message";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(
+                content,
+`Content that goes in the message
+
+----
+##### [TestTitle](testurl)
+TestDescription
+Image: http://example.com`,
+            );
+        });
+        it("adds a footer properly", () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
+                    title: "TestTitle",
+                    url: "testurl",
+                }),
+            ];
+            msg.embeds[0].footer = { text: "footer" } as any;
+            const inContent = "Content that goes in the message";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(
+                content,
+`Content that goes in the message
+
+----
+##### [TestTitle](testurl)
+TestDescription
+footer`,
             );
         });
     });
