@@ -138,6 +138,16 @@ export class DiscordMessageProcessor {
                     escapeHTML: false,
                 });
             }
+            if (embed.fields) {
+                for (const field of embed.fields) {
+                    embedContent += `\n${field.name}\n`;
+                    embedContent += markdown.toHTML(field.value, {
+                        discordCallback: this.getDiscordParseCallbacks(msg),
+                        discordOnly: true,
+                        escapeHTML: false,
+                    });
+                }
+            }
             if (embed.image) {
                 embedContent += "\nImage: " + embed.image.url;
             }
@@ -174,6 +184,15 @@ export class DiscordMessageProcessor {
                     discordCallback: this.getDiscordParseCallbacksHTML(msg),
                     embed: true,
                 }) + "</p>";
+            }
+            if (embed.fields) {
+                for (const field of embed.fields) {
+                    embedContent += `<p>${escapeHtml(field.name)}<br>`;
+                    embedContent += markdown.toHTML(field.value, {
+                        discordCallback: this.getDiscordParseCallbacks(msg),
+                        embed: true,
+                    }) + "</p>";
+                }
             }
             if (embed.image) {
                 const imgUrl = escapeHtml(embed.image.url);
