@@ -103,6 +103,7 @@ should show up in the network list on Riot and other clients.
 * ``npm start``
 
 [Howto](./docs/howto.md)
+[Troubleshooting](./docs/troubleshooting.md)
 
 ## Features and Roadmap
 In a vague order of what is coming up next
