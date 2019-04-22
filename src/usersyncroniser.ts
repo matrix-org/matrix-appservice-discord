@@ -344,10 +344,14 @@ export class UserSyncroniser {
         await Promise.all(
             wantRooms.map(
                 async (roomId) => {
-                    if (doJoin) {
-                        await this.JoinRoom(member, roomId);
-                    } else {
-                        await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                    try {
+                        if (doJoin) {
+                            await this.JoinRoom(member, roomId);
+                        } else {
+                            await this.ApplyStateToRoom(state, roomId, member.guild.id);
+                        }
+                    } catch (err) {
+                        log.error(`Failed to update ${member.id} (${member.user.username}) in ${roomId}`, err);
                     }
                 },
             ),
