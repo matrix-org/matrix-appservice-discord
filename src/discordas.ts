@@ -106,11 +106,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     };
                     if (roomId) {
                         const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
-                        if (entries[0]) {
-                            context = {
-                                rooms: entries[0],
-                            };
-                        }
+                        context.rooms = entries[0] || {};
                     }
                     await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
                 } catch (err) {
