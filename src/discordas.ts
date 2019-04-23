@@ -101,7 +101,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         return;
                     }
                     const roomId = request.getData().room_id;
-                    let context: BridgeContext = {
+                    const context: BridgeContext = {
                         rooms: {},
                     };
                     if (roomId) {
