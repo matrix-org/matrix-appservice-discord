@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Cli, Bridge, AppServiceRegistration, ClientFactory } from "matrix-appservice-bridge";
+import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
 import * as Bluebird from "bluebird";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -101,12 +101,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         return;
                     }
                     const roomId = request.getData().room_id;
-                    let context = {};
+                    const context: BridgeContext = {
+                        rooms: {},
+                    };
                     if (roomId) {
-                        const entries  = await store.roomStore.getEntriesByMatrixId(request.getData().room_id);
-                        context = {
-                            rooms: entries[0],
-                        };
+                        const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
+                        context.rooms = entries[0] || {};
                     }
                     await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
                 } catch (err) {

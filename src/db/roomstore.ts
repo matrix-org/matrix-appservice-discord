@@ -299,10 +299,10 @@ export class DbRoomStore {
             discord_name:        room.data.discord_name,
             discord_topic:       room.data.discord_topic,
             discord_type:        room.data.discord_type,
-            plumbed:             room.data.plumbed || 0,
-            update_icon:         room.data.update_icon || 0,
-            update_name:         room.data.update_name || 0,
-            update_topic:        room.data.update_topic || 0,
+            plumbed:             Number(room.data.plumbed || 0),
+            update_icon:         Number(room.data.update_icon || 0),
+            update_name:         Number(room.data.update_name || 0),
+            update_topic:        Number(room.data.update_topic || 0),
         } as IRemoteRoomData;
 
         if (!existingRow) {
