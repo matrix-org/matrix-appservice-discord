@@ -134,7 +134,7 @@ describe("DiscordMessageProcessor", () => {
                     createdAt: {} as any,
                     createdTimestamp: {} as any,
                     description: "Description",
-                    fields: {} as any,
+                    fields: [] as any,
                     footer: undefined as any,
                     hexColor: {} as any,
                     image: undefined as any,
@@ -165,7 +165,7 @@ describe("DiscordMessageProcessor", () => {
                     createdAt: {} as any,
                     createdTimestamp: {} as any,
                     description: "Description",
-                    fields: {} as any,
+                    fields: [] as any,
                     footer: {} as any,
                     hexColor: {} as any,
                     image: {} as any,
@@ -535,6 +535,38 @@ describe("DiscordMessageProcessor", () => {
 ----
 ##### [TestTitle](testurl)
 TestDescription`,
+            );
+        });
+        it("adds fields properly", () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                new Discord.MessageEmbed(msg, {
+                    description: "TestDescription",
+                    title: "TestTitle",
+                    url: "testurl",
+                }),
+            ];
+            msg.embeds[0].fields = [
+                {
+                    embed: msg.embeds[0],
+                    inline: false,
+                    name: "fox",
+                    value: "floof",
+                },
+            ] as any;
+            const inContent = "Content that goes in the message";
+            const content = processor.InsertEmbeds(inContent, msg);
+            Chai.assert.equal(
+                content,
+`Content that goes in the message
+
+----
+##### [TestTitle](testurl)
+TestDescription
+**fox**
+floof`,
             );
         });
         it("adds images properly", () => {
