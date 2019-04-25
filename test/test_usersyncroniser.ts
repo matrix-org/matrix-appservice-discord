@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-import { Bridge, RemoteUser } from "matrix-appservice-bridge";
+import { Bridge } from "matrix-appservice-bridge";
 import {IGuildMemberState, IUserState, UserSyncroniser} from "../src/usersyncroniser";
 import {MockUser} from "./mocks/user";
 import {DiscordBridgeConfig} from "../src/config";
@@ -26,6 +26,7 @@ import { MockChannel } from "./mocks/channel";
 import { MockRole } from "./mocks/role";
 import { IMatrixEvent } from "../src/matrixtypes";
 import { Util } from "../src/util";
+import { RemoteUser } from "../src/db/userstore";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -63,7 +64,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
     },
 })).UserSyncroniser;
 
-function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
+function CreateUserSync(remoteUsers: RemoteUser[] = []): UserSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
     SEV_ROOM_ID = null;
     SEV_CONTENT = null;
@@ -111,30 +112,6 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
                 },
             };
         },
-        getUserStore: () => {
-            REMOTEUSER_SET = null;
-            LINK_RM_USER = null;
-            LINK_MX_USER = null;
-            return {
-                getRemoteUser: (id) => {
-                    const user = remoteUsers.find((u) => u.id === id);
-                    if (user === undefined) {
-                        return null;
-                    }
-                    return user;
-                },
-                getRemoteUsersFromMatrixId: (id) => {
-                    return remoteUsers.filter((u) => u.id === id);
-                },
-                linkUsers: (mxUser, remoteUser) => {
-                    LINK_MX_USER = mxUser;
-                    LINK_RM_USER = remoteUser;
-                },
-                setRemoteUser: async (remoteUser) => {
-                    REMOTEUSER_SET = remoteUser;
-                },
-            };
-        },
     };
     const discordbot: any = {
         GetChannelFromRoomId: (id) => {
@@ -160,9 +137,23 @@ function CreateUserSync(remoteUsers: any[] = []): UserSyncroniser {
             return GUILD_ROOM_IDS;
         },
     };
+    REMOTEUSER_SET = null;
+    LINK_RM_USER = null;
+    LINK_MX_USER = null;
+    const userStore = {
+        getRemoteUser: (id) => remoteUsers.find((u) => u.id === id) || null,
+        getRemoteUsersFromMatrixId: (id) => remoteUsers.filter((u) => u.id === id),
+        linkUsers: (mxUser, remoteUser) => {
+            LINK_MX_USER = mxUser;
+            LINK_RM_USER = remoteUser;
+        },
+        setRemoteUser: async (remoteUser) => {
+            REMOTEUSER_SET = remoteUser;
+        },
+    };
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
-    return new UserSync(bridge as Bridge, config, discordbot);
+    return new UserSync(bridge as Bridge, config, discordbot, userStore as any);
 }
 
 describe("UserSyncroniser", () => {
@@ -185,10 +176,9 @@ describe("UserSyncroniser", () => {
             expect(state.avatarUrl).equals("test.jpg");
         });
         it("Will change display names", async () => {
-            const remoteUser = new RemoteUser("123456", {
-                avatarurl: "test.jpg",
-                displayname: "MrFake",
-            });
+            const remoteUser = new RemoteUser("123456");
+            remoteUser.avatarurl = "test.jpg";
+            remoteUser.displayname = "TestUsername";
 
             const userSync = CreateUserSync([remoteUser]);
             const user = new MockUser(
@@ -207,10 +197,9 @@ describe("UserSyncroniser", () => {
             expect(state.avatarUrl, "AvatarUrl").is.null;
         });
         it("Will change avatars", async () => {
-            const remoteUser = new RemoteUser("123456", {
-                avatarurl: "test.jpg",
-                displayname: "TestUsername#6969",
-            });
+            const remoteUser = new RemoteUser("123456");
+            remoteUser.avatarurl = "test.jpg";
+            remoteUser.displayname = "TestUsername#6969";
 
             const userSync = CreateUserSync([remoteUser]);
             const user = new MockUser(
@@ -229,10 +218,9 @@ describe("UserSyncroniser", () => {
             expect(state.displayName, "DisplayName").is.null;
         });
         it("Will remove avatars", async () => {
-            const remoteUser = new RemoteUser("123456", {
-                avatarurl: "test.jpg",
-                displayname: "TestUsername#6969",
-            });
+            const remoteUser = new RemoteUser("123456");
+            remoteUser.avatarurl = "test.jpg";
+            remoteUser.displayname = "TestUsername#6969";
 
             const userSync = CreateUserSync([remoteUser]);
             const user = new MockUser(
@@ -284,9 +272,9 @@ describe("UserSyncroniser", () => {
             expect(LINK_RM_USER).is.not.null;
             expect(REMOTEUSER_SET).is.not.null;
             expect(DISPLAYNAME_SET).equal("123456");
-            expect(REMOTEUSER_SET.data.displayname).equal("123456");
+            expect(REMOTEUSER_SET.displayname).equal("123456");
             expect(AVATAR_SET).is.null;
-            expect(REMOTEUSER_SET.data.avatarurl).is.undefined;
+            expect(REMOTEUSER_SET.avatarurl).is.null;
         });
         it("Will set an avatar", async () => {
             const userSync = CreateUserSync();
@@ -305,8 +293,8 @@ describe("UserSyncroniser", () => {
             expect(AVATAR_SET).equal("avatarset");
             expect(UTIL_UPLOADED_AVATAR).to.be.true;
             expect(REMOTEUSER_SET).is.not.null;
-            expect(REMOTEUSER_SET.data.avatarurl).equal("654321");
-            expect(REMOTEUSER_SET.data.displayname).is.undefined;
+            expect(REMOTEUSER_SET.avatarurl).equal("654321");
+            expect(REMOTEUSER_SET.displayname).is.null;
             expect(DISPLAYNAME_SET).is.null;
         });
         it("Will remove an avatar", async () => {
@@ -326,8 +314,8 @@ describe("UserSyncroniser", () => {
             expect(AVATAR_SET).is.null;
             expect(UTIL_UPLOADED_AVATAR).to.be.false;
             expect(REMOTEUSER_SET).is.not.null;
-            expect(REMOTEUSER_SET.data.avatarurl).is.null;
-            expect(REMOTEUSER_SET.data.displayname).is.undefined;
+            expect(REMOTEUSER_SET.avatarurl).is.null;
+            expect(REMOTEUSER_SET.displayname).is.null;
             expect(DISPLAYNAME_SET).is.null;
         });
         it("will do nothing if nothing needs to be done", async () => {
@@ -363,7 +351,7 @@ describe("UserSyncroniser", () => {
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.not.null;
-            expect(REMOTEUSER_SET.data.nick_123456).is.equal("Good Boy");
+            expect(REMOTEUSER_SET.guildNicks.get("123456")).is.equal("Good Boy");
             expect(SEV_ROOM_ID).is.equal("!abc:localhost");
             expect(SEV_CONTENT.displayname).is.equal("Good Boy");
             expect(SEV_KEY).is.equal("@_discord_123456:localhost");

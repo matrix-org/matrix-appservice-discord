@@ -51,7 +51,14 @@ export class Postgres implements IDatabaseConnector {
 
     public async All(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow[]> {
         log.silly("All:", sql);
-        return this.db.many(Postgres.ParameterizeSql(sql), parameters);
+        try {
+            return await this.db.many(Postgres.ParameterizeSql(sql), parameters);
+        } catch (ex) {
+            if (ex.code === pgPromise.errors.queryResultErrorCode.noData ) {
+                return [];
+            }
+            throw ex;
+        }
     }
 
     public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {

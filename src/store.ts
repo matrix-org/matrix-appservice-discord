@@ -18,15 +18,16 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 8;
+export const CURRENT_SCHEMA = 9;
 
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
+import { DbUserStore } from "./db/userstore";
 import {
-    RoomStore,
+    RoomStore, UserStore,
 } from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
 /**
@@ -34,9 +35,9 @@ const log = new Log("DiscordStore");
  */
 export class DiscordStore {
     public db: IDatabaseConnector;
-    private version: number;
     private config: DiscordBridgeConfigDatabase;
     private pRoomStore: DbRoomStore;
+    private pUserStore: DbUserStore;
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
@@ -44,11 +45,14 @@ export class DiscordStore {
         } else {
             this.config = configOrFile;
         }
-        this.version = 0;
     }
 
     get roomStore() {
         return this.pRoomStore;
+    }
+
+    get userStore() {
+        return this.pUserStore;
     }
 
     public async backup_database(): Promise<void|{}> {
@@ -86,8 +90,11 @@ export class DiscordStore {
     /**
      * Checks the database has all the tables needed.
      */
-    public async init(overrideSchema: number = 0, roomStore: RoomStore = null): Promise<void> {
+    public async init(
+        overrideSchema: number = 0, roomStore: RoomStore = null, userStore: UserStore = null,
+    ): Promise<void> {
         const SCHEMA_ROOM_STORE_REQUIRED = 8;
+        const SCHEMA_USER_STORE_REQUIRED = 9;
         log.info("Starting DB Init");
         await this.open_database();
         let version = await this.getSchemaVersion();
@@ -99,6 +106,8 @@ export class DiscordStore {
             let schema: IDbSchema;
             if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
                 schema = (new schemaClass(roomStore) as IDbSchema);
+            } else if (version === SCHEMA_USER_STORE_REQUIRED) {
+                schema = (new schemaClass(userStore) as IDbSchema);
             } else {
                 schema = (new schemaClass() as IDbSchema);
             }
@@ -118,7 +127,6 @@ export class DiscordStore {
                 }
                 throw Error("Failure to update to latest schema.");
             }
-            this.version = version;
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
@@ -341,6 +349,7 @@ export class DiscordStore {
         try {
             this.db.Open();
             this.pRoomStore = new DbRoomStore(this.db);
+            this.pUserStore = new DbUserStore(this.db);
         } catch (ex) {
             log.error("Error opening database:", ex);
             throw new Error("Couldn't open database. The appservice won't be able to continue.");

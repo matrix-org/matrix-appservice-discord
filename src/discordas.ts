@@ -149,11 +149,16 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                + "The config option roomStorePath no longer has any use.");
     }
 
+    if (config.database.userStorePath) {
+        log.warn("[DEPRECATED] The user store is now part of the SQL database."
+               + "The config option userStorePath no longer has any use.");
+    }
+
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
 
     try {
-        await store.init(undefined, bridge.getRoomStore());
+        await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
     } catch (ex) {
         log.error("Failed to init database. Exiting.", ex);
         process.exit(1);

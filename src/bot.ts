@@ -139,7 +139,7 @@ export class DiscordBot {
     public async init(): Promise<void> {
         await this.clientFactory.init();
         // This immediately pokes UserStore, so it must be created after the bridge has started.
-        this.userSync = new UserSyncroniser(this.bridge, this.config, this);
+        this.userSync = new UserSyncroniser(this.bridge, this.config, this, this.store.userStore);
     }
 
     public async run(): Promise<void> {
