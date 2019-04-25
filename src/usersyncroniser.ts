@@ -379,13 +379,17 @@ export class UserSyncroniser {
             if (guild.members.has(id)) {
                 log.info(`Updating user ${id} in guild ${guild.id}.`);
                 const member = guild.members.get(id);
-                const state = await this.GetUserStateForGuildMember(member!);
-                const rooms = await this.discord.GetRoomIdsFromGuild(guild, member!);
-                await Promise.all(
-                    rooms.map(
-                        async (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
-                    ),
-                );
+                try {
+                    const state = await this.GetUserStateForGuildMember(member!);
+                    const rooms = await this.discord.GetRoomIdsFromGuild(guild, member!);
+                    await Promise.all(
+                        rooms.map(
+                            async (roomId) => this.ApplyStateToRoom(state, roomId, guild.id),
+                        ),
+                    );
+                } catch (err) {
+                    log.warn(`Failed to update user ${id} in guild ${guild.id}`, err);
+                }
             }
         });
     }

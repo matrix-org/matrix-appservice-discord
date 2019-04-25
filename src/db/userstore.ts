@@ -105,7 +105,7 @@ avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
         (await this.db.All(
             "SELECT guild_id, nick FROM remote_user_guild_nicks WHERE remote_id = $remoteId",
             {remoteId: user.id},
-        )).forEach(({g, n}) => existingNicks[g as string] = n);
+        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick);
         for (const guildId of user.guildNicks.keys()) {
             const nick = user.guildNicks.get(guildId) || null;
             if (existingData) {
