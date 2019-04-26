@@ -234,7 +234,8 @@ export class UserSyncroniser {
             id: discordUser.id,
             mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
-        const displayName = this.displayNameForUser(discordUser);
+        const displayName = this.displayNameForUser(discordUser)
+            + (this.config.ghosts.tag ? " " + this.config.ghosts.tag : "");
         // Determine if the user exists.
         const remoteId = discordUser.id + mxidExtra;
         const remoteUser = await this.userStore.getRemoteUser(remoteId);
@@ -273,7 +274,7 @@ export class UserSyncroniser {
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: newMember.user.bot,
             displayColor: newMember.displayColor,
-            displayName: newMember.displayName,
+            displayName: newMember.displayName + (this.config.ghosts.tag ? " " + this.config.ghosts.tag : ""),
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {

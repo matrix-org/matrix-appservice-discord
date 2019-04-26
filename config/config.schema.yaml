@@ -109,3 +109,8 @@ properties:
                      type: "boolean"
                    ghostsLeave:
                      type: "boolean"
+    ghosts:
+        type: "object"
+        properties:
+            tag:
+                type: "string"
