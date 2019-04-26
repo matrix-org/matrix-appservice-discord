@@ -29,23 +29,6 @@ import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
 const expect = Chai.expect;
 
-const mxClient = {
-    getStateEvent: async (roomId, stateType, _) => {
-        if (stateType === "m.room.power_levels") {
-            return {
-                notifications: {
-                    room: 50,
-                },
-                users: {
-                    "@nopower:localhost": 0,
-                    "@power:localhost": 100,
-                },
-            };
-        }
-        return null;
-    },
-};
-
 const bot = {
     GetEmojiByMxc: async (mxc: string): Promise<DbEmoji> => {
         if (mxc === "mxc://real_emote:localhost") {
@@ -377,6 +360,47 @@ code
         });
     });
     describe("FormatMessage / formatted_body / matrix", () => {
+        /**
+         * Returns a mocked matrix client that mocks the m.room.power_levels
+         * event to test @room notifications.
+         *
+         * @param roomNotificationLevel the power level required to @room
+         * (if undefined, does not include notifications.room in
+         * m.room.power_levels)
+         */
+        function getMxClient(roomNotificationLevel?: number) {
+            return {
+                getStateEvent: async (roomId, stateType, _) => {
+                    if (stateType === "m.room.power_levels") {
+                        return {
+                            // Only include notifications.room when
+                            // roomNotificationLevel is undefined
+                            ...roomNotificationLevel !== undefined && {
+                                notifications: {
+                                    room: roomNotificationLevel,
+                                },
+                            },
+                            users: {
+                                "@nopower:localhost": 0,
+                                "@power:localhost": 100,
+                            },
+                        };
+                    }
+                    return null;
+                },
+            };
+        }
+
+        /**
+         * Explicit power level required to notify @room.
+         *
+         * Essentially, we want to test two code paths - one where the explicit
+         * power level is set and one where it isn't, to see if the bridge can
+         * fall back to a default level (of 50). This is the explicit value we
+         * will set.
+         */
+        const ROOM_NOTIFICATION_LEVEL = 50;
+
         it("escapes @everyone", async () => {
             const mp = new MatrixMessageProcessor(bot);
             const guild = new MockGuild("1234");
@@ -395,24 +419,46 @@ code
             const mp = new MatrixMessageProcessor(bot);
             const guild = new MockGuild("1234");
             const msg = getPlainMessage("hey @room");
-            const params = {
-                mxClient,
+            let params = {
+                mxClient: getMxClient(ROOM_NOTIFICATION_LEVEL),
                 roomId: "!123456:localhost",
                 userId: "@power:localhost",
             };
-            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            let result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("hey @here");
+
+            // Test again using an unset notifications.room value in
+            // m.room.power_levels, to ensure it falls back to a default
+            // requirement.
+            params = {
+                mxClient: getMxClient(),
+                roomId: "!123456:localhost",
+                userId: "@power:localhost",
+            };
+            result = await mp.FormatMessage(msg, guild as any, params as any);
             expect(result).is.equal("hey @here");
         });
         it("ignores @room to @here conversion, if insufficient power", async () => {
             const mp = new MatrixMessageProcessor(bot);
             const guild = new MockGuild("1234");
             const msg = getPlainMessage("hey @room");
-            const params = {
-                mxClient,
+            let params = {
+                mxClient: getMxClient(ROOM_NOTIFICATION_LEVEL),
                 roomId: "!123456:localhost",
                 userId: "@nopower:localhost",
             };
-            const result = await mp.FormatMessage(msg, guild as any, params as any);
+            let result = await mp.FormatMessage(msg, guild as any, params as any);
+            expect(result).is.equal("hey @room");
+
+            // Test again using an unset notifications.room value in
+            // m.room.power_levels, to ensure it falls back to a default
+            // requirement.
+            params = {
+                mxClient: getMxClient(),
+                roomId: "!123456:localhost",
+                userId: "@nopower:localhost",
+            };
+            result = await mp.FormatMessage(msg, guild as any, params as any);
             expect(result).is.equal("hey @room");
         });
         it("handles /me for normal names", async () => {

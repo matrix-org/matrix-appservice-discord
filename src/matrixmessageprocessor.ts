@@ -24,6 +24,7 @@ import { Client as MatrixClient } from "matrix-js-sdk";
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const MATRIX_TO_LINK = "https://matrix.to/#/";
+const DEFAULT_ROOM_NOTIFY_POWER_LEVEL = 50;
 
 export interface IMatrixMessageProcessorParams {
     displayname?: string;
@@ -75,24 +76,34 @@ export class MatrixMessageProcessor {
         return reply;
     }
 
+    private async canNotifyRoom() {
+        if (!this.params || !this.params.mxClient || !this.params.roomId || !this.params.userId) {
+            return false;
+        }
+
+        const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
+            this.params.roomId, "m.room.power_levels");
+
+        // Some rooms may not have notifications.room set if the value hasn't
+        // been changed from the default. If so, use our hardcoded power level.
+        const requiredPowerLevel = res && res.notifications && res.notifications.room
+            ? res.notifications.room
+            : DEFAULT_ROOM_NOTIFY_POWER_LEVEL;
+
+        return res && res.users
+            && res.users[this.params.userId] !== undefined
+            && res.users[this.params.userId] >= requiredPowerLevel;
+    }
+
     private async escapeDiscord(msg: string): Promise<string> {
         // \u200B is the zero-width space --> they still look the same but don't mention
         msg = msg.replace(/@everyone/g, "@\u200Beveryone");
         msg = msg.replace(/@here/g, "@\u200Bhere");
 
-        if (msg.includes("@room") && this.params && this.params.mxClient && this.params.roomId && this.params.userId) {
-            // let's check for more complex logic if @room should be replaced
-            const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
-                this.params.roomId, "m.room.power_levels");
-            if (
-                res && res.users
-                && res.users[this.params.userId] !== undefined
-                && res.notifications
-                && res.notifications.room !== undefined
-                && res.users[this.params.userId] >= res.notifications.room
-            ) {
-                msg = msg.replace(/@room/g, "@here");
-            }
+        // Check the Matrix permissions to see if this user has the required
+        // power level to notify with @room; if so, replace it with @here.
+        if (msg.includes("@room") && await this.canNotifyRoom()) {
+            msg = msg.replace(/@room/g, "@here");
         }
         const escapeChars = ["\\", "*", "_", "~", "`", "|"];
         msg = msg.split(" ").map((s) => {
