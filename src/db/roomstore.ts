@@ -336,13 +336,15 @@ export class DbRoomStore {
         // New keys
         Object.keys(room.data).filter(
             (k: string) => existingRow[k] === null).forEach((key) => {
-                keysToUpdate[key] = room.data[key];
+                const val = room.data[key];
+                keysToUpdate[key] = typeof val === "boolean" ? Number(val) : val;
         });
 
         // Updated keys
         Object.keys(room.data).filter(
             (k: string) => existingRow[k] !== room.data[k]).forEach((key) => {
-            keysToUpdate[key] = room.data[key];
+            const val = room.data[key];
+            keysToUpdate[key] = typeof val === "boolean" ? Number(val) : val;
         });
 
         if (Object.keys(keysToUpdate).length === 0) {
