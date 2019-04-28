@@ -158,4 +158,25 @@ describe("Util", () => {
             expect(reply).to.equal("#000000");
         });
     });
+    describe("ApplyPatternString", () => {
+        it("Should apply simple patterns", () => {
+            const reply = Util.ApplyPatternString(":name likes :animal", {
+                animal: "Foxies",
+                name: "Sorunome",
+            });
+            expect(reply).to.equal("Sorunome likes Foxies");
+        });
+        it("Should ignore unused tags", () => {
+            const reply = Util.ApplyPatternString(":name is :thing", {
+                name: "Sorunome",
+            });
+            expect(reply).to.equal("Sorunome is :thing");
+        });
+        it("Should do multi-replacements", () => {
+            const reply = Util.ApplyPatternString(":animal, :animal and :animal", {
+                animal: "fox",
+            });
+            expect(reply).to.equal("fox, fox and fox");
+        });
+    });
 });
