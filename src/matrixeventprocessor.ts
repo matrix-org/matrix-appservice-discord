@@ -100,7 +100,7 @@ export class MatrixEventProcessor {
             }
             return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
-            await this.discord.ProcessMatrixStateEvent(event);
+            await this.ProcessStateEvent(event);
             return;
         } else if (event.type === "m.room.redaction" && context.rooms.remote) {
             await this.discord.ProcessMatrixRedact(event);
@@ -116,7 +116,7 @@ export class MatrixEventProcessor {
             } else if (context.rooms.remote) {
                 const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
-                    await this.discord.ProcessMatrixMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
                     return;
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
@@ -155,7 +155,30 @@ export class MatrixEventProcessor {
         await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
     }
 
-    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
+    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        log.verbose(`Looking up ${guildId}_${channelId}`);
+        const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
+        const chan = roomLookup.channel;
+        const botUser = roomLookup.botUser;
+
+        const embedSet = await this.EventToEmbed(event, chan);
+        const opts: Discord.MessageOptions = {};
+        const file = await this.HandleAttachment(event, mxClient);
+        if (typeof(file) === "string") {
+            embedSet.messageEmbed.description += " " + file;
+        } else {
+            opts.file = file;
+        }
+
+        await this.discord.send(embedSet, opts, roomLookup, event);
+        await this.sendReadReceipt(event);
+    }
+
+    public async ProcessStateEvent(event: IMatrixEvent) {
+        log.verbose(`Got state event from ${event.room_id} ${event.type}`);
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
+
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -198,7 +221,8 @@ export class MatrixEventProcessor {
         }
 
         msg += " on Matrix.";
-        return msg;
+        await this.discord.sendAsBot(msg, channel, event);
+        await this.sendReadReceipt(event);
     }
 
     public async EventToEmbed(
@@ -340,6 +364,16 @@ export class MatrixEventProcessor {
         embed.setDescription("Reply with unknown content");
         embed.setAuthor("Unknown");
         return embed;
+    }
+
+    private async sendReadReceipt(event: IMatrixEvent) {
+        if (!this.config.bridge.disableReadReceipts) {
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
+        }
     }
 
     private HasAttachment(event: IMatrixEvent): boolean {
