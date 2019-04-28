@@ -166,11 +166,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
+    const eventProcessor = discordbot.MxEventProcessor;
 
     try {
         callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
         callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
-        callbacks.onEvent = roomhandler.OnEvent.bind(roomhandler);
+        callbacks.onEvent = eventProcessor.OnEvent.bind(roomhandler);
         callbacks.thirdPartyLookup = async () => {
             return roomhandler.ThirdPartyLookup;
         };

@@ -126,6 +126,14 @@ export class DiscordBot {
         return this.roomHandler;
     }
 
+    get MxEventProcessor(): MatrixEventProcessor {
+        return this.mxEventProcessor;
+    }
+
+    get Provisioner(): Provisioner {
+        return this.provisioner;
+    }
+
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
