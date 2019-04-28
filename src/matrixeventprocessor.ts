@@ -60,12 +60,16 @@ export class MatrixEventProcessor {
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(opts: MatrixEventProcessorOpts) {
+    constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
-        this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.bridge, this.config);
+        if (cm) {
+            this.mxCommandHandler = cm;
+        } else {
+            this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.bridge, this.config);
+        }
     }
 
     public async OnEvent(request, context: BridgeContext): Promise<void> {
