@@ -198,14 +198,17 @@ export class UserSyncroniser {
             return;
         }
         const remoteUser = await this.userStore.getRemoteUser(memberState.id);
-        if (!remoteUser) {
-            throw Error("Remote user not found");
+        let avatar = "";
+        if (remoteUser) {
+            avatar = remoteUser.avatarurlMxc || "";
+        } else {
+            log.warn("Remote user wasn't found, using blank avatar");
         }
         const intent = this.bridge.getIntent(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
         await intent.getClient().sendStateEvent(roomId, "m.room.member", {
-            "avatar_url": remoteUser.avatarurlMxc,
+            "avatar_url": avatar,
             "displayname": memberState.displayName,
             "membership": "join",
             "uk.half-shot.discord.member": {
@@ -217,10 +220,12 @@ export class UserSyncroniser {
             },
         }, memberState.mxUserId);
 
-        if (guildId) {
-            remoteUser.guildNicks.set(guildId, memberState.displayName);
+        if (remoteUser) {
+            if (guildId) {
+                remoteUser.guildNicks.set(guildId, memberState.displayName);
+            }
+            await this.userStore.setRemoteUser(remoteUser);
         }
-        await this.userStore.setRemoteUser(remoteUser);
     }
 
     public async GetUserUpdateState(discordUser: User, webhookID?: string): Promise<IUserState> {
