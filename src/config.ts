@@ -23,6 +23,7 @@ export class DiscordBridgeConfig {
     public room: DiscordBridgeConfigRoom = new DiscordBridgeConfigRoom();
     public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
     public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
+    public ghosts: DiscordBridgeConfigGhosts = new DiscordBridgeConfigGhosts();
 
     /**
      * Apply a set of keys and values over the default config.
@@ -108,4 +109,9 @@ export class LoggingFile {
     public datePattern: string = "YYYY-MM-DD";
     public enabled: string[] = [];
     public disabled: string[] = [];
+}
+
+class DiscordBridgeConfigGhosts {
+    public nickPattern: string = ":nick";
+    public usernamePattern: string = ":username#:tag";
 }

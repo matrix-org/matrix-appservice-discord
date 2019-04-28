@@ -163,14 +163,10 @@ export class ChannelSyncroniser {
             return channelState;
         }
 
-        const patternMap = {
+        const name: string = Util.ApplyPatternString(this.config.channel.namePattern, {
             guild: channel.guild.name,
             name: "#" + channel.name,
-        };
-        let name: string = this.config.channel.namePattern;
-        for (const p of Object.keys(patternMap)) {
-            name = name.replace(new RegExp(":" + p, "g"), patternMap[p]);
-        }
+        });
         const topic = channel.topic;
         const icon = channel.guild.icon;
         let iconUrl: string | null = null;

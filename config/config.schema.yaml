@@ -109,3 +109,10 @@ properties:
                      type: "boolean"
                    ghostsLeave:
                      type: "boolean"
+    ghosts:
+        type: "object"
+        properties:
+            nickPattern:
+                type: "string"
+            usernamePattern:
+                type: "string"

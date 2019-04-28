@@ -234,7 +234,11 @@ export class UserSyncroniser {
             id: discordUser.id,
             mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
-        const displayName = this.displayNameForUser(discordUser);
+        const displayName = Util.ApplyPatternString(this.config.ghosts.usernamePattern, {
+            id: discordUser.id,
+            tag: discordUser.discriminator,
+            username: discordUser.username,
+        });
         // Determine if the user exists.
         const remoteId = discordUser.id + mxidExtra;
         const remoteUser = await this.userStore.getRemoteUser(remoteId);
@@ -270,10 +274,16 @@ export class UserSyncroniser {
     public async GetUserStateForGuildMember(
         newMember: GuildMember,
     ): Promise<IGuildMemberState> {
+        const name = Util.ApplyPatternString(this.config.ghosts.nickPattern, {
+            id: newMember.user.id,
+            nick: newMember.displayName,
+            tag: newMember.user.discriminator,
+            username: newMember.user.username,
+        });
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: newMember.user.bot,
             displayColor: newMember.displayColor,
-            displayName: newMember.displayName,
+            displayName: name,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
             roles: newMember.roles.map((role) => { return {
@@ -392,10 +402,6 @@ export class UserSyncroniser {
                 }
             }
         });
-    }
-
-    private displayNameForUser(discordUser): string {
-        return `${discordUser.username}#${discordUser.discriminator}`;
     }
 
     private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {

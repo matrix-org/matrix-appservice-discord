@@ -24,6 +24,7 @@ import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
+import { Util } from "../src/util";
 import { MockChannel } from "./mocks/channel";
 import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
 // we are a test file and thus need those
@@ -44,6 +45,7 @@ let ROOM_DIRECTORY_VISIBILITY: any = null;
 const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
         Util: {
+            ApplyPatternString: Util.ApplyPatternString,
             UploadContentFromUrl: async () => {
                 UTIL_UPLOADED_AVATAR = true;
                 return {mxcUrl: "avatarset"};

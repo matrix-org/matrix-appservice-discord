@@ -55,6 +55,7 @@ const GUILD_ROOM_IDS_WITH_ROLE = ["!abc:localhost", "!def:localhost"];
 const UserSync = (Proxyquire("../src/usersyncroniser", {
     "./util": {
         Util: {
+            ApplyPatternString: Util.ApplyPatternString,
             AsyncForEach: Util.AsyncForEach,
             UploadContentFromUrl: async () => {
                 UTIL_UPLOADED_AVATAR = true;
@@ -64,7 +65,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
     },
 })).UserSyncroniser;
 
-function CreateUserSync(remoteUsers: RemoteUser[] = []): UserSyncroniser {
+function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): UserSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
     SEV_ROOM_ID = null;
     SEV_CONTENT = null;
@@ -153,6 +154,7 @@ function CreateUserSync(remoteUsers: RemoteUser[] = []): UserSyncroniser {
     };
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
+    config.ghosts = Object.assign({}, config.ghosts, ghostConfig);
     return new UserSync(bridge as Bridge, config, discordbot, userStore as any);
 }
 
@@ -192,6 +194,27 @@ describe("UserSyncroniser", () => {
             expect(state.createUser, "CreateUser").is.false;
             expect(state.removeAvatar, "RemoveAvatar").is.false;
             expect(state.displayName, "DisplayName").equals("TestUsername#6969");
+            expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
+            expect(state.avatarId, "AvatarID").is.empty;
+            expect(state.avatarUrl, "AvatarUrl").is.null;
+        });
+        it("Will obay name patterns", async () => {
+            const remoteUser = new RemoteUser("123456");
+            remoteUser.avatarurl = "test.jpg";
+            remoteUser.displayname = "TestUsername";
+
+            const userSync = CreateUserSync([remoteUser], {usernamePattern: ":username#:tag (Discord)"});
+            const user = new MockUser(
+                "123456",
+                "TestUsername",
+                "6969",
+                "test.jpg",
+                "111",
+            );
+            const state = await userSync.GetUserUpdateState(user as any);
+            expect(state.createUser, "CreateUser").is.false;
+            expect(state.removeAvatar, "RemoveAvatar").is.false;
+            expect(state.displayName, "DisplayName").equals("TestUsername#6969 (Discord)");
             expect(state.mxUserId , "UserId").equals("@_discord_123456:localhost");
             expect(state.avatarId, "AvatarID").is.empty;
             expect(state.avatarUrl, "AvatarUrl").is.null;
@@ -466,6 +489,18 @@ describe("UserSyncroniser", () => {
                 "BestDog");
             const state = await userSync.GetUserStateForGuildMember(member as any);
             expect(state.displayName).to.be.equal("BestDog");
+        });
+        it("Will will obay nick pattern", async () => {
+            const userSync = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
+            const guild = new MockGuild(
+                "654321");
+            const member = new MockMember(
+                "123456",
+                "username",
+                guild,
+                "BestDog");
+            const state = await userSync.GetUserStateForGuildMember(member as any);
+            expect(state.displayName).to.be.equal("BestDog (Discord)");
         });
         it("Will correctly add roles", async () => {
             const userSync = CreateUserSync([new RemoteUser("123456")]);

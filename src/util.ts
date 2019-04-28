@@ -47,6 +47,10 @@ export interface ICommandParameters {
     [index: string]: ICommandParameter;
 }
 
+export interface IPatternMap {
+    [index: string]: string;
+}
+
 export class Util {
     /**
      * downloadFile - This function will take a URL and store the resulting data into
@@ -273,6 +277,13 @@ export class Util {
         const pad = "#000000";
         const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
         return htmlColor;
+    }
+
+    public static ApplyPatternString(str: string, patternMap: IPatternMap): string {
+        for (const p of Object.keys(patternMap)) {
+            str = str.replace(new RegExp(":" + p, "g"), patternMap[p]);
+        }
+        return str;
     }
 }
 
