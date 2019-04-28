@@ -112,5 +112,7 @@ properties:
     ghosts:
         type: "object"
         properties:
-            tag:
+            nickPattern:
+                type: "string"
+            usernamePattern:
                 type: "string"

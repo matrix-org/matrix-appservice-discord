@@ -90,5 +90,7 @@ limits:
     # fininished handling it, causing us to echo it back to the room)
     discordSendDelay: 750
 ghosts:
-    # the tag to append to ghost nicknames
-    tag: ""
+    # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
+    nickPattern: ":nick"
+    # Pattern for the ghosts username, available is :username, :tag and :id
+    usernamePattern: ":username#:tag"
