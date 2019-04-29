@@ -1,3 +1,5 @@
+import { WorkerTypes } from "./workers/WorkerBase";
+
 /*
 Copyright 2017 - 2019 matrix-appservice-discord
 
@@ -24,6 +26,7 @@ export class DiscordBridgeConfig {
     public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
     public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
     public ghosts: DiscordBridgeConfigGhosts = new DiscordBridgeConfigGhosts();
+    public workers: DiscordBridgeConfigWorkers = new DiscordBridgeConfigWorkers();
 
     /**
      * Apply a set of keys and values over the default config.
@@ -114,4 +117,8 @@ export class LoggingFile {
 class DiscordBridgeConfigGhosts {
     public nickPattern: string = ":nick";
     public usernamePattern: string = ":username#:tag";
+}
+
+class DiscordBridgeConfigWorkers {
+    public workers: WorkerTypes[] = [];
 }

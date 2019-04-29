@@ -31,7 +31,15 @@ interface IMatrixPresence {
     status_msg?: string;
 }
 
-export class PresenceHandler {
+export interface IPresenceHandler {
+    Start(intervalTime: number): Promise<void>;
+    Stop(): void;
+    EnqueueUser(user: User): void;
+    DequeueUser(user: User): void;
+    ProcessUser(user: User): Promise<boolean>;
+}
+
+export class PresenceHandler implements IPresenceHandler {
     private presenceQueue: User[];
     private interval: NodeJS.Timeout | null;
     constructor(private bot: DiscordBot) {

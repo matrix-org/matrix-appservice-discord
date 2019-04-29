@@ -27,7 +27,7 @@ import {
     DiscordMessageProcessorResult,
 } from "./discordmessageprocessor";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
-import { PresenceHandler } from "./presencehandler";
+import { PresenceHandler, IPresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
 import { UserSyncroniser } from "./usersyncroniser";
 import { ChannelSyncroniser } from "./channelsyncroniser";
@@ -37,10 +37,12 @@ import * as Discord from "discord.js";
 import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
+import { WorkerBase } from "./workers/WorkerBase";
+import { PresenceWorkerCom } from "./workers/PresenceWorker";
 
 const log = new Log("DiscordBot");
 
-const MIN_PRESENCE_UPDATE_DELAY = 250;
+export const MIN_PRESENCE_UPDATE_DELAY = 250;
 const CACHE_LIFETIME = 90000;
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
@@ -70,7 +72,7 @@ export class DiscordBot {
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
     private mxEventProcessor: MatrixEventProcessor;
-    private presenceHandler: PresenceHandler;
+    private presenceHandler: IPresenceHandler|null;
     private userSync!: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
@@ -94,7 +96,12 @@ export class DiscordBot {
         this.discordMsgProcessor = new DiscordMessageProcessor(
             new DiscordMessageProcessorOpts(config.bridge.domain, this),
         );
-        this.presenceHandler = new PresenceHandler(this);
+        if (WorkerBase.getWorker("presence") == null) {
+            this.presenceHandler = new PresenceHandler(this);
+        } else {
+            this.presenceHandler = null;
+        }
+
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(config, bridge, this),
@@ -126,10 +133,17 @@ export class DiscordBot {
         return this.roomHandler;
     }
 
-    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
+    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User| string, webhookID?: string): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
-            const name = member instanceof Discord.User ? member.username : member.user.username;
+            let name: string;
+            if (member instanceof Discord.User) {
+                name = member.username;
+            } else if (member instanceof Discord.GuildMember) {
+                name = member.user.username;
+            } else {
+                name = member;
+            }
             const nameId = new MatrixUser(`@${name}`).localpart;
             return this.bridge.getIntentFromLocalpart(`_discord_${webhookID}_${nameId}`);
         }
@@ -157,10 +171,10 @@ export class DiscordBot {
                 } catch (err) { log.warning("Exception thrown while handling \"typingStop\" event", err); }
             });
         }
-        if (!this.config.bridge.disablePresence) {
+        if (!this.config.bridge.disablePresence && this.presenceHandler) {
             client.on("presenceUpdate", (_, newMember: Discord.GuildMember) => {
                 try {
-                    this.presenceHandler.EnqueueUser(newMember.user);
+                    this.presenceHandler!.EnqueueUser(newMember.user);
                 } catch (err) { log.warning("Exception thrown while handling \"presenceUpdate\" event", err); }
             });
         }
@@ -261,14 +275,14 @@ export class DiscordBot {
         log.info("Discord bot client logged in.");
         this.bot = client;
 
-        if (!this.config.bridge.disablePresence) {
+        if (!this.config.bridge.disablePresence && this.presenceHandler) {
             if (!this.config.bridge.presenceInterval) {
                 this.config.bridge.presenceInterval = MIN_PRESENCE_UPDATE_DELAY;
             }
             this.bot.guilds.forEach((guild) => {
                 guild.members.forEach((member) => {
                     if (member.id !== this.GetBotId()) {
-                        this.presenceHandler.EnqueueUser(member.user);
+                        this.presenceHandler!.EnqueueUser(member.user);
                     }
                 });
             });
