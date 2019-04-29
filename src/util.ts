@@ -51,6 +51,10 @@ export interface IPatternMap {
     [index: string]: string;
 }
 
+export interface IRequestPromise<T> extends PromiseLike<T> {
+    done (resolve: (msg: T) => {}, reject: (err: Error) => {}): void;
+}
+
 export class Util {
     /**
      * downloadFile - This function will take a URL and store the resulting data into

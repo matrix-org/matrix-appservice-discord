@@ -29,7 +29,6 @@ import {
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
-import * as Bluebird from "bluebird";
 import { Util, ICommandActions, ICommandParameters } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
@@ -122,7 +121,7 @@ export class MatrixRoomHandler {
               continue;
             }
             promiseList.push((async () => {
-                await Bluebird.delay(delay);
+                await Util.DelayedPromise(delay);
                 log.info(`UserSyncing ${member.id}`);
                 try {
                     // Ensure the profile is up to date.

@@ -19,7 +19,6 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import * as Bluebird from "bluebird";
 import { ChannelSyncroniser } from "../src/channelsyncroniser";
 import { DiscordBridgeConfig } from "../src/config";
 import { DiscordBot } from "../src/bot";
@@ -137,7 +136,7 @@ async function run() {
     let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
     client.guilds.forEach((guild) => {
         promiseList2.push((async () => {
-            await Bluebird.delay(curDelay);
+            await Util.DelayedPromise(curDelay);
             try {
                 await discordbot.ChannelSyncroniser.OnGuildUpdate(guild, true);
             } catch (err) {

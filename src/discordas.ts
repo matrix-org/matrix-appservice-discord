@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
-import * as Bluebird from "bluebird";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -23,6 +22,7 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
+import { IRequestPromise } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -94,6 +94,10 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
+                const done = function (resolve, reject) {
+                    (this as Promise<any>).then(resolve);
+                    (this as Promise<any>).then(reject);
+                };
                 try {
                     // Build our own context.
                     if (!store.roomStore) {
@@ -108,10 +112,14 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
                         context.rooms = entries[0] || {};
                     }
-                    await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
+
+                    await request.outcomeFrom({
+                        done,
+                        ...callbacks.onEvent(request, context)
+                    } as IRequestPromise<any>);
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom(Bluebird.reject("Failed to handle"));
+                    await request.outcomeFrom({done, ...Promise.reject("Failed to handle")});
                 }
             },
             onLog: (line, isError) => {

@@ -34,7 +34,6 @@ import { ChannelSyncroniser } from "./channelsyncroniser";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
 import * as Discord from "discord.js";
-import * as Bluebird from "bluebird";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 
@@ -186,11 +185,11 @@ export class DiscordBot {
         });
 
         // Due to messages often arriving before we get a response from the send call,
-        // messages get delayed from discord. We use Bluebird.delay to handle this.
+        // messages get delayed from discord. We use Util.Delay to handle this.
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
-                await Bluebird.delay(this.config.limits.discordSendDelay);
+                await Util.DelayedPromise(this.config.limits.discordSendDelay);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -205,7 +204,7 @@ export class DiscordBot {
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
-                await Bluebird.delay(this.config.limits.discordSendDelay);
+                await Util.DelayedPromise(this.config.limits.discordSendDelay);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -220,7 +219,7 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
-                await Bluebird.delay(this.config.limits.discordSendDelay);
+                await Util.DelayedPromise(this.config.limits.discordSendDelay);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
