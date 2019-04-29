@@ -52,7 +52,7 @@ export interface IPatternMap {
 }
 
 export interface IRequestPromise<T> extends PromiseLike<T> {
-    done (resolve: (msg: T) => {}, reject: (err: Error) => {}): void;
+    done(resolve: (msg: T) => {}, reject: (err: Error) => {}): void;
 }
 
 export class Util {

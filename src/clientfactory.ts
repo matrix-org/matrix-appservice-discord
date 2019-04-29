@@ -65,7 +65,9 @@ export class DiscordClientFactory {
 
         await client.login(token);
         const id = client.user.id;
-        client.destroy();
+        client.destroy().catch(() => {
+            log.warn("Failed to destroy client ", id);
+        });
         return id;
     }
 
@@ -73,7 +75,7 @@ export class DiscordClientFactory {
         if (userId === null) {
             return this.botClient;
         }
-        
+
         if (this.clients.has(userId)) {
             log.verbose("Returning cached user client for", userId);
             return this.clients.get(userId) as DiscordClient;

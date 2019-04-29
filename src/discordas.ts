@@ -94,9 +94,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
-                const done = function (resolve, reject) {
-                    (this as Promise<any>).then(resolve);
-                    (this as Promise<any>).then(reject);
+                // tslint:disable-next-line no-any
+                const done = function(resolve: (res: any) => void, reject: (err: Error) => void) {
+                    // tslint:disable-next-line no-invalid-this no-floating-promises
+                    (this as Promise<{}>).then(resolve);
+                    // tslint:disable-next-line no-invalid-this no-floating-promises
+                    (this as Promise<{}>).then(reject);
                 };
                 try {
                     // Build our own context.
@@ -115,8 +118,8 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
                     await request.outcomeFrom({
                         done,
-                        ...callbacks.onEvent(request, context)
-                    } as IRequestPromise<any>);
+                        ...callbacks.onEvent(request, context),
+                    } as IRequestPromise<{}>);
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                     await request.outcomeFrom({done, ...Promise.reject("Failed to handle")});
