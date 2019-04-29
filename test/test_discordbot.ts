@@ -65,7 +65,8 @@ const modDiscordBot = Proxyquire("../src/bot", {
     "./clientfactory": require("./mocks/discordclientfactory"),
     "./util": {
         Util: {
-            ...Util,
+            AsyncForEach: Util.AsyncForEach,
+            DelayedPromise: Util.DelayedPromise,
             UploadContentFromUrl: async () => {
                 return {mxcUrl: "uploaded"};
             },
