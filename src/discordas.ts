@@ -94,9 +94,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
-                // tslint:disable-next-line no-any
                 // This function emulates the Bluebird.done function so the underlying bridge library doesn't
                 // break.
+                // tslint:disable-next-line no-any
                 const done = function(resolve: (res: any) => void, reject: (err: Error) => void) {
                     // tslint:disable-next-line no-invalid-this no-floating-promises
                     (this as Promise<{}>).then(resolve);
