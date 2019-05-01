@@ -65,7 +65,11 @@ export class DiscordClientFactory {
 
         await client.login(token);
         const id = client.user.id;
-        client.destroy().catch(() => {
+        try {
+            await client.destroy();
+        } catch (err) {
+            log.warn("Failed to destroy client ", id);
+        }
             log.warn("Failed to destroy client ", id);
         });
         return id;
