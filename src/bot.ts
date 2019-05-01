@@ -185,7 +185,7 @@ export class DiscordBot {
         });
 
         // Due to messages often arriving before we get a response from the send call,
-        // messages get delayed from discord. We use Util.Delay to handle this.
+        // messages get delayed from discord. We use Util.DelayedPromise to handle this.
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
