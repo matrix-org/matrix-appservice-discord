@@ -22,7 +22,6 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
-import { IRequestPromise } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -94,15 +93,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
-                // This function emulates the Bluebird.done function so the underlying bridge library doesn't
-                // break.
-                // tslint:disable-next-line no-any
-                const done = function(resolve: (res: any) => void, reject: (err: Error) => void) {
-                    // tslint:disable-next-line no-invalid-this no-floating-promises
-                    (this as Promise<{}>).then(resolve);
-                    // tslint:disable-next-line no-invalid-this no-floating-promises
-                    (this as Promise<{}>).catch(reject);
-                };
                 try {
                     // Build our own context.
                     if (!store.roomStore) {
@@ -110,21 +100,20 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         return;
                     }
                     const roomId = request.getData().room_id;
+
                     const context: BridgeContext = {
                         rooms: {},
                     };
+
                     if (roomId) {
                         const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
                         context.rooms = entries[0] || {};
                     }
 
-                    await request.outcomeFrom({
-                        done,
-                        ...callbacks.onEvent(request, context),
-                    } as IRequestPromise<{}>);
+                    await request.outcomeFrom(callbacks.onEvent(request, context));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom({done, ...Promise.reject("Failed to handle")});
+                    await request.outcomeFrom(Promise.reject("Failed to handle"));
                 }
             },
             onLog: (line, isError) => {
