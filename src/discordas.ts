@@ -23,6 +23,7 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
+import { WorkerBase } from "./workers/WorkerBase";
 
 const log = new Log("DiscordAS");
 
@@ -67,6 +68,15 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const registration = AppServiceRegistration.fromObject(yamlConfig);
     if (registration === null) {
         throw new Error("Failed to parse registration file");
+    }
+
+    // Check we can run workers.
+    if (config.workers.workers != null && config.workers.workers.length > 0) {
+        if (!WorkerBase.supported) {
+            log.error("The bridge is configured to start one or more workers, but this version of Node.JS doesn't support worker_threads. Please use Node 10.X or newer.");
+        } else {
+            log.warn("Workers are an unstable feature within node and the bridge. Use with caution");
+        }
     }
 
     const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
@@ -164,8 +174,16 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         process.exit(1);
     }
 
+
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
+
+
+    // TODO: Find a better spot for spawining workers.
+    for (const workerName of new Set(config.workers.workers)) { // Use Set to avoid repetition.
+        // TODO: Don't use workerbase for worker pool handling
+        WorkerBase.spawnWorker(workerName, bridge, discordbot, fileConfig, yamlConfig);
+    }
 
     try {
         callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
@@ -179,7 +197,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         process.exit(1);
     }
 
-    log.info("Initing bridge");
+    log.info("Initiating bridge");
 
     try {
         log.info("Initing store.");
