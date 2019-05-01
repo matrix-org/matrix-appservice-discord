@@ -3,11 +3,12 @@ import { PresenceWorkerCom } from "./PresenceWorker";
 import { DiscordBridgeConfig } from "../config";
 import { DiscordStore } from "../store";
 import { DiscordClientFactory } from "../clientfactory";
-import { worker } from "cluster";
 import { Log } from "../log";
 import { User } from "discord.js";
 import { DiscordBot } from "../bot";
 import { Bridge } from "matrix-appservice-bridge";
+import { WorkerCom, IWorkerIntentAction, IWorkerResult } from "./WorkerCom";
+import * as uuid from "uuid/v4";
 
 const log = new Log("WorkerBase");
 
@@ -31,33 +32,8 @@ export interface IWorkerConfiguration {
     registration: any,
 };
 
-export abstract class WorkerCom {
-    constructor(protected worker: Worker, private bot: DiscordBot, private bridge: Bridge) {
-        worker.on("message", this.onMessage.bind(this));
-        worker.on("error", this.onError.bind(this));
-    }
-
-    protected onMessage(value: any) {
-        if (value.type === "close") {
-            log.warn(`Worker is closing: ${value.reason} ${value.error}`);
-        } else if (value.type === "intentAction") {
-            let intent;
-            if (value.matrixId) {
-                intent = this.bridge.getIntent(value.matrixId);
-            } else if (value.discordId) {
-                intent = this.bridge.getIntent(value.matrixId);
-            }
-        }
-    }
-
-    protected onError(exitCode: number) {
-
-    }
-}
-
 export abstract class WorkerBase {
     private static workers: {[workerName: string]: WorkerCom} = {};
-    private messagePort: MessagePort;
     protected config: DiscordBridgeConfig;
     protected registration: any;
     protected store: DiscordStore|null = null;
@@ -77,7 +53,6 @@ export abstract class WorkerBase {
         }
         // There isa a bug in the type mappings which means that parentPort
         // can't be directly mapped.
-        this.messagePort = (parentPort as unknown as MessagePort);
         this.config = new DiscordBridgeConfig();
         this.config.ApplyConfig(data.config);
         this.registration = data.registration;
@@ -95,21 +70,34 @@ export abstract class WorkerBase {
 
     }
 
-    protected runIntentAction(user: string|User, func: string, args: any[]) {
+    protected runIntentAction(user: string|User, func: string, args: any[] = [], useClient: boolean): Promise<any> {
         const msg = {
-            "type": "intentAction",
-            func,
+            "type": "intent_action",
+            id: uuid(),
+            function: func,
             args,
-            matrixId: "",
-            discordId: "",
-        }
+            matrixId: undefined,
+            discordId: undefined,
+            useClient,
+        } as IWorkerIntentAction;
         if (typeof user === "string") {
             msg.matrixId = user;
         } else {
             msg.discordId = (user as User).id;
         }
-        this.messagePort.postMessage({
-            "type": "intentAction",
+        parentPort!.postMessage(msg);
+        return new Promise((resolve, reject) => {
+            let responseFunc;
+            responseFunc = (response: IWorkerResult) => {
+                if (response.id !== msg.id) { return; }
+                if (response.error != null) {
+                    reject(response.error);
+                } else {
+                    resolve(response.result);
+                }
+                parentPort!.removeListener("message", responseFunc);
+            }
+            parentPort!.on("message", responseFunc);
         });
     }
     /**
@@ -128,32 +116,36 @@ export abstract class WorkerBase {
         }
     }
 
+    // MAIN THREAD CODE
+
     public static spawnWorker(name: string, bot: DiscordBot, bridge: Bridge, config: any, registration: any): WorkerCom {
         if (WorkerBase.workers[name]) {
             throw new Error("Worker exists, cannot spawn new worker.");
         }
         let com: WorkerCom;
+        let worker: Worker;
         if (name == "presence") {
-            const w = new Worker("./build/src/workers/PresenceWorker.js", {
+            worker = new Worker("./build/src/workers/PresenceWorker.js", {
                 workerData: {
                     config,
                     registration,
                 }
             }); // again, the typing seem to be lacking here :|.
-            w.on("online", () => {
-                log.info(`Worker ${name} has come online`);
-            });
-            w.on("message", (value) => {
-                log.silly(`Worker ${name}: ${JSON.stringify(value)}`);
-            });
-            w.on("exit", (exitCode) => {
-                log.warn(`Worker ${name} has exited (${exitCode})`);
-            });
-            com = new PresenceWorkerCom(w, bot, bridge);
+
+            com = new PresenceWorkerCom(worker, bot, bridge);
             WorkerBase.workers[name] = com;
         } else {
             throw new Error("Worker type unsupported");
         }
+        worker.on("online", () => {
+            log.info(`Worker ${name} has come online`);
+        });
+        worker.on("message", (value) => {
+            log.silly(`Worker ${name}: ${JSON.stringify(value)}`);
+        });
+        worker.on("exit", (exitCode) => {
+            log.warn(`Worker ${name} has exited (${exitCode})`);
+        });
         return com;
     }
 

@@ -174,14 +174,16 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         process.exit(1);
     }
 
-    // TODO: Find a better spot for spawining workers.
-    for (const workerName of new Set(config.workers.workers)) { // Use Set to avoid repetition.
-        // TODO: Don't use workerbase for worker pool handling
-        WorkerBase.spawnWorker(workerName, fileConfig, yamlConfig);
-    }
 
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
+
+
+    // TODO: Find a better spot for spawining workers.
+    for (const workerName of new Set(config.workers.workers)) { // Use Set to avoid repetition.
+        // TODO: Don't use workerbase for worker pool handling
+        WorkerBase.spawnWorker(workerName, bridge, discordbot, fileConfig, yamlConfig);
+    }
 
     try {
         callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);

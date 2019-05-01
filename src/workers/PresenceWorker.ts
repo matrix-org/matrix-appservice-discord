@@ -1,9 +1,10 @@
-import { WorkerBase, WorkerCom } from "./WorkerBase";
+import { WorkerBase } from "./WorkerBase";
 import { isMainThread, workerData, Worker, parentPort } from "worker_threads";
 import { PresenceHandler, IPresenceHandler } from "../presencehandler";
-import { GuildMember } from "discord.js";
-import { MIN_PRESENCE_UPDATE_DELAY } from "../bot";
-
+import { GuildMember, User } from "discord.js";
+import { MIN_PRESENCE_UPDATE_DELAY, DiscordBot } from "../bot";
+import { WorkerCom } from "./WorkerCom";
+import { Bridge } from "matrix-appservice-bridge";
 /**
  * This class is used for communicating to the worker thread from the main thread.
  */
@@ -25,8 +26,8 @@ export class PresenceWorkerCom extends WorkerCom implements IPresenceHandler {
         throw new Error("Method not implemented.");
     }
 
-    constructor(worker: Worker) {
-        super(worker);
+    constructor(worker: Worker, bot: DiscordBot, bridge: Bridge) {
+        super(worker, bot, bridge);
     }
 }
 
@@ -40,7 +41,19 @@ export class PresenceWorker extends WorkerBase {
 
     public async run(): Promise<void> {
         await super.run();
-        const p = new PresenceHandler({} as any);
+        // This is a bit naughty. We're going to fake the bot so it works over threads.
+        const p = new PresenceHandler({
+            GetIntentFromDiscordMember: (user: User) => {
+                return {
+                    getClient: () => ({
+                        setPresence: (presence: any) => {
+                            return this.runIntentAction(user, "setPresence", presence, true);
+                        }
+                    })
+                };
+                this.runIntentAction(user)
+            }
+        } as any);
         await p.Start(this.config.bridge.presenceInterval);
         const bot = await this.clientFactory!.getClient();
         
