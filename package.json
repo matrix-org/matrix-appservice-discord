@@ -43,7 +43,7 @@
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
     "js-yaml": "^3.13.1",
-    "matrix-appservice-bridge": "matrix-org/matrix-appservice-bridge#aab0beca9dcc993cbbb03c6781bb40be15720c3d",
+    "matrix-appservice-bridge": "matrix-org/matrix-appservice-bridge#7abb1228759829500ed7718209b28e197d898dd0",
     "mime": "^1.6.0",
     "moment": "^2.22.2",
     "node-html-parser": "^1.1.11",
