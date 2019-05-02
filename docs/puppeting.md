@@ -32,7 +32,8 @@ their system. They have never given official support on custom clients (and
   bot which is within the rules.
 
 ## How to Puppet an Account
-*2FA does not work with bridging, please do not try it.*
+~~*2FA does not work with bridging, please do not try it.*~~
+You should be able to puppet with 2FA enabled on your account
 
 *You must also be a bridge admin to add or remove puppets at the moment*
 
