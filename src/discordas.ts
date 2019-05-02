@@ -171,7 +171,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     try {
         callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
         callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
-        callbacks.onEvent = eventProcessor.OnEvent.bind(roomhandler);
+        callbacks.onEvent = eventProcessor.OnEvent.bind(eventProcessor);
         callbacks.thirdPartyLookup = async () => {
             return roomhandler.ThirdPartyLookup;
         };
