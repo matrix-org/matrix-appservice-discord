@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
-import * as Bluebird from "bluebird";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -101,17 +100,20 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         return;
                     }
                     const roomId = request.getData().room_id;
+
                     const context: BridgeContext = {
                         rooms: {},
                     };
+
                     if (roomId) {
                         const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
                         context.rooms = entries[0] || {};
                     }
-                    await request.outcomeFrom(Bluebird.resolve(callbacks.onEvent(request, context)));
+
+                    await request.outcomeFrom(callbacks.onEvent(request, context));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom(Bluebird.reject("Failed to handle"));
+                    await request.outcomeFrom(Promise.reject("Failed to handle"));
                 }
             },
             onLog: (line, isError) => {

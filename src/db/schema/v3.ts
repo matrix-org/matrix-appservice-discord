@@ -77,7 +77,8 @@ directory.`);
         for (const row of rows) {
             log.info("Moving ", row.userId);
             try {
-                const dId = clientFactory.getDiscordId(row.token);
+                const client = await clientFactory.getClient(row.token);
+                const dId = client.user.id;
                 if (dId === null) {
                     continue;
                 }

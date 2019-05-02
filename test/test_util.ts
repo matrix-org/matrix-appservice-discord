@@ -179,4 +179,12 @@ describe("Util", () => {
             expect(reply).to.equal("fox, fox and fox");
         });
     });
+    describe("DelayedPromise", () => {
+        it("delays for some time", async () => {
+            const DELAY_FOR = 250;
+            const t = Date.now();
+            await Util.DelayedPromise(DELAY_FOR);
+            expect(Date.now()).to.be.greaterThan(t + DELAY_FOR - 1);
+        });
+    });
 });

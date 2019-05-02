@@ -19,7 +19,6 @@ import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import * as readline from "readline";
-import * as Bluebird from "bluebird";
 import * as process from "process";
 
 import { DiscordClientFactory } from "../src/clientfactory";

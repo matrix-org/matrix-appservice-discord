@@ -19,7 +19,6 @@ import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import * as Bluebird from "bluebird";
 import { DiscordBridgeConfig } from "../src/config";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
@@ -125,7 +124,7 @@ async function run() {
                     return;
                 }
                 promiseList.push((async () => {
-                    await Bluebird.delay(curDelay);
+                    await Util.DelayedPromise(curDelay);
                     let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                     const doJoin = async () => {
                         await Util.DelayedPromise(currentSchedule);
