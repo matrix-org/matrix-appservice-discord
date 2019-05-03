@@ -35,7 +35,7 @@ export class MatrixCommandHandler {
         }
     }
 
-    public async ProcessCommand(event: IMatrixEvent, context: BridgeContext) {
+    public async Process(event: IMatrixEvent, context: BridgeContext) {
         const intent = this.bridge.getIntent();
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);

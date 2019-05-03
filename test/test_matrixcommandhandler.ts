@@ -96,24 +96,24 @@ function createCH(opts: any = {}) {
 }
 
 describe("MatrixCommandHandler", () => {
-    describe("ProcessCommand", () => {
+    describe("Process", () => {
         it("should not process command if not in room", async () => {
             const handler: any = createCH({disableSS: true});
-            const ret = await handler.ProcessCommand({
+            const ret = await handler.Process({
                 room_id: "!666:localhost",
             });
             expect(ret).to.be.undefined;
         });
         it("should warn if self service is disabled", async () => {
             const handler: any = createCH({disableSS: true});
-            await handler.ProcessCommand({
+            await handler.Process({
                 room_id: "!123:localhost",
             });
             expect(MESSAGESENT.body).equals("The owner of this bridge does not permit self-service bridging.");
         });
         it("should warn if user is not powerful enough with defaults", async () => {
             const handler: any = createCH();
-            await handler.ProcessCommand({
+            await handler.Process({
                 room_id: "!123:localhost",
             });
             expect(MESSAGESENT.body).equals("You do not have the required power level in this room to " +
@@ -123,7 +123,7 @@ describe("MatrixCommandHandler", () => {
             const handler: any = createCH({powerLevels: {
                 state_default: 67,
             }});
-            await handler.ProcessCommand({
+            await handler.Process({
                 room_id: "!123:localhost",
             });
             expect(MESSAGESENT.body).equals("You do not have the required power level in this room to " +
@@ -133,7 +133,7 @@ describe("MatrixCommandHandler", () => {
             const handler: any = createCH({powerLevels: {
                 users_default: 60,
             }});
-            const evt = await handler.ProcessCommand({
+            const evt = await handler.Process({
                 content: {body: "!discord help"},
                 room_id: "!123:localhost",
             });
@@ -145,7 +145,7 @@ describe("MatrixCommandHandler", () => {
                  "@user:localhost": 100,
                 },
             }});
-            const evt = await handler.ProcessCommand({
+            const evt = await handler.Process({
                 content: {body: "!discord help"},
                 room_id: "!123:localhost",
                 sender: "@user:localhost",
@@ -158,7 +158,7 @@ describe("MatrixCommandHandler", () => {
                         users_default: 100,
                     }});
                 const context = {rooms: {}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge 123 456"},
                     room_id: "!123:localhost",
                 }, context);
@@ -172,7 +172,7 @@ describe("MatrixCommandHandler", () => {
                     },
                 });
                 const context = {rooms: {}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge 123 456"},
                     room_id: "!123:localhost",
                 }, context);
@@ -186,7 +186,7 @@ describe("MatrixCommandHandler", () => {
                     },
                 });
                 const context = {rooms: {}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge 123 456"},
                     room_id: "!123:localhost",
                 }, context);
@@ -200,7 +200,7 @@ describe("MatrixCommandHandler", () => {
                     },
                 });
                 const context = {rooms: { remote: true }};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge"},
                     room_id: "!123:localhost",
                 }, context);
@@ -213,7 +213,7 @@ describe("MatrixCommandHandler", () => {
                     },
                 });
                 const context = {rooms: {}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge"},
                     room_id: "!123:localhost",
                 }, context);
@@ -224,7 +224,7 @@ describe("MatrixCommandHandler", () => {
                         users_default: 100,
                     }});
                 const context = {rooms: {}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord bridge 123/456"},
                     room_id: "!123:localhost",
                 }, context);
@@ -243,7 +243,7 @@ describe("MatrixCommandHandler", () => {
                         plumbed: true,
                     },
                 } }};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord unbridge"},
                     room_id: "!123:localhost",
                 }, context);
@@ -256,7 +256,7 @@ describe("MatrixCommandHandler", () => {
                     },
                 });
                 const context = {rooms: { remote: undefined }};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord unbridge"},
                     room_id: "!123:localhost",
                 }, context);
@@ -273,7 +273,7 @@ describe("MatrixCommandHandler", () => {
                         plumbed: false,
                     },
                 }}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord unbridge"},
                     room_id: "!123:localhost",
                 }, context);
@@ -291,7 +291,7 @@ describe("MatrixCommandHandler", () => {
                         plumbed: true,
                     },
                 }}};
-                const evt = await handler.ProcessCommand({
+                const evt = await handler.Process({
                     content: {body: "!discord unbridge"},
                     room_id: "!123:localhost",
                 }, context);

@@ -115,7 +115,7 @@ export class MatrixEventProcessor {
                 event.content!.body &&
                 event.content!.body!.startsWith("!discord");
             if (isBotCommand) {
-                await this.mxCommandHandler.ProcessCommand(event, context);
+                await this.mxCommandHandler.Process(event, context);
                 return;
             } else if (context.rooms.remote) {
                 const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
