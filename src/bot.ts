@@ -26,7 +26,7 @@ import {
     DiscordMessageProcessorOpts,
     DiscordMessageProcessorResult,
 } from "./discordmessageprocessor";
-import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
+import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
 import { UserSyncroniser } from "./usersyncroniser";
@@ -123,6 +123,14 @@ export class DiscordBot {
 
     get RoomHandler(): MatrixRoomHandler {
         return this.roomHandler;
+    }
+
+    get MxEventProcessor(): MatrixEventProcessor {
+        return this.mxEventProcessor;
+    }
+
+    get Provisioner(): Provisioner {
+        return this.provisioner;
     }
 
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
@@ -336,53 +344,23 @@ export class DiscordBot {
         }
     }
 
-    public async ProcessMatrixStateEvent(event: IMatrixEvent): Promise<void> {
-        log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-        const channel = await this.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
-        const msg = this.mxEventProcessor.StateEventToMessage(event, channel);
+    public async sendAsBot(msg: string, channel: Discord.TextChannel, event: IMatrixEvent): Promise<void> {
         if (!msg) {
             return;
         }
-        let res = await channel.send(msg);
-        if (!Array.isArray(res)) {
-            res = [res];
-        }
-        await Util.AsyncForEach(res, async (m: Discord.Message) => {
-            log.verbose("Sent (state msg) ", m.id);
-            this.sentMessages.push(m.id);
-            this.lastEventIds[event.room_id] = event.event_id;
-            const evt = new DbEvent();
-            evt.MatrixId = `${event.event_id};${event.room_id}`;
-            evt.DiscordId = m.id;
-            evt.GuildId = channel.guild.id;
-            evt.ChannelId = channel.id;
-            await this.store.Insert(evt);
-        });
-        if (!this.config.bridge.disableReadReceipts) {
-            try {
-                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
-            } catch (err) {
-                log.error(`Failed to send read receipt for ${event}. `, err);
-            }
-        }
+        const res = await channel.send(msg);
+        await this.StoreMessagesSent(res, channel, event);
     }
 
-    public async ProcessMatrixMsgEvent(event: IMatrixEvent, guildId: string, channelId: string): Promise<void> {
-        const mxClient = this.bridge.getClientFactory().getClientAs();
-        log.verbose(`Looking up ${guildId}_${channelId}`);
-        const result = await this.LookupRoom(guildId, channelId, event.sender);
-        const chan = result.channel;
-        const botUser = result.botUser;
-
-        const embedSet = await this.mxEventProcessor.EventToEmbed(event, chan);
+    public async send(
+        embedSet: IMatrixEventProcessorResult,
+        opts: Discord.MessageOptions,
+        roomLookup: ChannelLookupResult,
+        event: IMatrixEvent,
+    ): Promise<void> {
+        const chan = roomLookup.channel;
+        const botUser = roomLookup.botUser;
         const embed = embedSet.messageEmbed;
-        const opts: Discord.MessageOptions = {};
-        const file = await this.mxEventProcessor.HandleAttachment(event, mxClient);
-        if (typeof(file) === "string") {
-            embed.description += " " + file;
-        } else {
-            opts.file = file;
-        }
 
         let msg: Discord.Message | null | (Discord.Message | null)[] = null;
         let hook: Discord.Webhook | undefined;
@@ -420,32 +398,10 @@ export class DiscordBot {
                 opts.embed = embed;
                 msg = await chan.send("", opts);
             }
+            await this.StoreMessagesSent(msg, chan, event);
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
-        if (!Array.isArray(msg)) {
-            msg = [msg];
-        }
-        await Util.AsyncForEach(msg, async (m: Discord.Message) => {
-            log.verbose("Sent ", m.id);
-            this.sentMessages.push(m.id);
-            this.lastEventIds[event.room_id] = event.event_id;
-            const evt = new DbEvent();
-            evt.MatrixId = `${event.event_id};${event.room_id}`;
-            evt.DiscordId = m.id;
-            // Webhooks don't send guild info.
-            evt.GuildId = guildId;
-            evt.ChannelId = channelId;
-            await this.store.Insert(evt);
-        });
-        if (!this.config.bridge.disableReadReceipts) {
-            try {
-                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
-            } catch (err) {
-                log.error(`Failed to send read receipt for ${event}. `, err);
-            }
-        }
-        return;
     }
 
     public async ProcessMatrixRedact(event: IMatrixEvent) {
@@ -909,5 +865,33 @@ export class DiscordBot {
                 }
             }
         }
+    }
+
+    private async StoreMessagesSent(
+        msg: Discord.Message | null | (Discord.Message | null)[],
+        chan: Discord.TextChannel,
+        event: IMatrixEvent,
+    ) {
+        if (!Array.isArray(msg)) {
+            msg = [msg];
+        }
+        await Util.AsyncForEach(msg, async (m: Discord.Message) => {
+            if (!m) {
+                return;
+            }
+            log.verbose("Sent ", m.id);
+            this.sentMessages.push(m.id);
+            this.lastEventIds[event.room_id] = event.event_id;
+            try {
+                const evt = new DbEvent();
+                evt.MatrixId = `${event.event_id};${event.room_id}`;
+                evt.DiscordId = m.id;
+                evt.GuildId = chan.guild.id;
+                evt.ChannelId = chan.id;
+                await this.store.Insert(evt);
+            } catch (err) {
+                log.error(`Failed to insert sent event (${event.event_id};${event.room_id}) into store`, err);
+            }
+        });
     }
 }

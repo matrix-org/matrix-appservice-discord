@@ -21,10 +21,11 @@ import * as escapeStringRegexp from "escape-string-regexp";
 import { Util } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import { MatrixUser, Bridge } from "matrix-appservice-bridge";
+import { MatrixUser, Bridge, BridgeContext } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
+import { MatrixCommandHandler } from "./matrixcommandhandler";
 
 import { Log } from "./log";
 const log = new Log("MatrixEventProcessor");
@@ -34,6 +35,8 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
+const ROOM_NAME_PARTS = 2;
+const AGE_LIMIT = 900000; // 15 * 60 * 1000
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -55,15 +58,131 @@ export class MatrixEventProcessor {
     private bridge: Bridge;
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
+    private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(opts: MatrixEventProcessorOpts) {
+    constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
+        if (cm) {
+            this.mxCommandHandler = cm;
+        } else {
+            this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.bridge, this.config);
+        }
     }
 
-    public StateEventToMessage(event: IMatrixEvent, channel: Discord.TextChannel): string | undefined {
+    public async OnEvent(request, context: BridgeContext): Promise<void> {
+        const event = request.getData() as IMatrixEvent;
+        if (event.unsigned.age > AGE_LIMIT) {
+            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            return;
+        }
+        if (
+            event.type === "m.room.member" &&
+            event.content!.membership === "invite" &&
+            event.state_key === this.discord.GetBotId()
+        ) {
+            await this.mxCommandHandler.HandleInvite(event);
+            return;
+        } else if (event.type === "m.room.member" && this.bridge.getBot().isRemoteUser(event.state_key)) {
+            if (["leave", "ban"].includes(event.content!.membership!) && event.sender !== event.state_key) {
+                // Kick/Ban handling
+                let prevMembership = "";
+                if (event.content!.membership === "leave") {
+                    const intent = this.bridge.getIntent();
+                    prevMembership = (await intent.getEvent(event.room_id, event.replaces_state)).content.membership;
+                }
+                await this.discord.HandleMatrixKickBan(
+                    event.room_id,
+                    event.state_key,
+                    event.sender,
+                    event.content!.membership as "leave"|"ban",
+                    prevMembership,
+                    event.content!.reason,
+                );
+            }
+            return;
+        } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
+            await this.ProcessStateEvent(event);
+            return;
+        } else if (event.type === "m.room.redaction" && context.rooms.remote) {
+            await this.discord.ProcessMatrixRedact(event);
+            return;
+        } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+            log.verbose(`Got ${event.type} event`);
+            const isBotCommand = event.type === "m.room.message" &&
+                event.content!.body &&
+                event.content!.body!.startsWith("!discord");
+            if (isBotCommand) {
+                await this.mxCommandHandler.ProcessCommand(event, context);
+                return;
+            } else if (context.rooms.remote) {
+                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+                try {
+                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    return;
+                } catch (err) {
+                    log.warn("There was an error sending a matrix event", err);
+                    return;
+                }
+            }
+        } else if (event.type === "m.room.encryption" && context.rooms.remote) {
+            try {
+                await this.HandleEncryptionWarning(event.room_id);
+                return;
+            } catch (err) {
+                throw new Error(`Failed to handle encrypted room, ${err}`);
+            }
+        } else {
+            log.verbose("Got non m.room.message event");
+        }
+        log.verbose("Event not processed by bridge");
+    }
+
+    public async HandleEncryptionWarning(roomId: string): Promise<void> {
+        const intent = this.bridge.getIntent();
+        log.info(`User has turned on encryption in ${roomId}, so leaving.`);
+        /* N.B 'status' is not specced but https://github.com/matrix-org/matrix-doc/pull/828
+         has been open for over a year with no resolution. */
+        const sendPromise = intent.sendMessage(roomId, {
+            body: "You have turned on encryption in this room, so the service will not bridge any new messages.",
+            msgtype: "m.notice",
+            status: "critical",
+        });
+        const channel = await this.discord.GetChannelFromRoomId(roomId);
+        await (channel as Discord.TextChannel).send(
+          "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
+        );
+        await sendPromise;
+        await intent.leave(roomId);
+        await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
+    }
+
+    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        log.verbose(`Looking up ${guildId}_${channelId}`);
+        const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
+        const chan = roomLookup.channel;
+        const botUser = roomLookup.botUser;
+
+        const embedSet = await this.EventToEmbed(event, chan);
+        const opts: Discord.MessageOptions = {};
+        const file = await this.HandleAttachment(event, mxClient);
+        if (typeof(file) === "string") {
+            embedSet.messageEmbed.description += " " + file;
+        } else {
+            opts.file = file;
+        }
+
+        await this.discord.send(embedSet, opts, roomLookup, event);
+        await this.sendReadReceipt(event);
+    }
+
+    public async ProcessStateEvent(event: IMatrixEvent) {
+        log.verbose(`Got state event from ${event.room_id} ${event.type}`);
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
+
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
             log.verbose(`${event.event_id} ${event.type} is not displayable.`);
@@ -106,7 +225,8 @@ export class MatrixEventProcessor {
         }
 
         msg += " on Matrix.";
-        return msg;
+        await this.discord.sendAsBot(msg, channel, event);
+        await this.sendReadReceipt(event);
     }
 
     public async EventToEmbed(
@@ -248,6 +368,16 @@ export class MatrixEventProcessor {
         embed.setDescription("Reply with unknown content");
         embed.setAuthor("Unknown");
         return embed;
+    }
+
+    private async sendReadReceipt(event: IMatrixEvent) {
+        if (!this.config.bridge.disableReadReceipts) {
+            try {
+                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+            } catch (err) {
+                log.error(`Failed to send read receipt for ${event}. `, err);
+            }
+        }
     }
 
     private HasAttachment(event: IMatrixEvent): boolean {

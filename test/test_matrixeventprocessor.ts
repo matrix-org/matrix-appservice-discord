@@ -36,6 +36,14 @@ const TEST_TIMESTAMP = 1337;
 
 const expect = Chai.expect;
 // const assert = Chai.assert;
+function buildRequest(eventData) {
+    if (eventData.unsigned === undefined) {
+        eventData.unsigned = {age: 0};
+    }
+    return {
+        getData: () => eventData,
+    };
+}
 const bot = {
     GetIntentFromDiscordMember: (member) => {
         return {
@@ -77,7 +85,16 @@ const mxClient = {
     },
 };
 
+let STATE_EVENT_MSG = "";
+let USERSYNC_HANDLED = false;
+let MESSAGE_PROCCESS = "";
+let KICKBAN_HANDLED = false;
+
 function createMatrixEventProcessor(): MatrixEventProcessor {
+    USERSYNC_HANDLED = false;
+    STATE_EVENT_MSG = "";
+    MESSAGE_PROCCESS = "";
+    KICKBAN_HANDLED = true;
     const bridge = {
         getBot: () => {
             return {
@@ -159,7 +176,9 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
                             sender: "@fox:localhost",
                         };
                     }
-                    return null;
+                    return {
+                        content: {},
+                    };
                 },
                 getProfileInfo: async (userId: string) => {
                     if (userId !== "@doggo:localhost") {
@@ -173,6 +192,12 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
             };
         },
     };
+    const us = {
+        OnMemberState: async () => {
+            USERSYNC_HANDLED = true;
+        },
+        OnUpdateUser: async () => { },
+    };
     const config = new DiscordBridgeConfig();
 
     const Util = Object.assign(require("../src/util").Util, {
@@ -182,10 +207,33 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         },
     });
     const discordbot = {
+        GetBotId: () => "@botuser:localhost",
+        GetChannelFromRoomId: async (roomId) => {
+            return new MockChannel("123456");
+        },
         GetDiscordUserOrMember: async (s) => {
             return new Discord.User({ } as any, { username: "Someuser" });
         },
+        HandleMatrixKickBan: () => {
+            KICKBAN_HANDLED = true;
+        },
+        ProcessMatrixRedact: async (evt) => {
+            MESSAGE_PROCCESS = "redacted";
+        },
+        UserSyncroniser: us,
+        sendAsBot: async (msg, channel, event) => {
+            STATE_EVENT_MSG = msg;
+        },
     };
+
+    const ch = Object.assign(new (require("../src/matrixcommandhandler").MatrixCommandHandler)(bot as any, config), {
+        HandleInvite: async (evt) => {
+            MESSAGE_PROCCESS = "invited";
+        },
+        ProcessCommand: async (evt) => {
+            MESSAGE_PROCCESS = "command_processed";
+        },
+    });
 
     return new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
@@ -196,34 +244,33 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
             config,
             bridge,
             discordbot as any,
-    ));
+    ), ch);
 }
 const mockChannel = new MockChannel();
 mockChannel.members.set("12345", new MockMember("12345", "testuser2"));
 
 describe("MatrixEventProcessor", () => {
-    describe("StateEventToMessage", () => {
-        it("Should ignore unhandled states", () => {
+    describe("ProcessStateEvent", () => {
+        it("Should ignore unhandled states", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
+                room_id: "!someroom:localhost",
                 sender: "@user:localhost",
                 type: "m.room.nonexistant",
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, undefined);
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
         });
-        it("Should ignore bot user states", () => {
+        it("Should ignore bot user states", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 sender: "@botuser:localhost",
                 type: "m.room.member",
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, undefined);
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
         });
-        it("Should echo name changes", () => {
+        it("Should echo name changes", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -232,11 +279,10 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 type: "m.room.name",
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` set the name to `Test Name` on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the name to `Test Name` on Matrix.");
         });
-        it("Should echo topic changes", () => {
+        it("Should echo topic changes", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -245,11 +291,10 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 type: "m.room.topic",
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` set the topic to `Test Topic` on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the topic to `Test Topic` on Matrix.");
         });
-        it("Should echo joins", () => {
+        it("Should echo joins", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -259,11 +304,10 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.member",
                 unsigned: {},
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` joined the room on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` joined the room on Matrix.");
         });
-        it("Should echo invites", () => {
+        it("Should echo invites", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -274,11 +318,10 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.member",
                 unsigned: {},
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
         });
-        it("Should echo kicks", () => {
+        it("Should echo kicks", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -289,11 +332,10 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.member",
                 unsigned: {},
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
         });
-        it("Should echo leaves", () => {
+        it("Should echo leaves", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -304,11 +346,10 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.member",
                 unsigned: {},
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` left the room on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` left the room on Matrix.");
         });
-        it("Should echo bans", () => {
+        it("Should echo bans", async () => {
             const processor = createMatrixEventProcessor();
             const event = {
                 content: {
@@ -319,9 +360,8 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.member",
                 unsigned: {},
             } as IMatrixEvent;
-            const channel = new MockChannel("123456");
-            const msg = processor.StateEventToMessage(event, channel as any);
-            Chai.assert.equal(msg, "`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
         });
     });
     describe("EventToEmbed", () => {
@@ -765,6 +805,167 @@ This is the reply`,
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
             expect(result!.description).to.be.equal("[package.zip](https://package/localhost)");
+        });
+    });
+    describe("OnEvent", () => {
+        it("should reject old events", async () => {
+            const AGE = 900001; // 15 * 60 * 1000
+            const processor = createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
+            expect(MESSAGE_PROCCESS).equals("");
+        });
+        it("should reject un-processable events", async () => {
+            const AGE = 900000; // 15 * 60 * 1000
+            const processor = createMatrixEventProcessor();
+            // check if nothing is thrown
+            await processor.OnEvent(buildRequest({
+                content: {},
+                type: "m.potato",
+                unsigned: {age: AGE}}), null);
+            expect(MESSAGE_PROCCESS).equals("");
+        });
+        it("should handle own invites", async () => {
+            const processor = createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({
+                content: {membership: "invite"},
+                state_key: "@botuser:localhost",
+                type: "m.room.member"}), null);
+            expect(MESSAGE_PROCCESS).to.equal("invited");
+        });
+        it("should handle kicks to own members", async () => {
+            const processor = createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({
+                content: {membership: "leave"},
+                sender: "@badboy:localhost",
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null);
+            expect(KICKBAN_HANDLED).to.be.true;
+        });
+        it("should handle bans to own members", async () => {
+            const processor = createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({
+                content: {membership: "ban"},
+                sender: "@badboy:localhost",
+                state_key: "@_discord_12345:localhost",
+                type: "m.room.member"}), null);
+            expect(KICKBAN_HANDLED).to.be.true;
+        });
+        it("should pass other member types to state event", async () => {
+            const processor = createMatrixEventProcessor();
+            let stateevent = false;
+            processor.ProcessStateEvent = async (ev) => {
+                stateevent = true;
+            };
+            await processor.OnEvent(buildRequest({
+                content: {membership: "join"},
+                state_key: "@bacon:localhost",
+                type: "m.room.member"}), null);
+            expect(MESSAGE_PROCCESS).to.equal("");
+            expect(stateevent).to.be.true;
+        });
+        it("should handle redactions with existing rooms", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: true,
+                },
+            };
+            await processor.OnEvent(buildRequest({
+                type: "m.room.redaction"}), context);
+            expect(MESSAGE_PROCCESS).equals("redacted");
+        });
+        it("should ignore redactions with no linked room", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: null,
+                },
+            };
+            await processor.OnEvent(buildRequest({
+                    type: "m.room.redaction"}), context);
+            expect(MESSAGE_PROCCESS).equals("");
+        });
+        it("should process regular messages", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            let processed = false;
+            processor.ProcessMsgEvent = async (evt, _, __) => {
+                processed = true;
+            };
+            await processor.OnEvent(buildRequest({
+                content: {body: "abc"},
+                type: "m.room.message",
+            }), context);
+            expect(MESSAGE_PROCCESS).to.equal("");
+            expect(processed).to.be.true;
+        });
+        it("should alert if encryption is turned on", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            let encrypt = false;
+            processor.HandleEncryptionWarning = async (evt) => {
+                encrypt = true;
+            };
+            await processor.OnEvent(buildRequest({
+                room_id: "!accept:localhost",
+                type: "m.room.encryption",
+            }), context);
+            expect(encrypt).to.be.true;
+        });
+        it("should process !discord commands", async () => {
+            const processor = createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({
+                content: {body: "!discord cmd"},
+                type: "m.room.message",
+            }), null);
+            expect(MESSAGE_PROCCESS).to.equal("command_processed");
+        });
+        it("should ignore regular messages with no linked room", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: null,
+                },
+            };
+            await processor.OnEvent(buildRequest({
+                content: {body: "abc"},
+                type: "m.room.message",
+            }), context);
+            expect(MESSAGE_PROCCESS).equals("");
+        });
+        it("should process stickers", async () => {
+            const processor = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: {
+                        roomId: "_discord_123_456",
+                    },
+                },
+            };
+            let processed = false;
+            processor.ProcessMsgEvent = async (evt, _, __) => {
+                processed = true;
+            };
+            await processor.OnEvent(buildRequest({
+                content: {
+                    body: "abc",
+                    url: "mxc://abc",
+                },
+                type: "m.sticker",
+            }), context);
+            expect(processed).to.be.true;
         });
     });
 });
