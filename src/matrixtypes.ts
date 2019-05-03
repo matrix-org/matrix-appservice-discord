@@ -59,3 +59,11 @@ export interface IMatrixMediaInfo {
     size: number;
     duration?: number;
 }
+
+// from https://matrix-org.github.io/matrix-appservice-bridge/1.8.0/AppServiceBot.html
+export interface IJoinedMembersMap {
+    [userId: string]: {
+        display_name: string;
+        avatar_url: string;
+    };
+}
