@@ -17,16 +17,13 @@ limitations under the License.
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 import { Log } from "../../log";
-import {
-    RoomStore,
-} from "matrix-appservice-bridge";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../roomstore";
 const log = new Log("SchemaV8");
 
 export class Schema implements IDbSchema {
     public description = "create room store tables";
 
-    constructor(private roomStore: RoomStore|null) {
+    constructor() {
 
     }
 
@@ -56,33 +53,9 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(id)
         );`, "room_entries");
 
-        if (this.roomStore === null) {
-            log.warn("Not migrating rooms from room store, room store is null");
-            return;
-        }
-        log.warn("Migrating rooms from roomstore, this may take a while...");
-        const rooms = await this.roomStore.select({});
-        log.info(`Found ${rooms.length} rooms in the DB`);
-        // Matrix room only entrys are useless.
-        const entrys = rooms.filter((r) => r.remote);
-        log.info(`Filtered out rooms without remotes. Have ${entrys.length} entries`);
-        let migrated = 0;
-        for (const e of entrys) {
-            const matrix = new MatrixStoreRoom(e.matrix_id);
-            try {
-                const remote = new RemoteStoreRoom(e.remote_id, e.remote);
-                await store.roomStore.linkRooms(matrix, remote);
-                log.info(`Migrated ${matrix.roomId}`);
-                migrated++;
-            } catch (ex) {
-                log.error(`Failed to link ${matrix.roomId}: `, ex);
-            }
-        }
-        if (migrated !== entrys.length) {
-            log.error(`Didn't migrate all rooms, ${entrys.length - migrated} failed to be migrated.`);
-        } else {
-            log.info("Migrated all rooms successfully");
-        }
+        // XXX: This used to migrate rooms across from the old room store format but
+        // since we moved to the matrix-js-bot-sdk, we can no longer do this. Please
+        // use a 0.X release for this.
     }
 
     public async rollBack(store: DiscordStore): Promise<void> {

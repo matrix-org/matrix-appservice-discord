@@ -19,7 +19,7 @@ import { IMatrixMessage, IMatrixEvent } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";
-import { Client as MatrixClient } from "matrix-js-sdk";
+import { MatrixClient } from "matrix-bot-sdk";
 
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
@@ -38,7 +38,7 @@ export class MatrixMessageProcessor {
     private listDepth: number = 0;
     private listBulletPoints: string[] = ["●", "○", "■", "‣"];
     private params?: IMatrixMessageProcessorParams;
-    constructor(public bot: DiscordBot) { }
+    constructor(public bot: DiscordBot, private homeserverUrl: string) { }
     public async FormatMessage(
         msg: IMatrixMessage,
         guild: Discord.Guild,
@@ -81,8 +81,8 @@ export class MatrixMessageProcessor {
             return false;
         }
 
-        const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
-            this.params.roomId, "m.room.power_levels");
+        const res: IMatrixEvent = await this.params.mxClient.getRoomStateEvent(
+            this.params.roomId, "m.room.power_levels", "");
 
         // Some rooms may not have notifications.room set if the value hasn't
         // been changed from the default. If so, use our hardcoded power level.
@@ -218,7 +218,7 @@ export class MatrixMessageProcessor {
 
         if (!emoji) {
             const content = await this.escapeDiscord(name);
-            const url = this.params && this.params.mxClient ? this.params.mxClient.mxcUrlToHttp(attrs.src) : attrs.src;
+            const url = this.params && this.params.mxClient ? Util.GetUrlFromMxc(attrs.src, this.homeserverUrl) : attrs.src;
             return attrs.src ? `[${content}](${url})` : content;
         }
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;

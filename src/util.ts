@@ -16,15 +16,14 @@ limitations under the License.
 
 import * as http from "http";
 import * as https from "https";
-import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
-import * as mime from "mime";
 import { Permissions } from "discord.js";
 import { DiscordBridgeConfig } from "./config";
 
 const HTTP_OK = 200;
 
 import { Log } from "./log";
+import { Intent } from "matrix-bot-sdk";
 const log = new Log("Util");
 
 export interface ICommandAction {
@@ -83,65 +82,6 @@ export class Util {
             });
         }) as Promise<Buffer>;
     }
-    /**
-     * uploadContentFromUrl - Upload content from a given URL to the homeserver
-     * and return a MXC URL.
-     */
-    public static async UploadContentFromUrl(url: string, intent: Intent, name: string | null): Promise<IUploadResult> {
-        let contenttype;
-        name = name || null;
-        try {
-            const bufferRet = (await (new Promise((resolve, reject) => {
-                let ht;
-                if (url.startsWith("https")) {
-                    ht = https;
-                } else {
-                    ht = http;
-                }
-                const req = ht.get( url, (res) => {
-                    let buffer = Buffer.alloc(0);
-
-                    if (res.headers.hasOwnProperty("content-type")) {
-                        contenttype = res.headers["content-type"];
-                    } else {
-                        log.verbose("No content-type given by server, guessing based on file name.");
-                        contenttype = mime.lookup(url);
-                    }
-
-                    if (name === null) {
-                        const names = url.split("/");
-                        name = names[names.length - 1];
-                    }
-
-                    res.on("data", (d) => {
-                        buffer = Buffer.concat([buffer, d]);
-                    });
-
-                    res.on("end", () => {
-                        resolve(buffer);
-                    });
-                });
-                req.on("error", (err) => {
-                    reject(`Failed to download. ${err.code}`);
-                });
-            }))) as Buffer;
-            const size = bufferRet.length;
-            const contentUri = await intent.getClient().uploadContent(bufferRet, {
-                name,
-                onlyContentUri: true,
-                rawResponse: false,
-                type: contenttype,
-            });
-            log.verbose("Media uploaded to ", contentUri);
-            return {
-                mxcUrl: contentUri,
-                size,
-            };
-        } catch (reason) {
-            log.error("Failed to upload content:\n", reason);
-            throw reason;
-        }
-    }
 
     /**
      * Gets a promise that will resolve after the given number of milliseconds
@@ -177,42 +117,31 @@ export class Util {
         if (name[0] === "@" && name.includes(":")) {
             return name;
         }
-        const client = intent.getClient();
+        const client = intent.underlyingClient;
+        await intent.ensureRegistered();
         const matrixUsers = {};
         let matches = 0;
-        await Promise.all(channelMxids.map((chan) => {
-            // we would use this.bridge.getBot().getJoinedMembers()
-            // but we also want to be able to search through banned members
-            // so we gotta roll our own thing
-            return client._http.authedRequestWithPrefix(
-                undefined,
-                "GET",
-                `/rooms/${encodeURIComponent(chan)}/members`,
-                undefined,
-                undefined,
-                "/_matrix/client/r0",
-            ).then((res) => {
-                res.chunk.forEach((member) => {
-                    if (member.membership !== "join" && member.membership !== "ban") {
-                        return;
-                    }
-                    const mxid = member.state_key;
-                    if (mxid.startsWith("@_discord_")) {
-                        return;
-                    }
-                    let displayName = member.content.displayname;
-                    if (!displayName && member.unsigned && member.unsigned.prev_content &&
-                        member.unsigned.prev_content.displayname) {
-                        displayName = member.unsigned.prev_content.displayname;
-                    }
-                    if (!displayName) {
-                        displayName = mxid.substring(1, mxid.indexOf(":"));
-                    }
-                    if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
-                        matrixUsers[mxid] = displayName;
-                        matches++;
-                    }
-                });
+        await Promise.all(channelMxids.map( async (chan) => {
+            (await client.getRoomMembers(chan)).forEach((member) => {
+                if (member.membership !== "join" && member.membership !== "ban") {
+                    return;
+                }
+                const mxid = member.state_key;
+                if (mxid.startsWith("@_discord_")) {
+                    return;
+                }
+                let displayName = member.content.displayname;
+                if (!displayName && member.unsigned && member.unsigned.prev_content &&
+                    member.unsigned.prev_content.displayname) {
+                    displayName = member.unsigned.prev_content.displayname;
+                }
+                if (!displayName) {
+                    displayName = mxid.substring(1, mxid.indexOf(":"));
+                }
+                if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
+                    matrixUsers[mxid] = displayName;
+                    matches++;
+                }
             });
         }));
         if (matches === 0) {
@@ -285,9 +214,40 @@ export class Util {
         }
         return str;
     }
-}
 
-interface IUploadResult {
-    mxcUrl: string;
-    size: number;
+    public static GetUrlFromMxc(mxc: string, homeserverUrl: string, width: number = 0, height: number = 0, method: "crop"|"scale" = "crop"): string {
+        const part = mxc.substr("mxc://".length);
+        if (width || height) {
+            let u = `${homeserverUrl}/_matrix/media/r0/thumbnail/${part}?method=${method}`;
+            if (width) {
+                u += `&width=${width}`;
+            }
+            if (height) {
+                u += `&height=${height}`;
+            }
+            return u;
+        }
+        return `${homeserverUrl}/_matrix/media/r0/download/${part}`;
+    }
+
+    public static ParseMxid(unescapedMxid: string, escape: boolean = true): {mxid: string, localpart: string, domain: string} {
+        const parts = unescapedMxid.substr(1).split(":");
+        const domain = parts[1];
+        let localpart = parts[0];
+        if (escape) {
+            const badChars = new Set(localpart.replace(/([a-z0-9]|-|\.|=|_)+/g, ""));
+            badChars.forEach((c) => {
+                const hex = c.charCodeAt(0).toString(16).toLowerCase();
+                localpart = localpart.replace(
+                    new RegExp(`\\${c}`, "g"),
+                    `=${hex}`
+                );
+            });
+        }
+        return {
+            mxid: `@${localpart}:${domain}`,
+            localpart,
+            domain
+        }
+    }
 }

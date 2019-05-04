@@ -26,9 +26,6 @@ import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
-import {
-    RoomStore, UserStore,
-} from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -91,10 +88,8 @@ export class DiscordStore {
      * Checks the database has all the tables needed.
      */
     public async init(
-        overrideSchema: number = 0, roomStore: RoomStore = null, userStore: UserStore = null,
+        overrideSchema: number = 0,
     ): Promise<void> {
-        const SCHEMA_ROOM_STORE_REQUIRED = 8;
-        const SCHEMA_USER_STORE_REQUIRED = 9;
         log.info("Starting DB Init");
         await this.open_database();
         let version = await this.getSchemaVersion();
@@ -104,13 +99,7 @@ export class DiscordStore {
             version++;
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
             let schema: IDbSchema;
-            if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
-                schema = (new schemaClass(roomStore) as IDbSchema);
-            } else if (version === SCHEMA_USER_STORE_REQUIRED) {
-                schema = (new schemaClass(userStore) as IDbSchema);
-            } else {
-                schema = (new schemaClass() as IDbSchema);
-            }
+            schema = (new schemaClass() as IDbSchema);
             log.info(`Updating database to v${version}, "${schema.description}"`);
             try {
                 await schema.run(this);
@@ -278,23 +267,7 @@ export class DiscordStore {
             throw err;
         }
     }
-/*
-    public async get_all_user_discord_ids(): Promise<any> {
-        log.silly("SQL", "get_users_tokens");
-        try {
-            const rows = await this.db.All(
-                `
-                SELECT *
-                FROM get_user_discord_ids
-                `,
-            );
-            return rows;
-        } catch (err) {
-            log.error("Error getting user token  ", err.Error);
-            throw err;
-        }
-    }
-*/
+
     // tslint:disable-next-line no-any
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
@@ -329,7 +302,7 @@ export class DiscordStore {
         let version = 0;
         try {
             const versionReply = await this.db.Get(`SELECT version FROM schema`);
-            version = versionReply.version as number;
+            version = versionReply!.version as number;
         } catch (er) {
             log.warn("Couldn't fetch schema version, defaulting to 0");
         }

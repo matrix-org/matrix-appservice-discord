@@ -44,7 +44,7 @@ export class Postgres implements IDatabaseConnector {
         this.db = pgp(this.connectionString);
     }
 
-    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow|null> {
         log.silly("Get:", sql);
         return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
@@ -63,7 +63,7 @@ export class Postgres implements IDatabaseConnector {
 
     public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {
         log.silly("Run:", sql);
-        return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
+        return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters).then(() => {});
     }
 
     public async Close(): Promise<void> {

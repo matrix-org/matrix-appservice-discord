@@ -46,6 +46,8 @@ export class DiscordBridgeConfig {
 class DiscordBridgeConfigBridge {
     public domain: string;
     public homeserverUrl: string;
+    public port: number;
+    public bindAddress: string;
     public presenceInterval: number = 500;
     public disablePresence: boolean;
     public disableTypingNotifications: boolean;

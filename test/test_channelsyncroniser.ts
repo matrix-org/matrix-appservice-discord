@@ -26,7 +26,8 @@ import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeve
 import { DiscordBridgeConfig } from "../src/config";
 import { Util } from "../src/util";
 import { MockChannel } from "./mocks/channel";
-import { Bridge, MatrixRoom, RemoteRoom } from "matrix-appservice-bridge";
+import { MatrixStoreRoom, RemoteStoreRoom, IRoomStoreEntry } from "../src/db/roomstore";
+import { Appservice } from "matrix-bot-sdk";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
@@ -46,22 +47,18 @@ const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
         Util: {
             ApplyPatternString: Util.ApplyPatternString,
-            UploadContentFromUrl: async () => {
-                UTIL_UPLOADED_AVATAR = true;
-                return {mxcUrl: "avatarset"};
-            },
         },
     },
 })).ChannelSyncroniser;
 
-class Entry {
+class Entry implements IRoomStoreEntry {
     public id: any;
-    public matrix: MatrixRoom;
-    public remote: RemoteRoom;
+    public matrix: MatrixStoreRoom|null;
+    public remote: RemoteStoreRoom|null;
     public data: any;
     constructor(doc: any = {}) {
-        this.matrix = doc.matrix_id ? new MatrixRoom(doc.matrix_id, doc.matrix) : undefined;
-        this.remote = doc.remote_id ? new RemoteRoom(doc.remote_id, doc.remote) : undefined;
+        this.matrix = doc.matrix_id ? new MatrixStoreRoom(doc.matrix_id) : null;
+        this.remote = doc.remote_id ? new RemoteStoreRoom(doc.remote_id, doc.remote) : null;
         this.data = doc.data;
     }
 }
@@ -160,7 +157,7 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.channel.namePattern = "[Discord] :guild :name";
-    const cs = new ChannelSync(bridge as Bridge, config, discordbot, roomStore) as ChannelSyncroniser;
+    const cs = new ChannelSync(bridge as Appservice, config, discordbot, roomStore) as ChannelSyncroniser;
     return cs;
 }
 

@@ -57,10 +57,6 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
         Util: {
             ApplyPatternString: Util.ApplyPatternString,
             AsyncForEach: Util.AsyncForEach,
-            UploadContentFromUrl: async () => {
-                UTIL_UPLOADED_AVATAR = true;
-                return {mxcUrl: "avatarset"};
-            },
         },
     },
 })).UserSyncroniser;

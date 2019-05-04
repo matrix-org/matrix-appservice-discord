@@ -19,7 +19,6 @@ limitations under the License.
  * Allows you to become an admin for a room the bot is in control of.
  */
 
-import { AppServiceRegistration, ClientFactory, Intent } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";

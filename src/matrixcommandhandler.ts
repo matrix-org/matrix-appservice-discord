@@ -1,11 +1,12 @@
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { DiscordBridgeConfig } from "./config";
-import { Bridge, BridgeContext } from "matrix-appservice-bridge";
 import { IMatrixEvent } from "./matrixtypes";
 import { Provisioner } from "./provisioner";
 import { Util } from "./util";
 import * as Discord from "discord.js";
+import { Appservice } from "matrix-bot-sdk";
+import { IRoomStoreEntry } from "./db/roomstore";
 const log = new Log("MatrixCommandHandler");
 
 /* tslint:disable:no-magic-numbers */
@@ -20,7 +21,7 @@ export class MatrixCommandHandler {
     private provisioner: Provisioner;
     constructor(
         private discord: DiscordBot,
-        private bridge: Bridge,
+        private bridge: Appservice,
         private config: DiscordBridgeConfig,
     ) {
         this.provisioner = this.discord.Provisioner;
@@ -30,13 +31,12 @@ export class MatrixCommandHandler {
         log.info(`Received invite for ${event.state_key} in room ${event.room_id}`);
         if (event.state_key === this.discord.GetBotId()) {
             log.info("Accepting invite for bridge bot");
-            await this.bridge.getIntent().joinRoom(event.room_id);
+            await this.bridge.botIntent.joinRoom(event.room_id);
             this.botJoinedRooms.add(event.room_id);
         }
     }
 
-    public async ProcessCommand(event: IMatrixEvent, context: BridgeContext) {
-        const intent = this.bridge.getIntent();
+    public async ProcessCommand(event: IMatrixEvent, context: IRoomStoreEntry|undefined) {
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
             return;
@@ -44,7 +44,7 @@ export class MatrixCommandHandler {
 
         if (!this.config.bridge.enableSelfServiceBridging) {
             // We can do this here because the only commands we support are self-service bridging
-            return this.bridge.getIntent().sendMessage(event.room_id, {
+            return this.bridge.botIntent.sendEvent(event.room_id, {
                 body: "The owner of this bridge does not permit self-service bridging.",
                 msgtype: "m.notice",
             });
@@ -53,8 +53,8 @@ export class MatrixCommandHandler {
         // Check to make sure the user has permission to do anything in the room. We can do this here
         // because the only commands we support are self-service commands (which therefore require some
         // level of permissions)
-        const plEvent = await this.bridge.getIntent().getClient()
-            .getStateEvent(event.room_id, "m.room.power_levels", "");
+        const plEvent = await this.bridge.botIntent.underlyingClient
+            .getRoomStateEvent(event.room_id, "m.room.power_levels", "");
         let userLevel = PROVISIONING_DEFAULT_USER_POWER_LEVEL;
         let requiredLevel = PROVISIONING_DEFAULT_POWER_LEVEL;
         if (plEvent && plEvent.state_default) {
@@ -68,7 +68,7 @@ export class MatrixCommandHandler {
         }
 
         if (userLevel < requiredLevel) {
-            return this.bridge.getIntent().sendMessage(event.room_id, {
+            return this.bridge.botIntent.sendEvent(event.room_id, {
                 body: "You do not have the required power level in this room to create a bridge to a Discord channel.",
                 msgtype: "m.notice",
             });
@@ -79,7 +79,7 @@ export class MatrixCommandHandler {
         if (command === "help" && args[0] === "bridge") {
             const link = Util.GetBotLink(this.config);
             // tslint:disable prefer-template
-            return this.bridge.getIntent().sendMessage(event.room_id, {
+            return this.bridge.botIntent.sendEvent(event.room_id, {
                 body: "How to bridge a Discord guild:\n" +
                 "1. Invite the bot to your Discord guild using this link: " + link + "\n" +
                 "2. Invite me to the matrix room you'd like to bridge\n" +
@@ -93,8 +93,8 @@ export class MatrixCommandHandler {
             });
             // tslint:enable prefer-template
         } else if (command === "bridge") {
-            if (context.rooms.remote) {
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+            if (context) {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "This room is already bridged to a Discord guild.",
                     msgtype: "m.notice",
                 });
@@ -102,7 +102,7 @@ export class MatrixCommandHandler {
 
             const MAXARGS = 2;
             if (args.length > MAXARGS || args.length < 1) {
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "Invalid syntax. For more information try !discord help bridge",
                     msgtype: "m.notice",
                 });
@@ -121,7 +121,7 @@ export class MatrixCommandHandler {
                 guildId = split[0];
                 channelId = split[1];
             } else {
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "Invalid syntax: See `!discord help`",
                     formatted_body: "Invalid syntax: See <code>!discord help</code>",
                     msgtype: "m.notice",
@@ -133,21 +133,21 @@ export class MatrixCommandHandler {
                 const channel = discordResult.channel as Discord.TextChannel;
 
                 log.info(`Bridging matrix room ${event.room_id} to ${guildId}/${channelId}`);
-                this.bridge.getIntent().sendMessage(event.room_id, {
+                await this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "I'm asking permission from the guild administrators to make this bridge.",
                     msgtype: "m.notice",
                 });
 
                 await this.provisioner.AskBridgePermission(channel, event.sender);
                 await this.provisioner.BridgeMatrixRoom(channel, event.room_id);
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "I have bridged this room to your channel",
                     msgtype: "m.notice",
                 });
             } catch (err) {
                 if (err.message === "Timed out waiting for a response from the Discord owners"
                     || err.message === "The bridge has been declined by the Discord guild") {
-                    return this.bridge.getIntent().sendMessage(event.room_id, {
+                    return this.bridge.botIntent.sendEvent(event.room_id, {
                         body: err.message,
                         msgtype: "m.notice",
                     });
@@ -155,38 +155,36 @@ export class MatrixCommandHandler {
 
                 log.error(`Error bridging ${event.room_id} to ${guildId}/${channelId}`);
                 log.error(err);
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "There was a problem bridging that channel - has the guild owner approved the bridge?",
                     msgtype: "m.notice",
                 });
             }
         } else if (command === "unbridge") {
-            const remoteRoom = context.rooms.remote;
-
-            if (!remoteRoom) {
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+            if (!context || !context.remote) {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "This room is not bridged.",
                     msgtype: "m.notice",
                 });
             }
 
-            if (!remoteRoom.data.plumbed) {
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+            if (!context.remote.data.plumbed) {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "This room cannot be unbridged.",
                     msgtype: "m.notice",
                 });
             }
 
             try {
-                await this.provisioner.UnbridgeRoom(remoteRoom);
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                await this.provisioner.UnbridgeRoom(context.remote);
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "This room has been unbridged",
                     msgtype: "m.notice",
                 });
             } catch (err) {
                 log.error("Error while unbridging room " + event.room_id);
                 log.error(err);
-                return this.bridge.getIntent().sendMessage(event.room_id, {
+                return this.bridge.botIntent.sendEvent(event.room_id, {
                     body: "There was an error unbridging this room. " +
                       "Please try again later or contact the bridge operator.",
                     msgtype: "m.notice",
@@ -195,7 +193,7 @@ export class MatrixCommandHandler {
         } else if (command === "help") {
             // Unknown command or no command given to get help on, so we'll just give them the help
             // tslint:disable prefer-template
-            return this.bridge.getIntent().sendMessage(event.room_id, {
+            return this.bridge.botIntent.sendEvent(event.room_id, {
                 body: "Available commands:\n" +
                 "!discord bridge <guild id> <channel id>   - Bridges this room to a Discord channel\n" +
                 "!discord unbridge                         - Unbridges a Discord channel from this room\n" +
@@ -213,8 +211,7 @@ export class MatrixCommandHandler {
             try {
                 log.verbose("Got new room cache for bot");
                 this.botJoinedRoomsCacheUpdatedAt = Date.now();
-                const rooms = (await this.bridge.getBot().getJoinedRooms()) as string[];
-                this.botJoinedRooms = new Set(rooms);
+                this.botJoinedRooms = new Set(await this.bridge.botIntent.underlyingClient.getJoinedRooms());
             } catch (e) {
                 log.error("Failed to get room cache for bot, ", e);
                 return false;

@@ -14,13 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {
-    Bridge,
-    RemoteRoom,
-    MatrixRoom,
-} from "matrix-appservice-bridge";
 import * as Discord from "discord.js";
-import { DbRoomStore } from "./db/roomstore";
+import { DbRoomStore, RemoteStoreRoom, MatrixStoreRoom } from "./db/roomstore";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
@@ -31,17 +26,17 @@ export class Provisioner {
     constructor(private roomStore: DbRoomStore) { }
 
     public async BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
-        const remote = new RemoteRoom(`discord_${channel.guild.id}_${channel.id}_bridged`);
-        remote.set("discord_type", "text");
-        remote.set("discord_guild", channel.guild.id);
-        remote.set("discord_channel", channel.id);
-        remote.set("plumbed", true);
-
-        const local = new MatrixRoom(roomId);
+        const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}_bridged`, {
+            discord_type: "text",
+            discord_guild: channel.guild.id,
+            discord_channel: channel.id,
+            plumbed: true,
+        });
+        const local = new MatrixStoreRoom(roomId);
         return this.roomStore.linkRooms(local, remote);
     }
 
-    public async UnbridgeRoom(remoteRoom: RemoteRoom) {
+    public async UnbridgeRoom(remoteRoom: RemoteStoreRoom) {
         return this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 

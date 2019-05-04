@@ -15,16 +15,6 @@ limitations under the License.
 */
 
 import { DiscordBot } from "./bot";
-import {
-    Bridge,
-    RemoteRoom,
-    thirdPartyLookup,
-    thirdPartyProtocolResult,
-    thirdPartyUserResult,
-    thirdPartyLocationResult,
-    ProvisionedRoom,
-    Intent,
-} from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
@@ -32,8 +22,8 @@ import { Util, ICommandActions, ICommandParameters } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
-import { IMatrixEvent } from "./matrixtypes";
 import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
+import { Appservice, Intent } from "matrix-bot-sdk";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
@@ -63,22 +53,22 @@ export class MatrixRoomHandler {
         private discord: DiscordBot,
         private config: DiscordBridgeConfig,
         private provisioner: Provisioner,
-        private bridge: Bridge,
+        private bridge: Appservice,
         private roomStore: DbRoomStore) {
         this.botUserId = this.discord.BotUserId;
         this.botJoinedRooms = new Set();
     }
 
-    public get ThirdPartyLookup(): thirdPartyLookup {
-        return {
-            getLocation: this.tpGetLocation.bind(this),
-            getProtocol: this.tpGetProtocol.bind(this),
-            getUser: this.tpGetUser.bind(this),
-            parseLocation: this.tpParseLocation.bind(this),
-            parseUser: this.tpParseUser.bind(this),
-            protocols: ["discord"],
-        };
-    }
+    // public get ThirdPartyLookup(): thirdPartyLookup {
+    //     return {
+    //         getLocation: this.tpGetLocation.bind(this),
+    //         getProtocol: this.tpGetProtocol.bind(this),
+    //         getUser: this.tpGetUser.bind(this),
+    //         parseLocation: this.tpParseLocation.bind(this),
+    //         parseUser: this.tpParseUser.bind(this),
+    //         protocols: ["discord"],
+    //     };
+    // }
 
     public async OnAliasQueried(alias: string, roomId: string) {
         log.verbose(`Got OnAliasQueried for ${alias} ${roomId}`);
@@ -104,11 +94,14 @@ export class MatrixRoomHandler {
         }
 
         // Fire and forget RoomDirectory mapping
-        this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
+        this.bridge.setRoomDirectoryVisibility(
             channel.guild.id,
             roomId,
             "public",
-        );
+        ).catch((err) => {
+            // Catch this async
+            log.warn("Failed to set room directory visibility for new room:", err);
+        })
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
         const promiseList: Promise<void>[] = [];
         // Join a whole bunch of users.
@@ -136,7 +129,8 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
-    public async OnAliasQuery(alias: string, aliasLocalpart: string): Promise<ProvisionedRoom> {
+    public async OnAliasQuery(alias: string): Promise<any> {
+        const aliasLocalpart = alias.substr("#".length, alias.indexOf(":") - 1);
         log.info("Got request for #", aliasLocalpart);
         const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
@@ -153,70 +147,70 @@ export class MatrixRoomHandler {
 
     }
 
-    public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
-        return {
-            field_types: {
-                // guild_name: {
-                //   regexp: "\S.{0,98}\S",
-                //   placeholder: "Guild",
-                // },
-                channel_id: {
-                    placeholder: "",
-                    regexp: "[0-9]*",
-                },
-                channel_name: {
-                    placeholder: "#Channel",
-                    regexp: "[A-Za-z0-9_\-]{2,100}",
-                },
-                discriminator: {
-                    placeholder: "1234",
-                    regexp: "[0-9]{4}",
-                },
-                guild_id: {
-                    placeholder: "",
-                    regexp: "[0-9]*",
-                },
-                username: {
-                    placeholder: "Username",
-                    regexp: "[A-Za-z0-9_\-]{2,100}",
-                },
-            },
-            instances: this.discord.GetGuilds().map((guild) => {
-                return {
-                    bot_user_id: this.botUserId,
-                    desc: guild.name,
-                    fields: {
-                        guild_id: guild.id,
-                    },
-                    icon: guild.iconURL || ICON_URL, // TODO: Use icons from our content repo. Potential security risk.
-                    network_id: guild.id,
-                };
-            }),
-            location_fields: ["guild_id", "channel_name"],
-            user_fields: ["username", "discriminator"],
-        };
-    }
+    // public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
+    //     return {
+    //         field_types: {
+    //             // guild_name: {
+    //             //   regexp: "\S.{0,98}\S",
+    //             //   placeholder: "Guild",
+    //             // },
+    //             channel_id: {
+    //                 placeholder: "",
+    //                 regexp: "[0-9]*",
+    //             },
+    //             channel_name: {
+    //                 placeholder: "#Channel",
+    //                 regexp: "[A-Za-z0-9_\-]{2,100}",
+    //             },
+    //             discriminator: {
+    //                 placeholder: "1234",
+    //                 regexp: "[0-9]{4}",
+    //             },
+    //             guild_id: {
+    //                 placeholder: "",
+    //                 regexp: "[0-9]*",
+    //             },
+    //             username: {
+    //                 placeholder: "Username",
+    //                 regexp: "[A-Za-z0-9_\-]{2,100}",
+    //             },
+    //         },
+    //         instances: this.discord.GetGuilds().map((guild) => {
+    //             return {
+    //                 bot_user_id: this.botUserId,
+    //                 desc: guild.name,
+    //                 fields: {
+    //                     guild_id: guild.id,
+    //                 },
+    //                 icon: guild.iconURL || ICON_URL, // TODO: Use icons from our content repo. Potential security risk.
+    //                 network_id: guild.id,
+    //             };
+    //         }),
+    //         location_fields: ["guild_id", "channel_name"],
+    //         user_fields: ["username", "discriminator"],
+    //     };
+    // }
 
-    // tslint:disable-next-line no-any
-    public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
-        log.info("Got location request ", protocol, fields);
-        const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
-        return chans;
-    }
+    // // tslint:disable-next-line no-any
+    // public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
+    //     log.info("Got location request ", protocol, fields);
+    //     const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
+    //     return chans;
+    // }
 
-    public async tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    }
+    // public async tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
+    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
+    // }
 
-    // tslint:disable-next-line no-any
-    public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
-        log.info("Got user request ", protocol, fields);
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    }
+    // // tslint:disable-next-line no-any
+    // public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
+    //     log.info("Got user request ", protocol, fields);
+    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
+    // }
 
-    public async tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    }
+    // public async tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
+    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
+    // }
 
     public async HandleDiscordCommand(msg: Discord.Message) {
         if (!(msg.channel as Discord.TextChannel).guild) {
@@ -225,7 +219,7 @@ export class MatrixRoomHandler {
 
         const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
 
-        const intent = this.bridge.getIntent();
+        const intent = this.bridge.botIntent;
 
         const actions: ICommandActions = {
             ban: {
@@ -314,7 +308,7 @@ export class MatrixRoomHandler {
             }));
             let errorMsg = "";
             await Promise.all(allChannelMxids.map(async (chanMxid) => {
-                const intent = this.bridge.getIntent();
+                const intent = this.bridge.botIntent;
                 try {
                     await intent[funcKey](chanMxid, name);
                 } catch (e) {
@@ -336,15 +330,15 @@ export class MatrixRoomHandler {
             if (member) {
                 await this.discord.UserSyncroniser.JoinRoom(member, roomIdOrAlias);
             } else {
-                await intent.getClient().joinRoom(roomIdOrAlias);
+                await intent.joinRoom(roomIdOrAlias);
             }
         };
         const errorHandler = async (err) => {
-            log.error(`Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+            log.error(`Error joining room ${roomIdOrAlias} as ${intent.userId}`);
             log.error(err);
             const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
             if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                log.warn(`Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+                log.warn(`Cannot join ${roomIdOrAlias} as ${intent.userId}`);
                 throw new Error(err);
             } else {
                 currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
@@ -364,7 +358,7 @@ export class MatrixRoomHandler {
     }
 
     private async createMatrixRoom(channel: Discord.TextChannel,
-                                   alias: string, aliasLocalpart: string): ProvisionedRoom {
+                                   alias: string, aliasLocalpart: string): Promise<any> {
         const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}`, {
             discord_channel: channel.id,
             discord_guild: channel.guild.id,
@@ -391,8 +385,6 @@ export class MatrixRoomHandler {
             new MatrixStoreRoom(alias),
             remote,
         );
-        return {
-            creationOpts,
-        } as ProvisionedRoom;
+        return creationOpts;
     }
 }

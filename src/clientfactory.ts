@@ -18,11 +18,8 @@ import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
 import { Client as DiscordClient } from "discord.js";
 import { Log } from "./log";
-import { Util } from "./util";
 
 const log = new Log("ClientFactory");
-
-const READY_TIMEOUT = 30000;
 
 export class DiscordClientFactory {
     private config: DiscordBridgeConfigAuth;
