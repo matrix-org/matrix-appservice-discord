@@ -195,9 +195,7 @@ async function run() {
     }
 }
 
-run().then(() => {
-    log.info("Bridge exited ok");
-}).catch((err) => {
-    log.error("A fatal error occurred and the application will exit:", err);
+run().catch((err) => {
+    log.error("A fatal error occurred during startup:", err);
     process.exit(1);
-});
+})

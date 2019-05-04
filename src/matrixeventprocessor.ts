@@ -106,6 +106,9 @@ export class MatrixEventProcessor {
                 );
             }
             return;
+        } else if (this.bridge.isNamespacedUser(event.sender)) {
+            // Ignore echo
+            return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
             await this.ProcessStateEvent(event);
             return;
