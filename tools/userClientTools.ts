@@ -108,7 +108,7 @@ Please enter your Discord Token
             });
         } else if (options.remove) {
             rl.close();
-            discordstore.delete_user_token(userid).then(() => {
+            discordstore.deleteUserToken(userid).then(() => {
                 log.info("Completed successfully");
                 process.exit(0);
             }).catch((err) => {
@@ -122,5 +122,5 @@ Please enter your Discord Token
 async function addUserToken(userid: string, token: string): Promise<void> {
     const clientFactory = new DiscordClientFactory(discordstore);
     const discordid = await clientFactory.getDiscordId(token);
-    await discordstore.add_user_token(userid, discordid, token);
+    await discordstore.addUserToken(userid, discordid, token);
 }

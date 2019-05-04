@@ -23,13 +23,13 @@ export class Schema implements IDbSchema {
         await store.db.Run(
             `DROP TABLE IF EXISTS event_store;`,
         );
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE event_store (
                 matrix_id TEXT NOT NULL,
                 discord_id TEXT NOT NULL,
                 PRIMARY KEY(matrix_id, discord_id)
         );`, "event_store");
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE discord_msg_store (
                 msg_id TEXT NOT NULL,
                 guild_id TEXT NOT NULL,

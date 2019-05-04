@@ -20,7 +20,7 @@ import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
     public description = "create guild emoji table";
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE guild_emoji (
                 emoji_id TEXT NOT NULL,
                 guild_id TEXT NOT NULL,

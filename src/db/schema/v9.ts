@@ -32,7 +32,7 @@ export class Schema implements IDbSchema {
     }
 
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE remote_user_guild_nicks (
                 remote_id TEXT NOT NULL,
                 guild_id TEXT NOT NULL,
@@ -40,7 +40,7 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(remote_id, guild_id)
         );`, "remote_user_guild_nicks");
 
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE remote_user_data (
                 remote_id TEXT NOT NULL,
                 displayname TEXT,
@@ -49,7 +49,7 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(remote_id)
         );`, "remote_user_data");
 
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE user_entries (
                 matrix_id TEXT,
                 remote_id TEXT,
