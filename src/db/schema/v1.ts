@@ -19,12 +19,12 @@ import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
     public description = "Schema, Client Auth Table";
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE schema (
                 version	INTEGER UNIQUE NOT NULL
             );`, "schema");
         await store.db.Exec("INSERT INTO schema VALUES (0);");
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE user_tokens (
                 userId TEXT UNIQUE NOT NULL,
                 token TEXT UNIQUE NOT NULL
