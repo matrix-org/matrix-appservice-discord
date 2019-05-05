@@ -4,7 +4,7 @@ import { DiscordBridgeConfig } from "./config";
 import { Bridge, BridgeContext } from "matrix-appservice-bridge";
 import { IMatrixEvent } from "./matrixtypes";
 import { Provisioner } from "./provisioner";
-import { Util } from "./util";
+import { Util, ICommandActions, ICommandParameters, ICommandPermissonCheck } from "./util";
 import * as Discord from "discord.js";
 const log = new Log("MatrixCommandHandler");
 
@@ -41,6 +41,62 @@ export class MatrixCommandHandler {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
             return;
         }
+
+        const {command, args} = Util.MsgToArgs(event.content!.body as string, "!discord");
+
+        const actions: ICommandActions = {
+            bridge: {
+                description: "Bridges this room to a Discord channel",
+                params: ["guildid", "channelId"],
+                permission: {
+                    level: PROVISIONING_DEFAULT_POWER_LEVEL,
+                    selfService: true,
+                },
+                run: async ({guildId, channelId}) => {
+                    // TODO: parse guildId/channelId
+
+                },
+            },
+            unbridge: {
+                description: "Unbridges a Discord channel from this room",
+                params: [],
+                permission: {
+                    level: PROVISIONING_DEFAULT_POWER_LEVEL,
+                    selfService: true,
+                },
+                run: async () => {
+
+                }
+            },
+        };
+
+        const parameters: ICommandParameters = {
+            guildId: {
+                description: "The ID of a guild/server on discord",
+            },
+            channelId: {
+                description: "The ID of a channel on discord",
+            },
+        };
+
+        const permissionCheck: ICommandPermissonCheck = async (permission) => {
+            if (permission.selfService && !this.config.bridge.enableSelfServiceBridging) {
+                return false;
+            }
+            const plEvent = await this.bridge.getIntent().getClient()
+                .getStateEvent(event.room_id, "m.room.power_levels", "");
+            let userLevel = PROVISIONING_DEFAULT_USER_POWER_LEVEL;
+            let requiredLevel = permission.level;
+            if (plEvent && plEvent.state_default) {
+                requiredLevel = plEvent.state_default;
+            }
+            if (plEvent && plEvent.users_default) {
+                userLevel = plEvent.users_default;
+            }
+            if (plEvent && plEvent.users && plEvent.users[event.sender]) {
+                userLevel = plEvent.users[event.sender];
+            }
+        };
 
         if (!this.config.bridge.enableSelfServiceBridging) {
             // We can do this here because the only commands we support are self-service bridging

@@ -84,6 +84,7 @@ export class MatrixMessageProcessor {
         const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
             this.params.roomId, "m.room.power_levels");
 
+        // TODO: utilize default values correctly
         // Some rooms may not have notifications.room set if the value hasn't
         // been changed from the default. If so, use our hardcoded power level.
         const requiredPowerLevel = res && res.notifications && res.notifications.room

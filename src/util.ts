@@ -27,11 +27,14 @@ const HTTP_OK = 200;
 import { Log } from "./log";
 const log = new Log("Util");
 
+type PERMISSIONTYPES = any; // tslint:disable-line no-any
+
 export interface ICommandAction {
     params: string[];
     description?: string;
-    permission?: string;
+    permission?: PERMISSIONTYPES;
     run(params: any): Promise<any>; // tslint:disable-line no-any
+    help?: string;
 }
 
 export interface ICommandActions {
@@ -40,11 +43,15 @@ export interface ICommandActions {
 
 export interface ICommandParameter {
     description?: string;
-    get(param: string): Promise<any>; // tslint:disable-line no-any
+    get(param: string)?: Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandParameters {
     [index: string]: ICommandParameter;
+}
+
+export interface ICommandPermissonCheck {
+    (permission: PERMISSIONTYPES): Promise<bool>;
 }
 
 export interface IPatternMap {
@@ -228,19 +235,93 @@ export class Util {
         return Object.keys(matrixUsers)[0];
     }
 
-    public static async ParseCommand(action: ICommandAction, parameters: ICommandParameters, args: string[]) {
+    public static async ParseHelpMessage(
+        prefix: string,
+        actions: ICommandActions,
+        parameters: ICommandParameters,
+        args: string[],
+        permissionCheck: ICommandPermissonCheck?,
+    ): string {
+        let reply = "";
+        if (args[0]) {
+            const actionKey = args[0];
+            const action = actions[actionKey];
+            if (!actions[actionKey]) {
+                return `**ERROR:** unknown command! Try \`${prefix} help\` to see all commands`;
+            }
+            if (action.permission !== undefined && permissionCheck && !(await permissionCheck(action.permission))) {
+                return `**ERROR:** permission denied! Try \`${prefix} help\` to see all available commands`;
+            }
+            reply += `\`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+            if (action.help) {
+                reply += action.help;
+            }
+            return reply;
+        }
+        reply += "Available Commands:\n";
+        for (const actionKey of Object.keys(actions)) {
+            const action = actions[actionKey];
+            if (action.permission !== undefined && permissionCheck && !(await permissionCheck(action.permission))) {
+                continue;
+            }
+            reply += ` - \`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+        }
+        reply += "\nParameters:\n";
+        for (const parameterKey of Object.keys(parameters)) {
+            const parameter = parameters[parameterKey];
+            reply += ` - \`<${parameterKey}>\`: ${parameter.description}\n`;
+        }
+        return reply;
+    }
+
+    public static async ParseCommand(
+        prefix: string,
+        msg: string,
+        actions: ICommandAction[],
+        parameters: ICommandParameters,
+        permissionCheck: ICommandPermissonCheck?,
+    ): string {
+        const {command, args} = Util.MsgToArgs(msg, prefix);
+
+        if (command === "help") {
+            return await Util.ParseHelpMessage(prefix, actions, parameters, args, permissionCheck);
+        }
+
+        if (!actions[command]) {
+            return `**ERROR:** unknown command. Try \`${prefix} help\` to see all commands`;
+        }
+        const action = actions[command];
+        if (action.permission !== undefined && permissionCheck && !permissionCheck(action.permission)) {
+            return `**ERROR:** insufficiant permissions to use this command`;
+        }
         if (action.params.length === 1) {
             args[0] = args.join(" ");
         }
-        const params = {};
-        let i = 0;
-        for (const param of action.params) {
-            params[param] = await parameters[param].get(args[i]);
-            i++;
-        }
+        try {
+            const params = {};
+            let i = 0;
+            for (const param of action.params) {
+                if (parameters[param].get) {
+                    params[param] = await parameters[param].get(args[i]);
+                } else {
+                    params[param] = args[i];
+                }
+                i++;
+            }
 
-        const retStr = await action.run(params);
-        return retStr;
+            const retStr = await action.run(params);
+            return retStr;
+        } catch (e) {
+            return `**ERROR:** ${e.message}`;
+        }
     }
 
     public static MsgToArgs(msg: string, prefix: string) {

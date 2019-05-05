@@ -1,9 +1,11 @@
 import { DiscordBot } from "./bot";
 import * as Discord from "discord.js";
-import { Uitl, ICommandActions, ICommandParameters } from "./util";
+import { Util, ICommandActions, ICommandParameters } from "./util";
+import { Bridge } from "matrix-appservice-bridge";
 export class DiscordCommandHandler {
     constructor(
-        private discord: DiscordBot;
+        private bridge: Bridge,
+        private discord: DiscordBot,
     ) { }
 
     public async Process(msg: Discord.Message) {
@@ -11,8 +13,6 @@ export class DiscordCommandHandler {
             await msg.channel.send("**ERROR:** only available for guild channels");
             return;
         }
-
-        const {command, args} = Util.MsgToArgs(msg.content, "!matrix");
 
         const intent = this.bridge.getIntent();
 
@@ -48,46 +48,12 @@ export class DiscordCommandHandler {
             },
         };
 
-        if (command === "help") {
-            let replyHelpMessage = "Available Commands:\n";
-            for (const actionKey of Object.keys(actions)) {
-                const action = actions[actionKey];
-                if (!msg.member.hasPermission(action.permission as Discord.PermissionResolvable)) {
-                    continue;
-                }
-                replyHelpMessage += " - `!matrix " + actionKey;
-                for (const param of action.params) {
-                    replyHelpMessage += ` <${param}>`;
-                }
-                replyHelpMessage += `\`: ${action.description}\n`;
-            }
-            replyHelpMessage += "\nParameters:\n";
-            for (const parameterKey of Object.keys(parameters)) {
-                const parameter = parameters[parameterKey];
-                replyHelpMessage += ` - \`<${parameterKey}>\`: ${parameter.description}\n`;
-            }
-            await msg.channel.send(replyHelpMessage);
-            return;
+        const permissionCheck: ICommandPermissonCheck = async (permission) => {
+            return msg.member.hasPermission(permission as Discord.PermissionResolvable);
         }
 
-        if (!actions[command]) {
-            await msg.channel.send("**Error:** unknown command. Try `!matrix help` to see all commands");
-            return;
-        }
-
-        if (!msg.member.hasPermission(actions[command].permission as Discord.PermissionResolvable)) {
-            await msg.channel.send("**ERROR:** insufficiant permissions to use this matrix command");
-            return;
-        }
-
-        let replyMessage = "";
-        try {
-            replyMessage = await Util.ParseCommand(actions[command], parameters, args);
-        } catch (e) {
-            replyMessage = "**ERROR:** " + e.message;
-        }
-
-        await msg.channel.send(replyMessage);
+        const reply = await Util.ParseCommand("!matrix", msg.content, actions, parameters, permissionCheck);
+        await msg.channel.send(reply);
     }
 
     private ModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {

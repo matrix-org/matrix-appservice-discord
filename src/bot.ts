@@ -101,7 +101,7 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(config, bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
-        this.discordCommandHandler = new DiscordCommandHandler(this);
+        this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
