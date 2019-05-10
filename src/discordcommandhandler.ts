@@ -1,6 +1,6 @@
 import { DiscordBot } from "./bot";
 import * as Discord from "discord.js";
-import { Util, ICommandActions, ICommandParameters } from "./util";
+import { Util, ICommandActions, ICommandParameters, ICommandPermissonCheck } from "./util";
 import { Bridge } from "matrix-appservice-bridge";
 export class DiscordCommandHandler {
     constructor(

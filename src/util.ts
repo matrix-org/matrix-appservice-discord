@@ -21,6 +21,8 @@ import { Buffer } from "buffer";
 import * as mime from "mime";
 import { Permissions } from "discord.js";
 import { DiscordBridgeConfig } from "./config";
+import { Client as MatrixClient } from "matrix-js-sdk";
+import { IMatrixEvent } from "./matrixtypes";
 
 const HTTP_OK = 200;
 
@@ -43,7 +45,7 @@ export interface ICommandActions {
 
 export interface ICommandParameter {
     description?: string;
-    get(param: string)?: Promise<any>; // tslint:disable-line no-any
+    get?(param: string): Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandParameters {
@@ -51,7 +53,7 @@ export interface ICommandParameters {
 }
 
 export interface ICommandPermissonCheck {
-    (permission: PERMISSIONTYPES): Promise<bool>;
+    (permission: PERMISSIONTYPES): Promise<boolean>;
 }
 
 export interface IPatternMap {
@@ -240,8 +242,8 @@ export class Util {
         actions: ICommandActions,
         parameters: ICommandParameters,
         args: string[],
-        permissionCheck: ICommandPermissonCheck?,
-    ): string {
+        permissionCheck?: ICommandPermissonCheck,
+    ): Promise<string> {
         let reply = "";
         if (args[0]) {
             const actionKey = args[0];
@@ -285,10 +287,10 @@ export class Util {
     public static async ParseCommand(
         prefix: string,
         msg: string,
-        actions: ICommandAction[],
+        actions: ICommandActions,
         parameters: ICommandParameters,
-        permissionCheck: ICommandPermissonCheck?,
-    ): string {
+        permissionCheck?: ICommandPermissonCheck,
+    ): Promise<string> {
         const {command, args} = Util.MsgToArgs(msg, prefix);
 
         if (command === "help") {
@@ -309,8 +311,8 @@ export class Util {
             const params = {};
             let i = 0;
             for (const param of action.params) {
-                if (parameters[param].get) {
-                    params[param] = await parameters[param].get(args[i]);
+                if (parameters[param].get !== undefined) {
+                    params[param] = await parameters[param].get!(args[i]);
                 } else {
                     params[param] = args[i];
                 }
@@ -365,6 +367,35 @@ export class Util {
             str = str.replace(new RegExp(":" + p, "g"), patternMap[p]);
         }
         return str;
+    }
+
+    public static async CheckMatrixPermission(
+        mxClient: MatrixClient,
+        userId: string,
+        roomId: string,
+        defaultLevel: number,
+        cat: string,
+        subcat?: string,
+    ) {
+        const res: IMatrixEvent = await mxClient.getStateEvent(roomId, "m.room.power_levels");
+        let requiredLevel = defaultLevel;
+        if (res && (res[cat] || !subcat)) {
+            if (subcat) {
+                if (res[cat][subcat] !== undefined) {
+                    requiredLevel = res[cat][subcat];
+                }
+            } else {
+                if (res[cat] !== undefined) {
+                    requiredLevel = res[cat];
+                }
+            }
+        }
+
+        let haveLevel = 0;
+        if (res && res.users && res.users[userId] !== undefined) {
+            haveLevel = res.users[userId];
+        }
+        return haveLevel >= requiredLevel;
     }
 }
 
