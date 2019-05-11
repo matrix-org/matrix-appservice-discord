@@ -89,7 +89,6 @@ let STATE_EVENT_MSG = "";
 let USERSYNC_HANDLED = false;
 let MESSAGE_PROCCESS = "";
 let KICKBAN_HANDLED = false;
-let COMMAND_PROCESSED = false;
 
 function createMatrixEventProcessor(): MatrixEventProcessor {
     USERSYNC_HANDLED = false;

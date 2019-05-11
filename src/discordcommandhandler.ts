@@ -1,6 +1,6 @@
 import { DiscordBot } from "./bot";
 import * as Discord from "discord.js";
-import { Util, ICommandActions, ICommandParameters, ICommandPermissonCheck } from "./util";
+import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import { Bridge } from "matrix-appservice-bridge";
 export class DiscordCommandHandler {
     constructor(
@@ -48,9 +48,9 @@ export class DiscordCommandHandler {
             },
         };
 
-        const permissionCheck: ICommandPermissonCheck = async (permission) => {
+        const permissionCheck: CommandPermissonCheck = async (permission) => {
             return msg.member.hasPermission(permission as Discord.PermissionResolvable);
-        }
+        };
 
         const reply = await Util.ParseCommand("!matrix", msg.content, actions, parameters, permissionCheck);
         await msg.channel.send(reply);

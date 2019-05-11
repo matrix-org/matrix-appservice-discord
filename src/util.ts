@@ -32,11 +32,11 @@ const log = new Log("Util");
 type PERMISSIONTYPES = any; // tslint:disable-line no-any
 
 export interface ICommandAction {
-    params: string[];
     description?: string;
+    help?: string;
+    params: string[];
     permission?: PERMISSIONTYPES;
     run(params: any): Promise<any>; // tslint:disable-line no-any
-    help?: string;
 }
 
 export interface ICommandActions {
@@ -52,9 +52,7 @@ export interface ICommandParameters {
     [index: string]: ICommandParameter;
 }
 
-export interface ICommandPermissonCheck {
-    (permission: PERMISSIONTYPES): Promise<boolean | string>;
-}
+export type CommandPermissonCheck = (permission: PERMISSIONTYPES) => Promise<boolean | string>;
 
 export interface IPatternMap {
     [index: string]: string;
@@ -242,7 +240,7 @@ export class Util {
         actions: ICommandActions,
         parameters: ICommandParameters,
         args: string[],
-        permissionCheck?: ICommandPermissonCheck,
+        permissionCheck?: CommandPermissonCheck,
     ): Promise<string> {
         let reply = "";
         if (args[0]) {
@@ -298,7 +296,7 @@ export class Util {
         msg: string,
         actions: ICommandActions,
         parameters: ICommandParameters,
-        permissionCheck?: ICommandPermissonCheck,
+        permissionCheck?: CommandPermissonCheck,
     ): Promise<string> {
         const {command, args} = Util.MsgToArgs(msg, prefix);
 
@@ -316,7 +314,8 @@ export class Util {
                 return `**ERROR:** ${permCheck}`;
             }
             if (!permCheck) {
-                return `**ERROR:** insufficiant permissions to use this command! Try \`${prefix} help\` to see all available commands`;
+                return `**ERROR:** insufficiant permissions to use this command! ` +
+                    `Try \`${prefix} help\` to see all available commands`;
             }
         }
         if (action.params.length === 1) {

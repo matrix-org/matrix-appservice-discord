@@ -1,3 +1,19 @@
+/*
+Copyright 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as Chai from "chai";
 import { Util } from "../src/util";
 import { DiscordBridgeConfig } from "../src/config";
@@ -99,19 +115,19 @@ function createCH(opts: any = {}) {
                 },
                 GetBotLink: Util.GetBotLink,
                 ParseCommand: Util.ParseCommand,
-            }
-        }
+            },
+        },
     })).MatrixCommandHandler;
     return new MatrixCommandHndl(bot as any, bridge, config);
 }
 
-function createEvent(msg: string, room?: string, user_id?: string) {
+function createEvent(msg: string, room?: string, userId?: string) {
     return {
         content: {
             body: msg,
         },
         room_id: room ? room : "!123:localhost",
-        sender: user_id,
+        sender: userId,
     };
 }
 
@@ -133,14 +149,16 @@ describe("MatrixCommandHandler", () => {
         it("should warn if self service is disabled", async () => {
             const handler: any = createCH({disableSS: true});
             await handler.Process(createEvent("!discord bridge"), createContext());
-            expect(MESSAGESENT.body).to.equal("**ERROR:** The owner of this bridge does not permit self-service bridging.");
+            expect(MESSAGESENT.body).to.equal("**ERROR:** The owner of this bridge does " +
+                "not permit self-service bridging.");
         });
         it("should warn if user is not powerful enough", async () => {
             const handler: any = createCH({
                 power: false,
             });
             await handler.Process(createEvent("!discord bridge"), createContext());
-            expect(MESSAGESENT.body).to.equal("**ERROR:** insufficiant permissions to use this command! Try `!discord help` to see all available commands");
+            expect(MESSAGESENT.body).to.equal("**ERROR:** insufficiant permissions to use this " +
+                "command! Try `!discord help` to see all available commands");
         });
         describe("!discord bridge", () => {
             it("will bridge a new room, and ask for permissions", async () => {
@@ -184,7 +202,7 @@ describe("MatrixCommandHandler", () => {
         describe("!discord unbridge", () => {
             it("will unbridge", async () => {
                 const handler: any = createCH();
-                await handler.Process(createEvent("!discord unbridge"), createContext({data:{plumbed:true}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: true}}));
                 expect(MESSAGESENT.body).equals("This room has been unbridged");
             });
             it("will not unbridge if a link does not exist", async () => {
@@ -194,14 +212,14 @@ describe("MatrixCommandHandler", () => {
             });
             it("will not unbridge non-plumbed rooms", async () => {
                 const handler: any = createCH();
-                await handler.Process(createEvent("!discord unbridge"), createContext({data:{plumbed:false}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: false}}));
                 expect(MESSAGESENT.body).equals("This room cannot be unbridged.");
             });
             it("will show error if unbridge fails", async () => {
                 const handler: any = createCH({
                     failUnbridge: true,
                 });
-                await handler.Process(createEvent("!discord unbridge"), createContext({data:{plumbed:true}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: true}}));
                 expect(MESSAGESENT.body).to.contain("There was an error unbridging this room.");
             });
         });

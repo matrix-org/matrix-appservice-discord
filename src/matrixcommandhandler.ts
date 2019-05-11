@@ -4,7 +4,7 @@ import { DiscordBridgeConfig } from "./config";
 import { Bridge, BridgeContext } from "matrix-appservice-bridge";
 import { IMatrixEvent } from "./matrixtypes";
 import { Provisioner } from "./provisioner";
-import { Util, ICommandActions, ICommandParameters, ICommandPermissonCheck } from "./util";
+import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import * as Discord from "discord.js";
 const log = new Log("MatrixCommandHandler");
 
@@ -123,7 +123,7 @@ export class MatrixCommandHandler {
                         return "There was an error unbridging this room. " +
                             "Please try again later or contact the bridge operator.";
                     }
-                }
+                },
             },
         };
 
@@ -132,8 +132,17 @@ export class MatrixCommandHandler {
         we do this by assuming that guildId is parsed first, and split the / off and then pass
         that on to channelId, if applicable
         */
-        let guildIdRemainder: string | undefined = undefined;
+        let guildIdRemainder: string | undefined;
         const parameters: ICommandParameters = {
+            channelId: {
+                description: "The ID of a channel on discord",
+                get: async (s) => {
+                    if (!s && guildIdRemainder) {
+                        return guildIdRemainder;
+                    }
+                    return s;
+                },
+            },
             guildId: {
                 description: "The ID of a guild/server on discord",
                 get: async (s) => {
@@ -145,18 +154,9 @@ export class MatrixCommandHandler {
                     return parts[0];
                 },
             },
-            channelId: {
-                description: "The ID of a channel on discord",
-                get: async (s) => {
-                    if (!s && guildIdRemainder) {
-                        return guildIdRemainder;
-                    }
-                    return s;
-                },
-            },
         };
 
-        const permissionCheck: ICommandPermissonCheck = async (permission) => {
+        const permissionCheck: CommandPermissonCheck = async (permission) => {
             if (permission.selfService && !this.config.bridge.enableSelfServiceBridging) {
                 return "The owner of this bridge does not permit self-service bridging.";
             }
