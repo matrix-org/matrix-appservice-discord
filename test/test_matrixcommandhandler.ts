@@ -2,6 +2,7 @@ import * as Chai from "chai";
 import { MatrixCommandHandler } from "../src/matrixcommandhandler";
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -21,28 +22,7 @@ function createCH(opts: any = {}) {
     USERSUNBANNED = 0;
     MESSAGESENT = {};
 
-    const bridge = {
-        getBot: () => {
-            return {
-                getJoinedRooms: () => ["!123:localhost"],
-                isRemoteUser: (id) => {
-                    return id !== undefined && id.startsWith("@_discord_");
-                },
-            };
-        },
-        getIntent: () => {
-            return {
-                ban: async () => { USERSBANNED++; },
-                getClient: () => mxClient,
-                join: () => { USERSJOINED++; },
-                joinRoom: async () => { USERSJOINED++; },
-                kick: async () => { USERSKICKED++; },
-                leave: () => { },
-                sendMessage: async (roomId, content) => { MESSAGESENT = content; return content; },
-                unban: async () => { USERSUNBANNED++; },
-            };
-        },
-    };
+    const bridge = new AppserviceMock();
 
     const config = new DiscordBridgeConfig();
     config.limits.roomGhostJoinDelay = 0;

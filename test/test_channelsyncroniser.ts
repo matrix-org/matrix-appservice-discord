@@ -18,16 +18,14 @@ import * as Chai from "chai";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 
-import { ISingleChannelState, IChannelState, ChannelSyncroniser } from "../src/channelsyncroniser";
-import { DiscordBot } from "../src/bot";
+import { ChannelSyncroniser } from "../src/channelsyncroniser";
 import { MockGuild } from "./mocks/guild";
-import { MockMember } from "./mocks/member";
-import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
 import { Util } from "../src/util";
 import { MockChannel } from "./mocks/channel";
 import { MatrixStoreRoom, RemoteStoreRoom, IRoomStoreEntry } from "../src/db/roomstore";
 import { Appservice } from "matrix-bot-sdk";
+import { AppserviceMock } from "./mocks/appservicemock";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
@@ -36,12 +34,6 @@ const expect = Chai.expect;
 let UTIL_UPLOADED_AVATAR: any = null;
 let REMOTECHANNEL_SET: any = false;
 let REMOTECHANNEL_REMOVED: any = false;
-let ROOM_NAME_SET: any = null;
-let ROOM_TOPIC_SET: any = null;
-let ROOM_AVATAR_SET: any = null;
-let STATE_EVENT_SENT: any = false;
-let ALIAS_DELETED: any = false;
-let ROOM_DIRECTORY_VISIBILITY: any = null;
 
 const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
@@ -65,49 +57,7 @@ class Entry implements IRoomStoreEntry {
 
 function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
-    const bridge: any = {
-        getIntent: (id) => {
-            ROOM_NAME_SET = null;
-            ROOM_TOPIC_SET = null;
-            ROOM_AVATAR_SET = null;
-            STATE_EVENT_SENT = false;
-            ALIAS_DELETED = false;
-            ROOM_DIRECTORY_VISIBILITY = null;
-            return {
-                getClient: () => {
-                    return {
-                        deleteAlias: async (alias) => {
-                            ALIAS_DELETED = true;
-                        },
-                        getStateEvent: async (mxid, event) => {
-                            return event;
-                        },
-                        sendStateEvent: async (mxid, event, data) => {
-                            STATE_EVENT_SENT = true;
-                        },
-                        setRoomDirectoryVisibility: async (mxid, visibility) => {
-                            ROOM_DIRECTORY_VISIBILITY = visibility;
-                        },
-                        setRoomName: async (mxid, name) => {
-                            ROOM_NAME_SET = name;
-                        },
-                        setRoomTopic: async (mxid, topic) => {
-                            ROOM_TOPIC_SET = topic;
-                        },
-                    };
-                },
-                setRoomAvatar: async (mxid, mxc) => {
-                    ROOM_AVATAR_SET = mxc;
-                },
-                setRoomName: async (mxid, name) => {
-                    ROOM_NAME_SET = name;
-                },
-                setRoomTopic: async (mxid, topic) => {
-                    ROOM_TOPIC_SET = topic;
-                },
-            };
-        },
-    };
+    const bridge: Appservice = new AppserviceMock() as any;
     REMOTECHANNEL_REMOVED = false;
     REMOTECHANNEL_SET = false;
     const roomStore = {

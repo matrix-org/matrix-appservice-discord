@@ -17,11 +17,9 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
-import { Log } from "../src/log";
 
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
-import { DiscordBot } from "../src/bot";
 import { MockDiscordClient } from "./mocks/discordclient";
 import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
@@ -440,29 +438,4 @@ describe("DiscordBot", () => {
             assert.equal(expected, ITERATIONS);
         });
     });
-  // });
-    // describe("ProcessMatrixMsgEvent()", () => {
-    //
-    // });
-    // describe("UpdateRoom()", () => {
-    //
-    // });
-    // describe("UpdateUser()", () => {
-    //
-    // });
-    // describe("UpdatePresence()", () => {
-    //
-    // });
-    // describe("OnTyping()", () => {
-    //   const discordBot = new modDiscordBot.DiscordBot(
-    //     config,
-    //   );
-    //   discordBot.run();
-    //   it("should reject an unknown room.", () => {
-    //     return assert.isRejected(discordBot.OnTyping( {id: "512"}, {id: "12345"}, true));
-    //   });
-    //   it("should resolve a known room.", () => {
-    //     return assert.isFulfilled(discordBot.OnTyping( {id: "321"}, {id: "12345"}, true));
-    //   });
-    // });
 });

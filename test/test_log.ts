@@ -24,15 +24,12 @@ import * as RealLog from "../src/log";
 const expect = Chai.expect;
 
 let createdLogger: any = null;
-let loggerClosed: any = false;
 let loggedMessages: any[] = [];
 
 const WinstonMock = {
     createLogger: (format, transports) => {
         return createdLogger = {
-            close: () => {
-                loggerClosed = true;
-            },
+            close: () => { },
             format,
             log: (type, ...msg) => {
                 loggedMessages = loggedMessages.concat(msg);
@@ -50,7 +47,6 @@ const Log = (Proxyquire("../src/log", {
 describe("Log", () => {
 
     beforeEach(() => {
-        loggerClosed = false;
         loggedMessages = [];
     });
 

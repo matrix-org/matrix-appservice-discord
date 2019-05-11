@@ -17,36 +17,26 @@ limitations under the License.
 import * as Chai from "chai";
 
 import { Util, ICommandAction, ICommandParameters } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const expect = Chai.expect;
 
-function CreateMockIntent(members) {
-    return {
-        getClient: () => {
-            return {
-                _http: {
-                    authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
-                        const ret: any[] = [];
-                        for (const member of members[url]) {
-                            ret.push({
-                                content: {
-                                    displayname: member.displayname,
-                                },
-                                membership: member.membership,
-                                state_key: member.mxid,
-                            });
-                        }
-                        return {
-                            chunk: ret,
-                        };
-                    },
+function CreateMockIntent(members): any {
+    const as = new AppserviceMock({
+        roommembers: members.map((member) =>
+            ({
+                content: {
+                    displayname: member.displayname,
                 },
-            };
-        },
-    };
+                membership: member.membership,
+                state_key: member.mxid,
+            }),
+        ),
+    });
+    return as.getIntent();
 }
 
 describe("Util", () => {
@@ -86,34 +76,30 @@ describe("Util", () => {
     });
     describe("GetMxidFromName", () => {
         it("Finds a single member", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                ],
-            };
+            const mockRooms = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+            ];
             const intent = CreateMockIntent(mockRooms);
             const mxid = await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
             expect(mxid).equal("@123:localhost");
         });
         it("Errors on multiple members", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@456:localhost",
-                    },
-                ],
-            };
+            const mockRooms = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@456:localhost",
+                },
+            ];
             const intent = CreateMockIntent(mockRooms);
             try {
                 await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
@@ -123,15 +109,13 @@ describe("Util", () => {
             }
         });
         it("Errors on no member", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                ],
-            };
+            const mockRooms = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+            ];
             const intent = CreateMockIntent(mockRooms);
             try {
                 await Util.GetMxidFromName(intent, "badboy", ["abc"]);

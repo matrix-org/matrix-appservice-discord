@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-import { Bridge } from "matrix-appservice-bridge";
 import {IGuildMemberState, IUserState, UserSyncroniser} from "../src/usersyncroniser";
 import {MockUser} from "./mocks/user";
 import {DiscordBridgeConfig} from "../src/config";
@@ -24,30 +23,18 @@ import {MockMember} from "./mocks/member";
 import {MockGuild} from "./mocks/guild";
 import { MockChannel } from "./mocks/channel";
 import { MockRole } from "./mocks/role";
-import { IMatrixEvent } from "../src/matrixtypes";
 import { Util } from "../src/util";
 import { RemoteUser } from "../src/db/userstore";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 const expect = Chai.expect;
 
-let DISPLAYNAME_SET: any = null;
-let AVATAR_SET: any = null;
-let REMOTEUSER_SET: any = null;
-let INTENT_ID: any = null;
 let LINK_MX_USER: any = null;
 let LINK_RM_USER: any = null;
 let UTIL_UPLOADED_AVATAR: any = false;
-
-let SEV_ROOM_ID: any = null;
-let SEV_CONTENT: any = null;
-let SEV_KEY: any = null;
-let JOIN_ROOM_ID: any = null;
-let LEAVE_ROOM_ID: any = null;
-let JOINS: any = 0;
-let LEAVES: any = 0;
-let SEV_COUNT: any = 0;
+let REMOTEUSER_SET: any = null;
 
 const GUILD_ROOM_IDS = ["!abc:localhost", "!def:localhost", "!ghi:localhost"];
 const GUILD_ROOM_IDS_WITH_ROLE = ["!abc:localhost", "!def:localhost"];
@@ -63,53 +50,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
 
 function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): UserSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
-    SEV_ROOM_ID = null;
-    SEV_CONTENT = null;
-    SEV_KEY = null;
-    SEV_COUNT = 0;
-    const bridge: any = {
-        getIntent: (id) => {
-            DISPLAYNAME_SET = null;
-            AVATAR_SET = null;
-            INTENT_ID = id;
-            JOIN_ROOM_ID = null;
-            JOINS = 0;
-            LEAVES = 0;
-            return {
-                getClient: () => {
-                    return {
-                        getUserId: () => "@user:localhost",
-                        sendStateEvent: (roomId, type, content, key) => {
-                            SEV_ROOM_ID = roomId;
-                            SEV_CONTENT = content;
-                            SEV_KEY = key;
-                            SEV_COUNT++;
-                        },
-                    };
-                },
-                join: (roomId) => {
-                    JOIN_ROOM_ID = roomId;
-                    JOINS++;
-                },
-                leave: (roomId) => {
-                    LEAVE_ROOM_ID = roomId;
-                    LEAVES++;
-                },
-                opts: {
-                    backingStore: {
-                        getMembership: (roomId, userId) => "join",
-                        setMembership: (roomId, userId, membership) => { },
-                    },
-                },
-                setAvatarUrl: async (ava) => {
-                    AVATAR_SET = ava;
-                },
-                setDisplayName: async (dn) => {
-                    DISPLAYNAME_SET = dn;
-                },
-            };
-        },
-    };
+    const bridge = new AppserviceMock();
     const discordbot: any = {
         GetChannelFromRoomId: (id) => {
             if (id === "!found:localhost") {
@@ -125,7 +66,7 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): 
             return [];
         },
         GetIntentFromDiscordMember: (id) => {
-            return bridge.getIntent(id);
+            return bridge.getIntentForUserId(id);
         },
         GetRoomIdsFromGuild: async (guild, member?) => {
             if (member && member.roles.get("1234")) {
@@ -151,7 +92,7 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): 
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.ghosts = Object.assign({}, config.ghosts, ghostConfig);
-    return new UserSync(bridge as Bridge, config, discordbot, userStore as any);
+    return new UserSync(bridge as any, config, discordbot, userStore as any);
 }
 
 describe("UserSyncroniser", () => {
