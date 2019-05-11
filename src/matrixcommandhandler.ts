@@ -134,7 +134,7 @@ export class MatrixCommandHandler {
                         remoteRoom.data.discord_channel,
                     );
                     try {
-                        await this.provisioner.UnbridgeChannel(res.channel);
+                        await this.provisioner.UnbridgeChannel(res.channel, event.room_id);
                         return "This room has been unbridged";
                     } catch (err) {
                         log.error("Error while unbridging room " + event.room_id);

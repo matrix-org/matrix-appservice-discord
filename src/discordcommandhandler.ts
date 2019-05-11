@@ -20,7 +20,7 @@ import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from
 import { Bridge } from "matrix-appservice-bridge";
 import { Log } from "./log";
 
-const log = new Log("MatrixCommandHandler");
+const log = new Log("DiscordCommandHandler");
 
 export class DiscordCommandHandler {
     constructor(
