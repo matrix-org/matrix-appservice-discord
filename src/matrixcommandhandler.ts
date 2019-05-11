@@ -22,6 +22,7 @@ import { IMatrixEvent } from "./matrixtypes";
 import { Provisioner } from "./provisioner";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import * as Discord from "discord.js";
+import * as markdown from "discord-markdown";
 const log = new Log("MatrixCommandHandler");
 
 /* tslint:disable:no-magic-numbers */
@@ -187,9 +188,12 @@ export class MatrixCommandHandler {
         };
 
         const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
+        const formattedReply = markdown.toHTML(reply);
 
         await this.bridge.getIntent().sendMessage(event.room_id, {
             body: reply,
+            format: "org.matrix.custom.html",
+            formatted_body: formattedReply,
             msgtype: "m.notice",
         });
     }
