@@ -17,8 +17,11 @@ limitations under the License.
 import * as Discord from "discord.js";
 import { DbRoomStore, RemoteStoreRoom, MatrixStoreRoom } from "./db/roomstore";
 import { ChannelSyncroniser } from "./channelsyncroniser";
+import { Log } from "./log";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
+
+const log = new Log("Provisioner");
 
 export class Provisioner {
 
@@ -38,7 +41,7 @@ export class Provisioner {
         return this.roomStore.linkRooms(local, remote);
     }
 
-    public async UnbridgeChannel(channel: Discord.TextChannel) {
+    public async UnbridgeChannel(channel: Discord.TextChannel, rId?: string) {
         const roomsRes = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
             discord_guild: channel.guild.id,
@@ -48,6 +51,18 @@ export class Provisioner {
             throw Error("Channel is not bridged");
         }
         const remoteRoom = roomsRes[0].remote as RemoteStoreRoom;
+        let roomsToUnbridge: string[] = [];
+        if (rId) {
+            roomsToUnbridge = [rId];
+        } else {
+            // Kill em all.
+            roomsToUnbridge = roomsRes.map((entry) => entry.matrix!.roomId);
+        }
+        await Promise.all(roomsToUnbridge.map( async (roomId) => {
+            return this.channelSync.OnUnbridge(channel, roomId).catch((err) => {
+                log.error(`Failed to cleanly unbridge ${channel.id} ${channel.guild} from ${roomId}`);
+            });
+        }));
         await this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
