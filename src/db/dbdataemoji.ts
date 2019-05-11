@@ -43,7 +43,7 @@ export class DbEmoji implements IDbData {
                 mxc: params.mxc_url,
             });
         this.Result = Boolean(row); // check if row exists
-        if (this.Result) {
+        if (this.Result && row) {
             this.EmojiId = row.emoji_id as string;
             this.Name = row.name as string;
             this.Animated = Boolean(row.animated);

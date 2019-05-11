@@ -23,7 +23,7 @@ const log = new Log("SchemaV7");
 export class Schema implements IDbSchema {
     public description = "create guild emoji table";
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE emoji (
                 emoji_id TEXT NOT NULL,
                 name TEXT NOT NULL,

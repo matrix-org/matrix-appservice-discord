@@ -30,7 +30,7 @@ export class SQLite3 implements IDatabaseConnector {
         this.db = new Database(this.filename);
     }
 
-    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow> {
+    public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow|null> {
         log.silly("Get:", sql);
         return this.db.prepare(sql).get(parameters || []);
     }

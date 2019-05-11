@@ -20,7 +20,7 @@ import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
     public description = "create event_store table";
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE event_store (
                 matrix_id TEXT NOT NULL,
                 discord_id TEXT NOT NULL,

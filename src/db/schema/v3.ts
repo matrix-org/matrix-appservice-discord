@@ -24,13 +24,13 @@ const log = new Log("SchemaV3");
 export class Schema implements IDbSchema {
     public description = "user_tokens split into user_id_discord_id";
     public async run(store: DiscordStore): Promise<void> {
-        await Promise.all([store.create_table(`
+        await Promise.all([store.createTable(`
             CREATE TABLE user_id_discord_id (
                 discord_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 PRIMARY KEY(discord_id, user_id)
             );`, "user_id_discord_id"),
-            store.create_table(`
+            store.createTable(`
             CREATE TABLE discord_id_token (
                 discord_id TEXT UNIQUE NOT NULL,
                 token	TEXT NOT NULL,
@@ -39,7 +39,7 @@ export class Schema implements IDbSchema {
             )]);
 
         // Backup before moving data.
-        await store.backup_database();
+        await store.backupDatabase();
 
         // Move old data to new tables.
         await this.moveUserIds(store);

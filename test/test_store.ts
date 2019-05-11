@@ -37,11 +37,11 @@ describe("DiscordStore", () => {
             return store.init();
         });
     });
-    describe("add_user_token", () => {
+    describe("addUserToken", () => {
         it("should not throw when adding an entry", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
-            await store.add_user_token("userid", "token", "discordid");
+            await store.addUserToken("userid", "token", "discordid");
         });
     });
     describe("Get|Insert|Update<DbEmoji>", () => {
