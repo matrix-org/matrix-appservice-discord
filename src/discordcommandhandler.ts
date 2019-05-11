@@ -25,7 +25,8 @@ export class DiscordCommandHandler {
     ) { }
 
     public async Process(msg: Discord.Message) {
-        if (!(msg.channel as Discord.TextChannel).guild) {
+        const chan = msg.channel as Discord.TextChannel;
+        if (!chan.guild) {
             await msg.channel.send("**ERROR:** only available for guild channels");
             return;
         }
@@ -33,23 +34,49 @@ export class DiscordCommandHandler {
         const intent = this.bridge.getIntent();
 
         const actions: ICommandActions = {
+            approve: {
+                description: "Approve a pending bridge request",
+                params: [],
+                permission: "MANAGE_WEBHOOKS",
+                run: async () => {
+                    if (await this.discord.Provisioner.MarkApproved(chan, msg.member, true)) {
+                        return "Thanks for your response! The matrix bridge has been approved";
+                    } else {
+                        return "Thanks for your response, however" +
+                            "the time for responses has expired - sorry!";
+                    }
+                },
+            },
             ban: {
                 description: "Bans a user on the matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
-                run: this.ModerationActionGenerator(msg.channel as Discord.TextChannel, "ban", "Banned"),
+                run: this.ModerationActionGenerator(chan, "ban", "Banned"),
+            },
+            deny: {
+                description: "Deny a pending bridge request",
+                params: [],
+                permission: "MANAGE_WEBHOOKS",
+                run: async () => {
+                    if (await this.discord.Provisioner.MarkApproved(chan, msg.member, false)) {
+                        return "Thanks for your response! The matrix bridge has been declined";
+                    } else {
+                        return "Thanks for your response, however" +
+                            "the time for responses has expired - sorry!";
+                    }
+                },
             },
             kick: {
                 description: "Kicks a user on the matrix side",
                 params: ["name"],
                 permission: "KICK_MEMBERS",
-                run: this.ModerationActionGenerator(msg.channel as Discord.TextChannel, "kick", "Kicked"),
+                run: this.ModerationActionGenerator(chan, "kick", "Kicked"),
             },
             unban: {
                 description: "Unbans a user on the matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
-                run: this.ModerationActionGenerator(msg.channel as Discord.TextChannel, "unban", "Unbanned"),
+                run: this.ModerationActionGenerator(chan, "unban", "Unbanned"),
             },
         };
 

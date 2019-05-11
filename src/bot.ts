@@ -687,31 +687,6 @@ export class DiscordBot {
             }
         }
 
-        // Check if there's an ongoing bridge request
-        if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.HasPendingRequest(chan)) {
-            try {
-                const isApproved = msg.content === "!approve";
-                const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
-                if (successfullyBridged && isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
-                } else if (successfullyBridged && !isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
-                } else {
-                    await msg.channel.sendMessage("Thanks for your response, however" +
-                        "the time for responses has expired - sorry!");
-                }
-            } catch (err) {
-                if (err.message === "You do not have permission to manage webhooks in this channel") {
-                    await msg.channel.sendMessage(err.message);
-                } else {
-                    log.error("Error processing room approval");
-                    log.error(err);
-                }
-            }
-
-            return; // stop processing - we're approving/declining the bridge request
-        }
-
         // check if it is a command to process by the bot itself
         if (msg.content.startsWith("!matrix")) {
             await this.discordCommandHandler.Process(msg);

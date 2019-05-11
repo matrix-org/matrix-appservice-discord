@@ -337,6 +337,8 @@ export class Util {
             return retStr;
         } catch (e) {
             return `**ERROR:** ${e.message}`;
+            log.error("Error processing command");
+            log.error(e);
         }
     }
 

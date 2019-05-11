@@ -32,12 +32,14 @@ let USERSKICKED = 0;
 let USERSBANNED = 0;
 let USERSUNBANNED = 0;
 let MESSAGESENT: any = {};
+let MARKED = -1;
 function createCH(opts: any = {}) {
     USERSJOINED = 0;
     USERSKICKED = 0;
     USERSBANNED = 0;
     USERSUNBANNED = 0;
     MESSAGESENT = {};
+    MARKED = -1;
     const bridge = {
         getIntent: () => {
             return {
@@ -58,6 +60,13 @@ function createCH(opts: any = {}) {
     };
     const discord = {
         ChannelSyncroniser: cs,
+        Provisioner: {
+            HasPendingRequest: (chan) => true,
+            MarkApproved: async (chan, member, approved) => {
+                MARKED = approved ? 1 : 0;
+                return approved;
+            },
+        },
     };
     const discordCommandHndlr = (Proxyquire("../src/discordcommandhandler", {
         "./util": {
@@ -158,5 +167,39 @@ describe("DiscordCommandHandler", () => {
         };
         await handler.Process(message);
         expect(USERSUNBANNED).equals(1);
+    });
+    it("handles !matrix approve", async () => {
+        const handler: any = createCH();
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = () => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix approve",
+            member,
+        };
+        await handler.Process(message);
+        expect(MARKED).equals(1);
+    });
+    it("handles !matrix deny", async () => {
+        const handler: any = createCH();
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = () => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix deny",
+            member,
+        };
+        await handler.Process(message);
+        expect(MARKED).equals(0);
     });
 });

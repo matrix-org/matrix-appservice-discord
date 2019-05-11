@@ -133,13 +133,11 @@ describe("DiscordBot", () => {
     });
     describe("OnMessage()", () => {
         let SENT_MESSAGE = false;
-        let MARKED = -1;
         let HANDLE_COMMAND = false;
         let ATTACHMENT = {} as any;
         let MSGTYPE = "";
         function getDiscordBot() {
             SENT_MESSAGE = false;
-            MARKED = -1;
             HANDLE_COMMAND = false;
             ATTACHMENT = {};
             MSGTYPE = "";
@@ -150,13 +148,6 @@ describe("DiscordBot", () => {
                 {},
             );
             discord.bot = { user: { id: "654" } };
-            discord.provisioner = {
-                HasPendingRequest: (chan) => true,
-                MarkApproved: async (chan, member, approved) => {
-                    MARKED = approved ? 1 : 0;
-                    return approved;
-                },
-            };
             discord.GetIntentFromDiscordMember = (_) => {return {
                 sendMessage: async (room, msg) => {
                     SENT_MESSAGE = true;
@@ -194,22 +185,6 @@ describe("DiscordBot", () => {
             msg.content = "Hi!";
             await discordBot.OnMessage(msg);
             Chai.assert.equal(SENT_MESSAGE, false);
-        });
-        it("accepts !approve", async () => {
-            discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
-            msg.content = "!approve";
-            await discordBot.OnMessage(msg);
-            Chai.assert.equal(MARKED, 1);
-        });
-        it("denies !deny", async () => {
-            discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
-            msg.content = "!deny";
-            await discordBot.OnMessage(msg);
-            Chai.assert.equal(MARKED, 0);
         });
         it("Passes on !matrix commands", async () => {
             discordBot = getDiscordBot();
