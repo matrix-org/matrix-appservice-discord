@@ -235,7 +235,7 @@ export class Util {
         return Object.keys(matrixUsers)[0];
     }
 
-    public static async ParseHelpMessage(
+    public static async HandleHelpCommand(
         prefix: string,
         actions: ICommandActions,
         parameters: ICommandParameters,
@@ -301,7 +301,7 @@ export class Util {
         const {command, args} = Util.MsgToArgs(msg, prefix);
 
         if (command === "help") {
-            return await Util.ParseHelpMessage(prefix, actions, parameters, args, permissionCheck);
+            return await Util.HandleHelpCommand(prefix, actions, parameters, args, permissionCheck);
         }
 
         if (!actions[command]) {

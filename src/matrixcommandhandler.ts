@@ -81,8 +81,6 @@ export class MatrixCommandHandler {
                     subcat: "m.room.power_levels",
                 },
                 run: async ({guildId, channelId}) => {
-                    // TODO: parse guildId/channelId
-
                     if (context.rooms.remote) {
                         return "This room is already bridged to a Discord guild.";
                     }
@@ -145,9 +143,9 @@ export class MatrixCommandHandler {
         };
 
         /*
-        we hack togeather that "guildId/channelId" is the same as "guildId channelId"
-        we do this by assuming that guildId is parsed first, and split the / off and then pass
-        that on to channelId, if applicable
+        We hack together that "guildId/channelId" is the same as "guildId channelId".
+        We do this by assuming that guildId is parsed first, and split at "/"
+        The first element is returned, the second one is passed on to channelId, if applicable.
         */
         let guildIdRemainder: string | undefined;
         const parameters: ICommandParameters = {

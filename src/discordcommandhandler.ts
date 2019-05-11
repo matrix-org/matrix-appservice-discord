@@ -51,7 +51,7 @@ export class DiscordCommandHandler {
                 description: "Bans a user on the matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
-                run: this.ModerationActionGenerator(chan, "ban", "Banned"),
+                run: this.ModerationActionGenerator(chan, "ban"),
             },
             deny: {
                 description: "Deny a pending bridge request",
@@ -70,13 +70,13 @@ export class DiscordCommandHandler {
                 description: "Kicks a user on the matrix side",
                 params: ["name"],
                 permission: "KICK_MEMBERS",
-                run: this.ModerationActionGenerator(chan, "kick", "Kicked"),
+                run: this.ModerationActionGenerator(chan, "kick"),
             },
             unban: {
                 description: "Unbans a user on the matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
-                run: this.ModerationActionGenerator(chan, "unban", "Unbanned"),
+                run: this.ModerationActionGenerator(chan, "unban"),
             },
         };
 
@@ -99,7 +99,7 @@ export class DiscordCommandHandler {
         await msg.channel.send(reply);
     }
 
-    private ModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: string, action: string) {
+    private ModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: "kick"|"ban"|"unban") {
         return async ({name}) => {
             let allChannelMxids: string[] = [];
             await Promise.all(discordChannel.guild.channels.map(async (chan) => {
@@ -123,6 +123,11 @@ export class DiscordCommandHandler {
             if (errorMsg) {
                 throw Error(errorMsg);
             }
+            const action = {
+                ban: "Banned",
+                kick: "Kicked",
+                unban: "Unbanned",
+            }[funcKey];
             return `${action} ${name}`;
         };
     }

@@ -85,10 +85,10 @@ describe("Util", () => {
                 },
             },
         };
-        describe("ParseHelpMessage", () => {
+        describe("HandleHelpCommand", () => {
             it("parses general help message", async () => {
                 const {command, args} = Util.MsgToArgs("!fox help", "!fox");
-                const retStr = await Util.ParseHelpMessage(
+                const retStr = await Util.HandleHelpCommand(
                     "!fox",
                     actions,
                     parameters,
@@ -105,7 +105,7 @@ Parameters:
             });
             it("parses specific help message", async () => {
                 const {command, args} = Util.MsgToArgs("!fox help action", "!fox");
-                const retStr = await Util.ParseHelpMessage(
+                const retStr = await Util.HandleHelpCommand(
                     "!fox",
                     actions,
                     parameters,
