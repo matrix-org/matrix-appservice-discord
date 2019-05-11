@@ -1,25 +1,22 @@
 language: node_js
 install: npm install && npm run build
+node_js:
+    - "10"
+    - "12"
 
 jobs:
-    include:
-    - stage: tests
-      name: "Unit - Node 8"
-      script: npm run test
-      node_js: "8"
     - script: npm run test
       name: "Unit - Node 10"
       node_js: "10"
     - script: npm run test
-      name: "Unit - Node 11"
-      node_js: "11.0.0"
-
+      name: "Unit - Node 12"
+      node_js: "12"
     - script: npm run lint
       name: "Linting"
-      node_js: "10"
+      node_js: "12"
     - script: npm run coverage
       name: "Coverage"
-      node_js: "10"
+      node_js: "12"
 
 notifications:
     webhooks:

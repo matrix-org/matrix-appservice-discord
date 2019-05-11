@@ -610,7 +610,7 @@ describe("MatrixEventProcessor", () => {
                     info: {
                         mimetype: "image/png",
                     },
-                    url: "mxc://bunny",
+                    url: "mxc://bunny/500",
                 },
                 sender: "@test:localhost",
                 type: "m.sticker",
