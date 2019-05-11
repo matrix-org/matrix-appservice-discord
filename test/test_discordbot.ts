@@ -382,7 +382,7 @@ describe("DiscordBot", () => {
             const CHANID = 123;
             // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
             for (let i = 0; i < ITERATIONS; i++) {
-              await client.emit("message", { n: i, channel: { id: CHANID} });
+                await client.emit("message", { channel: { guild: { id: CHANID }, id: CHANID} });
             }
             await discordBot.discordMessageQueue[CHANID];
         });
@@ -409,7 +409,7 @@ describe("DiscordBot", () => {
             const CHANID = 123;
             // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
             for (let n = 0; n < ITERATIONS; n++) {
-                await client.emit("message", { n, channel: { id: CHANID} });
+                await client.emit("message", { n, channel: { guild: { id: CHANID }, id: CHANID} });
             }
             await discordBot.discordMessageQueue[CHANID];
             assert.equal(expected, ITERATIONS);

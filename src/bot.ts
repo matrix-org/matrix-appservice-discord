@@ -106,6 +106,7 @@ export class DiscordBot {
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
+        this.channelLocks = {};
         this.lastEventIds = {};
     }
 
@@ -183,7 +184,6 @@ export class DiscordBot {
 
     public async run(): Promise<void> {
         const client = await this.clientFactory.getClient();
-
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (c, u) => {
                 try {
