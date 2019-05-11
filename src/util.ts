@@ -53,7 +53,7 @@ export interface ICommandParameters {
 }
 
 export interface ICommandPermissonCheck {
-    (permission: PERMISSIONTYPES): Promise<boolean>;
+    (permission: PERMISSIONTYPES): Promise<boolean | string>;
 }
 
 export interface IPatternMap {
@@ -251,8 +251,14 @@ export class Util {
             if (!actions[actionKey]) {
                 return `**ERROR:** unknown command! Try \`${prefix} help\` to see all commands`;
             }
-            if (action.permission !== undefined && permissionCheck && !(await permissionCheck(action.permission))) {
-                return `**ERROR:** permission denied! Try \`${prefix} help\` to see all available commands`;
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string") {
+                    return `**ERROR:** ${permCheck}`;
+                }
+                if (!permCheck) {
+                    return `**ERROR:** permission denied! Try \`${prefix} help\` to see all available commands`;
+                }
             }
             reply += `\`${prefix} ${actionKey}`;
             for (const param of action.params) {
@@ -267,8 +273,11 @@ export class Util {
         reply += "Available Commands:\n";
         for (const actionKey of Object.keys(actions)) {
             const action = actions[actionKey];
-            if (action.permission !== undefined && permissionCheck && !(await permissionCheck(action.permission))) {
-                continue;
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string" || !permCheck) {
+                    continue;
+                }
             }
             reply += ` - \`${prefix} ${actionKey}`;
             for (const param of action.params) {
@@ -301,8 +310,14 @@ export class Util {
             return `**ERROR:** unknown command. Try \`${prefix} help\` to see all commands`;
         }
         const action = actions[command];
-        if (action.permission !== undefined && permissionCheck && !permissionCheck(action.permission)) {
-            return `**ERROR:** insufficiant permissions to use this command`;
+        if (action.permission !== undefined && permissionCheck) {
+            const permCheck = await permissionCheck(action.permission);
+            if (typeof permCheck === "string") {
+                return `**ERROR:** ${permCheck}`;
+            }
+            if (!permCheck) {
+                return `**ERROR:** insufficiant permissions to use this command! Try \`${prefix} help\` to see all available commands`;
+            }
         }
         if (action.params.length === 1) {
             args[0] = args.join(" ");
@@ -392,6 +407,9 @@ export class Util {
         }
 
         let haveLevel = 0;
+        if (res && res.users_default) {
+            haveLevel = res.users_default;
+        }
         if (res && res.users && res.users[userId] !== undefined) {
             haveLevel = res.users[userId];
         }

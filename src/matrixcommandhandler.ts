@@ -42,8 +42,6 @@ export class MatrixCommandHandler {
             return;
         }
 
-        const {command, args} = Util.MsgToArgs(event.content!.body as string, "!discord");
-
         const actions: ICommandActions = {
             bridge: {
                 description: "Bridges this room to a Discord channel",
@@ -58,7 +56,7 @@ export class MatrixCommandHandler {
                     "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
                     "5. Enjoy your new bridge!",
                 // tslint:enable prefer-template
-                params: ["guildid", "channelId"],
+                params: ["guildId", "channelId"],
                 permission: {
                     cat: "events",
                     level: PROVISIONING_DEFAULT_POWER_LEVEL,
@@ -69,7 +67,7 @@ export class MatrixCommandHandler {
                     // TODO: parse guildId/channelId
 
                     if (context.rooms.remote) {
-                        return "This room is already bridged to a Discord guild";
+                        return "This room is already bridged to a Discord guild.";
                     }
                     if (!guildId || !channelId) {
                         return "Invalid syntax. For more information try `!discord help bridge`";
@@ -129,18 +127,38 @@ export class MatrixCommandHandler {
             },
         };
 
+        /*
+        we hack togeather that "guildId/channelId" is the same as "guildId channelId"
+        we do this by assuming that guildId is parsed first, and split the / off and then pass
+        that on to channelId, if applicable
+        */
+        let guildIdRemainder: string | undefined = undefined;
         const parameters: ICommandParameters = {
             guildId: {
                 description: "The ID of a guild/server on discord",
+                get: async (s) => {
+                    if (!s) {
+                        return s;
+                    }
+                    const parts = s.split("/");
+                    guildIdRemainder = parts[1];
+                    return parts[0];
+                },
             },
             channelId: {
                 description: "The ID of a channel on discord",
+                get: async (s) => {
+                    if (!s && guildIdRemainder) {
+                        return guildIdRemainder;
+                    }
+                    return s;
+                },
             },
         };
 
         const permissionCheck: ICommandPermissonCheck = async (permission) => {
             if (permission.selfService && !this.config.bridge.enableSelfServiceBridging) {
-                return false;
+                return "The owner of this bridge does not permit self-service bridging.";
             }
             return await Util.CheckMatrixPermission(
                 this.bridge.getIntent().getClient(),
@@ -151,16 +169,6 @@ export class MatrixCommandHandler {
                 permission.subcat,
             );
         };
-
-
-
-        if (!this.config.bridge.enableSelfServiceBridging) {
-            // We can do this here because the only commands we support are self-service bridging
-            return this.bridge.getIntent().sendMessage(event.room_id, {
-                body: "The owner of this bridge does not permit self-service bridging.",
-                msgtype: "m.notice",
-            });
-        }
 
         const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
 

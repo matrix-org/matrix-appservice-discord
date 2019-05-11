@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as Chai from "chai";
 
-import { Util, ICommandAction, ICommandParameters } from "../src/util";
+import { Util, ICommandActions, ICommandParameters } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -62,10 +62,12 @@ describe("Util", () => {
     });
     describe("ParseCommand", () => {
         it("parses commands", async () => {
-            const action: ICommandAction = {
-                params: ["param1", "param2"],
-                run: async ({param1, param2}) => {
-                    return `param1: ${param1}\nparam2: ${param2}`;
+            const actions: ICommandActions = {
+                action: {
+                    params: ["param1", "param2"],
+                    run: async ({param1, param2}) => {
+                        return `param1: ${param1}\nparam2: ${param2}`;
+                    },
                 },
             };
             const parameters: ICommandParameters = {
@@ -80,7 +82,12 @@ describe("Util", () => {
                     },
                 },
             };
-            const retStr = await Util.ParseCommand(action, parameters, ["hello", "world"]);
+            const retStr = await Util.ParseCommand(
+                "!fox",
+                "!fox action hello world",
+                actions,
+                parameters,
+            );
             expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
         });
     });

@@ -89,12 +89,13 @@ let STATE_EVENT_MSG = "";
 let USERSYNC_HANDLED = false;
 let MESSAGE_PROCCESS = "";
 let KICKBAN_HANDLED = false;
+let COMMAND_PROCESSED = false;
 
 function createMatrixEventProcessor(): MatrixEventProcessor {
     USERSYNC_HANDLED = false;
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
-    KICKBAN_HANDLED = true;
+    KICKBAN_HANDLED = false;
     const bridge = {
         getBot: () => {
             return {
@@ -230,7 +231,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         HandleInvite: async (evt) => {
             MESSAGE_PROCCESS = "invited";
         },
-        ProcessCommand: async (evt) => {
+        Process: async (evt) => {
             MESSAGE_PROCCESS = "command_processed";
         },
     });

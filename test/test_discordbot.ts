@@ -175,8 +175,8 @@ describe("DiscordBot", () => {
             discord.channelSync = {
                 GetRoomIdsFromChannel: async (chan) => ["!asdf:localhost"],
             };
-            discord.roomHandler = {
-                HandleDiscordCommand: async (msg) => { HANDLE_COMMAND = true; },
+            discord.discordCommandHandler = {
+                Process: async (msg) => { HANDLE_COMMAND = true; },
             };
             discord.store = {
                 Insert: async (_) => { },
