@@ -80,19 +80,14 @@ export class MatrixMessageProcessor {
         if (!this.params || !this.params.mxClient || !this.params.roomId || !this.params.userId) {
             return false;
         }
-
-        const res: IMatrixEvent = await this.params.mxClient.getStateEvent(
-            this.params.roomId, "m.room.power_levels");
-
-        // Some rooms may not have notifications.room set if the value hasn't
-        // been changed from the default. If so, use our hardcoded power level.
-        const requiredPowerLevel = res && res.notifications && res.notifications.room
-            ? res.notifications.room
-            : DEFAULT_ROOM_NOTIFY_POWER_LEVEL;
-
-        return res && res.users
-            && res.users[this.params.userId] !== undefined
-            && res.users[this.params.userId] >= requiredPowerLevel;
+        return await Util.CheckMatrixPermission(
+            this.params.mxClient,
+            this.params.userId,
+            this.params.roomId,
+            DEFAULT_ROOM_NOTIFY_POWER_LEVEL,
+            "notifications",
+            "room",
+        );
     }
 
     private async escapeDiscord(msg: string): Promise<string> {

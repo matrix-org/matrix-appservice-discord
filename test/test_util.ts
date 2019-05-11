@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as Chai from "chai";
 
-import { Util, ICommandAction, ICommandParameters } from "../src/util";
+import { Util, ICommandActions, ICommandParameters } from "../src/util";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -60,28 +60,72 @@ describe("Util", () => {
             Chai.assert.equal(args[1], "arg2");
         });
     });
-    describe("ParseCommand", () => {
-        it("parses commands", async () => {
-            const action: ICommandAction = {
+    describe("Command Stuff", () => {
+        const actions: ICommandActions = {
+            action: {
+                description: "floof",
+                help: "Fox goes floof!",
                 params: ["param1", "param2"],
                 run: async ({param1, param2}) => {
                     return `param1: ${param1}\nparam2: ${param2}`;
                 },
-            };
-            const parameters: ICommandParameters = {
-                param1: {
-                    get: async (param: string) => {
-                        return "param1_" + param;
-                    },
+            },
+        };
+        const parameters: ICommandParameters = {
+            param1: {
+                description: "1",
+                get: async (param: string) => {
+                    return "param1_" + param;
                 },
-                param2: {
-                    get: async (param: string) => {
-                        return "param2_" + param;
-                    },
+            },
+            param2: {
+                description: "2",
+                get: async (param: string) => {
+                    return "param2_" + param;
                 },
-            };
-            const retStr = await Util.ParseCommand(action, parameters, ["hello", "world"]);
-            expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
+            },
+        };
+        describe("HandleHelpCommand", () => {
+            it("parses general help message", async () => {
+                const {command, args} = Util.MsgToArgs("!fox help", "!fox");
+                const retStr = await Util.HandleHelpCommand(
+                    "!fox",
+                    actions,
+                    parameters,
+                    args,
+                );
+                expect(retStr).to.equal(
+`Available Commands:
+ - \`!fox action <param1> <param2>\`: floof
+
+Parameters:
+ - \`<param1>\`: 1
+ - \`<param2>\`: 2
+`);
+            });
+            it("parses specific help message", async () => {
+                const {command, args} = Util.MsgToArgs("!fox help action", "!fox");
+                const retStr = await Util.HandleHelpCommand(
+                    "!fox",
+                    actions,
+                    parameters,
+                    args,
+                );
+                expect(retStr).to.equal(
+`\`!fox action <param1> <param2>\`: floof
+Fox goes floof!`);
+            });
+        });
+        describe("ParseCommand", () => {
+            it("parses commands", async () => {
+                const retStr = await Util.ParseCommand(
+                    "!fox",
+                    "!fox action hello world",
+                    actions,
+                    parameters,
+                );
+                expect(retStr).equal("param1: param1_hello\nparam2: param2_world");
+            });
         });
     });
     describe("GetMxidFromName", () => {
@@ -185,6 +229,86 @@ describe("Util", () => {
             const t = Date.now();
             await Util.DelayedPromise(DELAY_FOR);
             expect(Date.now()).to.be.greaterThan(t + DELAY_FOR - 1);
+        });
+    });
+    describe("CheckMatrixPermission", () => {
+        const PERM_LEVEL = 50;
+        it("should deny", async () => {
+            const ret = await Util.CheckMatrixPermission(
+                {
+                    getStateEvent: async () => {
+                        return {
+                            blah: {
+                                blubb: PERM_LEVEL,
+                            },
+                        };
+                    },
+                } as any,
+                "@user:localhost",
+                "",
+                PERM_LEVEL,
+                "blah",
+                "blubb",
+            );
+            expect(ret).to.be.false;
+        });
+        it("should allow cat/subcat", async () => {
+            const ret = await Util.CheckMatrixPermission(
+                {
+                    getStateEvent: async () => {
+                        return {
+                            blah: {
+                                blubb: PERM_LEVEL,
+                            },
+                            users: {
+                                "@user:localhost": PERM_LEVEL,
+                            },
+                        };
+                    },
+                } as any,
+                "@user:localhost",
+                "",
+                PERM_LEVEL,
+                "blah",
+                "blubb",
+            );
+            expect(ret).to.be.true;
+        });
+        it("should allow cat", async () => {
+            const ret = await Util.CheckMatrixPermission(
+                {
+                    getStateEvent: async () => {
+                        return {
+                            blah: PERM_LEVEL,
+                            users: {
+                                "@user:localhost": PERM_LEVEL,
+                            },
+                        };
+                    },
+                } as any,
+                "@user:localhost",
+                "",
+                PERM_LEVEL,
+                "blah",
+            );
+            expect(ret).to.be.true;
+        });
+        it("should allow based on default", async () => {
+            const ret = await Util.CheckMatrixPermission(
+                {
+                    getStateEvent: async () => {
+                        return {
+                            blah: PERM_LEVEL,
+                            users_default: PERM_LEVEL,
+                        };
+                    },
+                } as any,
+                "@user:localhost",
+                "",
+                PERM_LEVEL,
+                "blah",
+            );
+            expect(ret).to.be.true;
         });
     });
 });

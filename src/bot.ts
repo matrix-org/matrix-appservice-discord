@@ -36,6 +36,7 @@ import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
+import { DiscordCommandHandler } from "./discordcommandhandler";
 
 const log = new Log("DiscordBot");
 
@@ -74,6 +75,7 @@ export class DiscordBot {
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
+    private discordCommandHandler: DiscordCommandHandler;
     /* Caches */
     private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}> = new Map();
 
@@ -99,6 +101,7 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(config, bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
@@ -684,34 +687,9 @@ export class DiscordBot {
             }
         }
 
-        // Check if there's an ongoing bridge request
-        if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.HasPendingRequest(chan)) {
-            try {
-                const isApproved = msg.content === "!approve";
-                const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
-                if (successfullyBridged && isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
-                } else if (successfullyBridged && !isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
-                } else {
-                    await msg.channel.sendMessage("Thanks for your response, however" +
-                        "the time for responses has expired - sorry!");
-                }
-            } catch (err) {
-                if (err.message === "You do not have permission to manage webhooks in this channel") {
-                    await msg.channel.sendMessage(err.message);
-                } else {
-                    log.error("Error processing room approval");
-                    log.error(err);
-                }
-            }
-
-            return; // stop processing - we're approving/declining the bridge request
-        }
-
         // check if it is a command to process by the bot itself
         if (msg.content.startsWith("!matrix")) {
-            await this.roomHandler.HandleDiscordCommand(msg);
+            await this.discordCommandHandler.Process(msg);
             return;
         }
 

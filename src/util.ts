@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,16 +21,21 @@ import { Buffer } from "buffer";
 import * as mime from "mime";
 import { Permissions } from "discord.js";
 import { DiscordBridgeConfig } from "./config";
+import { Client as MatrixClient } from "matrix-js-sdk";
+import { IMatrixEvent } from "./matrixtypes";
 
 const HTTP_OK = 200;
 
 import { Log } from "./log";
 const log = new Log("Util");
 
+type PERMISSIONTYPES = any; // tslint:disable-line no-any
+
 export interface ICommandAction {
-    params: string[];
     description?: string;
-    permission?: string;
+    help?: string;
+    params: string[];
+    permission?: PERMISSIONTYPES;
     run(params: any): Promise<any>; // tslint:disable-line no-any
 }
 
@@ -40,12 +45,14 @@ export interface ICommandActions {
 
 export interface ICommandParameter {
     description?: string;
-    get(param: string): Promise<any>; // tslint:disable-line no-any
+    get?(param: string): Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandParameters {
     [index: string]: ICommandParameter;
 }
+
+export type CommandPermissonCheck = (permission: PERMISSIONTYPES) => Promise<boolean | string>;
 
 export interface IPatternMap {
     [index: string]: string;
@@ -228,19 +235,111 @@ export class Util {
         return Object.keys(matrixUsers)[0];
     }
 
-    public static async ParseCommand(action: ICommandAction, parameters: ICommandParameters, args: string[]) {
+    public static async HandleHelpCommand(
+        prefix: string,
+        actions: ICommandActions,
+        parameters: ICommandParameters,
+        args: string[],
+        permissionCheck?: CommandPermissonCheck,
+    ): Promise<string> {
+        let reply = "";
+        if (args[0]) {
+            const actionKey = args[0];
+            const action = actions[actionKey];
+            if (!actions[actionKey]) {
+                return `**ERROR:** unknown command! Try \`${prefix} help\` to see all commands`;
+            }
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string") {
+                    return `**ERROR:** ${permCheck}`;
+                }
+                if (!permCheck) {
+                    return `**ERROR:** permission denied! Try \`${prefix} help\` to see all available commands`;
+                }
+            }
+            reply += `\`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+            if (action.help) {
+                reply += action.help;
+            }
+            return reply;
+        }
+        reply += "Available Commands:\n";
+        for (const actionKey of Object.keys(actions)) {
+            const action = actions[actionKey];
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string" || !permCheck) {
+                    continue;
+                }
+            }
+            reply += ` - \`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+        }
+        reply += "\nParameters:\n";
+        for (const parameterKey of Object.keys(parameters)) {
+            const parameter = parameters[parameterKey];
+            reply += ` - \`<${parameterKey}>\`: ${parameter.description}\n`;
+        }
+        return reply;
+    }
+
+    public static async ParseCommand(
+        prefix: string,
+        msg: string,
+        actions: ICommandActions,
+        parameters: ICommandParameters,
+        permissionCheck?: CommandPermissonCheck,
+    ): Promise<string> {
+        const {command, args} = Util.MsgToArgs(msg, prefix);
+
+        if (command === "help") {
+            return await Util.HandleHelpCommand(prefix, actions, parameters, args, permissionCheck);
+        }
+
+        if (!actions[command]) {
+            return `**ERROR:** unknown command. Try \`${prefix} help\` to see all commands`;
+        }
+        const action = actions[command];
+        if (action.permission !== undefined && permissionCheck) {
+            const permCheck = await permissionCheck(action.permission);
+            if (typeof permCheck === "string") {
+                return `**ERROR:** ${permCheck}`;
+            }
+            if (!permCheck) {
+                return `**ERROR:** insufficiant permissions to use this command! ` +
+                    `Try \`${prefix} help\` to see all available commands`;
+            }
+        }
         if (action.params.length === 1) {
             args[0] = args.join(" ");
         }
-        const params = {};
-        let i = 0;
-        for (const param of action.params) {
-            params[param] = await parameters[param].get(args[i]);
-            i++;
-        }
+        try {
+            const params = {};
+            let i = 0;
+            for (const param of action.params) {
+                if (parameters[param].get !== undefined) {
+                    params[param] = await parameters[param].get!(args[i]);
+                } else {
+                    params[param] = args[i];
+                }
+                i++;
+            }
 
-        const retStr = await action.run(params);
-        return retStr;
+            const retStr = await action.run(params);
+            return retStr;
+        } catch (e) {
+            return `**ERROR:** ${e.message}`;
+            log.error("Error processing command");
+            log.error(e);
+        }
     }
 
     public static MsgToArgs(msg: string, prefix: string) {
@@ -284,6 +383,38 @@ export class Util {
             str = str.replace(new RegExp(":" + p, "g"), patternMap[p]);
         }
         return str;
+    }
+
+    public static async CheckMatrixPermission(
+        mxClient: MatrixClient,
+        userId: string,
+        roomId: string,
+        defaultLevel: number,
+        cat: string,
+        subcat?: string,
+    ) {
+        const res: IMatrixEvent = await mxClient.getStateEvent(roomId, "m.room.power_levels");
+        let requiredLevel = defaultLevel;
+        if (res && (res[cat] || !subcat)) {
+            if (subcat) {
+                if (res[cat][subcat] !== undefined) {
+                    requiredLevel = res[cat][subcat];
+                }
+            } else {
+                if (res[cat] !== undefined) {
+                    requiredLevel = res[cat];
+                }
+            }
+        }
+
+        let haveLevel = 0;
+        if (res && res.users_default) {
+            haveLevel = res.users_default;
+        }
+        if (res && res.users && res.users[userId] !== undefined) {
+            haveLevel = res.users[userId];
+        }
+        return haveLevel >= requiredLevel;
     }
 }
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -94,7 +94,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
     USERSYNC_HANDLED = false;
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
-    KICKBAN_HANDLED = true;
+    KICKBAN_HANDLED = false;
     const bridge = {
         getBot: () => {
             return {
@@ -230,7 +230,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         HandleInvite: async (evt) => {
             MESSAGE_PROCCESS = "invited";
         },
-        ProcessCommand: async (evt) => {
+        Process: async (evt) => {
             MESSAGE_PROCCESS = "command_processed";
         },
     });
