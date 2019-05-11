@@ -35,7 +35,7 @@ export interface ICommandAction {
     description?: string;
     help?: string;
     params: string[];
-    permission?: PERMISSIONTYPES;
+    permission?: PERMISSIONTYPES | PERMISSIONTYPES[];
     run(params: any): Promise<any>; // tslint:disable-line no-any
 }
 

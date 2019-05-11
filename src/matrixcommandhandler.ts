@@ -23,6 +23,7 @@ import { Provisioner } from "./provisioner";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import * as Discord from "discord.js";
 import * as markdown from "discord-markdown";
+import { RemoteStoreRoom } from "./db/roomstore";
 const log = new Log("MatrixCommandHandler");
 
 /* tslint:disable:no-magic-numbers */
@@ -53,7 +54,6 @@ export class MatrixCommandHandler {
     }
 
     public async Process(event: IMatrixEvent, context: BridgeContext) {
-        const intent = this.bridge.getIntent();
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
             return;
@@ -122,15 +122,19 @@ export class MatrixCommandHandler {
                     subcat: "m.room.power_levels",
                 },
                 run: async () => {
-                    const remoteRoom = context.rooms.remote;
+                    const remoteRoom = context.rooms.remote as RemoteStoreRoom;
                     if (!remoteRoom) {
                         return "This room is not bridged.";
                     }
                     if (!remoteRoom.data.plumbed) {
                         return "This room cannot be unbridged.";
                     }
+                    const res = await this.discord.LookupRoom(
+                        remoteRoom.data.discord_guild,
+                        remoteRoom.data.discord_channel,
+                    );
                     try {
-                        await this.provisioner.UnbridgeRoom(remoteRoom);
+                        await this.provisioner.UnbridgeChannel(res.channel);
                         return "This room has been unbridged";
                     } catch (err) {
                         log.error("Error while unbridging room " + event.room_id);
