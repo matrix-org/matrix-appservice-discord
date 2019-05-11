@@ -87,7 +87,7 @@ function createCH(opts: any = {}) {
                 throw new Error("Test failed matrix bridge");
             }
         },
-        UnbridgeRoom: async () => {
+        UnbridgeChannel: async () => {
             if (opts.failUnbridge) {
                 throw new Error("Test failed unbridge");
             }
@@ -202,24 +202,48 @@ describe("MatrixCommandHandler", () => {
         describe("!discord unbridge", () => {
             it("will unbridge", async () => {
                 const handler: any = createCH();
-                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: true}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext(
+                    {
+                        data: {
+                            discord_channel: "456",
+                            discord_guild: "123",
+                            plumbed: true,
+                        },
+                    },
+                ));
                 expect(MESSAGESENT.body).equals("This room has been unbridged");
             });
             it("will not unbridge if a link does not exist", async () => {
                 const handler: any = createCH();
-                const evt = await handler.Process(createEvent("!discord unbridge"), createContext());
+                await handler.Process(createEvent("!discord unbridge"), createContext());
                 expect(MESSAGESENT.body).equals("This room is not bridged.");
             });
             it("will not unbridge non-plumbed rooms", async () => {
                 const handler: any = createCH();
-                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: false}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext(
+                    {
+                        data: {
+                            discord_channel: "456",
+                            discord_guild: "123",
+                            plumbed: false,
+                        },
+                    },
+                ));
                 expect(MESSAGESENT.body).equals("This room cannot be unbridged.");
             });
             it("will show error if unbridge fails", async () => {
                 const handler: any = createCH({
                     failUnbridge: true,
                 });
-                await handler.Process(createEvent("!discord unbridge"), createContext({data: {plumbed: true}}));
+                await handler.Process(createEvent("!discord unbridge"), createContext(
+                    {
+                        data: {
+                            discord_channel: "456",
+                            discord_guild: "123",
+                            plumbed: true,
+                        },
+                    },
+                ));
                 expect(MESSAGESENT.body).to.contain("There was an error unbridging this room.");
             });
         });

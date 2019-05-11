@@ -90,7 +90,6 @@ export class DiscordBot {
     ) {
 
         // create handlers
-        this.provisioner = new Provisioner(store.roomStore);
         this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(
             new DiscordMessageProcessorOpts(config.bridge.domain, this),
@@ -101,6 +100,7 @@ export class DiscordBot {
             new MatrixEventProcessorOpts(config, bridge, this),
         );
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];
