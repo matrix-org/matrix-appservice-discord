@@ -27,12 +27,38 @@ import { MockRole } from "./mocks/role";
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const bot = {
+    ChannelSyncroniser: {
+        GetRoomIdsFromChannel: async (chan) => {
+            if (chan.id === "678") {
+                return ["!valid:localhost"];
+            }
+            throw new Error("invalid");
+        },
+    },
     GetEmoji: async (name: string, animated: boolean, id: string): Promise<string> => {
         if (id === "3333333") {
             return "mxc://image";
         } else {
             throw new Error("Emoji not found");
         }
+    },
+};
+const bridge = {
+    getIntent: () => {
+        return {
+            getClient: () => {
+                return {
+                    getStateEvent: async (roomId, state) => {
+                        if (roomId === "!valid:localhost" && state === "m.room.canonical_alias") {
+                            return {
+                                alias: "#alias:localhost",
+                            };
+                        }
+                        return null;
+                    },
+                };
+            },
+        };
     },
 };
 
@@ -317,37 +343,6 @@ describe("DiscordMessageProcessor", () => {
                 "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestNickname</a>");
         });
     });
-    describe("InsertChannel / HTML", () => {
-        it("processes unknown channel correctly", () => {
-            const processor = new DiscordMessageProcessor(
-                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            const msg = new MockMessage(channel) as any;
-            const content = { id: "123456789" };
-            let reply = processor.InsertChannel(content, msg);
-            Chai.assert.equal(reply, "<#123456789>");
-
-            reply = processor.InsertChannel(content, msg, true);
-            Chai.assert.equal(reply,
-                "&lt;#123456789&gt;");
-        });
-        it("processes channels correctly", () => {
-            const processor = new DiscordMessageProcessor(
-                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
-            const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
-            const msg = new MockMessage(channel) as any;
-            const content = { id: "456" };
-            let reply = processor.InsertChannel(content, msg);
-            Chai.assert.equal(reply, "#TestChannel");
-
-            reply = processor.InsertChannel(content, msg, true);
-            Chai.assert.equal(reply,
-                "<a href=\"https://matrix.to/#/#_discord_123_456:localhost\">#TestChannel</a>");
-        });
-    });
     describe("InsertRole / HTML", () => {
         it("ignores unknown roles", () => {
             const processor = new DiscordMessageProcessor(
@@ -407,6 +402,17 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(reply, "\x01emoji\x01blah\x011\x011234\x01");
         });
     });
+    describe("InsertChannel", () => {
+        it("inserts channels to their post-parse flag", () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const content = {
+                id: "1234",
+            };
+            const reply = processor.InsertChannel(content);
+            Chai.assert.equal(reply, "\x01chan\x011234\x01");
+        });
+    });
     describe("InsertMxcImages / HTML", () => {
         it("processes unknown emoji correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -449,6 +455,51 @@ describe("DiscordMessageProcessor", () => {
             reply = await processor.InsertMxcImages(content, msg, true);
             Chai.assert.equal(reply, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" /> " +
                 "<img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
+        });
+    });
+    describe("InsertChannelPills / HTML", () => {
+        it("processes unknown channel correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const msg = new MockMessage(channel) as any;
+            const content = "Hello \x01chan\x013333333\x01";
+            let reply = await processor.InsertChannelPills(content, msg);
+            Chai.assert.equal(reply, "Hello <#3333333>");
+
+            reply = await processor.InsertChannelPills(content, msg, true);
+            Chai.assert.equal(reply, "Hello &lt;#3333333&gt;");
+        });
+        it("processes channels correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const msg = new MockMessage(channel) as any;
+            const content = "Hello \x01chan\x01456\x01";
+            let reply = await processor.InsertChannelPills(content, msg);
+            Chai.assert.equal(reply, "Hello #TestChannel");
+
+            reply = await processor.InsertChannelPills(content, msg, true);
+            Chai.assert.equal(reply, "Hello <a href=\"https://matrix.to/#/#_discord_123" +
+                "_456:localhost\">#TestChannel</a>");
+        });
+        it("uses the canonical alias, if applicable", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost", bot as DiscordBot, bridge as any));
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "678", name: "TestChannel"});
+            guild.channels.set("678", channel);
+            const msg = new MockMessage(channel) as any;
+            const content = "Hello \x01chan\x01678\x01";
+            let reply = await processor.InsertChannelPills(content, msg);
+            Chai.assert.equal(reply, "Hello #TestChannel");
+
+            reply = await processor.InsertChannelPills(content, msg, true);
+            Chai.assert.equal(reply, "Hello <a href=\"https://matrix.to/#/#alias:localhost\">#TestChannel</a>");
         });
     });
     describe("InsertEmbeds", () => {
