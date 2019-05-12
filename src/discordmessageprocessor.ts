@@ -295,7 +295,11 @@ export class DiscordMessageProcessor {
         if (!embed.url) {
             return false;
         }
-        return msg.content.includes(embed.url);
+        let url = embed.url;
+        if (url.substr(url.length - 1) === "/") {
+            url = url.substr(0, url.length - 1);
+        }
+        return msg.content.includes(url);
     }
 
     private getDiscordParseCallbacks(msg: Discord.Message) {
