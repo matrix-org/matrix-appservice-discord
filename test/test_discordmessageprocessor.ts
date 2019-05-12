@@ -393,7 +393,7 @@ describe("DiscordMessageProcessor", () => {
                 name: "blah",
             };
             const reply = processor.InsertEmoji(content);
-            Chai.assert.equal(reply, "\x01blah\x010\x011234\x01");
+            Chai.assert.equal(reply, "\x01emoji\x01blah\x010\x011234\x01");
         });
         it("inserts animated emojis to their post-parse flag", () => {
             const processor = new DiscordMessageProcessor(
@@ -404,7 +404,7 @@ describe("DiscordMessageProcessor", () => {
                 name: "blah",
             };
             const reply = processor.InsertEmoji(content);
-            Chai.assert.equal(reply, "\x01blah\x011\x011234\x01");
+            Chai.assert.equal(reply, "\x01emoji\x01blah\x011\x011234\x01");
         });
     });
     describe("InsertMxcImages / HTML", () => {
@@ -414,7 +414,7 @@ describe("DiscordMessageProcessor", () => {
             const guild: any = new MockGuild("123", []);
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             const msg = new MockMessage(channel) as any;
-            const content = "Hello \x01hello\x010\x01123456789\x01";
+            const content = "Hello \x01emoji\x01hello\x010\x01123456789\x01";
             let reply = await processor.InsertMxcImages(content, msg);
             Chai.assert.equal(reply, "Hello <:hello:123456789>");
 
@@ -428,12 +428,27 @@ describe("DiscordMessageProcessor", () => {
             const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
             guild.channels.set("456", channel);
             const msg = new MockMessage(channel) as any;
-            const content = "Hello \x01hello\x010\x013333333\x01";
+            const content = "Hello \x01emoji\x01hello\x010\x013333333\x01";
             let reply = await processor.InsertMxcImages(content, msg);
             Chai.assert.equal(reply, "Hello :hello:");
 
             reply = await processor.InsertMxcImages(content, msg, true);
             Chai.assert.equal(reply, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
+        });
+        it("processes double-emoji correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.set("456", channel);
+            const msg = new MockMessage(channel) as any;
+            const content = "Hello \x01emoji\x01hello\x010\x013333333\x01 \x01emoji\x01hello\x010\x013333333\x01";
+            let reply = await processor.InsertMxcImages(content, msg);
+            Chai.assert.equal(reply, "Hello :hello: :hello:");
+
+            reply = await processor.InsertMxcImages(content, msg, true);
+            Chai.assert.equal(reply, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" /> " +
+                "<img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertEmbeds", () => {

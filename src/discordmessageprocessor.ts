@@ -24,7 +24,9 @@ import { Log } from "./log";
 const log = new Log("DiscordMessageProcessor");
 
 const MATRIX_TO_LINK = "https://matrix.to/#/";
-const MXC_INSERT_REGEX = /\x01(\w+)\x01([01])\x01([0-9]*)\x01/g;
+// somehow the regex works properly if it isn't global
+// as we replace the match fully anyways this shouldn't be an issue
+const MXC_INSERT_REGEX = /\x01emoji\x01(\w+)\x01([01])\x01([0-9]*)\x01/;
 const NAME_MXC_INSERT_REGEX_GROUP = 1;
 const ANIMATED_MXC_INSERT_REGEX_GROUP = 2;
 const ID_MXC_INSERT_REGEX_GROUP = 3;
@@ -252,8 +254,7 @@ export class DiscordMessageProcessor {
         // unfortunately these callbacks are sync, so we flag our url with some special stuff
         // and later on grab the real url async
         const FLAG = "\x01";
-        const name = escapeHtml(node.name);
-        return `${FLAG}${name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
+        return `${FLAG}emoji${FLAG}${node.name}${FLAG}${node.animated ? 1 : 0}${FLAG}${node.id}${FLAG}`;
     }
 
     public InsertRoom(msg: Discord.Message, def: string): string {
@@ -270,7 +271,8 @@ export class DiscordMessageProcessor {
             try {
                 const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
                 if (html) {
-                    replace = `<img alt="${name}" title="${name}" height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
+                    replace = `<img alt="${escapeHtml(name)}" title="${escapeHtml(name)}" ` +
+                        `height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
                 } else {
                     replace = `:${name}:`;
                 }
@@ -279,13 +281,12 @@ export class DiscordMessageProcessor {
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
                 if (html) {
-                    replace = `&lt;${animated ? "a" : ""}:${name}:${id}&gt;`;
+                    replace = `&lt;${animated ? "a" : ""}:${escapeHtml(name)}:${id}&gt;`;
                 } else {
                     replace = `<${animated ? "a" : ""}:${name}:${id}>`;
                 }
             }
-            content = content.replace(results[0],
-                replace);
+            content = content.replace(results[0], replace);
             results = MXC_INSERT_REGEX.exec(content);
         }
         return content;
@@ -301,7 +302,7 @@ export class DiscordMessageProcessor {
     private getDiscordParseCallbacks(msg: Discord.Message) {
         return {
             channel: (node) => this.InsertChannel(node, msg),
-            emoji: (node) => this.InsertEmoji(node),
+            emoji: (node) => this.InsertEmoji(node), // are post-inserted
             everyone: (_) => this.InsertRoom(msg, "@everyone"),
             here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg),
