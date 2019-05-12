@@ -145,11 +145,25 @@ export class MatrixMessageProcessor {
         return `<@${match[1]}>`;
     }
 
-    private parseChannel(id: string): string {
-        const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*)/;
+    private async parseChannel(id: string): Promise<string> {
+        const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*):/;
         const match = id.match(CHANNEL_REGEX);
         if (!match || !this.guild.channels.get(match[1])) {
-            return MATRIX_TO_LINK + id;
+            /*
+            This isn't formatted in #_discord_, so let's fetch the internal room ID
+            and see if it is still a bridged room!
+            */
+            if (this.params && this.params.mxClient) {
+                try {
+                    const resp = await this.params.mxClient.getRoomIdForAlias(id);
+                    if (resp && resp.room_id) {
+                        const roomId = resp.room_id;
+                        const channel = await this.bot.GetChannelFromRoomId(roomId);
+                        return `<#${channel.id}>`;
+                    }
+                } catch (err) { } // ignore, room ID wasn't found
+            }
+            return "";
         }
         return `<#${match[1]}>`;
     }
@@ -176,7 +190,7 @@ export class MatrixMessageProcessor {
                 reply = this.parseUser(id);
                 break;
             case "#":
-                reply = this.parseChannel(id);
+                reply = await this.parseChannel(id);
                 break;
         }
         if (!reply) {
