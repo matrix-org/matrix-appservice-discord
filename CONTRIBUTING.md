@@ -35,8 +35,6 @@ inside the `MatrixEventProcessor` class.
 
 ## Setting up
 
-(This section needs to be written in detail)
-
 * You will need to [setup the bridge](https://github.com/Half-Shot/matrix-appservice-discord/tree/develop#setup-the-bridge) similarly to how we describe,
   but you should setup a homeserver locally on your development machine. We would recommend [Synapse](https://github.com/matrix-org/synapse#id11).
 
@@ -52,7 +50,7 @@ provide a template, but good items are:
     * A good example is "Ability to bridge an existing matrix room into a discord channel"
  * A brief description of the problem.
     * If you are a user of another person's bridge, please can you let us know the name of the service provider.
-    * If you would like to keep the details private, please PM @Half-Shot:half-shot.uk discreetly.
+    * If you would like to keep the details private, please PM @Half-Shot:half-shot.uk or @sorunome:sorunome.de discreetly.
  * Relevant logging from Synapse/your homeserver AND the bridge (if applicable).
     * The more verbose, the better but please don't include sensitive details like access tokens.
  * A screenshot is always useful.
@@ -78,7 +76,7 @@ We've tried our best to keep the PR process relatively simple:
     * Github automatically pokes TravisCI to run both linting and tests.
 * Someone from the team will review your work and decide what to do with the PR.
     * Usually we will have feedback for the PR and will submit more comments.
-    * We may decide to reject it, if a feature has little chance of fitting in with the project goals.
+    * We may decide to reject it, if a feature does not fit with the project goals.
 
 ## Testing
 
