@@ -138,29 +138,27 @@ export class DiscordBot {
         return this.provisioner;
     }
 
-    public lockChannel(channel: Discord.GuildChannel) {
-        const key = `${channel.guild.id}|${channel.id}`;
-        if (this.channelLocks[key]) {
+    public lockChannel(channel: Discord.Channel) {
+        if (this.channelLocks[channel.id]) {
             return;
         }
         let i: NodeJS.Timeout;
         const p = new Promise((resolve) => {
             i = setInterval(resolve, this.config.limits.discordSendDelay);
-            this.channelLocks[key] = {i, p};
+            this.channelLocks[channel.id] = {i, p};
         });
     }
 
-    public unlockChannel(channel: Discord.GuildChannel) {
-        const key = `${channel.guild.id}|${channel.id}`;
-        const lock = this.channelLocks[key];
+    public unlockChannel(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
         if (lock) {
             clearTimeout(lock.i);
         }
-        delete this.channelLocks[key];
+        delete this.channelLocks[channel.id];
     }
 
-    public async waitUnlock(channel: Discord.GuildChannel) {
-        const lock = this.channelLocks[`${channel.guild.id}|${channel.id}`];
+    public async waitUnlock(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
         if (lock) {
             await lock.p;
         }
@@ -229,7 +227,7 @@ export class DiscordBot {
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
-                await this.waitUnlock(msg.channel as Discord.TextChannel);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -244,7 +242,7 @@ export class DiscordBot {
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
-                await this.waitUnlock(newMessage.channel as Discord.TextChannel);
+                await this.waitUnlock(newMessage.channel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -259,7 +257,7 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
-                await this.waitUnlock(msg.channel as Discord.TextChannel);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -461,9 +459,9 @@ export class DiscordBot {
 
             const msg = await chan.fetchMessage(storeEvent.DiscordId);
             try {
-                this.lockChannel(msg.channel as Discord.TextChannel);
+                this.lockChannel(msg.channel);
                 await msg.delete();
-                this.unlockChannel(msg.channel as Discord.TextChannel);
+                this.unlockChannel(msg.channel);
                 log.info(`Deleted message`);
             } catch (ex) {
                 log.warn(`Failed to delete message`, ex);
