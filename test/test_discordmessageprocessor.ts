@@ -1,5 +1,5 @@
 /*
-Copyright 2017, 2018 matrix-appservice-discord
+Copyright 2017 - 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -175,6 +175,37 @@ describe("DiscordMessageProcessor", () => {
                     title: "Title",
                     type: {} as any,
                     url: "http://example.com",
+                    video: {} as any,
+                },
+            ];
+            msg.content = "message http://example.com";
+            const result = await processor.FormatMessage(msg);
+            Chai.assert.equal(result.body, "message http://example.com");
+            Chai.assert.equal(result.formattedBody, "message <a href=\"http://example.com\">" +
+                "http://example.com</a>");
+        });
+        it("should ignore same-url embeds with trailing slash", async () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const msg = new MockMessage() as any;
+            msg.embeds = [
+                {
+                    author: {} as any,
+                    client: {} as any,
+                    color: {} as any,
+                    createdAt: {} as any,
+                    createdTimestamp: {} as any,
+                    description: "Description",
+                    fields: [] as any,
+                    footer: {} as any,
+                    hexColor: {} as any,
+                    image: {} as any,
+                    message: {} as any,
+                    provider: {} as any,
+                    thumbnail: {} as any,
+                    title: "Title",
+                    type: {} as any,
+                    url: "http://example.com/",
                     video: {} as any,
                 },
             ];
