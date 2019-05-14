@@ -247,6 +247,7 @@ export class DiscordBot {
                 msgs.forEach((msg) => {
                     promiseArr.push(async () => {
                         try {
+                            await this.waitUnlock(msg.channel);
                             await this.DeleteDiscordMessage(msg);
                         } catch (err) {
                             log.error("Caught while handling 'messageDeleteBulk'", err);
