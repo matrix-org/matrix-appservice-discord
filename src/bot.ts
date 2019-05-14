@@ -79,8 +79,9 @@ export class DiscordBot {
     /* Caches */
     private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}> = new Map();
 
-    /* Handles messages queued up to be sent to discord. */
+    /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
+    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout} };
 
     constructor(
         private botUserId: string,
@@ -105,6 +106,7 @@ export class DiscordBot {
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
+        this.channelLocks = {};
         this.lastEventIds = {};
     }
 
@@ -136,6 +138,32 @@ export class DiscordBot {
         return this.provisioner;
     }
 
+    public lockChannel(channel: Discord.Channel) {
+        if (this.channelLocks[channel.id]) {
+            return;
+        }
+        let i: NodeJS.Timeout;
+        const p = new Promise((resolve) => {
+            i = setInterval(resolve, this.config.limits.discordSendDelay);
+            this.channelLocks[channel.id] = {i, p};
+        });
+    }
+
+    public unlockChannel(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
+        if (lock) {
+            clearTimeout(lock.i);
+        }
+        delete this.channelLocks[channel.id];
+    }
+
+    public async waitUnlock(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
+        if (lock) {
+            await lock.p;
+        }
+    }
+
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
@@ -154,7 +182,6 @@ export class DiscordBot {
 
     public async run(): Promise<void> {
         const client = await this.clientFactory.getClient();
-
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (c, u) => {
                 try {
@@ -200,7 +227,7 @@ export class DiscordBot {
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
-                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -220,6 +247,7 @@ export class DiscordBot {
                 msgs.forEach((msg) => {
                     promiseArr.push(async () => {
                         try {
+                            await this.waitUnlock(msg.channel);
                             await this.DeleteDiscordMessage(msg);
                         } catch (err) {
                             log.error("Caught while handling 'messageDeleteBulk'", err);
@@ -233,7 +261,7 @@ export class DiscordBot {
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
-                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                await this.waitUnlock(newMessage.channel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -248,7 +276,7 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
-                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -369,7 +397,9 @@ export class DiscordBot {
         if (!msg) {
             return;
         }
+        this.lockChannel(channel);
         const res = await channel.send(msg);
+        this.unlockChannel(channel);
         await this.StoreMessagesSent(res, channel, event);
     }
 
@@ -401,6 +431,7 @@ export class DiscordBot {
             }
         }
         try {
+            this.lockChannel(chan);
             if (!botUser) {
                 opts.embed = embedSet.replyEmbed;
                 msg = await chan.send(embed.description, opts);
@@ -419,6 +450,7 @@ export class DiscordBot {
                 opts.embed = embed;
                 msg = await chan.send("", opts);
             }
+            this.unlockChannel(chan);
             await this.StoreMessagesSent(msg, chan, event);
         } catch (err) {
             log.error("Couldn't send message. ", err);
@@ -446,7 +478,9 @@ export class DiscordBot {
 
             const msg = await chan.fetchMessage(storeEvent.DiscordId);
             try {
+                this.lockChannel(msg.channel);
                 await msg.delete();
+                this.unlockChannel(msg.channel);
                 log.info(`Deleted message`);
             } catch (ex) {
                 log.warn(`Failed to delete message`, ex);
@@ -597,9 +631,11 @@ export class DiscordBot {
                   /* tslint:disable-next-line no-any */
               } as any, // XXX: Discord.js typings are wrong.
                 `Unbanned.`);
+            this.lockChannel(botChannel);
             res = await botChannel.send(
                 `${kickee} was unbanned from this channel by ${kicker}.`,
             ) as Discord.Message;
+            this.unlockChannel(botChannel);
             this.sentMessages.push(res.id);
             return;
         }
@@ -609,10 +645,12 @@ export class DiscordBot {
             return;
         }
         const word = `${kickban === "ban" ? "banned" : "kicked"}`;
+        this.lockChannel(botChannel);
         res = await botChannel.send(
             `${kickee} was ${word} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
         ) as Discord.Message;
+        this.unlockChannel(botChannel);
         this.sentMessages.push(res.id);
         log.info(`${word} ${kickee}`);
 
