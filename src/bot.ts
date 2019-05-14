@@ -240,6 +240,24 @@ export class DiscordBot {
                 log.error("Exception thrown while handling \"messageDelete\" event", err);
             }
         });
+        client.on("messageDeleteBulk", async (msgs: Discord.Collection<Discord.Snowflake, Discord.Message>) => {
+            try {
+                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                const promiseArr: (() => Promise<void>)[] = [];
+                msgs.forEach((msg) => {
+                    promiseArr.push(async () => {
+                        try {
+                            await this.DeleteDiscordMessage(msg);
+                        } catch (err) {
+                            log.error("Caught while handling 'messageDeleteBulk'", err);
+                        }
+                    });
+                });
+                await Promise.all(promiseArr);
+            } catch (err) {
+                log.error("Exception thrown while handling \"messageDeleteBulk\" event", err);
+            }
+        });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
                 await this.waitUnlock(newMessage.channel);
