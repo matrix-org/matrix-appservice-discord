@@ -244,11 +244,9 @@ export class DbRoomStore {
     }
 
     public async getEntriesByRemoteRoomData(data: IRemoteRoomDataLazy): Promise<IRoomStoreEntry[]> {
-        for (const k of ["update_name", "update_topic", "update_icon", "plumbed"]) {
-            if (data[k]) {
-                data[k] = Number(data[k] || 0);
-            }
-        }
+        Object.keys(data).filter((k) => typeof(data[k]) === "boolean").forEach((k) => {
+            data[k] = Number(data[k] || 0);
+        });
 
         const whereClaues = Object.keys(data).map((key) => {
             return `${key} = $${key}`;
