@@ -59,9 +59,11 @@ export class Provisioner {
             roomsToUnbridge = roomsRes.map((entry) => entry.matrix!.roomId);
         }
         await Promise.all(roomsToUnbridge.map( async (roomId) => {
-            return this.channelSync.OnUnbridge(channel, roomId).catch((err) => {
-                log.error(`Failed to cleanly unbridge ${channel.id} ${channel.guild} from ${roomId}`);
-            });
+            try {
+                await this.channelSync.OnUnbridge(channel, roomId);
+            } catch (ex) {
+                log.error(`Failed to cleanly unbridge ${channel.id} ${channel.guild} from ${roomId}`, ex);
+            }
         }));
         await this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
