@@ -103,6 +103,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         },
         getClientFactory: () => {
             return {
+                _botUserId: "@botuser:localhost",
                 getClientAs: () => {
                     return mxClient;
                 },
