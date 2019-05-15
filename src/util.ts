@@ -29,13 +29,13 @@ const HTTP_OK = 200;
 import { Log } from "./log";
 const log = new Log("Util");
 
-type PERMISSIONTYPES = any; // tslint:disable-line no-any
+type PERMISSIONTYPES = any | any[]; // tslint:disable-line no-any
 
 export interface ICommandAction {
     description?: string;
     help?: string;
     params: string[];
-    permission?: PERMISSIONTYPES | PERMISSIONTYPES[];
+    permission?: PERMISSIONTYPES;
     run(params: any): Promise<any>; // tslint:disable-line no-any
 }
 
@@ -336,9 +336,9 @@ export class Util {
             const retStr = await action.run(params);
             return retStr;
         } catch (e) {
-            return `**ERROR:** ${e.message}`;
             log.error("Error processing command");
             log.error(e);
+            return `**ERROR:** ${e.message}`;
         }
     }
 

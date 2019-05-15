@@ -289,7 +289,6 @@ export class ChannelSyncroniser {
         const intent = await this.bridge.getIntent();
         const options = overrideOptions || this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
-        // tslint:disable-next-line: no-any
 
         await this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
@@ -364,7 +363,6 @@ export class ChannelSyncroniser {
             }
         }
 
-        // Remove entry
         await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 }
