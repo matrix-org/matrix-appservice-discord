@@ -46,11 +46,8 @@ export class MatrixCommandHandler {
 
     public async HandleInvite(event: IMatrixEvent) {
         log.info(`Received invite for ${event.state_key} in room ${event.room_id}`);
-        if (event.state_key === this.discord.GetBotId()) {
-            log.info("Accepting invite for bridge bot");
-            await this.bridge.getIntent().joinRoom(event.room_id);
-            this.botJoinedRooms.add(event.room_id);
-        }
+        await this.bridge.getIntent().join(event.room_id);
+        this.botJoinedRooms.add(event.room_id);
     }
 
     public async Process(event: IMatrixEvent, context: BridgeContext) {
@@ -130,8 +127,8 @@ export class MatrixCommandHandler {
                         return "This room cannot be unbridged.";
                     }
                     const res = await this.discord.LookupRoom(
-                        remoteRoom.data.discord_guild,
-                        remoteRoom.data.discord_channel,
+                        remoteRoom.data.discord_guild!,
+                        remoteRoom.data.discord_channel!,
                     );
                     try {
                         await this.provisioner.UnbridgeChannel(res.channel, event.room_id);

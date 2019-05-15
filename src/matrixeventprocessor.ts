@@ -81,7 +81,7 @@ export class MatrixEventProcessor {
         if (
             event.type === "m.room.member" &&
             event.content!.membership === "invite" &&
-            event.state_key === this.discord.GetBotId()
+            event.state_key === this.bridge.getClientFactory()._botUserId
         ) {
             await this.mxCommandHandler.HandleInvite(event);
             return;

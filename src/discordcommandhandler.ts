@@ -151,7 +151,7 @@ export class DiscordCommandHandler {
             return "This channel has been unbridged";
         } catch (err) {
             if (err.message === "Channel is not bridged") {
-                return "This channel is not bridged to a plubmed matrix room";
+                return "This channel is not bridged to a plumbed matrix room";
             }
             log.error("Error while unbridging room " + channel.id);
             log.error(err);

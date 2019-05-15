@@ -96,11 +96,11 @@ export class DiscordBot {
         );
         this.presenceHandler = new PresenceHandler(this);
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
+        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(config, bridge, this),
         );
-        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
-        this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];

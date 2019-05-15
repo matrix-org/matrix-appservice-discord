@@ -18,6 +18,7 @@ import { IDatabaseConnector } from "./connector";
 import { Util } from "../util";
 
 import * as uuid from "uuid/v4";
+import { Postgres } from "./postgres";
 
 const log = new Log("DbRoomStore");
 
@@ -47,8 +48,8 @@ interface IRemoteRoomDataLazy  {
 }
 
 export class RemoteStoreRoom {
-    public data: IRemoteRoomData;
-    constructor(public readonly roomId: string, data: IRemoteRoomData) {
+    public data: IRemoteRoomDataLazy;
+    constructor(public readonly roomId: string, data: IRemoteRoomDataLazy) {
         for (const k of ["discord_guild", "discord_channel", "discord_name",
         "discord_topic", "discord_iconurl", "discord_iconurl_mxc", "discord_type"]) {
             data[k] = typeof(data[k]) === "number" ? String(data[k]) : data[k] || null;
@@ -92,7 +93,6 @@ const ENTRY_CACHE_LIMETIME = 30000;
 export class DbRoomStore {
 
     private entriesMatrixIdCache: Map<string, {e: IRoomStoreEntry[], ts: number}>;
-
     constructor(private db: IDatabaseConnector) {
         this.entriesMatrixIdCache = new Map();
     }
@@ -244,6 +244,12 @@ export class DbRoomStore {
     }
 
     public async getEntriesByRemoteRoomData(data: IRemoteRoomDataLazy): Promise<IRoomStoreEntry[]> {
+        for (const k of ["update_name", "update_topic", "update_icon", "plumbed"]) {
+            if (data[k]) {
+                data[k] = Number(data[k] || 0);
+            }
+        }
+
         const whereClaues = Object.keys(data).map((key) => {
             return `${key} = $${key}`;
         }).join(" AND ");

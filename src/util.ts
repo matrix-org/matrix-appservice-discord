@@ -299,7 +299,6 @@ export class Util {
         permissionCheck?: CommandPermissonCheck,
     ): Promise<string> {
         const {command, args} = Util.MsgToArgs(msg, prefix);
-
         if (command === "help") {
             return await Util.HandleHelpCommand(prefix, actions, parameters, args, permissionCheck);
         }
