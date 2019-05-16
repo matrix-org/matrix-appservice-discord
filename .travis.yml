@@ -1,6 +1,6 @@
 dist: xenial
 language: node_js
-install: npm install && npm run build
+install: npm install
 
 cache:
   directories:
@@ -9,14 +9,17 @@ cache:
 jobs:
   include:
     - stage: unit tests
+      # Test already builds
       script: npm run test
       node_js: "10"
     - node_js: "12"
     - stage: lint
+      # Lint doesn't need to build
       script: npm run lint
       node_js: "12"
     - stage: coverage
-      script: npm run coverage
+      # Coverage does NOT build
+      script: npm run build && npm run coverage
       node_js: "12"
 
 # NOTE: This is unused atm
