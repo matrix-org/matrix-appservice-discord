@@ -39,7 +39,7 @@ const CHANNEL_INSERT_REGEX = /\x01chan\x01([0-9]*)\x01/;
 const ID_CHANNEL_INSERT_REGEX = 1;
 
 export class DiscordMessageProcessorOpts {
-    constructor(readonly domain: string, readonly bot?: DiscordBot, readonly bridge?: Bridge) {
+    constructor(readonly domain: string, readonly bot?: DiscordBot) {
 
     }
 }
@@ -64,7 +64,7 @@ export class DiscordMessageProcessor {
     constructor(opts: DiscordMessageProcessorOpts, bot: DiscordBot | null = null) {
         // Backwards compat
         if (bot !== null) {
-            this.opts = new DiscordMessageProcessorOpts(opts.domain, bot, opts.bridge);
+            this.opts = new DiscordMessageProcessorOpts(opts.domain, bot);
         } else {
             this.opts = opts;
         }
@@ -268,10 +268,11 @@ export class DiscordMessageProcessor {
             const animated = results[ANIMATED_MXC_INSERT_REGEX_GROUP] === "1";
             const id = results[ID_MXC_INSERT_REGEX_GROUP];
             let replace = "";
+            const nameHtml = escapeHtml(name);
             try {
                 const mxcUrl = await this.opts.bot!.GetEmoji(name, animated, id);
                 if (html) {
-                    replace = `<img alt="${escapeHtml(name)}" title="${escapeHtml(name)}" ` +
+                    replace = `<img alt="${nameHtml}" title="${nameHtml}" ` +
                         `height="${EMOJI_SIZE}" src="${mxcUrl}" />`;
                 } else {
                     replace = `:${name}:`;
@@ -281,7 +282,7 @@ export class DiscordMessageProcessor {
                     `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
                 );
                 if (html) {
-                    replace = `&lt;${animated ? "a" : ""}:${escapeHtml(name)}:${id}&gt;`;
+                    replace = `&lt;${animated ? "a" : ""}:${nameHtml}:${id}&gt;`;
                 } else {
                     replace = `<${animated ? "a" : ""}:${name}:${id}>`;
                 }
@@ -299,22 +300,13 @@ export class DiscordMessageProcessor {
             let replace = "";
             const channel = msg.guild.channels.get(id);
             if (channel) {
-                const name = "#" + channel.name;
-                let alias = `#_discord_${msg.guild.id}_${id}:${this.opts.domain}`;
-                try {
-                    // we don't bother here much of checking if objects exists, as the error is catched
-                    // and we use the default alias then, as we wanted to anyways
-                    const matrixRoom = (await this.opts.bot!.ChannelSyncroniser.GetRoomIdsFromChannel(channel))[0];
-                    if (matrixRoom) {
-                        const al = (await this.opts.bridge.getIntent().getClient()
-                            .getStateEvent(matrixRoom, "m.room.canonical_alias")).alias;
-                        if (al) {
-                            alias = al;
-                        }
-                    }
-                } catch (err) { } // no rooms found, just use default
-                replace = html ? `<a href="${MATRIX_TO_LINK}${escapeHtml(alias)}">${escapeHtml(name)}</a>` : name;
-            } else {
+                const alias = await this.opts.bot!.ChannelSyncroniser.GetAliasFromChannel(channel);
+                if (alias) {
+                    const name = "#" + channel.name;
+                    replace = html ? `<a href="${MATRIX_TO_LINK}${escapeHtml(alias)}">${escapeHtml(name)}</a>` : name;
+                }
+            }
+            if (!replace) {
                 replace = html ? `&lt;#${escapeHtml(id)}&gt;` : `<#${id}>`;
             }
             content = content.replace(results[0], replace);

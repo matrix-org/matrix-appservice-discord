@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,6 +83,15 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                             ALIAS_DELETED = true;
                         },
                         getStateEvent: async (mxid, event) => {
+                            if (event === "m.room.canonical_alias") {
+                                if (mxid === "!valid:localhost") {
+                                    return {
+                                        alias: "#alias:localhost",
+                                    };
+                                } else {
+                                    return null;
+                                }
+                            }
                             return event;
                         },
                         sendStateEvent: async (mxid, event, data) => {
@@ -276,6 +285,43 @@ describe("ChannelSyncroniser", () => {
             } catch (e) {
                 expect(e.message).to.not.equal("didn't fail");
             }
+        });
+    });
+    describe("GetAliasFromChannel", () => {
+        const getIds = async (chan) => {
+            if (chan.id === "678") {
+                return ["!valid:localhost"];
+            }
+            throw new Error("invalid");
+        };
+        it("Should get one canonical alias for a room", async () => {
+            const chan = new MockChannel();
+            chan.id = "678";
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal("#alias:localhost");
+        });
+        it("Should return null if no alias found and no guild present", async () => {
+            const chan = new MockChannel();
+            chan.id = "123";
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal(null);
+        });
+        it("Should return a #_discord_ alias if a guild is present", async () => {
+            const chan = new MockChannel();
+            const guild = new MockGuild("123");
+            chan.id = "123";
+            chan.guild = guild;
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal("#_discord_123_123:localhost");
         });
     });
     describe("GetChannelUpdateState", () => {
