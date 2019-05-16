@@ -91,17 +91,17 @@ export class DiscordBot {
     ) {
 
         // create handlers
-        this.provisioner = new Provisioner(store.roomStore);
         this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(
             new DiscordMessageProcessorOpts(config.bridge.domain, this),
         );
         this.presenceHandler = new PresenceHandler(this);
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
+        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(config, bridge, this),
         );
-        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];

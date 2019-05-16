@@ -18,6 +18,10 @@ import { DiscordBot } from "./bot";
 import * as Discord from "discord.js";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import { Bridge } from "matrix-appservice-bridge";
+import { Log } from "./log";
+
+const log = new Log("DiscordCommandHandler");
+
 export class DiscordCommandHandler {
     constructor(
         private bridge: Bridge,
@@ -78,6 +82,12 @@ export class DiscordCommandHandler {
                 permission: "BAN_MEMBERS",
                 run: this.ModerationActionGenerator(chan, "unban"),
             },
+            unbridge: {
+                description: "Unbridge matrix rooms from this channel",
+                params: [],
+                permission: ["MANAGE_WEBHOOKS", "MANAGE_CHANNELS"],
+                run: async () => this.UnbridgeChannel(chan),
+            },
         };
 
         const parameters: ICommandParameters = {
@@ -91,8 +101,11 @@ export class DiscordCommandHandler {
             },
         };
 
-        const permissionCheck: CommandPermissonCheck = async (permission) => {
-            return msg.member.hasPermission(permission as Discord.PermissionResolvable);
+        const permissionCheck: CommandPermissonCheck = async (permission: string|string[]) => {
+            if (!Array.isArray(permission)) {
+                permission = [permission];
+            }
+            return permission.every((p) => msg.member.hasPermission(p as Discord.PermissionResolvable));
         };
 
         const reply = await Util.ParseCommand("!matrix", msg.content, actions, parameters, permissionCheck);
@@ -130,5 +143,20 @@ export class DiscordCommandHandler {
             }[funcKey];
             return `${action} ${name}`;
         };
+    }
+
+    private async UnbridgeChannel(channel: Discord.TextChannel): Promise<string> {
+        try {
+            await this.discord.Provisioner.UnbridgeChannel(channel);
+            return "This channel has been unbridged";
+        } catch (err) {
+            if (err.message === "Channel is not bridged") {
+                return "This channel is not bridged to a plumbed matrix room";
+            }
+            log.error("Error while unbridging room " + channel.id);
+            log.error(err);
+            return "There was an error unbridging this room. " +
+                "Please try again later or contact the bridge operator.";
+        }
     }
 }

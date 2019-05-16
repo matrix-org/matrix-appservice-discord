@@ -17,7 +17,7 @@ limitations under the License.
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { DiscordBridgeConfig } from "./config";
+import { DiscordBridgeConfig, DiscordBridgeConfigChannelDeleteOptions } from "./config";
 import { Bridge } from "matrix-appservice-bridge";
 import { Log } from "./log";
 import { DbRoomStore, IRoomStoreEntry } from "./db/roomstore";
@@ -102,6 +102,20 @@ export class ChannelSyncroniser {
                 log.error("Failed to update channels", e);
             }
             iconMxcUrl = channelState.iconMxcUrl;
+        }
+    }
+
+    public async OnUnbridge(channel: Discord.Channel, roomId: string) {
+        try {
+            const entry = (await this.roomStore.getEntriesByMatrixId(roomId))[0];
+            const opts = new DiscordBridgeConfigChannelDeleteOptions();
+            opts.namePrefix = null;
+            opts.topicPrefix = null;
+            opts.ghostsLeave = true;
+            await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomId, entry);
+            log.info(`Channel ${channel.id} has been unbridged.`);
+        } catch (e) {
+            log.error(`Failed to unbridge channel from room: ${e}`);
         }
     }
 
@@ -269,22 +283,23 @@ export class ChannelSyncroniser {
     private async handleChannelDeletionForRoom(
         channel: Discord.TextChannel,
         roomId: string,
-        entry: IRoomStoreEntry): Promise<void> {
+        entry: IRoomStoreEntry,
+        overrideOptions?: DiscordBridgeConfigChannelDeleteOptions): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
         const intent = await this.bridge.getIntent();
-        const options = this.config.channel.deleteOptions;
+        const options = overrideOptions || this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
 
         await this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
             for (const member of channel.members.array()) {
-                try {
-                    const mIntent = await this.bot.GetIntentFromDiscordMember(member);
-                    mIntent.leave(roomId);
-                    log.info(`${member.id} left ${roomId}.`);
-                } catch (e) {
-                    log.warn(`Failed to make ${member.id} leave `);
-                }
+                const mIntent = await this.bot.GetIntentFromDiscordMember(member);
+                // Not awaiting this because we want to do this in the background.
+                mIntent.leave(roomId).then(() => {
+                    log.verbose(`${member.id} left ${roomId}.`);
+                }).catch(() => {
+                    log.warn(`Failed to make ${member.id} leave.`);
+                });
             }
         }
         if (options.namePrefix) {
@@ -347,9 +362,7 @@ export class ChannelSyncroniser {
                 }
             }
         }
-        // Unlist
 
-        // Remove entry
         await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 }
