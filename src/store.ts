@@ -18,18 +18,22 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 9;
+export const CURRENT_SCHEMA = 10;
 
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
-import { IDatabaseConnector } from "./db/connector";
+import { IDatabaseConnector, ISqlCommandParameters } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
 import {
     RoomStore, UserStore,
 } from "matrix-appservice-bridge";
+import { DbGuildBans } from "./db/dbdataguildbans";
 const log = new Log("DiscordStore");
+
+const BAN_CACHE_LIMETIME = 30000;
+
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -38,6 +42,7 @@ export class DiscordStore {
     private config: DiscordBridgeConfigDatabase;
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
+    private banCache: Map<string, {banned: boolean, ts: number}>;
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
@@ -45,6 +50,7 @@ export class DiscordStore {
         } else {
             this.config = configOrFile;
         }
+        this.banCache = new Map();
     }
 
     get roomStore() {
@@ -238,8 +244,30 @@ export class DiscordStore {
             throw err;
         }
     }
-    // tslint:disable-next-line no-any
-    public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
+
+    public async isGuildChannelBanned(guild: string, channel: string|null = null): Promise<boolean> {
+        const guildWideBan = this.banCache.get(`${guild}:*`);
+        if (guildWideBan && guildWideBan.banned && Date.now() - guildWideBan.ts < BAN_CACHE_LIMETIME) {
+             return true;
+        }
+        if (channel != null) {
+            const channelBan = this.banCache.get(`${guild}:${channel}`);
+            if (channelBan && channelBan.banned && Date.now() - channelBan.ts < BAN_CACHE_LIMETIME) {
+                return true;
+            }
+        }
+
+        const ONE_SECOND = 1000;
+        const ban = new DbGuildBans();
+        await ban.RunQuery(this, {guild, channel});
+        this.banCache.set(`${guild}:${ban.isGuildBanned ? "*" : ban.Channel}`, {
+            banned: ban.Result,
+            ts: Date.now() + (Math.random() * ONE_SECOND), // to avoid thundering hurd
+        });
+        return ban.Result;
+    }
+
+    public async Get<T extends IDbData>(dbType: {new(): T; }, params: ISqlCommandParameters): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);
         try {
@@ -258,12 +286,12 @@ export class DiscordStore {
     }
 
     public async Update<T extends IDbData>(data: T): Promise<void>  {
-        log.silly(`insert <${data.constructor.name}>`);
+        log.silly(`update <${data.constructor.name}>`);
         await data.Update(this);
     }
 
     public async Delete<T extends IDbData>(data: T): Promise<void>  {
-        log.silly(`insert <${data.constructor.name}>`);
+        log.silly(`delete <${data.constructor.name}>`);
         await data.Delete(this);
     }
 
