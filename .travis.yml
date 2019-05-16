@@ -1,8 +1,5 @@
 language: node_js
 install: npm install && npm run build
-node_js:
-    - "10"
-    - "12"
 
 jobs:
     - script: npm run test
@@ -18,10 +15,11 @@ jobs:
       name: "Coverage"
       node_js: "12"
 
-notifications:
-    webhooks:
-        urls:
-            - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MEhhbGYtU2hvdCUzQWhhbGYtc2hvdC51ay8lMjFxUE5PblVzTnNaclRvRlpxeEIlM0FoYWxmLXNob3QudWs"
-        on_success: change  # always|never|change
-        on_failure: always
-        on_start: never
+# NOTE: This is unused atm
+# notifications:
+#    webhooks:
+#        urls:
+#            - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MEhhbGYtU2hvdCUzQWhhbGYtc2hvdC51ay8lMjFxUE5PblVzTnNaclRvRlpxeEIlM0FoYWxmLXNob3QudWs"
+#        on_success: change  # always|never|change
+#        on_failure: always
+#        on_start: never
