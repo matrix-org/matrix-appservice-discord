@@ -3,17 +3,15 @@ language: node_js
 install: npm install && npm run build
 
 jobs:
-    - script: npm run test
-      name: "Unit - Node 10"
+  include:
+    - stage: unit tests
+      script: npm run test
       node_js: "10"
-    - script: npm run test
-      name: "Unit - Node 12"
-      node_js: "12"
-    - script: npm run lint
-      name: "Linting"
+    - node_js: "12"
+    - stage: lint
+      script: npm run lint
       node_js: "12"
     - script: npm run coverage
-      name: "Coverage"
       node_js: "12"
 
 # NOTE: This is unused atm
