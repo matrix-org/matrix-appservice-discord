@@ -145,6 +145,7 @@ export class DiscordBot {
 
         const p = new Promise((resolve) => {
             if (!this.channelLocks[channel.id]) {
+                resolve();
                 return;
             }
             const i = setInterval(resolve, this.config.limits.discordSendDelay);
