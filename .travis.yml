@@ -2,6 +2,10 @@ dist: xenial
 language: node_js
 install: npm install && npm run build
 
+cache:
+  directories:
+    - node_modules
+
 jobs:
   include:
     - stage: unit tests
