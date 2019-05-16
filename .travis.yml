@@ -11,7 +11,8 @@ jobs:
     - stage: lint
       script: npm run lint
       node_js: "12"
-    - script: npm run coverage
+    - stage: coverage
+      script: npm run coverage
       node_js: "12"
 
 # NOTE: This is unused atm
