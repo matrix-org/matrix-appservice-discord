@@ -81,7 +81,7 @@ export class DiscordBot {
 
     /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
-    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout} };
+    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout|null} };
 
     constructor(
         private botUserId: string,
@@ -142,16 +142,22 @@ export class DiscordBot {
         if (this.channelLocks[channel.id]) {
             return;
         }
-        let i: NodeJS.Timeout;
+
         const p = new Promise((resolve) => {
-            i = setInterval(resolve, this.config.limits.discordSendDelay);
-            this.channelLocks[channel.id] = {i, p};
+            if (!this.channelLocks[channel.id]) {
+                resolve();
+                return;
+            }
+            const i = setInterval(resolve, this.config.limits.discordSendDelay);
+            this.channelLocks[channel.id].i = i;
         });
+
+        this.channelLocks[channel.id] = {i: null, p};
     }
 
     public unlockChannel(channel: Discord.Channel) {
         const lock = this.channelLocks[channel.id];
-        if (lock) {
+        if (lock && lock.i !== null) {
             clearTimeout(lock.i);
         }
         delete this.channelLocks[channel.id];
@@ -399,8 +405,8 @@ export class DiscordBot {
         }
         this.lockChannel(channel);
         const res = await channel.send(msg);
-        this.unlockChannel(channel);
         await this.StoreMessagesSent(res, channel, event);
+        this.unlockChannel(channel);
     }
 
     public async send(
@@ -450,8 +456,8 @@ export class DiscordBot {
                 opts.embed = embed;
                 msg = await chan.send("", opts);
             }
-            this.unlockChannel(chan);
             await this.StoreMessagesSent(msg, chan, event);
+            this.unlockChannel(chan);
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
@@ -635,8 +641,8 @@ export class DiscordBot {
             res = await botChannel.send(
                 `${kickee} was unbanned from this channel by ${kicker}.`,
             ) as Discord.Message;
-            this.unlockChannel(botChannel);
             this.sentMessages.push(res.id);
+            this.unlockChannel(botChannel);
             return;
         }
         const existingPerms = tchan.memberPermissions(kickee);
@@ -650,8 +656,8 @@ export class DiscordBot {
             `${kickee} was ${word} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
         ) as Discord.Message;
-        this.unlockChannel(botChannel);
         this.sentMessages.push(res.id);
+        this.unlockChannel(botChannel);
         log.info(`${word} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
@@ -723,12 +729,12 @@ export class DiscordBot {
 
     private async OnMessage(msg: Discord.Message) {
         const indexOfMsg = this.sentMessages.indexOf(msg.id);
-        const chan = msg.channel as Discord.TextChannel;
         if (indexOfMsg !== -1) {
             log.verbose("Got repeated message, ignoring.");
             delete this.sentMessages[indexOfMsg];
             return; // Skip *our* messages
         }
+        const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
             return;
