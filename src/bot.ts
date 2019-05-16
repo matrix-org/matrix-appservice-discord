@@ -450,8 +450,8 @@ export class DiscordBot {
                 opts.embed = embed;
                 msg = await chan.send("", opts);
             }
-            this.unlockChannel(chan);
             await this.StoreMessagesSent(msg, chan, event);
+            this.unlockChannel(chan);
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
@@ -723,12 +723,12 @@ export class DiscordBot {
 
     private async OnMessage(msg: Discord.Message) {
         const indexOfMsg = this.sentMessages.indexOf(msg.id);
-        const chan = msg.channel as Discord.TextChannel;
         if (indexOfMsg !== -1) {
             log.verbose("Got repeated message, ignoring.");
             delete this.sentMessages[indexOfMsg];
             return; // Skip *our* messages
         }
+        const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
             return;
