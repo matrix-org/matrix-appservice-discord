@@ -8,15 +8,15 @@ cache:
 
 jobs:
   include:
+      # Lint doesn't need to build
+    - stage: lint
+      script: npm run lint
+      node_js: "12"
     - stage: unit tests
       # Test already builds
       script: npm run test
       node_js: "10"
     - node_js: "12"
-    - stage: lint
-      # Lint doesn't need to build
-      script: npm run lint
-      node_js: "12"
     - stage: coverage
       # Coverage does NOT build
       script: npm run build && npm run coverage
