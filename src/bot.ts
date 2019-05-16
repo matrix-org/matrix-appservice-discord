@@ -404,8 +404,8 @@ export class DiscordBot {
         }
         this.lockChannel(channel);
         const res = await channel.send(msg);
-        this.unlockChannel(channel);
         await this.StoreMessagesSent(res, channel, event);
+        this.unlockChannel(channel);
     }
 
     public async send(
@@ -640,8 +640,8 @@ export class DiscordBot {
             res = await botChannel.send(
                 `${kickee} was unbanned from this channel by ${kicker}.`,
             ) as Discord.Message;
-            this.unlockChannel(botChannel);
             this.sentMessages.push(res.id);
+            this.unlockChannel(botChannel);
             return;
         }
         const existingPerms = tchan.memberPermissions(kickee);
@@ -655,8 +655,8 @@ export class DiscordBot {
             `${kickee} was ${word} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
         ) as Discord.Message;
-        this.unlockChannel(botChannel);
         this.sentMessages.push(res.id);
+        this.unlockChannel(botChannel);
         log.info(`${word} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
