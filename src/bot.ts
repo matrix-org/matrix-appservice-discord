@@ -227,6 +227,9 @@ export class DiscordBot {
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
+                if (await this.store.isGuildChannelBanned(msg.guild.id, msg.channel.id)) {
+                    return;
+                }
                 await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
@@ -261,6 +264,9 @@ export class DiscordBot {
         });
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
+                if (await this.store.isGuildChannelBanned(newMessage.guild.id, newMessage.channel.id)) {
+                    return;
+                }
                 await this.waitUnlock(newMessage.channel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
@@ -276,6 +282,9 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
+                if (await this.store.isGuildChannelBanned(msg.guild.id, msg.channel.id)) {
+                    return;
+                }
                 await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
@@ -375,12 +384,22 @@ export class DiscordBot {
             if (!guild) {
                 throw new Error(`Guild "${server}" not found`);
             }
+            if (await this.store.isGuildChannelBanned(server)) {
+                if (this.bot.user.id === client.user.id) {
+                    // If we have been banned from this guild, leave it.
+                    await guild.leave();
+                }
+                throw Error("Guild is banned from the bridge");
+            }
             const channel = guild.channels.get(room);
             if (channel && channel.type === "text") {
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
                 lookupResult.botUser = this.bot.user.id === client.user.id;
                 return lookupResult;
+            }
+            if (await this.store.isGuildChannelBanned(server, room)) {
+                throw Error("Channel is banned from the bridge");
             }
             throw new Error(`Channel "${room}" not found`);
         } catch (err) {
