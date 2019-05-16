@@ -156,8 +156,8 @@ export class DiscordBot {
 
     public unlockChannel(channel: Discord.Channel) {
         const lock = this.channelLocks[channel.id];
-        if (lock) {
-            clearTimeout(lock.i!);
+        if (lock && lock.i) {
+            clearTimeout(lock.i);
         }
         delete this.channelLocks[channel.id];
     }
