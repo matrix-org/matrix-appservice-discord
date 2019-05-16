@@ -81,7 +81,7 @@ export class DiscordBot {
 
     /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
-    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout} };
+    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout|null} };
 
     constructor(
         private botUserId: string,
@@ -142,17 +142,22 @@ export class DiscordBot {
         if (this.channelLocks[channel.id]) {
             return;
         }
-        let i: NodeJS.Timeout;
+
         const p = new Promise((resolve) => {
-            i = setInterval(resolve, this.config.limits.discordSendDelay);
-            this.channelLocks[channel.id] = {i, p};
+            if (!this.channelLocks[channel.id]) {
+                return;
+            }
+            const i = setInterval(resolve, this.config.limits.discordSendDelay);
+            this.channelLocks[channel.id].i = i;
         });
+
+        this.channelLocks[channel.id] = {i: null, p};
     }
 
     public unlockChannel(channel: Discord.Channel) {
         const lock = this.channelLocks[channel.id];
         if (lock) {
-            clearTimeout(lock.i);
+            clearTimeout(lock.i!);
         }
         delete this.channelLocks[channel.id];
     }
