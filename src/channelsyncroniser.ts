@@ -164,6 +164,28 @@ export class ChannelSyncroniser {
         return rooms.map((room) => room.matrix!.getId() as string);
     }
 
+    public async GetAliasFromChannel(channel: Discord.Channel): Promise<string | null> {
+        let rooms: string[] = [];
+        try {
+            rooms = await this.GetRoomIdsFromChannel(channel);
+        } catch (err) { } // do nothing, our rooms array will just be empty
+        for (const room of rooms) {
+            try {
+                const al = (await this.bridge.getIntent().getClient()
+                    .getStateEvent(room, "m.room.canonical_alias")).alias;
+                if (al) {
+                    return al; // we are done, we found an alias
+                }
+            } catch (err) { } // do nothing, as if we error we just roll over to the next entry
+        }
+        const guildChannel = channel as Discord.TextChannel;
+        if (!guildChannel.guild) {
+            return null; // we didn't pass a guild, so we have no way of bridging this room, thus no alias
+        }
+        // at last, no known canonical aliases and we are ag uild....so we know an alias!
+        return `#_discord_${guildChannel.guild.id}_${channel.id}:${this.config.bridge.domain}`;
+    }
+
     public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
         log.verbose(`State update request for ${channel.id}`);
         const channelState: IChannelState = Object.assign({}, DEFAULT_CHANNEL_STATE, {
