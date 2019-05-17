@@ -16,28 +16,55 @@ limitations under the License.
 
 import * as Discord from "discord.js";
 import { DbRoomStore, RemoteStoreRoom, MatrixStoreRoom } from "./db/roomstore";
+import { ChannelSyncroniser } from "./channelsyncroniser";
+import { Log } from "./log";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
+
+const log = new Log("Provisioner");
 
 export class Provisioner {
 
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
 
-    constructor(private roomStore: DbRoomStore) { }
+    constructor(private roomStore: DbRoomStore, private channelSync: ChannelSyncroniser) { }
 
     public async BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
         const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}_bridged`, {
-            discord_type: "text",
-            discord_guild: channel.guild.id,
             discord_channel: channel.id,
+            discord_guild: channel.guild.id,
+            discord_type: "text",
             plumbed: true,
         });
         const local = new MatrixStoreRoom(roomId);
         return this.roomStore.linkRooms(local, remote);
     }
 
-    public async UnbridgeRoom(remoteRoom: RemoteStoreRoom) {
-        return this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
+    public async UnbridgeChannel(channel: Discord.TextChannel, rId?: string) {
+        const roomsRes = await this.roomStore.getEntriesByRemoteRoomData({
+            discord_channel: channel.id,
+            discord_guild: channel.guild.id,
+            plumbed: true,
+        });
+        if (roomsRes.length === 0) {
+            throw Error("Channel is not bridged");
+        }
+        const remoteRoom = roomsRes[0].remote as RemoteStoreRoom;
+        let roomsToUnbridge: string[] = [];
+        if (rId) {
+            roomsToUnbridge = [rId];
+        } else {
+            // Kill em all.
+            roomsToUnbridge = roomsRes.map((entry) => entry.matrix!.roomId);
+        }
+        await Promise.all(roomsToUnbridge.map( async (roomId) => {
+            try {
+                await this.channelSync.OnUnbridge(channel, roomId);
+            } catch (ex) {
+                log.error(`Failed to cleanly unbridge ${channel.id} ${channel.guild} from ${roomId}`, ex);
+            }
+        }));
+        await this.roomStore.removeEntriesByRemoteRoomId(remoteRoom.getId());
     }
 
     public async AskBridgePermission(
@@ -73,7 +100,7 @@ export class Provisioner {
         setTimeout(() => approveFn(false, true), timeout);
 
         await channel.send(`${requestor} on matrix would like to bridge this channel. Someone with permission` +
-            " to manage webhooks please reply with !approve or !deny in the next 5 minutes");
+            " to manage webhooks please reply with `!matrix approve` or `!matrix deny` in the next 5 minutes");
         return await deferP;
 
     }

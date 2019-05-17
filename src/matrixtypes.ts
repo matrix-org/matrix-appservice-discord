@@ -42,6 +42,7 @@ export interface IMatrixEvent {
     unsigned?: any; // tslint:disable-line no-any
     origin_server_ts?: number;
     users?: any; // tslint:disable-line no-any
+    users_default?: any; // tslint:disable-line no-any
     notifications?: any; // tslint:disable-line no-any
 }
 

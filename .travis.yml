@@ -1,30 +1,32 @@
+dist: xenial
 language: node_js
-install: npm install && npm run build
+install: npm install
+
+cache:
+  directories:
+    - node_modules
 
 jobs:
-    include:
-    - stage: tests
-      name: "Unit - Node 8"
+  include:
+      # Lint doesn't need to build
+    - stage: lint
+      script: npm run lint
+      node_js: "12"
+    - stage: unit tests
+      # Test already builds
       script: npm run test
-      node_js: "8"
-    - script: npm run test
-      name: "Unit - Node 10"
       node_js: "10"
-    - script: npm run test
-      name: "Unit - Node 11"
-      node_js: "11.0.0"
+    - node_js: "12"
+    - stage: coverage
+      # Coverage does NOT build
+      script: npm run build && npm run coverage
+      node_js: "12"
 
-    - script: npm run lint
-      name: "Linting"
-      node_js: "10"
-    - script: npm run coverage
-      name: "Coverage"
-      node_js: "10"
-
-notifications:
-    webhooks:
-        urls:
-            - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MEhhbGYtU2hvdCUzQWhhbGYtc2hvdC51ay8lMjFxUE5PblVzTnNaclRvRlpxeEIlM0FoYWxmLXNob3QudWs"
-        on_success: change  # always|never|change
-        on_failure: always
-        on_start: never
+# NOTE: This is unused atm
+# notifications:
+#    webhooks:
+#        urls:
+#            - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MEhhbGYtU2hvdCUzQWhhbGYtc2hvdC51ay8lMjFxUE5PblVzTnNaclRvRlpxeEIlM0FoYWxmLXNob3QudWs"
+#        on_success: change  # always|never|change
+#        on_failure: always
+#        on_start: never

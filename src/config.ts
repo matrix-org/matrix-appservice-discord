@@ -88,7 +88,7 @@ class DiscordBridgeConfigChannel {
     public deleteOptions = new DiscordBridgeConfigChannelDeleteOptions();
 }
 
-class DiscordBridgeConfigChannelDeleteOptions {
+export class DiscordBridgeConfigChannelDeleteOptions {
     public namePrefix: string | null = null;
     public topicPrefix: string | null = null;
     public disableMessaging: boolean = false;

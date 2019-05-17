@@ -412,12 +412,6 @@ export class UserSyncroniser {
     }
 
     private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {
-        // const userId = intent.userId;
-        // if (checkCache && ![null, "join", "invite"]
-        //     .includes(intent.opts.backingStore.getMembership(roomId, userId))) {
-        //     return;
-        // }
         await intent.underlyingClient.leaveRoom(roomId);
-        // intent.opts.backingStore.setMembership(roomId, userId, "leave");
     }
 }

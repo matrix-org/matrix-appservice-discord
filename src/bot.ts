@@ -36,6 +36,7 @@ import * as Discord from "discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 import { Appservice, Intent } from "matrix-bot-sdk";
+import { DiscordCommandHandler } from "./discordcommandhandler";
 
 const log = new Log("DiscordBot");
 
@@ -74,11 +75,13 @@ export class DiscordBot {
     private channelSync: ChannelSyncroniser;
     private roomHandler: MatrixRoomHandler;
     private provisioner: Provisioner;
+    private discordCommandHandler: DiscordCommandHandler;
     /* Caches */
     private roomIdsForGuildCache: Map<string, {roomIds: string[], ts: number}> = new Map();
 
-    /* Handles messages queued up to be sent to discord. */
+    /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
+    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout|null} };
 
     constructor(
         private botUserId: string,
@@ -88,20 +91,22 @@ export class DiscordBot {
     ) {
 
         // create handlers
-        this.provisioner = new Provisioner(store.roomStore);
         this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(
             new DiscordMessageProcessorOpts(config.bridge.domain, this),
         );
         this.presenceHandler = new PresenceHandler(this);
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
+        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(config, bridge, this, store),
         );
-        this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
+        this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
+        this.channelLocks = {};
         this.lastEventIds = {};
     }
 
@@ -133,6 +138,38 @@ export class DiscordBot {
         return this.provisioner;
     }
 
+    public lockChannel(channel: Discord.Channel) {
+        if (this.channelLocks[channel.id]) {
+            return;
+        }
+
+        const p = new Promise((resolve) => {
+            if (!this.channelLocks[channel.id]) {
+                resolve();
+                return;
+            }
+            const i = setInterval(resolve, this.config.limits.discordSendDelay);
+            this.channelLocks[channel.id].i = i;
+        });
+
+        this.channelLocks[channel.id] = {i: null, p};
+    }
+
+    public unlockChannel(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
+        if (lock && lock.i !== null) {
+            clearTimeout(lock.i);
+        }
+        delete this.channelLocks[channel.id];
+    }
+
+    public async waitUnlock(channel: Discord.Channel) {
+        const lock = this.channelLocks[channel.id];
+        if (lock) {
+            await lock.p;
+        }
+    }
+
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.User, webhookID?: string): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
@@ -151,7 +188,6 @@ export class DiscordBot {
 
     public async run(): Promise<void> {
         const client = await this.clientFactory.getClient();
-
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (c, u) => {
                 try {
@@ -197,7 +233,7 @@ export class DiscordBot {
 
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
-                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -210,9 +246,28 @@ export class DiscordBot {
                 log.error("Exception thrown while handling \"messageDelete\" event", err);
             }
         });
-        client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+        client.on("messageDeleteBulk", async (msgs: Discord.Collection<Discord.Snowflake, Discord.Message>) => {
             try {
                 await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                const promiseArr: (() => Promise<void>)[] = [];
+                msgs.forEach((msg) => {
+                    promiseArr.push(async () => {
+                        try {
+                            await this.waitUnlock(msg.channel);
+                            await this.DeleteDiscordMessage(msg);
+                        } catch (err) {
+                            log.error("Caught while handling 'messageDeleteBulk'", err);
+                        }
+                    });
+                });
+                await Promise.all(promiseArr);
+            } catch (err) {
+                log.error("Exception thrown while handling \"messageDeleteBulk\" event", err);
+            }
+        });
+        client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
+            try {
+                await this.waitUnlock(newMessage.channel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -227,7 +282,7 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
-                await Util.DelayedPromise(this.config.limits.discordSendDelay);
+                await this.waitUnlock(msg.channel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -348,8 +403,10 @@ export class DiscordBot {
         if (!msg) {
             return;
         }
+        this.lockChannel(channel);
         const res = await channel.send(msg);
         await this.StoreMessagesSent(res, channel, event);
+        this.unlockChannel(channel);
     }
 
     public async send(
@@ -380,6 +437,7 @@ export class DiscordBot {
             }
         }
         try {
+            this.lockChannel(chan);
             if (!botUser) {
                 opts.embed = embedSet.replyEmbed;
                 msg = await chan.send(embed.description, opts);
@@ -399,6 +457,7 @@ export class DiscordBot {
                 msg = await chan.send("", opts);
             }
             await this.StoreMessagesSent(msg, chan, event);
+            this.unlockChannel(chan);
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
@@ -425,7 +484,9 @@ export class DiscordBot {
 
             const msg = await chan.fetchMessage(storeEvent.DiscordId);
             try {
+                this.lockChannel(msg.channel);
                 await msg.delete();
+                this.unlockChannel(msg.channel);
                 log.info(`Deleted message`);
             } catch (ex) {
                 log.warn(`Failed to delete message`, ex);
@@ -577,10 +638,12 @@ export class DiscordBot {
                   /* tslint:disable-next-line no-any */
               } as any, // XXX: Discord.js typings are wrong.
                 `Unbanned.`);
+            this.lockChannel(botChannel);
             res = await botChannel.send(
                 `${kickee} was unbanned from this channel by ${kicker}.`,
             ) as Discord.Message;
             this.sentMessages.push(res.id);
+            this.unlockChannel(botChannel);
             return;
         }
         const existingPerms = tchan.memberPermissions(kickee);
@@ -589,11 +652,13 @@ export class DiscordBot {
             return;
         }
         const word = `${kickban === "ban" ? "banned" : "kicked"}`;
+        this.lockChannel(botChannel);
         res = await botChannel.send(
             `${kickee} was ${word} from this channel by ${kicker}.`
             + (reason ? ` Reason: ${reason}` : ""),
         ) as Discord.Message;
         this.sentMessages.push(res.id);
+        this.unlockChannel(botChannel);
         log.info(`${word} ${kickee}`);
 
         await tchan.overwritePermissions(kickee,
@@ -666,12 +731,12 @@ export class DiscordBot {
 
     private async OnMessage(msg: Discord.Message) {
         const indexOfMsg = this.sentMessages.indexOf(msg.id);
-        const chan = msg.channel as Discord.TextChannel;
         if (indexOfMsg !== -1) {
             log.verbose("Got repeated message, ignoring.");
             delete this.sentMessages[indexOfMsg];
             return; // Skip *our* messages
         }
+        const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
             return;
@@ -686,34 +751,9 @@ export class DiscordBot {
             }
         }
 
-        // Check if there's an ongoing bridge request
-        if ((msg.content === "!approve" || msg.content === "!deny") && this.provisioner.HasPendingRequest(chan)) {
-            try {
-                const isApproved = msg.content === "!approve";
-                const successfullyBridged = await this.provisioner.MarkApproved(chan, msg.member, isApproved);
-                if (successfullyBridged && isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been approved");
-                } else if (successfullyBridged && !isApproved) {
-                    await msg.channel.sendMessage("Thanks for your response! The matrix bridge has been declined");
-                } else {
-                    await msg.channel.sendMessage("Thanks for your response, however" +
-                        "the time for responses has expired - sorry!");
-                }
-            } catch (err) {
-                if (err.message === "You do not have permission to manage webhooks in this channel") {
-                    await msg.channel.sendMessage(err.message);
-                } else {
-                    log.error("Error processing room approval");
-                    log.error(err);
-                }
-            }
-
-            return; // stop processing - we're approving/declining the bridge request
-        }
-
         // check if it is a command to process by the bot itself
         if (msg.content.startsWith("!matrix")) {
-            await this.roomHandler.HandleDiscordCommand(msg);
+            await this.discordCommandHandler.Process(msg);
             return;
         }
 
@@ -734,7 +774,11 @@ export class DiscordBot {
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.DownloadFile(attachment.url);
-                const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, undefined, attachment.filename);
+                const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(
+                    content,
+                    undefined,
+                    attachment.filename,
+                );
                 const fileMime = mime.lookup(attachment.filename);
                 const type = fileMime.split("/")[0];
                 let msgtype = {

@@ -18,8 +18,6 @@ import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
 import { SQLite3 } from "./db/sqlite3";
-export const CURRENT_SCHEMA = 9;
-
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
 import { Postgres } from "./db/postgres";
@@ -27,6 +25,7 @@ import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
 const log = new Log("DiscordStore");
+export const CURRENT_SCHEMA = 10;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -52,7 +51,7 @@ export class DiscordStore {
         return this.pUserStore;
     }
 
-    public async backup_database(): Promise<void|{}> {
+    public async backupDatabase(): Promise<void|{}> {
         if (this.config.filename == null) {
             log.warn("Backups not supported on non-sqlite connector");
             return;
@@ -91,7 +90,7 @@ export class DiscordStore {
         overrideSchema: number = 0,
     ): Promise<void> {
         log.info("Starting DB Init");
-        await this.open_database();
+        await this.openDatabase();
         let version = await this.getSchemaVersion();
         const targetSchema = overrideSchema || CURRENT_SCHEMA;
         log.info(`Database schema version is ${version}, latest version is ${targetSchema}`);
@@ -125,7 +124,7 @@ export class DiscordStore {
         await this.db.Close();
     }
 
-    public async create_table(statement: string, tablename: string): Promise<void|Error> {
+    public async createTable(statement: string, tablename: string): Promise<void|Error> {
         try {
             await this.db.Exec(statement);
             log.info("Created table", tablename);
@@ -134,8 +133,8 @@ export class DiscordStore {
         }
     }
 
-    public async add_user_token(userId: string, discordId: string, token: string): Promise<void> {
-        log.silly("SQL", "add_user_token => ", userId);
+    public async addUserToken(userId: string, discordId: string, token: string): Promise<void> {
+        log.silly("SQL", "addUserToken => ", userId);
         try {
             await Promise.all([
                 this.db.Run(
@@ -161,8 +160,8 @@ export class DiscordStore {
         }
     }
 
-    public async delete_user_token(discordId: string): Promise<void> {
-        log.silly("SQL", "delete_user_token => ", discordId);
+    public async deleteUserToken(discordId: string): Promise<void> {
+        log.silly("SQL", "deleteUserToken => ", discordId);
         try {
             await Promise.all([
                 this.db.Run(
@@ -186,8 +185,8 @@ export class DiscordStore {
         }
     }
 
-    public async get_user_discord_ids(userId: string): Promise<string[]> {
-        log.silly("SQL", "get_user_discord_ids => ", userId);
+    public async getUserDiscordIds(userId: string): Promise<string[]> {
+        log.silly("SQL", "getUserDiscordIds => ", userId);
         try {
             const rows = await this.db.All(
                 `
@@ -209,7 +208,7 @@ export class DiscordStore {
         }
     }
 
-    public async get_token(discordId: string): Promise<string> {
+    public async getToken(discordId: string): Promise<string> {
         log.silly("SQL", "discord_id_token => ", discordId);
         try {
             const row = await this.db.Get(
@@ -227,47 +226,7 @@ export class DiscordStore {
             throw err;
         }
     }
-
-    public async get_dm_room(discordId, discordChannel): Promise<string> {
-        log.silly("SQL", "get_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-        try {
-            const row = await this.db.Get(
-                `
-                SELECT room_id
-                FROM dm_rooms
-                WHERE dm_rooms.discord_id = $discordId
-                AND dm_rooms.discord_channel = $discordChannel;
-                `
-            , {
-                discordChannel,
-                discordId,
-            });
-            return row ? row.room_id as string : "";
-        } catch (err) {
-            log.error("Error getting room_id ", err.Error);
-            throw err;
-        }
-    }
-
-    public async set_dm_room(discordId, discordChannel, roomId): Promise<void> {
-        log.silly("SQL", "set_dm_room => ", discordChannel); // Don't show discordId for privacy reasons
-        try {
-            await this.db.Run(
-                `
-                REPLACE INTO dm_rooms (discord_id,discord_channel,room_id)
-                VALUES ($discordId,$discordChannel,$roomId);
-                `
-            , {
-                discordChannel,
-                discordId,
-                roomId,
-            });
-        } catch (err) {
-            log.error("Error executing set_dm_room query  ", err.Error);
-            throw err;
-        }
-    }
-
+    
     // tslint:disable-next-line no-any
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
@@ -319,7 +278,7 @@ export class DiscordStore {
         );
     }
 
-    private async open_database(): Promise<void|Error> {
+    private async openDatabase(): Promise<void|Error> {
         if (this.config.filename) {
             log.info("Filename present in config, using sqlite");
             this.db = new SQLite3(this.config.filename);

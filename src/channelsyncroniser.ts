@@ -17,7 +17,7 @@ limitations under the License.
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { DiscordBridgeConfig } from "./config";
+import { DiscordBridgeConfig, DiscordBridgeConfigChannelDeleteOptions } from "./config";
 import { Log } from "./log";
 import { DbRoomStore, IRoomStoreEntry } from "./db/roomstore";
 import { Appservice } from "matrix-bot-sdk";
@@ -105,6 +105,20 @@ export class ChannelSyncroniser {
         }
     }
 
+    public async OnUnbridge(channel: Discord.Channel, roomId: string) {
+        try {
+            const entry = (await this.roomStore.getEntriesByMatrixId(roomId))[0];
+            const opts = new DiscordBridgeConfigChannelDeleteOptions();
+            opts.namePrefix = null;
+            opts.topicPrefix = null;
+            opts.ghostsLeave = true;
+            await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomId, entry);
+            log.info(`Channel ${channel.id} has been unbridged.`);
+        } catch (e) {
+            log.error(`Failed to unbridge channel from room: ${e}`);
+        }
+    }
+
     public async OnDelete(channel: Discord.Channel) {
         if (channel.type !== "text") {
             log.info(`Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
@@ -148,6 +162,31 @@ export class ChannelSyncroniser {
             return Promise.reject("Room(s) not found.");
         }
         return rooms.map((room) => room.matrix!.getId() as string);
+    }
+
+    public async GetAliasFromChannel(channel: Discord.Channel): Promise<string | null> {
+        let rooms: string[] = [];
+        try {
+            rooms = await this.GetRoomIdsFromChannel(channel);
+        } catch (err) { } // do nothing, our rooms array will just be empty
+        for (const room of rooms) {
+            try {
+                const al = (await this.bridge.botIntent.underlyingClient.getRoomStateEvent(
+                    room,
+                    "m.room.canonical_alias",
+                    "")
+                    ).alias;
+                if (al) {
+                    return al; // we are done, we found an alias
+                }
+            } catch (err) { } // do nothing, as if we error we just roll over to the next entry
+        }
+        const guildChannel = channel as Discord.TextChannel;
+        if (!guildChannel.guild) {
+            return null; // we didn't pass a guild, so we have no way of bridging this room, thus no alias
+        }
+        // at last, no known canonical aliases and we are ag uild....so we know an alias!
+        return `#_discord_${guildChannel.guild.id}_${channel.id}:${this.config.bridge.domain}`;
     }
 
     public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
@@ -290,19 +329,20 @@ export class ChannelSyncroniser {
     private async handleChannelDeletionForRoom(
         channel: Discord.TextChannel,
         roomId: string,
-        entry: IRoomStoreEntry): Promise<void> {
+        entry: IRoomStoreEntry,
+        overrideOptions?: DiscordBridgeConfigChannelDeleteOptions): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
-        const intent = await this.bridge.botIntent;
-        const options = this.config.channel.deleteOptions;
+        const intent = this.bridge.botIntent;
+        const options = overrideOptions || this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
 
         await this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
             for (const member of channel.members.array()) {
                 try {
-                    const mIntent = await this.bot.GetIntentFromDiscordMember(member);
-                    mIntent.underlyingClient.leaveRoom(roomId);
-                    log.info(`${member.id} left ${roomId}.`);
+                    const mIntent = this.bot.GetIntentFromDiscordMember(member);
+                    await mIntent.underlyingClient.leaveRoom(roomId);
+                    log.verbose(`${member.id} left ${roomId}.`);
                 } catch (e) {
                     log.warn(`Failed to make ${member.id} leave `);
                 }
@@ -316,7 +356,7 @@ export class ChannelSyncroniser {
                     roomId,
                     "m.room.name",
                     "",
-                    name
+                    name,
                 );
             } catch (e) {
                 log.error(`Failed to set name of room ${roomId} ${e}`);
@@ -330,8 +370,9 @@ export class ChannelSyncroniser {
                     roomId,
                     "m.room.topic",
                     "",
-                    topic
-                );            } catch (e) {
+                    topic,
+                );
+            } catch (e) {
                 log.error(`Failed to set topic of room ${roomId} ${e}`);
             }
         }
@@ -340,7 +381,11 @@ export class ChannelSyncroniser {
             if (options.unsetRoomAlias) {
                 try {
                     const alias = `#_${entry.remote!.roomId}:${this.config.bridge.domain}`;
-                    const canonicalAlias = await intent.underlyingClient.getRoomStateEvent(roomId, "m.room.canonical_alias", "");
+                    const canonicalAlias = await intent.underlyingClient.getRoomStateEvent(
+                        roomId,
+                        "m.room.canonical_alias",
+                        ""
+                    );
                     if (canonicalAlias.alias === alias) {
                         await intent.underlyingClient.sendStateEvent(roomId, "m.room.canonical_alias", "", {});
                     }
@@ -361,7 +406,12 @@ export class ChannelSyncroniser {
 
             if (options.setInviteOnly) {
                 try {
-                    await intent.underlyingClient.sendStateEvent(roomId, "m.room.join_rules", "", {join_role: "invite"});
+                    await intent.underlyingClient.sendStateEvent(
+                        roomId,
+                        "m.room.join_rules",
+                        "",
+                        {join_role: "invite"},
+                    );
                 } catch (e) {
                     log.error(`Couldn't set ${roomId} to private ${e}`);
                 }
@@ -377,9 +427,7 @@ export class ChannelSyncroniser {
                 }
             }
         }
-        // Unlist
 
-        // Remove entry
         await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 }

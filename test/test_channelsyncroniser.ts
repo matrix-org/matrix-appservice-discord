@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,7 +57,62 @@ class Entry implements IRoomStoreEntry {
 
 function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     UTIL_UPLOADED_AVATAR = false;
+<<<<<<< HEAD
     const bridge: Appservice = new AppserviceMock() as any;
+=======
+    const bridge: any = {
+        getIntent: (id) => {
+            ROOM_NAME_SET = null;
+            ROOM_TOPIC_SET = null;
+            ROOM_AVATAR_SET = null;
+            STATE_EVENT_SENT = false;
+            ALIAS_DELETED = false;
+            ROOM_DIRECTORY_VISIBILITY = null;
+            return {
+                getClient: () => {
+                    return {
+                        deleteAlias: async (alias) => {
+                            ALIAS_DELETED = true;
+                        },
+                        getStateEvent: async (mxid, event) => {
+                            if (event === "m.room.canonical_alias") {
+                                if (mxid === "!valid:localhost") {
+                                    return {
+                                        alias: "#alias:localhost",
+                                    };
+                                } else {
+                                    return null;
+                                }
+                            }
+                            return event;
+                        },
+                        sendStateEvent: async (mxid, event, data) => {
+                            STATE_EVENT_SENT = true;
+                        },
+                        setRoomDirectoryVisibility: async (mxid, visibility) => {
+                            ROOM_DIRECTORY_VISIBILITY = visibility;
+                        },
+                        setRoomName: async (mxid, name) => {
+                            ROOM_NAME_SET = name;
+                        },
+                        setRoomTopic: async (mxid, topic) => {
+                            ROOM_TOPIC_SET = topic;
+                        },
+                    };
+                },
+                setRoomAvatar: async (mxid, mxc) => {
+                    ROOM_AVATAR_SET = mxc;
+                },
+                setRoomName: async (mxid, name) => {
+                    ROOM_NAME_SET = name;
+                },
+                setRoomTopic: async (mxid, topic) => {
+                    ROOM_TOPIC_SET = topic;
+                },
+            };
+        },
+    };
+>>>>>>> develop
     REMOTECHANNEL_REMOVED = false;
     REMOTECHANNEL_SET = false;
     const roomStore = {
@@ -223,6 +278,43 @@ describe("ChannelSyncroniser", () => {
             } catch (e) {
                 expect(e.message).to.not.equal("didn't fail");
             }
+        });
+    });
+    describe("GetAliasFromChannel", () => {
+        const getIds = async (chan) => {
+            if (chan.id === "678") {
+                return ["!valid:localhost"];
+            }
+            throw new Error("invalid");
+        };
+        it("Should get one canonical alias for a room", async () => {
+            const chan = new MockChannel();
+            chan.id = "678";
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal("#alias:localhost");
+        });
+        it("Should return null if no alias found and no guild present", async () => {
+            const chan = new MockChannel();
+            chan.id = "123";
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal(null);
+        });
+        it("Should return a #_discord_ alias if a guild is present", async () => {
+            const chan = new MockChannel();
+            const guild = new MockGuild("123");
+            chan.id = "123";
+            chan.guild = guild;
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = getIds;
+            const alias = await channelSync.GetAliasFromChannel(chan as any);
+
+            expect(alias).to.equal("#_discord_123_123:localhost");
         });
     });
     describe("GetChannelUpdateState", () => {

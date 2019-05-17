@@ -80,12 +80,12 @@ export class DiscordClientFactory {
             return this.clients.get(userId) as DiscordClient;
         }
 
-        const discordIds = await this.store.get_user_discord_ids(userId);
+        const discordIds = await this.store.getUserDiscordIds(userId);
         if (discordIds.length === 0) {
             return this.botClient;
         }
         // TODO: Select a profile based on preference, not the first one.
-        const token = await this.store.get_token(discordIds[0]);
+        const token = await this.store.getToken(discordIds[0]);
         const client = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,

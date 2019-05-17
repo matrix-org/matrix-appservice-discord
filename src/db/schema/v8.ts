@@ -28,7 +28,7 @@ export class Schema implements IDbSchema {
     }
 
     public async run(store: DiscordStore): Promise<void> {
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE remote_room_data (
                 room_id TEXT NOT NULL,
                 discord_guild TEXT NOT NULL,
@@ -45,7 +45,7 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(room_id)
         );`, "remote_room_data");
 
-        await store.create_table(`
+        await store.createTable(`
             CREATE TABLE room_entries (
                 id TEXT NOT NULL,
                 matrix_id TEXT,

@@ -19,11 +19,14 @@ about any neat ideas you might have. If you are going to make a change, please m
 
 ### Issues
 You can also file bug reports/ feature requests on Github Issues which also helps a ton. Please remember to include logs.
-Please also be aware that this is an unoffical project worked on in my (Half-Shot) spare time.
+Please also be aware that this is an unoffical project worked on in our spare time.
 
 ## Setting up
 
-These instructions were tested against Node.js v8.11.1 and the Synapse homeserver.
+The bridge has been tested against the [Synapse](https://github.com/matrix-org/synapse) homeserver, although any homeserver
+that implements the [AS API](https://matrix.org/docs/spec/application_service/r0.1.0.html) should work with this bridge.
+
+The bridge supports any version of Node.js >= v10.X, including all [current releases](https://nodejs.org/en/about/releases/).
 
 ### Setup the bridge
 

@@ -16,7 +16,6 @@ limitations under the License.
 
 import * as Chai from "chai";
 import * as Discord from "discord.js";
-import * as Proxyquire from "proxyquire";
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
@@ -25,11 +24,10 @@ import { MockUser } from "./mocks/user";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const expect = Chai.expect;
 const INTERVAL = 250;
 let lastStatus = null;
 // const assert = Chai.assert;
-const bot = {
+const bot: any = {
     GetBotId: () => {
         return "1234";
     },

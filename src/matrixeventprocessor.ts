@@ -84,7 +84,7 @@ export class MatrixEventProcessor {
         if (
             event.type === "m.room.member" &&
             event.content!.membership === "invite" &&
-            event.state_key === this.discord.GetBotId()
+            event.state_key === this.bridge.botUserId
         ) {
             await this.mxCommandHandler.HandleInvite(event);
             return;
@@ -94,7 +94,10 @@ export class MatrixEventProcessor {
                 let prevMembership = "";
                 if (event.content!.membership === "leave" && event.replaces_state) {
                     const intent = this.bridge.botIntent;
-                    prevMembership = (await intent.underlyingClient.getEvent(event.room_id, event.replaces_state)).content.membership;
+                    prevMembership = (await intent.underlyingClient.getEvent(
+                        event.room_id,
+                        event.replaces_state,
+                    )).content.membership;
                 }
                 await this.discord.HandleMatrixKickBan(
                     event.room_id,
@@ -121,7 +124,7 @@ export class MatrixEventProcessor {
                 event.content!.body &&
                 event.content!.body!.startsWith("!discord");
             if (isBotCommand) {
-                await this.mxCommandHandler.ProcessCommand(event, remoteRoom);
+                await this.mxCommandHandler.Process(event, rooms[0] || null);
                 return;
             } else if (remoteRoom) {
                 const srvChanPair = remoteRoom.remote!.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
@@ -306,7 +309,6 @@ export class MatrixEventProcessor {
         }
 
         let size = event.content.info.size || 0;
-            
         const name = this.GetFilenameForMediaEvent(event.content);
         const url = Util.GetUrlFromMxc(event.content.url, this.config.bridge.homeserverUrl);
         if (size < MaxFileSize) {
@@ -442,7 +444,12 @@ export class MatrixEventProcessor {
             }
 
             if (profile.avatar_url) {
-                avatarUrl = Util.GetUrlFromMxc(profile.avatar_url, this.config.bridge.homeserverUrl, DISCORD_AVATAR_WIDTH, DISCORD_AVATAR_HEIGHT);
+                avatarUrl = Util.GetUrlFromMxc(
+                    profile.avatar_url,
+                    this.config.bridge.homeserverUrl,
+                    DISCORD_AVATAR_WIDTH,
+                    DISCORD_AVATAR_HEIGHT,
+                );
             }
         }
         embed.setAuthor(

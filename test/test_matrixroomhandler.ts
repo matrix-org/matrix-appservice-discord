@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@ limitations under the License.
 
 import * as Chai from "chai";
 import * as Proxyquire from "proxyquire";
-import {DiscordBridgeConfig} from "../src/config";
-import {MockChannel} from "./mocks/channel";
-import {MockMember} from "./mocks/member";
-import {MockGuild} from "./mocks/guild";
+import { DiscordBridgeConfig } from "../src/config";
+import { MockChannel } from "./mocks/channel";
+import { MockMember } from "./mocks/member";
+import { MockGuild } from "./mocks/guild";
 import { Util } from "../src/util";
 
 // we are a test file and thus need those
@@ -54,6 +54,7 @@ function createRH(opts: any = {}) {
     USERSKICKED = 0;
     USERSBANNED = 0;
     USERSUNBANNED = 0;
+    MESSAGESENT = {};
     USERSYNC_HANDLED = false;
     KICKBAN_HANDLED = false;
     MESSAGE_PROCCESS = "";
@@ -352,94 +353,6 @@ describe("MatrixRoomHandler", () => {
             const channel = new MockChannel("123", new MockGuild("456"));
             const roomOpts = await handler.createMatrixRoom(channel, "#test:localhost");
             expect(roomOpts.creationOpts).to.exist;
-        });
-    });
-    describe("HandleDiscordCommand", () => {
-        it("will kick a member", async () => {
-            const handler: any = createRH({});
-            const channel = new MockChannel("123");
-            const guild = new MockGuild("456", [channel]);
-            channel.guild = guild;
-            const member: any = new MockMember("123456", "blah");
-            member.hasPermission = () => {
-                return true;
-            };
-            const message = {
-                channel,
-                content: "!matrix kick someuser",
-                member,
-            };
-            await handler.HandleDiscordCommand(message);
-            expect(USERSKICKED).equals(1);
-        });
-        it("will kick a member in all guild rooms", async () => {
-            const handler: any = createRH({});
-            const channel = new MockChannel("123");
-            const guild = new MockGuild("456", [channel, (new MockChannel("456"))]);
-            channel.guild = guild;
-            const member: any = new MockMember("123456", "blah");
-            member.hasPermission = () => {
-                return true;
-            };
-            const message = {
-                channel,
-                content: "!matrix kick someuser",
-                member,
-            };
-            await handler.HandleDiscordCommand(message);
-            // tslint:disable-next-line:no-magic-numbers
-            expect(USERSKICKED).equals(2);
-        });
-        it("will deny permission", async () => {
-            const handler: any = createRH({});
-            const channel = new MockChannel("123");
-            const guild = new MockGuild("456", [channel]);
-            channel.guild = guild;
-            const member: any = new MockMember("123456", "blah");
-            member.hasPermission = () => {
-                return false;
-            };
-            const message = {
-                channel,
-                content: "!matrix kick someuser",
-                member,
-            };
-            await handler.HandleDiscordCommand(message);
-            expect(USERSKICKED).equals(0);
-        });
-        it("will ban a member", async () => {
-            const handler: any = createRH({});
-            const channel = new MockChannel("123");
-            const guild = new MockGuild("456", [channel]);
-            channel.guild = guild;
-            const member: any = new MockMember("123456", "blah");
-            member.hasPermission = () => {
-                return true;
-            };
-            const message = {
-                channel,
-                content: "!matrix ban someuser",
-                member,
-            };
-            await handler.HandleDiscordCommand(message);
-            expect(USERSBANNED).equals(1);
-        });
-        it("will unban a member", async () => {
-            const handler: any = createRH({});
-            const channel = new MockChannel("123");
-            const guild = new MockGuild("456", [channel]);
-            channel.guild = guild;
-            const member: any = new MockMember("123456", "blah");
-            member.hasPermission = () => {
-                return true;
-            };
-            const message = {
-                channel,
-                content: "!matrix unban someuser",
-                member,
-            };
-            await handler.HandleDiscordCommand(message);
-            expect(USERSUNBANNED).equals(1);
         });
     });
 });

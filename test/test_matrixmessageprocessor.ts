@@ -1,5 +1,5 @@
 /*
-Copyright 2018 matrix-appservice-discord
+Copyright 2018, 2019 matrix-appservice-discord
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,12 @@ import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 const expect = Chai.expect;
 
 const bot = {
+    GetChannelFromRoomId: async (roomId: string): Promise<MockChannel> => {
+        if (roomId !== "!bridged:localhost") {
+            throw new Error("Not bridged");
+        }
+        return new MockChannel("1234");
+    },
     GetEmojiByMxc: async (mxc: string): Promise<DbEmoji> => {
         if (mxc === "mxc://real_emote:localhost") {
             const emoji = new DbEmoji();
@@ -41,7 +47,7 @@ const bot = {
         }
         throw new Error("Couldn't fetch from store");
     },
-} as DiscordBot;
+} as any;
 
 function getPlainMessage(msg: string, msgtype: string = "m.text") {
     return {
@@ -297,14 +303,30 @@ code
             guild.channels.set("12345", channel as any);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_789:localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("https://matrix.to/#/#_discord_1234_789:localhost");
+            expect(result).is.equal("[#SomeChannel](https://matrix.to/#/#_discord_1234_789:localhost)");
         });
         it("Handles external channel pills", async () => {
             const mp = new MatrixMessageProcessor(bot);
             const guild = new MockGuild("1234");
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#matrix:matrix.org\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("https://matrix.to/#/#matrix:matrix.org");
+            expect(result).is.equal("[#SomeChannel](https://matrix.to/#/#matrix:matrix.org)");
+        });
+        it("Handles external channel pills of rooms that are actually bridged", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#matrix:matrix.org\">#SomeChannel</a>");
+
+            const result = await mp.FormatMessage(msg, guild as any, {
+                mxClient: {
+                    getRoomIdForAlias: async () => {
+                        return {
+                            room_id: "!bridged:localhost",
+                        };
+                    },
+                },
+            });
+            expect(result).is.equal("<#1234>");
         });
         it("Ignores links without href", async () => {
             const mp = new MatrixMessageProcessor(bot);

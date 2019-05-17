@@ -81,18 +81,14 @@ export class MatrixMessageProcessor {
             return false;
         }
 
-        const res: IMatrixEvent = await this.params.mxClient.getRoomStateEvent(
-            this.params.roomId, "m.room.power_levels", "");
-
-        // Some rooms may not have notifications.room set if the value hasn't
-        // been changed from the default. If so, use our hardcoded power level.
-        const requiredPowerLevel = res && res.notifications && res.notifications.room
-            ? res.notifications.room
-            : DEFAULT_ROOM_NOTIFY_POWER_LEVEL;
-
-        return res && res.users
-            && res.users[this.params.userId] !== undefined
-            && res.users[this.params.userId] >= requiredPowerLevel;
+        return await Util.CheckMatrixPermission(
+            this.params.mxClient,
+            this.params.userId,
+            this.params.roomId,
+            DEFAULT_ROOM_NOTIFY_POWER_LEVEL,
+            "notifications",
+            "room",
+        );
     }
 
     private async escapeDiscord(msg: string): Promise<string> {
@@ -150,11 +146,25 @@ export class MatrixMessageProcessor {
         return `<@${match[1]}>`;
     }
 
-    private parseChannel(id: string): string {
-        const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*)/;
+    private async parseChannel(id: string): Promise<string> {
+        const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*):/;
         const match = id.match(CHANNEL_REGEX);
         if (!match || !this.guild.channels.get(match[1])) {
-            return MATRIX_TO_LINK + id;
+            /*
+            This isn't formatted in #_discord_, so let's fetch the internal room ID
+            and see if it is still a bridged room!
+            */
+            if (this.params && this.params.mxClient) {
+                try {
+                    const resp = await this.params.mxClient.lookupRoomAlias(id);
+                    if (resp && resp.roomId) {
+                        const roomId = resp.roomId;
+                        const channel = await this.bot.GetChannelFromRoomId(roomId);
+                        return `<#${channel.id}>`;
+                    }
+                } catch (err) { } // ignore, room ID wasn't found
+            }
+            return "";
         }
         return `<#${match[1]}>`;
     }
@@ -181,7 +191,7 @@ export class MatrixMessageProcessor {
                 reply = this.parseUser(id);
                 break;
             case "#":
-                reply = this.parseChannel(id);
+                reply = await this.parseChannel(id);
                 break;
         }
         if (!reply) {
@@ -218,7 +228,10 @@ export class MatrixMessageProcessor {
 
         if (!emoji) {
             const content = await this.escapeDiscord(name);
-            const url = this.params && this.params.mxClient ? Util.GetUrlFromMxc(attrs.src, this.homeserverUrl) : attrs.src;
+            const url = this.params && this.params.mxClient ? Util.GetUrlFromMxc(
+                attrs.src,
+                this.homeserverUrl,
+            ) : attrs.src;
             return attrs.src ? `[${content}](${url})` : content;
         }
         return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
