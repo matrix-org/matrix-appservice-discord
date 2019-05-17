@@ -31,7 +31,6 @@ import { AppserviceMock } from "./mocks/appservicemock";
 
 const expect = Chai.expect;
 
-let UTIL_UPLOADED_AVATAR: any = null;
 let REMOTECHANNEL_SET: any = false;
 let REMOTECHANNEL_REMOVED: any = false;
 
@@ -39,6 +38,7 @@ const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
         Util: {
             ApplyPatternString: Util.ApplyPatternString,
+            DownloadFile: () => "afile",
         },
     },
 })).ChannelSyncroniser;
@@ -55,64 +55,8 @@ class Entry implements IRoomStoreEntry {
     }
 }
 
-function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
-    UTIL_UPLOADED_AVATAR = false;
-<<<<<<< HEAD
-    const bridge: Appservice = new AppserviceMock() as any;
-=======
-    const bridge: any = {
-        getIntent: (id) => {
-            ROOM_NAME_SET = null;
-            ROOM_TOPIC_SET = null;
-            ROOM_AVATAR_SET = null;
-            STATE_EVENT_SENT = false;
-            ALIAS_DELETED = false;
-            ROOM_DIRECTORY_VISIBILITY = null;
-            return {
-                getClient: () => {
-                    return {
-                        deleteAlias: async (alias) => {
-                            ALIAS_DELETED = true;
-                        },
-                        getStateEvent: async (mxid, event) => {
-                            if (event === "m.room.canonical_alias") {
-                                if (mxid === "!valid:localhost") {
-                                    return {
-                                        alias: "#alias:localhost",
-                                    };
-                                } else {
-                                    return null;
-                                }
-                            }
-                            return event;
-                        },
-                        sendStateEvent: async (mxid, event, data) => {
-                            STATE_EVENT_SENT = true;
-                        },
-                        setRoomDirectoryVisibility: async (mxid, visibility) => {
-                            ROOM_DIRECTORY_VISIBILITY = visibility;
-                        },
-                        setRoomName: async (mxid, name) => {
-                            ROOM_NAME_SET = name;
-                        },
-                        setRoomTopic: async (mxid, topic) => {
-                            ROOM_TOPIC_SET = topic;
-                        },
-                    };
-                },
-                setRoomAvatar: async (mxid, mxc) => {
-                    ROOM_AVATAR_SET = mxc;
-                },
-                setRoomName: async (mxid, name) => {
-                    ROOM_NAME_SET = name;
-                },
-                setRoomTopic: async (mxid, topic) => {
-                    ROOM_TOPIC_SET = topic;
-                },
-            };
-        },
-    };
->>>>>>> develop
+function CreateChannelSync(remoteChannels: any[] = []) {
+    const bridge = new AppserviceMock();
     REMOTECHANNEL_REMOVED = false;
     REMOTECHANNEL_SET = false;
     const roomStore = {
@@ -149,10 +93,10 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                 return true;
             });
         },
-        removeEntriesByMatrixRoomId: (room) => {
+        removeEntriesByMatrixRoomId: () => {
             REMOTECHANNEL_REMOVED = true;
         },
-        upsertEntry: (room) => {
+        upsertEntry: () => {
             REMOTECHANNEL_SET = true;
         },
     };
@@ -162,8 +106,9 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.channel.namePattern = "[Discord] :guild :name";
-    const cs = new ChannelSync(bridge as Appservice, config, discordbot, roomStore) as ChannelSyncroniser;
-    return cs;
+    const fakedBridge = bridge as any;
+    const channelSync = new ChannelSync(fakedBridge as Appservice, config, discordbot, roomStore) as ChannelSyncroniser;
+    return {channelSync, bridge};
 }
 
 describe("ChannelSyncroniser", () => {
@@ -183,7 +128,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             await channelSync.OnDelete(chan as any);
 
             expect(REMOTECHANNEL_REMOVED).is.false;
@@ -203,7 +148,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             await channelSync.OnDelete(chan as any);
 
             expect(REMOTECHANNEL_REMOVED).is.true;
@@ -224,7 +169,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const chans = await channelSync.GetRoomIdsFromChannel(chan as any);
 
             expect(chans.length).equals(1);
@@ -260,7 +205,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const chans = await channelSync.GetRoomIdsFromChannel(chan as any);
             /* tslint:disable:no-magic-numbers */
             expect(chans.length).equals(2);
@@ -271,7 +216,7 @@ describe("ChannelSyncroniser", () => {
         it("should reject on no rooms", async () => {
             const chan = new MockChannel();
             chan.id = "blah";
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             try {
                 await channelSync.GetRoomIdsFromChannel(chan as any);
                 throw new Error("didn't fail");
@@ -290,16 +235,15 @@ describe("ChannelSyncroniser", () => {
         it("Should get one canonical alias for a room", async () => {
             const chan = new MockChannel();
             chan.id = "678";
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = getIds;
             const alias = await channelSync.GetAliasFromChannel(chan as any);
-
             expect(alias).to.equal("#alias:localhost");
         });
         it("Should return null if no alias found and no guild present", async () => {
             const chan = new MockChannel();
             chan.id = "123";
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = getIds;
             const alias = await channelSync.GetAliasFromChannel(chan as any);
 
@@ -310,7 +254,7 @@ describe("ChannelSyncroniser", () => {
             const guild = new MockGuild("123");
             chan.id = "123";
             chan.guild = guild;
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = getIds;
             const alias = await channelSync.GetAliasFromChannel(chan as any);
 
@@ -323,7 +267,7 @@ describe("ChannelSyncroniser", () => {
             chan.type = "text";
             chan.id = "blah";
 
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.id).equals(chan.id);
             expect(state.mxChannels.length).equals(0);
@@ -352,7 +296,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].name).equals("[Discord] newGuild #newName");
@@ -380,7 +324,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].name).is.null;
@@ -410,7 +354,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].name).is.null;
@@ -437,7 +381,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].iconUrl).equals("https://cdn.discordapp.com/icons/654321/new_icon.png");
@@ -464,7 +408,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].iconUrl).is.null;
@@ -491,7 +435,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const {channelSync} = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].removeIcon).is.true;
@@ -525,13 +469,19 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
-            const state = await channelSync.OnUpdate(chan as any);
-            expect(ROOM_NAME_SET).equals("[Discord] newGuild #newName");
-            expect(ROOM_TOPIC_SET).equals("newTopic");
-            expect(ROOM_AVATAR_SET).equals("avatarset");
+            const {channelSync, bridge} = CreateChannelSync(testStore);
+            await channelSync.OnUpdate(chan as any);
+            bridge.botIntent.underlyingClient.wasCalled("sendStateEvent", true, "!1:localhost", "m.room.name", "", {
+                name: "[Discord] newGuild #newName",
+            });
+            bridge.botIntent.underlyingClient.wasCalled("sendStateEvent", true, "!1:localhost", "m.room.topic", "", {
+                topic: "newTopic",
+            });
+            bridge.botIntent.underlyingClient.wasCalled("sendStateEvent", true, "!1:localhost", "m.room.avatar", "",
+            {
+                avatar_url: "mxc://new_icon",
+            });
             expect(REMOTECHANNEL_SET).is.true;
-            expect(UTIL_UPLOADED_AVATAR).is.true;
         });
     });
 });

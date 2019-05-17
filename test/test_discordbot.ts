@@ -23,6 +23,8 @@ import { MockMember } from "./mocks/member";
 import { MockDiscordClient } from "./mocks/discordclient";
 import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
+import { MockUser } from "./mocks/user";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -32,32 +34,7 @@ const expect = Chai.expect;
 const assert = Chai.assert;
 // const should = Chai.should as any;
 
-const mockBridge = {
-    getIntentFromLocalpart: (localpart: string) => {
-        return {
-            sendTyping: (room: string, isTyping: boolean) => {
-                return;
-            },
-        };
-    },
-    getRoomStore: () => {
-        return {
-            getEntriesByRemoteRoomData: async (data) => {
-                if (data.discord_channel === "321") {
-                    return [{
-                        matrix: {
-                            getId: () => "foobar:example.com",
-                        },
-                    }];
-                }
-                return [];
-            },
-        };
-    },
-    getUserStore: () => {
-        return {};
-    },
-};
+const mockBridge = new AppserviceMock({});
 
 const modDiscordBot = Proxyquire("../src/bot", {
     "./clientfactory": require("./mocks/discordclientfactory"),
@@ -65,9 +42,12 @@ const modDiscordBot = Proxyquire("../src/bot", {
         Util: {
             AsyncForEach: Util.AsyncForEach,
             DelayedPromise: Util.DelayedPromise,
+            DownloadFile: async () => {
+                return Buffer.alloc(1024);
+            },
             UploadContentFromUrl: async () => {
                 return {mxcUrl: "uploaded"};
-            },
+            }
         },
     },
 });
@@ -88,7 +68,6 @@ describe("DiscordBot", () => {
     describe("run()", () => {
         it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -100,7 +79,6 @@ describe("DiscordBot", () => {
     describe("LookupRoom()", () => {
         beforeEach( async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -130,42 +108,26 @@ describe("DiscordBot", () => {
         });
     });
     describe("OnMessage()", () => {
-        let SENT_MESSAGE = false;
+        const channel = new Discord.TextChannel({} as any, {} as any);
+        const msg = new MockMessage(channel);
+        const author = new MockUser("11111");
         let HANDLE_COMMAND = false;
-        let ATTACHMENT = {} as any;
-        let MSGTYPE = "";
         function getDiscordBot() {
-            SENT_MESSAGE = false;
             HANDLE_COMMAND = false;
-            ATTACHMENT = {};
-            MSGTYPE = "";
             const discord = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
             );
             discord.bot = { user: { id: "654" } };
-            discord.GetIntentFromDiscordMember = (_) => {return {
-                sendMessage: async (room, msg) => {
-                    SENT_MESSAGE = true;
-                    if (msg.info) {
-                        ATTACHMENT = msg.info;
-                    }
-                    MSGTYPE = msg.msgtype;
-                    return {
-                        event_id: "$fox:localhost",
-                    };
-                },
-            }; };
             discord.userSync = {
-                OnUpdateUser: async (user) => { },
+                OnUpdateUser: async () => { },
             };
             discord.channelSync = {
-                GetRoomIdsFromChannel: async (chan) => ["!asdf:localhost"],
+                GetRoomIdsFromChannel: async () => ["!asdf:localhost"],
             };
             discord.discordCommandHandler = {
-                Process: async (msg) => { HANDLE_COMMAND = true; },
+                Process: async () => { HANDLE_COMMAND = true; },
             };
             discord.store = {
                 Insert: async (_) => { },
@@ -175,43 +137,37 @@ describe("DiscordBot", () => {
         it("ignores own messages", async () => {
             discordBot = getDiscordBot();
             const guild: any = new MockGuild("123", []);
-            const author = new MockMember("654", "TestUsername");
+            const ownAuthor = new MockUser("654", "TestUsername");
             guild._mockAddMember(author);
-            const channel = new Discord.TextChannel(guild, {} as any);
-            const msg = new MockMessage(channel) as any;
-            msg.author = author;
+            msg.author = ownAuthor;
             msg.content = "Hi!";
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(SENT_MESSAGE, false);
+            expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
         });
         it("Passes on !matrix commands", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.content = "!matrix test";
             await discordBot.OnMessage(msg);
             Chai.assert.equal(HANDLE_COMMAND, true);
         });
         it("skips empty messages", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
             msg.content = "";
-            await discordBot.OnMessage(msg);
-            Chai.assert.equal(SENT_MESSAGE, false);
+            msg.author = author;
+            await discordBot.OnMessage(msg as any);
+            expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
         });
         it("sends normal messages", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.content = "Foxies are amazing!";
-            await discordBot.OnMessage(msg);
-            Chai.assert.equal(SENT_MESSAGE, true);
+            await discordBot.OnMessage(msg as any);
+            mockBridge.getIntent(author.id).wasCalled("sendEvent");
         });
         it("uploads images", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.attachments.set("1234", {
                 filename: "someimage.png",
                 filesize: 42,
@@ -220,13 +176,23 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(MSGTYPE, "m.image");
-            Chai.assert.equal(ATTACHMENT.mimetype, "image/png");
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "someimage.png",
+                external_url: "asdf",
+                info: {
+                    mimetype: "image/png",
+                    size: 42,
+                    w: 0,
+                    h: 0,
+                },
+                msgtype: "m.image",
+                url: "mxc://someimage.png",
+            });
         });
         it("uploads videos", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.attachments.set("1234", {
                 filename: "foxes.mov",
                 filesize: 42,
@@ -235,13 +201,23 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(MSGTYPE, "m.video");
-            Chai.assert.equal(ATTACHMENT.mimetype, "video/quicktime");
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "foxes.mov",
+                external_url: "asdf",
+                info: {
+                    mimetype: "video/quicktime",
+                    size: 42,
+                    w: 0,
+                    h: 0,
+                },
+                msgtype: "m.video",
+                url: "mxc://foxes.mov",
+            });
         });
         it("uploads audio", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.attachments.set("1234", {
                 filename: "meow.mp3",
                 filesize: 42,
@@ -250,13 +226,21 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(MSGTYPE, "m.audio");
-            Chai.assert.equal(ATTACHMENT.mimetype, "audio/mpeg");
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "meow.mp3",
+                external_url: "asdf",
+                info: {
+                    mimetype: "audio/mpeg",
+                    size: 42,
+                },
+                msgtype: "m.audio",
+                url: "mxc://meow.mp3",
+            });
         });
         it("uploads other files", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
+            msg.author = author;
             msg.attachments.set("1234", {
                 filename: "meow.zip",
                 filesize: 42,
@@ -265,14 +249,22 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(MSGTYPE, "m.file");
-            Chai.assert.equal(ATTACHMENT.mimetype, "application/zip");
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "meow.zip",
+                external_url: "asdf",
+                info: {
+                    mimetype: "application/zip",
+                    size: 42
+                },
+                msgtype: "m.file",
+                url: "mxc://meow.zip",
+            });
         });
     });
     describe("OnMessageUpdate()", () => {
         it("should return on an unchanged message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -299,7 +291,6 @@ describe("DiscordBot", () => {
         });
         it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -327,7 +318,6 @@ describe("DiscordBot", () => {
         });
         it("should delete and re-send if it is the newest message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -364,7 +354,6 @@ describe("DiscordBot", () => {
     describe("event:message", () => {
         it("should delay messages so they arrive in order", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},
@@ -386,7 +375,6 @@ describe("DiscordBot", () => {
         });
         it("should handle messages that reject in the queue", async () => {
             discordBot = new modDiscordBot.DiscordBot(
-                "",
                 config,
                 mockBridge,
                 {},

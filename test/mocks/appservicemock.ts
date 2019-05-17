@@ -9,16 +9,24 @@ interface IAppserviceMockOpts {
 class AppserviceMockBase {
     private calls: {[key: string]: [any[]]} = {};
 
-    public wasCalled(funcName: string, ...args: any[]): number {
+    public wasCalled(funcName: string, throwOnMissing: boolean = true, ...args: any[]): number {
         const called = this.calls[funcName];
-        if (!called) {
+        if (!called && throwOnMissing) {
+            throw Error(`${funcName} was not called`);
+        } else if (!called) {
             return 0;
         } else if (args.length === 0) {
             return called.length;
         }
-        return called.filter((callArgs) =>
-            args.every((v, i) => callArgs[i] === v),
-        ).length;
+        const calls = called.filter((callArgs) => {
+            const j1 = JSON.stringify(callArgs);
+            const j2 = JSON.stringify(args);
+            return j1 === j2;
+        }).length;
+        if (calls === 0 && throwOnMissing) {
+            throw Error(`${funcName} was not called with the correct parameters`);
+        }
+        return calls;
     }
 
     protected funcCalled(funcName: string, ...args: any[]) {
@@ -28,27 +36,37 @@ class AppserviceMockBase {
 }
 
 export class AppserviceMock extends AppserviceMockBase {
-    public botIntent: IntentMock = this.getIntentForUserId();
+    public botIntent: IntentMock;
+    public intents: {[id: string]: IntentMock};
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
         opts.roommembers = opts.roommembers || [];
+        this.intents = {};
+        this.botIntent = new IntentMock(this.opts);
     }
 
-    public getIntentForUserId(userId?: string) {
+    public getIntentForSuffix(prefix: string) {
+        this.funcCalled("getIntentForSuffix", prefix);
+        if (!this.intents[prefix]) {
+            this.intents[prefix] = new IntentMock(this.opts);
+        }
+        return this.intents[prefix];
+    }
+
+    public getIntent(userId: string) {
         this.funcCalled("getIntent", userId);
-        return new IntentMock(this.opts);
+        if (!this.intents[userId]) {
+            this.intents[userId] = new IntentMock(this.opts);
+        }
+        return this.intents[userId];
     }
 }
 
 class IntentMock extends AppserviceMockBase {
-
+    public readonly underlyingClient: MatrixClientMock;
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
-    }
-
-    public getClient() {
-        this.funcCalled("getClient");
-        return new ClassMock();
+        this.underlyingClient = new MatrixClientMock();
     }
 
     public ban() {
@@ -71,20 +89,28 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("leave");
     }
 
-    public sendMessage() {
-        this.funcCalled("sendMessage");
-    }
+    public sendEvent(roomId: string, body: string) {
+        this.funcCalled("sendEvent", roomId, body);
+    } 
 
     public unban() {
         this.funcCalled("unban");
     }
 }
 
-class ClassMock extends AppserviceMockBase {
+class MatrixClientMock extends AppserviceMockBase {
 
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
     }
+
+    public sendMessage(roomId: string, eventContent: IMatrixEvent) {
+        this.funcCalled("sendMessage", roomId, eventContent);
+    } 
+
+    public sendEvent(roomId: string, body: string, msgtype: string) {
+        this.funcCalled("sendEvent", roomId, body, msgtype);
+    } 
 
     public getRoomMembers(roomId: string) {
         this.funcCalled("getRoomMembers", roomId);
@@ -97,10 +123,10 @@ class ClassMock extends AppserviceMockBase {
         this.funcCalled("leaveRoom", roomId);
     }
 
-    public sendStateEvent(roomId: string) {
-        this.funcCalled("sendStateEvent", roomId);
+    public sendStateEvent(roomId: string, type: string, stateKey: string, content: {}) {
+        this.funcCalled("sendStateEvent", roomId, type, stateKey, content);
     }
-    
+
     public setAvatarUrl(avatarUrl: string) {
         this.funcCalled("setAvatarUrl", avatarUrl);
     }
@@ -109,7 +135,15 @@ class ClassMock extends AppserviceMockBase {
         this.funcCalled("setDisplayName", displayName);
     }
 
-    public getRoomStateEvent (roomId: string) {
-        this.funcCalled("getRoomStateEvent", roomId);
+    public async uploadContent(data: Buffer, contentType: string, filename: string) {
+        this.funcCalled("uploadContent", data, contentType, filename);
+        return "mxc://" + filename;
+    }
+
+    public async getRoomStateEvent (roomId: string, type: string, stateKey: string): Promise<any> {
+        this.funcCalled("getRoomStateEvent", roomId, type, stateKey);
+        if (type === "m.room.canonical_alias") {
+            return { alias: "#alias:localhost" };
+        }
     }
 }

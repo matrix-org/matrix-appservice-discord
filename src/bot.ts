@@ -176,7 +176,7 @@ export class DiscordBot {
             // TODO: We need to sanitize name
             return this.bridge.getIntentForSuffix(`${webhookID}_${name}`);
         }
-        return this.bridge.getIntentForSuffix(`${member.id}`);
+        return this.bridge.getIntentForSuffix(member.id);
     }
 
     public async init(): Promise<void> {
@@ -738,6 +738,7 @@ export class DiscordBot {
         const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
+            log.verbose("Not reflecting bot's own messages");
             return;
         }
         // Test for webhooks
@@ -745,7 +746,8 @@ export class DiscordBot {
             const webhook = (await chan.fetchWebhooks())
                             .filterArray((h) => h.name === "_matrix").pop();
             if (webhook && msg.webhookID === webhook.id) {
-              // Filter out our own webhook messages.
+                // Filter out our own webhook messages.
+                log.verbose("Not reflecting own webhook messages");
                 return;
             }
         }

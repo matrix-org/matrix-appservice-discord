@@ -360,8 +360,7 @@ export class Util {
         return `${homeserverUrl}/_matrix/media/r0/download/${part}`;
     }
 
-    public static ParseMxid(unescapedMxid: string, escape: boolean = true)
-    : {mxid: string, localpart: string, domain: string} {
+    public static ParseMxid(unescapedMxid: string, escape: boolean = true){
         const RADIX = 16;
         const parts = unescapedMxid.substr(1).split(":");
         const domain = parts[1];

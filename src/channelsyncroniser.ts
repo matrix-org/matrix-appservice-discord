@@ -267,7 +267,7 @@ export class ChannelSyncroniser {
                     channelState.mxid,
                     "m.room.name",
                     "",
-                    { name: channelState.name }
+                    { name: channelState.name },
                 );
                 remoteRoom.remote.set("discord_name", channelState.name);
                 roomUpdated = true;
@@ -279,7 +279,7 @@ export class ChannelSyncroniser {
                     channelState.mxid,
                     "m.room.topic",
                     "",
-                    { topic: channelState.topic }
+                    { topic: channelState.topic },
                 );
                 remoteRoom.remote.set("discord_topic", channelState.topic);
                 roomUpdated = true;
@@ -300,7 +300,7 @@ export class ChannelSyncroniser {
                     "m.room.avatar",
                     "",
                     // TODO: "info" object for avatar
-                    { avatar_url: channelsState.iconMxcUrl }
+                    { avatar_url: channelsState.iconMxcUrl },
                 );
                 remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
                 remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
@@ -313,7 +313,7 @@ export class ChannelSyncroniser {
                     channelState.mxid,
                     "m.room.avatar",
                     "",
-                    {  }
+                    {  },
                 );
                 remoteRoom.remote.set("discord_iconurl", null);
                 remoteRoom.remote.set("discord_iconurl_mxc", null);
