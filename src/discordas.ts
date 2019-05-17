@@ -156,7 +156,7 @@ async function run() {
         process.exit(1);
     }
 
-    const discordbot = new DiscordBot(appservice.botUserId, config, appservice, store);
+    const discordbot = new DiscordBot(config, appservice, store);
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
 

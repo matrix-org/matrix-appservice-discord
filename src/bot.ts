@@ -84,7 +84,6 @@ export class DiscordBot {
     private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout|null} };
 
     constructor(
-        private botUserId: string,
         private config: DiscordBridgeConfig,
         private bridge: Appservice,
         private store: DiscordStore,
@@ -123,7 +122,7 @@ export class DiscordBot {
     }
 
     get BotUserId(): string {
-        return this.botUserId;
+        return this.bridge.botUserId;
     }
 
     get RoomHandler(): MatrixRoomHandler {

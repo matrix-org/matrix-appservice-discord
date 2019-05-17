@@ -14,16 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as yaml from "js-yaml";
-import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import { DiscordBridgeConfig } from "../src/config";
 import { DiscordBot } from "../src/bot";
-import { DiscordStore } from "../src/store";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
-import { Appservice } from "matrix-bot-sdk";
+import { ToolsHelper } from "./toolshelper";
 
 const log = new Log("ChanFix");
 
@@ -62,34 +58,16 @@ if (options.help) {
     process.exit(0);
 }
 
-const registration = yaml.safeLoad(fs.readFileSync("./discord-registration.yaml", "utf8"));
-const config = new DiscordBridgeConfig();
-config.ApplyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
-
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
-
-const bridge = new Appservice({
-    registration,
-    port: 0,
-    bindAddress: "",
-    homeserverUrl: config.bridge.homeserverUrl,
-    homeserverName: config.bridge.domain,
-});
-
 async function run() {
-    const store = new DiscordStore(config.database);
-    await store.init();
-    const discordbot = new DiscordBot(botUserId, config, bridge, store);
+    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    await store!.init();
+    const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();
     await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
-    const mxRoomEntries = await store.roomStore.getEntriesByRemoteRoomData({
+    const mxRoomEntries = await store!.roomStore.getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
     });
@@ -104,7 +82,7 @@ async function run() {
             return; // skipping because something was set manually
         }
         entry.remote!.set("update_icon", true);
-        promiseList.push(store.roomStore.upsertEntry(entry));
+        promiseList.push(store!.roomStore.upsertEntry(entry));
     });
     await Promise.all(promiseList);
 
