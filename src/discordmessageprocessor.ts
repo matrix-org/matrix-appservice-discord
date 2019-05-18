@@ -79,6 +79,7 @@ export class DiscordMessageProcessor {
             discordCallback: this.getDiscordParseCallbacksHTML(msg),
         });
 
+
         // parse the plain text stuff
         content = markdown.toHTML(content, {
             discordCallback: this.getDiscordParseCallbacks(msg),

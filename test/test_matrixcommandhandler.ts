@@ -18,29 +18,16 @@ import * as Chai from "chai";
 import { Util } from "../src/util";
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
-<<<<<<< HEAD
 import { AppserviceMock } from "./mocks/appservicemock";
-=======
 import * as Proxyquire from "proxyquire";
->>>>>>> develop
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const expect = Chai.expect;
 
-let USERSJOINED = 0;
-let USERSKICKED = 0;
-let USERSBANNED = 0;
-let USERSUNBANNED = 0;
-let MESSAGESENT: any = {};
 
 function createCH(opts: any = {}) {
-    USERSJOINED = 0;
-    USERSKICKED = 0;
-    USERSBANNED = 0;
-    USERSUNBANNED = 0;
-    MESSAGESENT = {};
 
     const bridge = new AppserviceMock();
 
@@ -51,14 +38,6 @@ function createCH(opts: any = {}) {
     } else {
         config.bridge.enableSelfServiceBridging = true;
     }
-    const mxClient = {
-        getUserId: () => "@user:localhost",
-        joinRoom: async () => {
-            USERSJOINED++;
-        },
-        sendReadReceipt: async () => { },
-        setRoomDirectoryVisibilityAppService: async () => { },
-    };
     const provisioner = {
         AskBridgePermission: async () => {
             if (opts.denyBridgePermission) {
@@ -101,7 +80,7 @@ function createCH(opts: any = {}) {
             },
         },
     })).MatrixCommandHandler;
-    return new MatrixCommandHndl(bot as any, bridge, config);
+    return {handler: new MatrixCommandHndl(bot as any, bridge, config), bridge};
 }
 
 function createEvent(msg: string, room?: string, userId?: string) {
@@ -125,9 +104,9 @@ function createContext(remoteData?: any) {
 describe("MatrixCommandHandler", () => {
     describe("Process", () => {
         it("should not process command if not in room", async () => {
-            const handler: any = createCH({disableSS: true});
+            const {handler, bridge} = createCH({disableSS: true});
             await handler.Process(createEvent("", "!666:localhost"), createContext());
-            expect(MESSAGESENT.body).to.equal(undefined);
+            expect(bridge.botIntent.underlyingClient.)
         });
         it("should warn if self service is disabled", async () => {
             const handler: any = createCH({disableSS: true});

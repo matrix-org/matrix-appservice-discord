@@ -15,12 +15,10 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-import * as Discord from "discord.js";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockChannel } from "./mocks/channel";
 import { MockEmoji } from "./mocks/emoji";
-import { DiscordBot } from "../src/bot";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 

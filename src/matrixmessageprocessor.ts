@@ -158,8 +158,7 @@ export class MatrixMessageProcessor {
                 try {
                     const resp = await this.params.mxClient.lookupRoomAlias(id);
                     if (resp && resp.roomId) {
-                        const roomId = resp.roomId;
-                        const channel = await this.bot.GetChannelFromRoomId(roomId);
+                        const channel = await this.bot.GetChannelFromRoomId(resp.roomId);
                         return `<#${channel.id}>`;
                     }
                 } catch (err) { } // ignore, room ID wasn't found

@@ -69,10 +69,6 @@ class IntentMock extends AppserviceMockBase {
         this.underlyingClient = new MatrixClientMock();
     }
 
-    public ban() {
-        this.funcCalled("ban");
-    }
-
     public join() {
         this.funcCalled("join");
     }
@@ -81,20 +77,16 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("joinRoom");
     }
 
-    public kick() {
-        this.funcCalled("kick");
-    }
-
     public leave() {
         this.funcCalled("leave");
     }
 
+    public sendText(roomId: string, body: string) {
+        this.funcCalled("sendText", roomId, body);
+    }
+
     public sendEvent(roomId: string, body: string) {
         this.funcCalled("sendEvent", roomId, body);
-    } 
-
-    public unban() {
-        this.funcCalled("unban");
     }
 }
 
@@ -102,6 +94,10 @@ class MatrixClientMock extends AppserviceMockBase {
 
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
+    }
+
+    public banUser(roomId: string, userId: string) {
+        this.funcCalled("banUser", roomId, userId);
     }
 
     public sendMessage(roomId: string, eventContent: IMatrixEvent) {
@@ -121,6 +117,10 @@ class MatrixClientMock extends AppserviceMockBase {
 
     public leaveRoom(roomId: string) {
         this.funcCalled("leaveRoom", roomId);
+    }
+
+    public kickUser(roomId: string, userId: string) {
+        this.funcCalled("kickUser", roomId, userId);
     }
 
     public sendStateEvent(roomId: string, type: string, stateKey: string, content: {}) {
@@ -145,5 +145,9 @@ class MatrixClientMock extends AppserviceMockBase {
         if (type === "m.room.canonical_alias") {
             return { alias: "#alias:localhost" };
         }
+    }
+
+    public unbanUser(roomId: string, userId: string) {
+        this.funcCalled("unbanUser", roomId, userId);
     }
 }

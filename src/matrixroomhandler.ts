@@ -182,7 +182,7 @@ export class MatrixRoomHandler {
     //                 fields: {
     //                     guild_id: guild.id,
     //                 },
-    //                 icon: guild.iconURL || ICON_URL, // TODO: Use icons from our content repo. Potential security risk.
+    //                 icon: guild.iconURL || ICON_URL,
     //                 network_id: guild.id,
     //             };
     //         }),

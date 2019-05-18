@@ -17,13 +17,7 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
-
-import { PresenceHandler } from "../src/presencehandler";
-import { DiscordBot } from "../src/bot";
-import { MockGuild } from "./mocks/guild";
-import { MockCollection } from "./mocks/collection";
 import { MockMember } from "./mocks/member";
-import { MockEmoji } from "./mocks/emoji";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
