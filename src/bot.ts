@@ -81,8 +81,8 @@ export class DiscordBot {
 
     /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
-    private channelLocks: { [channelId: string]: {p: Promise<{}>, i: NodeJS.Timeout|null, r: (() => void)|null} };
-
+    private channelLocks: Map<string,{i: NodeJS.Timeout|null, r: (() => void)|null}>;
+    private channelLockPromises: Map<string, Promise<{}>>;
     constructor(
         private botUserId: string,
         private config: DiscordBridgeConfig,
@@ -106,7 +106,8 @@ export class DiscordBot {
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
-        this.channelLocks = {};
+        this.channelLocks = new Map();
+        this.channelLockPromises = new Map();
         this.lastEventIds = {};
     }
 
@@ -139,39 +140,39 @@ export class DiscordBot {
     }
 
     public lockChannel(channel: Discord.Channel) {
-        if (this.channelLocks[channel.id]) {
+        if (this.channelLocks.has(channel.id)) {
             return;
         }
 
+        this.channelLocks[channel.id] = {i: null, r: null, p: null};
         const p = new Promise((resolve) => {
-            if (!this.channelLocks[channel.id]) {
-                resolve();
-                return;
-            }
-            const i = setInterval(() => {
+            const i = setTimeout(() => {
                 log.warn(`Lock on channel ${channel.id} expired. Discord is lagging behind?`);
-                resolve();
+                this.unlockChannel(channel);
             }, this.config.limits.discordSendDelay);
-            this.channelLocks[channel.id].i = i;
-            this.channelLocks[channel.id].r = resolve;
+            const o = Object.assign({r: resolve, i, p: null}, this.channelLocks.get(channel.id) || {});
+            this.channelLocks.set(channel.id, o);
         });
-
-        this.channelLocks[channel.id] = {i: null, r: null, p};
+        this.channelLockPromises.set(channel.id, p);
     }
 
     public unlockChannel(channel: Discord.Channel) {
-        const lock = this.channelLocks[channel.id];
-        if (lock && lock.i !== null) {
+        if (!this.channelLocks.has(channel.id)) {
+            return;
+        }
+        const lock = this.channelLocks.get(channel.id)!;
+        if (lock.i !== null) {
             lock.r!();
             clearTimeout(lock.i);
         }
-        delete this.channelLocks[channel.id];
+        this.channelLocks.delete(channel.id);
+        this.channelLockPromises.delete(channel.id);
     }
 
     public async waitUnlock(channel: Discord.Channel) {
-        const lock = this.channelLocks[channel.id];
-        if (lock) {
-            await lock.p;
+        const promise = this.channelLockPromises.get(channel.id);
+        if (promise) {
+            await promise;
         }
     }
 

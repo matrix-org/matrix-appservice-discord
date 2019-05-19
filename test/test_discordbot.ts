@@ -25,6 +25,7 @@ import { DiscordBot } from "../src/bot";
 import { MockDiscordClient } from "./mocks/discordclient";
 import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
+import { MockChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -413,6 +414,44 @@ describe("DiscordBot", () => {
             }
             await discordBot.discordMessageQueue[CHANID];
             assert.equal(expected, ITERATIONS);
+        });
+    });
+    describe("locks", () => {
+        it("should lock and unlock a channel", async () => {
+            const bot = new modDiscordBot.DiscordBot(
+                "",
+                config,
+                mockBridge,
+                {},
+            ) as DiscordBot;
+            const chan = new MockChannel("123") as any;
+            const t = Date.now();
+            await bot.lockChannel(chan);
+            await bot.waitUnlock(chan);
+            const diff = Date.now() - t;
+            expect(diff).to.be.greaterThan(config.limits.discordSendDelay - 1);
+        });
+        it("should lock and unlock a channel early, if unlocked", async () => {
+            const bot = new modDiscordBot.DiscordBot(
+                "",
+                { 
+                    limits: {
+                        discordSendDelay: 500,
+                    },
+                    bridge: {
+                        domain: "localhost",
+                    }
+                },
+                mockBridge,
+                {},
+            ) as DiscordBot;
+            const chan = new MockChannel("123") as any;
+            setTimeout(() => bot.unlockChannel(chan), 100);
+            const t = Date.now();
+            bot.lockChannel(chan);
+            await bot.waitUnlock(chan);
+            const diff = Date.now() - t;
+            expect(diff).to.be.lessThan(110);
         });
     });
   // });
