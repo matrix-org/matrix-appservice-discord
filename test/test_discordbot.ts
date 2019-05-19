@@ -426,32 +426,34 @@ describe("DiscordBot", () => {
             ) as DiscordBot;
             const chan = new MockChannel("123") as any;
             const t = Date.now();
-            await bot.lockChannel(chan);
+            bot.lockChannel(chan);
             await bot.waitUnlock(chan);
             const diff = Date.now() - t;
             expect(diff).to.be.greaterThan(config.limits.discordSendDelay - 1);
         });
         it("should lock and unlock a channel early, if unlocked", async () => {
+            const discordSendDelay = 500;
+            const SHORTDELAY = 100;
             const bot = new modDiscordBot.DiscordBot(
                 "",
-                { 
-                    limits: {
-                        discordSendDelay: 500,
-                    },
+                {
                     bridge: {
                         domain: "localhost",
-                    }
+                    },
+                    limits: {
+                        discordSendDelay,
+                    },
                 },
                 mockBridge,
                 {},
             ) as DiscordBot;
             const chan = new MockChannel("123") as any;
-            setTimeout(() => bot.unlockChannel(chan), 100);
+            setTimeout(() => bot.unlockChannel(chan), SHORTDELAY);
             const t = Date.now();
             bot.lockChannel(chan);
             await bot.waitUnlock(chan);
             const diff = Date.now() - t;
-            expect(diff).to.be.lessThan(110);
+            expect(diff).to.be.greaterThan(SHORTDELAY);
         });
     });
   // });

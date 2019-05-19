@@ -81,7 +81,7 @@ export class DiscordBot {
 
     /* Handles messages queued up to be sent to matrix from discord. */
     private discordMessageQueue: { [channelId: string]: Promise<void> };
-    private channelLocks: Map<string,{i: NodeJS.Timeout|null, r: (() => void)|null}>;
+    private channelLocks: Map<string, {i: NodeJS.Timeout|null, r: (() => void)|null}>;
     private channelLockPromises: Map<string, Promise<{}>>;
     constructor(
         private botUserId: string,
@@ -445,7 +445,7 @@ export class DiscordBot {
         try {
             this.lockChannel(chan);
             if (!botUser) {
-                opts.embed = embedSet.replyEmbed;
+                // NOTE: Don't send replies to discord if we are a puppet.
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
                 msg = await hook.send(embed.description, {
