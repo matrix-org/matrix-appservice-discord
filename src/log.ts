@@ -17,7 +17,6 @@ limitations under the License.
 import { createLogger, Logger, format, transports } from "winston";
 import { DiscordBridgeConfigLogging, LoggingFile} from "./config";
 import { inspect } from "util";
-import * as moment from "moment";
 import "winston-daily-rotate-file";
 
 const FORMAT_FUNC = format.printf((info) => {
@@ -47,10 +46,6 @@ export class Log {
     private static config: DiscordBridgeConfigLogging;
     private static logger: Logger;
 
-    private static now() {
-        return moment().format(Log.config.lineDateFormat);
-    }
-
     private static setupLogger() {
         if (Log.logger) {
             Log.logger.close();
@@ -64,7 +59,7 @@ export class Log {
         Log.logger = createLogger({
             format: format.combine(
                 format.timestamp({
-                    format: Log.now,
+                    format: Log.config.lineDateFormat,
                 }),
                 format.colorize(),
                 FORMAT_FUNC,
