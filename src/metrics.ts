@@ -4,6 +4,7 @@ import { Log } from "./log";
 
 const AgeCounters = PrometheusMetrics.AgeCounters;
 const log = new Log("BridgeMetrics");
+const REQUEST_EXPIRE_TIME_MS = 30000;
 
 interface IAgeCounter {
     setGauge(gauge: Gauge, morelabels: any);
@@ -100,6 +101,13 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
             labels: ["outcome"],
         });
         this.requestsInFlight = new Map();
+        setInterval(() => {
+            this.requestsInFlight.forEach((time, id) => {
+                if (Date.now() - time) {
+                    this.requestsInFlight.delete(id);
+                }
+            });
+        }, REQUEST_EXPIRE_TIME_MS)
         return this;
     }
 
@@ -109,6 +117,7 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
     public requestOutcome(id: string, isRemote: boolean, outcome: string) {
         const startTime = this.requestsInFlight.get(id);
+        this.requestsInFlight.delete(id);
         if (!startTime) {
             log.verbose(`Got "requestOutcome" for ${id}, but this request was never started`);
             return;
