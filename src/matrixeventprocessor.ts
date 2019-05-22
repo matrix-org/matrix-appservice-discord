@@ -28,6 +28,7 @@ import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixm
 import { MatrixCommandHandler } from "./matrixcommandhandler";
 
 import { Log } from "./log";
+import { TimedCache } from "./structures/timedcache";
 const log = new Log("MatrixEventProcessor");
 
 const MaxFileSize = 8000000;
@@ -37,6 +38,7 @@ const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
+const PROFILE_CACHE_LIFETIME = 900000;
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -59,12 +61,14 @@ export class MatrixEventProcessor {
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
+    private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string}>;
 
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
+        this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
         } else {
@@ -230,19 +234,7 @@ export class MatrixEventProcessor {
         event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
         const mxClient = this.bridge.getClientFactory().getClientAs();
-        let profile: IMatrixEvent | null = null;
-        try {
-            profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
-            if (!profile) {
-                profile = await mxClient.getProfileInfo(event.sender);
-            }
-            if (!profile) {
-                log.warn(`User ${event.sender} has no member state and no profile. That's odd.`);
-            }
-        } catch (err) {
-            log.warn(`Trying to fetch member state or profile for ${event.sender} failed`, err);
-        }
-
+        const profile = await this.GetUserProfileForRoom(event.room_id, event.sender);
         const params = {
             mxClient,
             roomId: event.room_id,
@@ -367,6 +359,33 @@ export class MatrixEventProcessor {
         return embed;
     }
 
+    private async GetUserProfileForRoom(roomId: string, userId: string) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        let profile: {displayname: string, avatar_url: string} | undefined;
+        try {
+            profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
+            if (!profile) {
+                profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
+            }
+            if (profile) {
+                this.mxUserProfileCache.set(`${roomId}:${userId}`, profile);
+            } else {
+                profile = this.mxUserProfileCache.get(`${userId}`);
+            }
+            if (!profile) {
+                profile = await mxClient.getProfileInfo(userId);
+                if (profile) {
+                    this.mxUserProfileCache.set(`${userId}`, profile);
+                } else {
+                    log.warn(`User ${userId} has no member state and no profile. That's odd.`);
+                }
+            }
+        } catch (err) {
+            log.warn(`Trying to fetch member state or profile for ${userId} failed`, err);
+        }
+        return profile;
+    }
+
     private async sendReadReceipt(event: IMatrixEvent) {
         if (!this.config.bridge.disableReadReceipts) {
             try {
@@ -394,8 +413,9 @@ export class MatrixEventProcessor {
         return hasAttachment;
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {
-        const intent = this.bridge.getIntent();
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
+        displayname: string,
+        avatar_url: string} | undefined) {
         let displayName = sender;
         let avatarUrl;
 
@@ -417,13 +437,6 @@ export class MatrixEventProcessor {
                 return;
             }
             // Let it fall through.
-        }
-        if (!profile) {
-            try {
-                profile = await intent.getProfileInfo(sender);
-            } catch (ex) {
-                log.warn(`Failed to fetch profile for ${sender}`, ex);
-            }
         }
 
         if (profile) {
