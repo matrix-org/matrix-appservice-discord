@@ -196,31 +196,28 @@ export class MatrixEventProcessor {
 
         let msg = `\`${event.sender}\` `;
 
+        const isNew = event.unsigned === undefined || event.unsigned.prev_content === undefined;
+        const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
+
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
         } else if (event.type === "m.room.topic") {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
-            if (membership === "join"
-                && event.unsigned.prev_content === undefined) {
-                    if (!this.config.bridge.disableJoinLeaveNotifications) {
-                        msg += `joined the room`;
-                    } else {
-                        return;
-                    }
+            if (membership === "join" && isNew && allowJoinLeave) {
+                msg += "joined the room";
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
             } else if (membership === "leave" && event.state_key !== event.sender) {
                 msg += `kicked \`${event.state_key}\` from the room`;
-            } else if (membership === "leave") {
-                if (!this.config.bridge.disableJoinLeaveNotifications) {
-                    msg += `left the room`;
-                } else {
-                    return;
-                }
+            } else if (membership === "leave" && allowJoinLeave) {
+                msg += "left the room";
             } else if (membership === "ban") {
                 msg += `banned \`${event.state_key}\` from the room`;
+            } else {
+                // Ignore anything else
+                return;
             }
         }
 
