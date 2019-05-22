@@ -29,6 +29,7 @@ import { MatrixCommandHandler } from "./matrixcommandhandler";
 
 import { Log } from "./log";
 import { TimedCache } from "./structures/timedcache";
+import { MetricPeg } from "./metrics";
 const log = new Log("MatrixEventProcessor");
 
 const MaxFileSize = 8000000;
@@ -80,6 +81,7 @@ export class MatrixEventProcessor {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
             return;
         }
         if (
@@ -120,17 +122,15 @@ export class MatrixEventProcessor {
                 event.content!.body!.startsWith("!discord");
             if (isBotCommand) {
                 await this.mxCommandHandler.Process(event, context);
-                return;
             } else if (context.rooms.remote) {
                 const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
                     await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
-                    return;
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
-                    return;
                 }
             }
+            return;
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
@@ -138,10 +138,9 @@ export class MatrixEventProcessor {
             } catch (err) {
                 throw new Error(`Failed to handle encrypted room, ${err}`);
             }
-        } else {
-            log.verbose("Got non m.room.message event");
         }
         log.verbose("Event not processed by bridge");
+        MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
@@ -168,7 +167,6 @@ export class MatrixEventProcessor {
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
-        const botUser = roomLookup.botUser;
 
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
@@ -180,7 +178,10 @@ export class MatrixEventProcessor {
         }
 
         await this.discord.send(embedSet, opts, roomLookup, event);
-        await this.sendReadReceipt(event);
+        // Don't await this.
+        this.sendReadReceipt(event).catch((ex) => {
+            log.verbose("Failed to send read reciept for ", event.event_id, ex);
+        });
     }
 
     public async ProcessStateEvent(event: IMatrixEvent) {
