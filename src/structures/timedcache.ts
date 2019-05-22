@@ -8,11 +8,10 @@ export class TimedCache<K,V> implements Map<K,V> {
     clear(): void {
         this._map.clear();
     }
-    
     delete(key: K): boolean {
         return this._map.delete(key);
     }
-
+    
     forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
         throw new Error("Method not implemented.");
     }
@@ -57,5 +56,7 @@ export class TimedCache<K,V> implements Map<K,V> {
         throw new Error("Method not implemented.");
     }
     
-    [Symbol.toStringTag]: string;
+    get [Symbol.toStringTag](): "Map" {
+        return "Map";    
+    }
 }
