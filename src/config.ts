@@ -56,6 +56,7 @@ class DiscordBridgeConfigBridge {
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
+    public enableMetrics: boolean = false;
 }
 
 export class DiscordBridgeConfigDatabase {
