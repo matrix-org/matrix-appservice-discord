@@ -19,6 +19,7 @@ import { Util } from "../util";
 
 import * as uuid from "uuid/v4";
 import { Postgres } from "./postgres";
+import { MetricPeg } from "../metrics";
 
 const log = new Log("DbRoomStore");
 
@@ -155,8 +156,10 @@ export class DbRoomStore {
     public async getEntriesByMatrixId(matrixId: string): Promise<IRoomStoreEntry[]> {
         const cached = this.entriesMatrixIdCache.get(matrixId);
         if (cached && cached.ts + ENTRY_CACHE_LIMETIME > Date.now()) {
+            MetricPeg.get.storeCall("getEntriesByMatrixId", true);
             return cached.e;
         }
+        MetricPeg.get.storeCall("getEntriesByMatrixId", false);
         const entries = await this.db.All(
             "SELECT * FROM room_entries WHERE matrix_id = $id", {id: matrixId},
         );
@@ -190,6 +193,7 @@ export class DbRoomStore {
     }
 
     public async getEntriesByMatrixIds(matrixIds: string[]): Promise<IRoomStoreEntry[]> {
+        MetricPeg.get.storeCall("getEntriesByMatrixIds", false);
         const mxIdMap = { };
         matrixIds.forEach((mxId, i) => mxIdMap[i] = mxId);
         const sql = `SELECT * FROM room_entries WHERE matrix_id IN (${matrixIds.map((_, id) => `\$${id}`).join(", ")})`;
@@ -222,6 +226,7 @@ export class DbRoomStore {
     }
 
     public async linkRooms(matrixRoom: MatrixStoreRoom, remoteRoom: RemoteStoreRoom) {
+        MetricPeg.get.storeCall("linkRooms", false);
         await this.upsertRoom(remoteRoom);
 
         const values = {
@@ -244,6 +249,7 @@ export class DbRoomStore {
     }
 
     public async getEntriesByRemoteRoomData(data: IRemoteRoomDataLazy): Promise<IRoomStoreEntry[]> {
+        MetricPeg.get.storeCall("getEntriesByRemoteRoomData", false);
         Object.keys(data).filter((k) => typeof(data[k]) === "boolean").forEach((k) => {
             data[k] = Number(data[k]);
         });
@@ -270,11 +276,13 @@ export class DbRoomStore {
     }
 
     public async removeEntriesByRemoteRoomId(remoteId: string) {
+        MetricPeg.get.storeCall("removeEntriesByRemoteRoomId", false);
         await this.db.Run(`DELETE FROM room_entries WHERE remote_id = $remoteId`, {remoteId});
         await this.db.Run(`DELETE FROM remote_room_data WHERE room_id = $remoteId`, {remoteId});
     }
 
     public async removeEntriesByMatrixRoomId(matrixId: string) {
+        MetricPeg.get.storeCall("removeEntriesByMatrixRoomId", false);
         const entries = (await this.db.All(`SELECT * FROM room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
         await Util.AsyncForEach(entries, async (entry) => {
             if (entry.remote_id) {
@@ -286,6 +294,7 @@ export class DbRoomStore {
     }
 
     private async upsertRoom(room: RemoteStoreRoom) {
+        MetricPeg.get.storeCall("upsertRoom", false);
         if (!room.data) {
             throw new Error("Tried to upsert a room with undefined data");
         }
