@@ -22,7 +22,7 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
-import { MetricPeg } from "./metrics";
+import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
 
@@ -161,6 +161,11 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     if (config.database.userStorePath) {
         log.warn("[DEPRECATED] The user store is now part of the SQL database."
                + "The config option userStorePath no longer has any use.");
+    }
+
+    if (config.bridge.enableMetrics) {
+        log.info("Enabled metrics");
+        MetricPeg.setMetrics(new PrometheusBridgeMetrics().init(bridge));
     }
 
     await bridge.run(port, config);
