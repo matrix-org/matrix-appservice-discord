@@ -120,7 +120,6 @@ export class MatrixCommandHandler {
             identify: {
                 description: "Identify your discord identity with the bridge",
                 params: [],
-                permission: {},
                 run: async () => {
                     if (!this.oauthHandler) {
                         return "This bridge is not configured to identify users.";
