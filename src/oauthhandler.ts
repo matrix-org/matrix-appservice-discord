@@ -103,8 +103,8 @@ export class OAuthHandler {
     private async getIdentity(accessToken: string) {
         /* tslint:disable-next-line await-promise */
         const ident = await request.get({
-            auth: {
-                bearer: accessToken,
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
             },
             json: true,
             simple: true,
