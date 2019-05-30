@@ -68,7 +68,7 @@ export class DiscordBridgeConfigDatabase {
 export class DiscordBridgeConfigAuth {
     public clientID: string;
     public clientSecret: string;
-    public oAuthUrl: string|null = null;
+    public oAuthUrl: string;
     public botToken: string;
 }
 

@@ -160,7 +160,7 @@ export class MatrixCommandHandler {
                         return "This bridge is not configured to identify users.";
                     }
                     const url = this.oauthHandler.handleOAuthRequest(event.sender);
-                    return `Click [here](${url}) to authenticate with Discord.`;
+                    return `Open ${url} to authenticate with Discord.`;
                 },
             };
         }
