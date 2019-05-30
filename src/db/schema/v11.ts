@@ -32,6 +32,8 @@ export class Schema implements IDbSchema {
             created_at INTEGER,
             PRIMARY KEY(matrix_id, discord_id)
         );`, "oauth_tokens");
+        await store.db.Exec("CREATE INDEX idx_oauth_tokens_mx ON oauth_tokens(matrix_id)");
+        await store.db.Exec("CREATE INDEX idx_oauth_tokens_dc ON oauth_tokens(discord_id)");
     }
 
     public async rollBack(store: DiscordStore): Promise<void> {
