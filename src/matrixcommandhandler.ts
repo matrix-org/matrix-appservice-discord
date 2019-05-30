@@ -117,17 +117,6 @@ export class MatrixCommandHandler {
                     }
                 },
             },
-            identify: {
-                description: "Identify your discord identity with the bridge",
-                params: [],
-                run: async () => {
-                    if (!this.oauthHandler) {
-                        return "This bridge is not configured to identify users.";
-                    }
-                    const url = this.oauthHandler.handleOAuthRequest(event.sender);
-                    return `Click [here](${url}) to authenticate with Discord.`;
-                },
-            },
             unbridge: {
                 description: "Unbridges a Discord channel from this room",
                 params: [],
@@ -161,6 +150,20 @@ export class MatrixCommandHandler {
                 },
             },
         };
+
+        if (this.oauthHandler) {
+            actions.identify = {
+                description: "Identify your discord identity with the bridge",
+                params: [],
+                run: async () => {
+                    if (!this.oauthHandler) {
+                        return "This bridge is not configured to identify users.";
+                    }
+                    const url = this.oauthHandler.handleOAuthRequest(event.sender);
+                    return `Click [here](${url}) to authenticate with Discord.`;
+                },
+            };
+        }
 
         /*
         We hack together that "guildId/channelId" is the same as "guildId channelId".
