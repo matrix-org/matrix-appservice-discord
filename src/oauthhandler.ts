@@ -72,7 +72,7 @@ export class OAuthHandler {
             code: req.params.code,
             grant_type: "authorization_code",
             redirect_uri: this.config.oAuthUrl,
-            scope: this.scopes,
+            scope: this.scopes(),
         };
         try {
             // Tslint fails to recognise these as promises.
@@ -118,12 +118,12 @@ export class OAuthHandler {
         return ident.id;
     }
 
-    private get scopes() {
-        return ["identify", "guilds", "guilds.join"].join(" ");
+    private scopes(escape: boolean = false) {
+        return ["identify", "guilds", "guilds.join"].join(escape ? "%20" : " ");
     }
 
     private get authUrl() {
         return `${URL_AUTH}?client_id=${this.config.clientID}&response_type=code` +
-        `&redirect_uri=${this.config.oAuthUrl}&scope=${this.scopes}`;
+        `&redirect_uri=${this.config.oAuthUrl}&scope=${this.scopes(true)}`;
     }
 }
