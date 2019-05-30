@@ -30,8 +30,8 @@ export class Schema implements IDbSchema {
             refresh_token TEXT NOT NULL,
             expires_in INTEGER,
             created_at INTEGER,
-            PRIMARY_KEY(user_id, discord_id)
-        )`, "oauth_tokens");
+            PRIMARY KEY(matrix_id, discord_id)
+        );`, "oauth_tokens");
     }
 
     public async rollBack(store: DiscordStore): Promise<void> {
