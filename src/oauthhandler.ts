@@ -60,7 +60,7 @@ export class OAuthHandler {
     }
 
     public async onGetOAuth(req: Request, res: Response) {
-        const userId = this.stateUserMap.get(req.params.state);
+        const userId = this.stateUserMap.get(req.query.state);
         if (!userId) {
             log.warn("Ignorning oauth request for unknown user");
             res.status(HTTP_UNAUTHORISED).send("Error: User not found");
@@ -70,7 +70,7 @@ export class OAuthHandler {
         const formData = {
             client_id: this.config.clientID,
             client_secret: this.config.clientSecret,
-            code: req.params.code,
+            code: req.query.code,
             grant_type: "authorization_code",
             redirect_uri: this.config.oAuthUrl,
             scope: this.scopes(),
