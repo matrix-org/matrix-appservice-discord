@@ -12,6 +12,7 @@ const log = new Log("OAuthHandler");
 const URL_AUTH = "https://discordapp.com/api/oauth2/authorize";
 const URL_TOKEN = "https://discordapp.com/api/oauth2/token";
 const URL_REVOKE = "https://discordapp.com/api/oauth2/token/revoke";
+const URL_IDENTITY = "https//discordapp.com/api/users/%40me";
 
 const HTTP_UNAUTHORISED = 401;
 const HTTP_INTERNAL_ERROR = 500;
@@ -107,7 +108,7 @@ export class OAuthHandler {
             },
             json: true,
             simple: true,
-            url: "https//discordapp.com/api/users/@me",
+            url: URL_IDENTITY,
         });
         return ident.id;
     }
