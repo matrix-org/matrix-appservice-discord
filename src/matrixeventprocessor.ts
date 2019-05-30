@@ -58,18 +58,12 @@ export class MatrixEventProcessor {
     private bridge: Bridge;
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
-    private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
+    constructor(opts: MatrixEventProcessorOpts, private mxCommandHandler: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
-        if (cm) {
-            this.mxCommandHandler = cm;
-        } else {
-            this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.bridge, this.config);
-        }
     }
 
     public async OnEvent(request, context: BridgeContext): Promise<void> {
