@@ -88,6 +88,6 @@ export class DbAccessToken implements IDbDataMany {
     }
 
     public async Delete(store: DiscordStore): Promise<void> {
-        store.db.Run("DELETE FROM oauth_tokens WHERE discord_id = $id", {id: this.DiscordId});
+        await store.db.Run("DELETE FROM oauth_tokens WHERE discord_id = $id", {id: this.DiscordId});
     }
 }

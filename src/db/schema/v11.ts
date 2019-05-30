@@ -23,7 +23,7 @@ const log = new Log("SchemaV11");
 export class Schema implements IDbSchema {
     public readonly description = "create oauth_tokens";
     public async run(store: DiscordStore): Promise<void> {
-        store.createTable(`CREATE TABLE oauth_tokens (
+        await store.createTable(`CREATE TABLE oauth_tokens (
             matrix_id TEXT NOT NULL,
             discord_id TEXT NOT NULL,
             access_token TEXT NOT NULL,

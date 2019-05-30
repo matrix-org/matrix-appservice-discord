@@ -75,10 +75,14 @@ export class OAuthHandler {
             scope: this.scopes,
         };
         try {
-            const postRes = await request.post(URL_TOKEN, {
+            // Tslint fails to recognise these as promises.
+            /* tslint:disable-next-line await-promise */
+            const postRes = await request.post({
                 formData,
+                simple: true,
+                url: URL_TOKEN,
             });
-            const atRes = JSON.parse(postRes) as IDiscordTokenResponse;
+            const atRes = postRes as IDiscordTokenResponse;
             if (!atRes.access_token) {
                 throw new Error("Access token not given in response");
             }
@@ -102,11 +106,14 @@ export class OAuthHandler {
     }
 
     private async getIdentity(accessToken: string) {
-        const ident = await request.get("https//discordapp.com/api/users/@me", {
+        /* tslint:disable-next-line await-promise */
+        const ident = await request.get({
             auth: {
                 bearer: accessToken,
             },
             json: true,
+            simple: true,
+            url: "https//discordapp.com/api/users/@me",
         });
         return ident.id;
     }
