@@ -67,6 +67,7 @@ export class OAuthHandler {
             res.status(HTTP_UNAUTHORISED).send("Error: User not found");
             return;
         }
+        this.stateUserMap.delete(req.query.state);
         log.info("Got OAuth Request for", userId);
         const formData = {
             client_id: this.config.clientID,

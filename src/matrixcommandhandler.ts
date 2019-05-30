@@ -152,6 +152,7 @@ export class MatrixCommandHandler {
         };
 
         if (this.oauthHandler) {
+            // TODO: Only allow for PM rooms.
             actions.identify = {
                 description: "Identify your discord identity with the bridge",
                 params: [],
