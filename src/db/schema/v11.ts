@@ -29,7 +29,7 @@ export class Schema implements IDbSchema {
             access_token TEXT NOT NULL,
             refresh_token TEXT NOT NULL,
             expires_in INTEGER,
-            created_at INTEGER,
+            created_at BIGINT,
             PRIMARY KEY(matrix_id, discord_id)
         );`, "oauth_tokens");
         await store.db.Exec("CREATE INDEX idx_oauth_tokens_mx ON oauth_tokens(matrix_id)");
