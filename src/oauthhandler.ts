@@ -81,6 +81,7 @@ export class OAuthHandler {
             /* tslint:disable-next-line await-promise */
             const atRes = await (request.post({
                 formData,
+                json: true,
                 simple: true,
                 url: URL_TOKEN,
             })) as IDiscordTokenResponse;
