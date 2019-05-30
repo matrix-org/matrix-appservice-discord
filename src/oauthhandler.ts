@@ -48,6 +48,7 @@ export class OAuthHandler {
             method: "GET",
             path: "_bridge/oauth",
         });
+        log.info("Bound _bridge/oauth for oAuth");
     }
 
     public handleOAuthRequest(userid: string) {
