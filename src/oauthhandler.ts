@@ -66,7 +66,7 @@ export class OAuthHandler {
             res.status(HTTP_UNAUTHORISED).send("Error: User not found");
             return;
         }
-        log.info("Got OAuth Request for ", userId);
+        log.info("Got OAuth Request for", userId);
         const formData = {
             client_id: this.config.clientID,
             client_secret: this.config.clientSecret,
@@ -78,18 +78,11 @@ export class OAuthHandler {
         try {
             // Tslint fails to recognise these as promises.
             /* tslint:disable-next-line await-promise */
-            const postRes = await request.post({
+            const atRes = await (request.post({
                 formData,
                 simple: true,
                 url: URL_TOKEN,
-            });
-            const atRes = postRes as IDiscordTokenResponse;
-            if (!atRes.access_token) {
-                throw new Error("Access token not given in response");
-            }
-            if (!atRes.refresh_token) {
-                throw new Error("Refresh token not given in response");
-            }
+            })) as IDiscordTokenResponse;
             const dataObj = new DbAccessToken();
             dataObj.AccessToken = atRes.access_token;
             dataObj.RefreshToken = atRes.refresh_token;
