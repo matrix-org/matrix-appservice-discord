@@ -88,11 +88,11 @@ export class OAuthHandler {
             dataObj.DiscordId = await this.getIdentity(atRes.access_token);
             dataObj.AccessToken = atRes.access_token;
             dataObj.RefreshToken = atRes.refresh_token;
-            dataObj.ExpiresIn = atRes.expires_in || 0;
+            dataObj.ExpiresIn = atRes.expires_in || 1;
             dataObj.MatrixId = userId;
             await this.store.Insert(dataObj);
         } catch (ex) {
-            log.warn("Got error when trying to get token:", ex.message);
+            log.warn("Got error when trying to get token:", ex);
             res.status(HTTP_INTERNAL_ERROR).send("Error: Unknown error");
             return;
         }
@@ -110,6 +110,7 @@ export class OAuthHandler {
             simple: true,
             url: URL_IDENTITY,
         });
+        log.verbose("Identified as", ident.id, ident.username);
         return ident.id;
     }
 
