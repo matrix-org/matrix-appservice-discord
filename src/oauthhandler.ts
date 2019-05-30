@@ -79,17 +79,16 @@ export class OAuthHandler {
         try {
             // Tslint fails to recognise these as promises.
             /* tslint:disable-next-line await-promise */
-            const atRes = await (request.post({
+            const atRes = JSON.parse(await (request.post({
                 formData,
-                json: true,
                 simple: true,
                 url: URL_TOKEN,
-            })) as IDiscordTokenResponse;
+            }))) as IDiscordTokenResponse;
             const dataObj = new DbAccessToken();
+            dataObj.DiscordId = await this.getIdentity(atRes.access_token);
             dataObj.AccessToken = atRes.access_token;
             dataObj.RefreshToken = atRes.refresh_token;
             dataObj.ExpiresIn = atRes.expires_in || 0;
-            dataObj.DiscordId = await this.getIdentity(atRes.access_token);
             dataObj.MatrixId = userId;
             await this.store.Insert(dataObj);
         } catch (ex) {
