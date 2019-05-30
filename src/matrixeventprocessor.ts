@@ -453,8 +453,8 @@ export class MatrixEventProcessor {
             if (path.extname(content.body) !== "") {
                 return content.body;
             }
-            return `${path.basename(content.body)}.${mime.extension(content.info.mimetype)}`;
+            return `${path.basename(content.body)}.${mime.getExtension(content.info.mimetype)}`;
         }
-        return "matrix-media." + mime.extension(content.info.mimetype);
+        return "matrix-media." + mime.getExtension(content.info.mimetype);
     }
 }

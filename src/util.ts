@@ -112,7 +112,7 @@ export class Util {
                         contenttype = res.headers["content-type"];
                     } else {
                         log.verbose("No content-type given by server, guessing based on file name.");
-                        contenttype = mime.lookup(url);
+                        contenttype = mime.getType(url);
                     }
 
                     if (name === null) {

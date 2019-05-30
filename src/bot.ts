@@ -772,7 +772,7 @@ export class DiscordBot {
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
-                const fileMime = mime.lookup(attachment.filename);
+                const fileMime = mime.getType(attachment.filename) || "not-found";
                 const type = fileMime.split("/")[0];
                 let msgtype = {
                     audio: "m.audio",
