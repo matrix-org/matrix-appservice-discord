@@ -24,6 +24,8 @@ import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from
 import * as Discord from "discord.js";
 import * as markdown from "discord-markdown";
 import { RemoteStoreRoom } from "./db/roomstore";
+import { OAuthHandler } from "./oauthhandler";
+import { DiscordStore } from "./store";
 const log = new Log("MatrixCommandHandler");
 
 /* tslint:disable:no-magic-numbers */
@@ -36,12 +38,18 @@ export class MatrixCommandHandler {
     private botJoinedRooms: Set<string> = new Set(); // roomids
     private botJoinedRoomsCacheUpdatedAt = 0;
     private provisioner: Provisioner;
+    private oauthHandler?: OAuthHandler;
     constructor(
         private discord: DiscordBot,
         private bridge: Bridge,
         private config: DiscordBridgeConfig,
+        store: DiscordStore,
     ) {
         this.provisioner = this.discord.Provisioner;
+        if (config && config.auth && config.auth.clientSecret) {
+            this.oauthHandler = new OAuthHandler(config.auth, bridge, store);
+            this.oauthHandler.bindEndpoint();
+        }
     }
 
     public async HandleInvite(event: IMatrixEvent) {
@@ -107,6 +115,18 @@ export class MatrixCommandHandler {
                         log.error(err);
                         return "There was a problem bridging that channel - has the guild owner approved the bridge?";
                     }
+                },
+            },
+            identify: {
+                description: "Identify your discord identity with the bridge",
+                params: [],
+                permission: {},
+                run: async () => {
+                    if (!this.oauthHandler) {
+                        return "This bridge is not configured to identify users.";
+                    }
+                    const url = this.oauthHandler.handleOAuthRequest(event.sender);
+                    return `Click [here](${url}) to authenticate with Discord.`;
                 },
             },
             unbridge: {
