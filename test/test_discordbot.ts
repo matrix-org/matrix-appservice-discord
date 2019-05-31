@@ -453,7 +453,7 @@ describe("DiscordBot", () => {
             bot.lockChannel(chan);
             await bot.waitUnlock(chan);
             const diff = Date.now() - t;
-            expect(diff).to.be.greaterThan(SHORTDELAY - 1);
+            expect(diff).to.be.greaterThan(SHORTDELAY - 5);
         });
     });
   // });
