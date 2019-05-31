@@ -291,6 +291,7 @@ export class DiscordBot {
             try {
                 MetricPeg.get.registerRequest(msg.id);
                 await this.waitUnlock(msg.channel);
+                this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
