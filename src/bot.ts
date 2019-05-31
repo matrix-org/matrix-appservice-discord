@@ -776,7 +776,7 @@ export class DiscordBot {
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
-            if (rooms === null) { throw Error() }
+            if (rooms === null) { throw Error(); }
         } catch (err) {
             log.verbose("No bridged rooms to send message to. Oh well.");
             MetricPeg.get.requestOutcome(msg.id, true, "dropped");
