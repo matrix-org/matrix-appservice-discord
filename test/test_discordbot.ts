@@ -434,6 +434,7 @@ describe("DiscordBot", () => {
         it("should lock and unlock a channel early, if unlocked", async () => {
             const discordSendDelay = 500;
             const SHORTDELAY = 100;
+            const MINEXPECTEDDELAY = 95;
             const bot = new modDiscordBot.DiscordBot(
                 "",
                 {
@@ -453,7 +454,8 @@ describe("DiscordBot", () => {
             bot.lockChannel(chan);
             await bot.waitUnlock(chan);
             const diff = Date.now() - t;
-            expect(diff).to.be.greaterThan(SHORTDELAY - 5);
+            // Date accuracy can be off by a few ms sometimes.
+            expect(diff).to.be.greaterThan(MINEXPECTEDDELAY);
         });
     });
   // });
