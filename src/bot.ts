@@ -392,6 +392,7 @@ export class DiscordBot {
             }
             const channel = guild.channels.get(room);
             if (channel && channel.type === "text") {
+                this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
                 lookupResult.botUser = this.bot.user.id === client.user.id;
@@ -451,6 +452,7 @@ export class DiscordBot {
                 // NOTE: Don't send replies to discord if we are a puppet.
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
+                MetricPeg.get.remoteCall("hook.send");
                 msg = await hook.send(embed.description, {
                     avatarURL: embed!.author!.icon_url,
                     embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
@@ -542,6 +544,7 @@ export class DiscordBot {
         if (guild) {
             const channel = client.channels.get(entry.remote!.get("discord_channel") as string);
             if (channel) {
+                this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 return channel;
             }
             throw Error("Channel given in room entry not found");

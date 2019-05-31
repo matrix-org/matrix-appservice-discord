@@ -162,15 +162,14 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                + "The config option userStorePath no longer has any use.");
     }
 
-
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
 
     if (config.bridge.enableMetrics) {
         log.info("Enabled metrics");
-        MetricPeg.setMetrics(new PrometheusBridgeMetrics().init(bridge));
+        MetricPeg.set(new PrometheusBridgeMetrics().init(bridge));
     }
-    
+
     try {
         await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
     } catch (ex) {
