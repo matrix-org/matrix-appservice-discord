@@ -48,8 +48,6 @@ logging:
       enable:
         - "DiscordBot"
 database:
-  userStorePath: "user-store.db"
-  roomStorePath: "room-store.db"
   # You may either use SQLite or Postgresql for the bridge database, which contains
   # important mappings for events and user puppeting configurations.
   # Use the filename option for SQLite, or connString for Postgresql.
