@@ -22,10 +22,10 @@ import { DiscordBridgeConfig } from "../src/config";
 
 const expect = Chai.expect;
 
-describe("DiscordBridgeConfig.ApplyConfig", () => {
+describe("DiscordBridgeConfig.applyConfig", () => {
     it("should merge configs correctly", () => {
         const config = new DiscordBridgeConfig();
-        config.ApplyConfig({
+        config.applyConfig({
             bridge: {
                 disableDeletionForwarding: true,
                 disableDiscordMentions: false,
@@ -46,9 +46,32 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
         expect(config.logging.console).to.equal("warn");
     });
+    it("should merge environment overrides correctly", () => {
+        const config = new DiscordBridgeConfig();
+        config.applyConfig({
+            bridge: {
+                disableDeletionForwarding: true,
+                disableDiscordMentions: false,
+                homeserverUrl: "blah",
+            },
+            logging: {
+                console: "warn",
+            },
+        });
+        config.applyEnvironmentOverrides({
+            APPSERVICE_DISCORD_BRIDGE_DISABLE_DELETION_FORWARDING: false,
+            APPSERVICE_DISCORD_BRIDGE_DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            APPSERVICE_DISCORD_LOGGING_CONSOLE: "debug",
+        });
+        expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
+        expect(config.bridge.disableDeletionForwarding).to.be.false;
+        expect(config.bridge.disableDiscordMentions).to.be.false;
+        expect(config.bridge.homeserverUrl).to.equal("blah");
+        expect(config.logging.console).to.equal("debug");
+    });
     it("should merge logging.files correctly", () => {
         const config = new DiscordBridgeConfig();
-        config.ApplyConfig({
+        config.applyConfig({
             logging: {
                 console: "silent",
                 files: [
