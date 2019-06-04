@@ -38,13 +38,13 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
                 console: "warn",
             },
         });
-        expect(config.bridge.homeserverUrl, "blah");
+        expect(config.bridge.homeserverUrl).to.equal("blah");
         expect(config.bridge.disableTypingNotifications).to.be.true;
         expect(config.bridge.disableDiscordMentions).to.be.false;
         expect(config.bridge.disableDeletionForwarding).to.be.true;
         expect(config.bridge.enableSelfServiceBridging).to.be.false;
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
-        expect(config.logging.console, "warn");
+        expect(config.logging.console).to.equal("warn");
     });
     it("should merge logging.files correctly", () => {
         const config = new DiscordBridgeConfig();
@@ -58,6 +58,6 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
                 ],
             },
         });
-        expect(config.logging.files[0].file, "./bacon.log");
+        expect(config.logging.files[0].file).to.equal("./bacon.log");
     });
 });
