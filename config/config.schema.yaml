@@ -10,13 +10,109 @@ properties:
             type: "string"
           homeserverUrl:
             type: "string"
+          presenceInterval:
+            type: "number"
+          disablePresence:
+            type: "boolean"
+          disableTypingNotifications:
+            type: "boolean"
+          disableDeletionForwarding:
+            type: "boolean"
+          enableSelfServiceBridging:
+            type: "boolean"
+          disableReadReceipts:
+            type: "boolean"
     auth:
         type: "object"
-        required: ["botToken"]
+        required: ["botToken", "clientID"]
         properties:
           clientID:
             type: "string"
-          secret:
-            type: "string"
           botToken:
             type: "string"
+    logging:
+        type: "object"
+        properties:
+          console:
+            type: "string"
+            enum: ["error", "warn", "info", "verbose", "silly", "silent"]
+          lineDateFormat:
+            type: "string"
+          files:
+            type: "array"
+            items:
+              type: "object"
+              required: ["file"]
+              properties:
+                file:
+                  type: "string"
+                level:
+                  type: "string"
+                  enum: ["error", "warn", "info", "verbose", "silly"]
+                maxFiles:
+                  type: "string"
+                maxSize:
+                  type: ["number", "string"]
+                datePattern:
+                  type: "string"
+                enabled:
+                  type: "array"
+                  items:
+                    type: "string"
+                disabled:
+                  type: "array"
+                  items:
+                    type: "string"
+    database:
+        type: "object"
+        properties:
+          connString:
+            type: "string"
+          filename:
+            type: "string"
+          userStorePath:
+            type: "string"
+          roomStorePath:
+            type: "string"
+    room:
+        type: "object"
+        properties:
+          defaultVisibility:
+            type: "string"
+            enum: ["public", "private"]
+    limits:
+        type: "object"
+        properties:
+            roomGhostJoinDelay:
+                type: "number"
+            discordSendDelay:
+                type: "number"
+    channel:
+        type: "object"
+        properties:
+            namePattern:
+                type: "string"
+            deleteOptions:
+                type: "object"
+                properties:
+                   namePrefix:
+                       type: "string"
+                   topicPrefix:
+                       type: "string"
+                   disableMessaging:
+                     type: "boolean"
+                   unsetRoomAlias:
+                     type: "boolean"
+                   unlistFromDirectory:
+                     type: "boolean"
+                   setInviteOnly:
+                     type: "boolean"
+                   ghostsLeave:
+                     type: "boolean"
+    ghosts:
+        type: "object"
+        properties:
+            nickPattern:
+                type: "string"
+            usernamePattern:
+                type: "string"
