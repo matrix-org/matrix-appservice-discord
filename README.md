@@ -104,6 +104,7 @@ should show up in the network list on Riot and other clients.
 
 * For the bot to appear online on Discord you need to run the bridge itself.
 * ``npm start``
+* Particular configuration keys can be overridden by defining corresponding environment variables. For instance, `auth.botToken` can be set with `APPSERVICE_DISCORD_AUTH_BOT_TOKEN`.
 
 [Howto](./docs/howto.md)
 
