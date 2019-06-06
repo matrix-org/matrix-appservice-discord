@@ -21,7 +21,7 @@ import {
     UserStore,
 } from "matrix-appservice-bridge";
 import { RemoteUser } from "../userstore";
-import * as Queue from "p-queue";
+import PQueue from "p-queue";
 const log = new Log("SchemaV9");
 
 export class Schema implements IDbSchema {
@@ -64,8 +64,8 @@ export class Schema implements IDbSchema {
         const remoteUsers = await this.userStore.select({type: "remote"});
         log.info(`Found ${remoteUsers.length} remote users in the DB`);
         let migrated = 0;
-        const processQueue = new Queue({
-        autoStart: true,
+        const processQueue = new PQueue({
+            autoStart: true,
             concurrency: 100,
         });
         for (const user of remoteUsers) {
