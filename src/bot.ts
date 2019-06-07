@@ -145,7 +145,7 @@ export class DiscordBot {
         }
 
         this.channelLocks[channel.id] = {i: null, r: null, p: null};
-        const p = new Promise((resolve) => {
+        const p = new Promise<{}>((resolve) => {
             const i = setTimeout(() => {
                 log.warn(`Lock on channel ${channel.id} expired. Discord is lagging behind?`);
                 this.unlockChannel(channel);
