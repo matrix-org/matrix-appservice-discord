@@ -22,7 +22,7 @@ import * as mime from "mime";
 import { Permissions } from "discord.js";
 import { DiscordBridgeConfig } from "./config";
 import { Client as MatrixClient } from "matrix-js-sdk";
-import { IMatrixEvent } from "./matrixtypes";
+import { IMatrixPowerLevelsEvent } from "./matrixtypes";
 
 const HTTP_OK = 200;
 
@@ -392,7 +392,7 @@ export class Util {
         cat: string,
         subcat?: string,
     ) {
-        const res: IMatrixEvent = await mxClient.getStateEvent(roomId, "m.room.power_levels");
+        const res: IMatrixPowerLevelsEvent = await mxClient.getStateEvent(roomId, "m.room.power_levels");
         let requiredLevel = defaultLevel;
         if (res && (res[cat] || !subcat)) {
             if (subcat) {

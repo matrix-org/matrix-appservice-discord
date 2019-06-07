@@ -18,7 +18,7 @@ import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { DiscordBridgeConfig } from "./config";
 import { Bridge, BridgeContext } from "matrix-appservice-bridge";
-import { IMatrixEvent } from "./matrixtypes";
+import { IMatrixRoomEventMember, IMatrixMessageEvent, IMatrixStickerEvent } from "./matrixtypes";
 import { Provisioner } from "./provisioner";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import * as Discord from "discord.js";
@@ -44,13 +44,13 @@ export class MatrixCommandHandler {
         this.provisioner = this.discord.Provisioner;
     }
 
-    public async HandleInvite(event: IMatrixEvent) {
+    public async HandleInvite(event: IMatrixRoomEventMember) {
         log.info(`Received invite for ${event.state_key} in room ${event.room_id}`);
         await this.bridge.getIntent().join(event.room_id);
         this.botJoinedRooms.add(event.room_id);
     }
 
-    public async Process(event: IMatrixEvent, context: BridgeContext) {
+    public async Process(event: IMatrixMessageEvent | IMatrixStickerEvent, context: BridgeContext) {
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
             return;
@@ -186,7 +186,7 @@ export class MatrixCommandHandler {
             );
         };
 
-        const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
+        const reply = await Util.ParseCommand("!discord", event.content.body, actions, parameters, permissionCheck);
         const formattedReply = markdown.toHTML(reply);
 
         await this.bridge.getIntent().sendMessage(event.room_id, {

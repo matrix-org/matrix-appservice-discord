@@ -27,7 +27,7 @@ const MATRIX_TO_LINK = "https://matrix.to/#/";
 const DEFAULT_ROOM_NOTIFY_POWER_LEVEL = 50;
 
 export interface IMatrixMessageProcessorParams {
-    displayname?: string;
+    displayname: string | null;
     mxClient?: MatrixClient;
     roomId?: string;
     userId?: string;
