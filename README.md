@@ -80,6 +80,44 @@ docker build -t halfshot/matrix-appservice-discord .
 docker run -v /matrix-appservice-discord:/data -p 9005:9005 halfshot/matrix-appservice-discord
 ```
 
+#### NixOS
+
+NixOS (`unstable` channel) has a [module][nixos-options] which handles the installation and registration of the bridge automatically.
+By default, the bridge is configured to use an SQLite database.
+Setup instructions are as follows:
+
+* Create an environment file containing the secret tokens.
+  This file should not be world-readable.
+
+  __secrets.env:__
+  ```
+  APPSERVICE_DISCORD_AUTH_CLIENT_I_D="12345"
+  APPSERVICE_DISCORD_AUTH_BOT_TOKEN="foobar"
+  ```
+
+* Enable and configure the module.
+  The configuration keys of the nix attribute set are the same as the ones described in [config.yaml][example-config].
+  `bridge.domain` and `bridge.homeserverUrl` are the only required options.
+
+  __configuration.nix:__
+  ```nix
+  {
+    services.matrix-appservice-discord = {
+      enable = true;
+      environmentFile = /path/to/secret.env;
+      config = {
+        bridge = {
+          domain = "example.com";
+          homeserverUrl = "https://example.com";
+        };
+      };
+    };
+  }
+  ```
+
+[nixos-options]: https://nixos.org/nixos/options.html#services.matrix-appservice-discord
+[example-config]: https://github.com/Half-Shot/matrix-appservice-discord/blob/master/config/config.sample.yaml
+
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system
