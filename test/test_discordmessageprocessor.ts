@@ -58,8 +58,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello World!";
             const result = await processor.FormatMessage(msg);
-            Chai.assert(result.body, "Hello World!");
-            Chai.assert(result.formattedBody, "Hello World!");
+            Chai.assert.equal(result.body, "Hello World!");
+            Chai.assert.equal(result.formattedBody, "Hello World!");
         });
         it("processes markdown messages correctly.", async () => {
             const processor = new DiscordMessageProcessor(

@@ -59,7 +59,8 @@ type callbackFn = (...args: any[]) => Promise<any>;
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
-    config.ApplyConfig(fileConfig);
+    config.applyConfig(fileConfig);
+    config.applyEnvironmentOverrides(process.env);
     Log.Configure(config.logging);
     log.info("Starting Discord AS");
     const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
