@@ -35,7 +35,7 @@ import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as mime from "mime";
-import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
+import { IMatrixEvent, IMatrixMediaInfo, IMatrixRedactionEvent, MatrixRoomEventType } from "./matrixtypes";
 import { DiscordCommandHandler } from "./discordcommandhandler";
 
 const log = new Log("DiscordBot");
@@ -405,7 +405,11 @@ export class DiscordBot {
         }
     }
 
-    public async sendAsBot(msg: string, channel: Discord.TextChannel, event: IMatrixEvent): Promise<void> {
+    public async sendAsBot(
+        msg: string,
+        channel: Discord.TextChannel,
+        event: MatrixRoomEventType,
+    ): Promise<void> {
         if (!msg) {
             return;
         }
@@ -419,7 +423,7 @@ export class DiscordBot {
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
         roomLookup: ChannelLookupResult,
-        event: IMatrixEvent,
+        event: MatrixRoomEventType,
     ): Promise<void> {
         const chan = roomLookup.channel;
         const botUser = roomLookup.botUser;
@@ -469,7 +473,7 @@ export class DiscordBot {
         }
     }
 
-    public async ProcessMatrixRedact(event: IMatrixEvent) {
+    public async ProcessMatrixRedact(event: IMatrixRedactionEvent) {
         if (this.config.bridge.disableDeletionForwarding) {
             return;
         }
@@ -916,7 +920,7 @@ export class DiscordBot {
     private async StoreMessagesSent(
         msg: Discord.Message | null | (Discord.Message | null)[],
         chan: Discord.TextChannel,
-        event: IMatrixEvent,
+        event: MatrixRoomEventType,
     ) {
         if (!Array.isArray(msg)) {
             msg = [msg];

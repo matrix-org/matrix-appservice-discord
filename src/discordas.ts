@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
+import {
+    AppServiceRegistration,
+    Bridge,
+    BridgeContext,
+    Cli,
+    ClientFactory,
+    Request,
+} from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -93,7 +100,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
-            onEvent: async (request) => {
+            onEvent: async (request: Request, _: BridgeContext) => {
                 try {
                     // Build our own context.
                     if (!store.roomStore) {
@@ -114,7 +121,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     await request.outcomeFrom(callbacks.onEvent(request, context));
                 } catch (err) {
                     log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom(Promise.reject("Failed to handle"));
+                    await request.reject(err);
                 }
             },
             onLog: (line, isError) => {
