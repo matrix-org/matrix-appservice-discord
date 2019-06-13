@@ -38,7 +38,7 @@
     "command-line-args": "^4.0.1",
     "command-line-usage": "^4.1.0",
     "discord-markdown": "^2.0.0",
-    "discord.js": "^11.5.0",
+    "discord.js": "^11.5.1",
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
     "js-yaml": "^3.13.1",
