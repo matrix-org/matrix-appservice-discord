@@ -60,7 +60,8 @@ type callbackFn = (...args: any[]) => Promise<any>;
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
-    config.ApplyConfig(fileConfig);
+    config.applyConfig(fileConfig);
+    config.applyEnvironmentOverrides(process.env);
     Log.Configure(config.logging);
     log.info("Starting Discord AS");
     const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
@@ -162,15 +163,14 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                + "The config option userStorePath no longer has any use.");
     }
 
-
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
 
     if (config.bridge.enableMetrics) {
         log.info("Enabled metrics");
-        MetricPeg.setMetrics(new PrometheusBridgeMetrics().init(bridge));
+        MetricPeg.set(new PrometheusBridgeMetrics().init(bridge));
     }
-    
+
     try {
         await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
     } catch (ex) {
