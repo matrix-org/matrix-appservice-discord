@@ -362,10 +362,12 @@ export class MatrixEventProcessor {
 
     private async GetUserProfileForRoom(roomId: string, userId: string) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
+        const intent = this.bridge.getIntent();
         let profile: {displayname: string, avatar_url: string} | undefined;
         try {
             profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
             if (!profile) {
+                log.verbose(`Profile ${userId}:${roomId} not cached`);
                 profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
             }
             if (profile) {
@@ -374,7 +376,8 @@ export class MatrixEventProcessor {
                 profile = this.mxUserProfileCache.get(`${userId}`);
             }
             if (!profile) {
-                profile = await mxClient.getProfileInfo(userId);
+                log.verbose(`Profile ${userId} not cached`);
+                profile = await intent.getProfileInfo(userId);
                 if (profile) {
                     this.mxUserProfileCache.set(`${userId}`, profile);
                 } else {
