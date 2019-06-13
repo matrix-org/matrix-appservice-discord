@@ -79,6 +79,10 @@ docker build -t halfshot/matrix-appservice-discord .
 # Run the container
 docker run -v /matrix-appservice-discord:/data -p 9005:9005 halfshot/matrix-appservice-discord
 ```
+#### Metrics
+
+The bridge supports reporting metrics via Prometheus. You can configure metrics support in the config
+file. The metrics will be reported under the URL provided in the registration file, on the `/metrics` endpoint.
 
 #### 3PID Protocol Support
 
