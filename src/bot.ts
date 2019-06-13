@@ -37,6 +37,7 @@ import * as Discord from "discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
 import { DiscordCommandHandler } from "./discordcommandhandler";
+import { MetricPeg } from "./metrics";
 
 const log = new Log("DiscordBot");
 
@@ -240,6 +241,7 @@ export class DiscordBot {
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
                 await this.waitUnlock(msg.channel);
+                this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -260,6 +262,7 @@ export class DiscordBot {
                     promiseArr.push(async () => {
                         try {
                             await this.waitUnlock(msg.channel);
+                            this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                             await this.DeleteDiscordMessage(msg);
                         } catch (err) {
                             log.error("Caught while handling 'messageDeleteBulk'", err);
@@ -274,6 +277,7 @@ export class DiscordBot {
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
                 await this.waitUnlock(newMessage.channel);
+                this.clientFactory.bindMetricsToChannel(newMessage.channel as Discord.TextChannel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -288,12 +292,15 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
+                MetricPeg.get.registerRequest(msg.id);
                 await this.waitUnlock(msg.channel);
+                this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
                         await this.OnMessage(msg);
                     } catch (err) {
+                        MetricPeg.get.requestOutcome(msg.id, true, "fail");
                         log.error("Caught while handing 'message'", err);
                     }
                 })();
@@ -389,6 +396,7 @@ export class DiscordBot {
             }
             const channel = guild.channels.get(room);
             if (channel && channel.type === "text") {
+                this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
                 lookupResult.botUser = this.bot.user.id === client.user.id;
@@ -448,6 +456,7 @@ export class DiscordBot {
                 // NOTE: Don't send replies to discord if we are a puppet.
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
+                MetricPeg.get.remoteCall("hook.send");
                 msg = await hook.send(embed.description, {
                     avatarURL: embed!.author!.icon_url,
                     embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
@@ -539,6 +548,7 @@ export class DiscordBot {
         if (guild) {
             const channel = client.channels.get(entry.remote!.get("discord_channel") as string);
             if (channel) {
+                this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 return channel;
             }
             throw Error("Channel given in room entry not found");
@@ -738,11 +748,13 @@ export class DiscordBot {
         if (indexOfMsg !== -1) {
             log.verbose("Got repeated message, ignoring.");
             delete this.sentMessages[indexOfMsg];
+            MetricPeg.get.requestOutcome(msg.id, true, "dropped");
             return; // Skip *our* messages
         }
         const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
+            MetricPeg.get.requestOutcome(msg.id, true, "dropped");
             return;
         }
         // Test for webhooks
@@ -751,6 +763,7 @@ export class DiscordBot {
                             .filterArray((h) => h.name === "_matrix").pop();
             if (webhook && msg.webhookID === webhook.id) {
               // Filter out our own webhook messages.
+                MetricPeg.get.requestOutcome(msg.id, true, "dropped");
                 return;
             }
         }
@@ -758,6 +771,7 @@ export class DiscordBot {
         // check if it is a command to process by the bot itself
         if (msg.content.startsWith("!matrix")) {
             await this.discordCommandHandler.Process(msg);
+            MetricPeg.get.requestOutcome(msg.id, true, "success");
             return;
         }
 
@@ -766,14 +780,15 @@ export class DiscordBot {
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
+            if (rooms === null) {
+                throw Error();
+            }
         } catch (err) {
             log.verbose("No bridged rooms to send message to. Oh well.");
+            MetricPeg.get.requestOutcome(msg.id, true, "dropped");
             return null;
         }
         try {
-            if (rooms === null) {
-              return null;
-            }
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
@@ -854,7 +869,9 @@ export class DiscordBot {
                     await afterSend(res);
                 }
             });
+            MetricPeg.get.requestOutcome(msg.id, true, "success");
         } catch (err) {
+            MetricPeg.get.requestOutcome(msg.id, true, "fail");
             log.verbose("Failed to send message into room.", err);
         }
     }

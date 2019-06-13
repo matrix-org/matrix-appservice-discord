@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { IDatabaseConnector } from "./connector";
-import * as uuid from "uuid/v4";
 import { Log } from "../log";
+import { MetricPeg } from "../metrics";
 
 /**
  * A UserStore compatible with
@@ -54,8 +54,11 @@ export class DbUserStore {
     public async getRemoteUser(remoteId: string): Promise<RemoteUser|null> {
         const cached = this.remoteUserCache.get(remoteId);
         if (cached && cached.ts + ENTRY_CACHE_LIMETIME > Date.now()) {
+            MetricPeg.get.storeCall("UserStore.getRemoteUser", true);
             return cached.e;
         }
+        MetricPeg.get.storeCall("UserStore.getRemoteUser", false);
+
         const row = await this.db.Get(
             "SELECT * FROM user_entries WHERE remote_id = $id", {id: remoteId},
         );
@@ -86,6 +89,7 @@ export class DbUserStore {
     }
 
     public async setRemoteUser(user: RemoteUser) {
+        MetricPeg.get.storeCall("UserStore.setRemoteUser", false);
         this.remoteUserCache.delete(user.id);
         const existingData = await this.db.Get(
             "SELECT * FROM remote_user_data WHERE remote_id = $remoteId",
@@ -156,6 +160,7 @@ AND guild_id = $guild_id`,
     }
 
     public async linkUsers(matrixId: string, remoteId: string) {
+        MetricPeg.get.storeCall("UserStore.linkUsers", false);
         // This is used  ONCE in the bridge to link two IDs, so do not UPSURT data.
         try {
             await this.db.Run(`INSERT INTO user_entries VALUES ($matrixId, $remoteId)`, {

@@ -22,6 +22,7 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
+import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
 
@@ -94,13 +95,16 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
+                const data = request.getData();
                 try {
+                    MetricPeg.get.registerRequest(data.event_id);
                     // Build our own context.
                     if (!store.roomStore) {
                         log.warn("Discord store not ready yet, dropping message");
+                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
                         return;
                     }
-                    const roomId = request.getData().room_id;
+                    const roomId = data.room_id;
 
                     const context: BridgeContext = {
                         rooms: {},
@@ -112,7 +116,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     }
 
                     await request.outcomeFrom(callbacks.onEvent(request, context));
+                    MetricPeg.get.requestOutcome(data.event_id, false, "success");
                 } catch (err) {
+                    MetricPeg.get.requestOutcome(data.event_id, false, "fail");
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                     await request.outcomeFrom(Promise.reject("Failed to handle"));
                 }
@@ -159,6 +165,11 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
+
+    if (config.bridge.enableMetrics) {
+        log.info("Enabled metrics");
+        MetricPeg.set(new PrometheusBridgeMetrics().init(bridge));
+    }
 
     try {
         await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
