@@ -241,6 +241,7 @@ export class DiscordBot {
         client.on("messageDelete", async (msg: Discord.Message) => {
             try {
                 await this.waitUnlock(msg.channel);
+                this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                 this.discordMessageQueue[msg.channel.id] = (async () => {
                     await (this.discordMessageQueue[msg.channel.id] || Promise.resolve());
                     try {
@@ -261,6 +262,7 @@ export class DiscordBot {
                     promiseArr.push(async () => {
                         try {
                             await this.waitUnlock(msg.channel);
+                            this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
                             await this.DeleteDiscordMessage(msg);
                         } catch (err) {
                             log.error("Caught while handling 'messageDeleteBulk'", err);
@@ -275,6 +277,7 @@ export class DiscordBot {
         client.on("messageUpdate", async (oldMessage: Discord.Message, newMessage: Discord.Message) => {
             try {
                 await this.waitUnlock(newMessage.channel);
+                this.clientFactory.bindMetricsToChannel(newMessage.channel as Discord.TextChannel);
                 this.discordMessageQueue[newMessage.channel.id] = (async () => {
                     await (this.discordMessageQueue[newMessage.channel.id] || Promise.resolve());
                     try {
@@ -777,7 +780,9 @@ export class DiscordBot {
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
-            if (rooms === null) { throw Error(); }
+            if (rooms === null) {
+                throw Error();
+            }
         } catch (err) {
             log.verbose("No bridged rooms to send message to. Oh well.");
             MetricPeg.get.requestOutcome(msg.id, true, "dropped");
