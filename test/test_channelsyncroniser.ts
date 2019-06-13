@@ -450,6 +450,33 @@ describe("ChannelSyncroniser", () => {
             expect(state.mxChannels[0].iconUrl).equals("https://cdn.discordapp.com/icons/654321/new_icon.png");
             expect(state.mxChannels[0].iconId).equals("new_icon");
         });
+        it("will update animated icons", async () => {
+            const guild = new MockGuild("654321", [], "newGuild");
+            guild.icon = "a_new_icon";
+            const chan = new MockChannel();
+            chan.type = "text";
+            chan.id = "blah";
+            chan.guild = guild;
+
+            const testStore = [
+                new Entry({
+                    id: "1",
+                    matrix_id: "!1:localhost",
+                    remote: {
+                        discord_channel: chan.id,
+                        discord_iconurl: "https://cdn.discordapp.com/icons/654321/old_icon.png",
+                        update_icon: true,
+                    },
+                    remote_id: "111",
+                }),
+            ];
+
+            const channelSync = CreateChannelSync(testStore);
+            const state = await channelSync.GetChannelUpdateState(chan as any);
+            expect(state.mxChannels.length).equals(1);
+            expect(state.mxChannels[0].iconUrl).equals("https://cdn.discordapp.com/icons/654321/a_new_icon.gif");
+            expect(state.mxChannels[0].iconId).equals("a_new_icon");
+        });
         it("won't update the icon", async () => {
             const guild = new MockGuild("654321", [], "newGuild");
             guild.icon = "new_icon";
