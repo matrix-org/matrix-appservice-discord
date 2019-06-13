@@ -207,7 +207,9 @@ export class ChannelSyncroniser {
         const icon = channel.guild.icon;
         let iconUrl: string | null = null;
         if (icon) {
-            iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.png`;
+            // if discord prefixes their icon hashes with "a_" it means that they are animated
+            const animatedIcon: boolean = icon.startsWith("a_");
+            iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.${animatedIcon ? "gif" : "png"}`;
         }
         remoteRooms.forEach((remoteRoom) => {
             const mxid = remoteRoom.matrix!.getId();
