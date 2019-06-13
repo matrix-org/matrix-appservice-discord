@@ -19,14 +19,16 @@ export class TimedCache<K, V> implements Map<K, V> {
     }
 
     public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void): void {
-        throw new Error("Method not implemented.");
+        for (const item of this) {
+            callbackfn(item[1], item[0], this);
+        }
     }
 
     public get(key: K): V | undefined {
         const v = this.map.get(key);
         if (v) {
             const val = this.filterV(v);
-            if (val) {
+            if (val !== undefined) {
                 return val;
             }
             this.map.delete(key);
@@ -58,24 +60,27 @@ export class TimedCache<K, V> implements Map<K, V> {
                 }
                 let item: IteratorResult<[K, ITimedValue<V>]>|undefined;
                 let filteredValue: V|undefined;
-                while (!item || !item.done || !filteredValue) {
+                // Loop if => 1) no item/filteredvalue OR item && !filteredValue && not done
+                while (!item) {
                     item = iterator.next();
+                    if (item.done) {
+                        break;
+                    }
                     filteredValue = this.filterV(item.value[1]);
                 }
-                if (!item || !filteredValue) {
+                if (!item || filteredValue === undefined) {
                     // Typscript doesn't like us returning undefined for valuel, which is dumb.
                     // tslint:disable-next-line: no-any
                     return {done: true, value: undefined} as any as IteratorResult<[K, V]>;
                 }
-                return {done: item.done, value: [item.value[0], filteredValue]};
+                return {done: item.done, value: [item.value[0], filteredValue]} as IteratorResult<[K, V]>;
             },
-            // This is honestly stupid
             [Symbol.iterator]: () => this[Symbol.iterator](),
         };
     }
 
     public entries(): IterableIterator<[K, V]> {
-        throw new Error("Method not implemented.");
+        return this[Symbol.iterator]();
     }
 
     public keys(): IterableIterator<K> {
