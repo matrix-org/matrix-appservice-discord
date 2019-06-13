@@ -1,7 +1,7 @@
 interface ITimedValue<V> {
     value: V;
     ts: number;
-};
+}
 
 export class TimedCache<K, V> implements Map<K, V> {
     private readonly  map: Map<K, ITimedValue<V>>;
@@ -71,7 +71,7 @@ export class TimedCache<K, V> implements Map<K, V> {
             },
             // This is honestly stupid
             [Symbol.iterator]: () => this[Symbol.iterator](),
-        }
+        };
     }
 
     public entries(): IterableIterator<[K, V]> {
