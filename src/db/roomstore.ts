@@ -18,8 +18,8 @@ import { IDatabaseConnector } from "./connector";
 import { Util } from "../util";
 
 import * as uuid from "uuid/v4";
-import { Postgres } from "./postgres";
 import { MetricPeg } from "../metrics";
+import { TimedCache } from "../structures/timedcache";
 
 const log = new Log("DbRoomStore");
 
@@ -93,9 +93,9 @@ const ENTRY_CACHE_LIMETIME = 30000;
 // XXX: This only implements functions used in the bridge at the moment.
 export class DbRoomStore {
 
-    private entriesMatrixIdCache: Map<string, {e: IRoomStoreEntry[], ts: number}>;
+    private entriesMatrixIdCache: TimedCache<string, IRoomStoreEntry[]>;
     constructor(private db: IDatabaseConnector) {
-        this.entriesMatrixIdCache = new Map();
+        this.entriesMatrixIdCache = new TimedCache(ENTRY_CACHE_LIMETIME);
     }
 
     public async upsertEntry(entry: IRoomStoreEntry) {
@@ -155,9 +155,9 @@ export class DbRoomStore {
 
     public async getEntriesByMatrixId(matrixId: string): Promise<IRoomStoreEntry[]> {
         const cached = this.entriesMatrixIdCache.get(matrixId);
-        if (cached && cached.ts + ENTRY_CACHE_LIMETIME > Date.now()) {
+        if (cached) {
             MetricPeg.get.storeCall("RoomStore.getEntriesByMatrixId", true);
-            return cached.e;
+            return cached;
         }
         MetricPeg.get.storeCall("RoomStore.getEntriesByMatrixId", false);
         const entries = await this.db.All(
@@ -187,7 +187,7 @@ export class DbRoomStore {
             }
         }
         if (res.length > 0) {
-            this.entriesMatrixIdCache.set(matrixId, {e: res, ts: Date.now()});
+            this.entriesMatrixIdCache.set(matrixId, res);
         }
         return res;
     }
