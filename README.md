@@ -11,6 +11,7 @@ bridging, with one or two bugs cropping up.
 
 
 [![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=develop)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
+[![Docker Automated build](https://img.shields.io/docker/builds/halfshot/matrix-appservice-discord.svg)](https://hub.docker.com/r/halfshot/matrix-appservice-discord)
 [![#discord:half-shot.uk](https://img.shields.io/matrix/discord:half-shot.uk.svg?server_fqdn=matrix.half-shot.uk&label=%23discord:half-shot.uk&logo=matrix)](https://matrix.to/#/#discord:half-shot.uk)
 
 ### PRs
@@ -30,7 +31,7 @@ The bridge supports any version of Node.js >= v10.X, including all [current rele
 
 ### Setup the bridge
 
-* Run ``npm install`` to grab the dependencies.
+* Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
 * Run ``npm run build`` to build the typescript into javascript.
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
   * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
@@ -79,6 +80,10 @@ docker build -t halfshot/matrix-appservice-discord .
 # Run the container
 docker run -v /matrix-appservice-discord:/data -p 9005:9005 halfshot/matrix-appservice-discord
 ```
+#### Metrics
+
+The bridge supports reporting metrics via Prometheus. You can configure metrics support in the config
+file. The metrics will be reported under the URL provided in the registration file, on the `/metrics` endpoint.
 
 #### 3PID Protocol Support
 
@@ -104,6 +109,7 @@ should show up in the network list on Riot and other clients.
 
 * For the bot to appear online on Discord you need to run the bridge itself.
 * ``npm start``
+* Particular configuration keys can be overridden by defining corresponding environment variables. For instance, `auth.botToken` can be set with `APPSERVICE_DISCORD_AUTH_BOT_TOKEN`.
 
 [Howto](./docs/howto.md)
 

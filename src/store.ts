@@ -72,7 +72,7 @@ export class DiscordStore {
                 return resolve(err === null);
             });
         }).then(async (result) => {
-            return new Promise((resolve, reject) => {
+            return new Promise<void|{}>((resolve, reject) => {
                 if (!result) {
                     log.warn("NOT backing up database while a file already exists");
                     resolve(true);

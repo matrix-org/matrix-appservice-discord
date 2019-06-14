@@ -76,7 +76,8 @@ if (options.help) {
 const yamlConfig = yaml.safeLoad(fs.readFileSync("./discord-registration.yaml", "utf8"));
 const registration = AppServiceRegistration.fromObject(yamlConfig);
 const config = new DiscordBridgeConfig();
-config.ApplyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
+config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
+config.applyEnvironmentOverrides(process.env);
 
 if (registration === null) {
     throw new Error("Failed to parse registration file");

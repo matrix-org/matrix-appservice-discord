@@ -24,6 +24,7 @@ import { Log } from "./log";
 import "source-map-support/register";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
+import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
 
@@ -61,7 +62,8 @@ type callbackFn = (...args: any[]) => Promise<any>;
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
-    config.ApplyConfig(fileConfig);
+    config.applyConfig(fileConfig);
+    config.applyEnvironmentOverrides(process.env);
     Log.Configure(config.logging);
     log.info("Starting Discord AS");
     const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
@@ -95,13 +97,16 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
+                const data = request.getData();
                 try {
+                    MetricPeg.get.registerRequest(data.event_id);
                     // Build our own context.
                     if (!store.roomStore) {
                         log.warn("Discord store not ready yet, dropping message");
+                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
                         return;
                     }
-                    const roomId = request.getData().room_id;
+                    const roomId = data.room_id;
 
                     const context: BridgeContext = {
                         rooms: {},
@@ -113,7 +118,9 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     }
 
                     await request.outcomeFrom(callbacks.onEvent(request, context));
+                    MetricPeg.get.requestOutcome(data.event_id, false, "success");
                 } catch (err) {
+                    MetricPeg.get.requestOutcome(data.event_id, false, "fail");
                     log.error("Exception thrown while handling \"onEvent\" event", err);
                     await request.outcomeFrom(Promise.reject("Failed to handle"));
                 }
@@ -160,6 +167,11 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
+
+    if (config.bridge.enableMetrics) {
+        log.info("Enabled metrics");
+        MetricPeg.set(new PrometheusBridgeMetrics().init(bridge));
+    }
 
     try {
         await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
