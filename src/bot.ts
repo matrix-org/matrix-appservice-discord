@@ -471,8 +471,13 @@ export class DiscordBot {
                 opts.embed = embed;
                 msg = await chan.send("", opts);
             }
-            await this.StoreMessagesSent(msg, chan, event);
-            this.unlockChannel(chan);
+            // Don't block on this.
+            this.StoreMessagesSent(msg, chan, event).then(() => {
+                this.unlockChannel(chan);
+            }).catch(() => {
+                log.warn("Failed to store sent message for ", event.event_id);
+            });
+
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
