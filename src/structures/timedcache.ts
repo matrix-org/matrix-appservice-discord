@@ -71,12 +71,12 @@ export class TimedCache<K, V> implements Map<K, V> {
                     }
                     filteredValue = this.filterV(item.value[1]);
                 }
-                if (!item || filteredValue === undefined) {
+                if (item.done) {
                     // Typscript doesn't like us returning undefined for value, which is dumb.
                     // tslint:disable-next-line: no-any
                     return {done: true, value: undefined} as any as IteratorResult<[K, V]>;
                 }
-                return {done: item.done, value: [item.value[0], filteredValue]} as IteratorResult<[K, V]>;
+                return {done: false, value: [item.value[0], filteredValue]} as IteratorResult<[K, V]>;
             },
             [Symbol.iterator]: () => this[Symbol.iterator](),
         };
