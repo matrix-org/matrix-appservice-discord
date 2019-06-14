@@ -62,7 +62,7 @@ export class MatrixEventProcessor {
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
-    private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string}>;
+    private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string|undefined}>;
 
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
@@ -212,6 +212,12 @@ export class MatrixEventProcessor {
             const membership = event.content!.membership;
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
+                if (event.content!.displayname) {
+                    this.mxUserProfileCache.set(`${event.room_id}:${event.sender}`, {
+                        avatar_url: event.content!.avatar_url,
+                        displayname: event.content!.displayname!,
+                    });
+                }
                 // We don't know if the user also updated their profile, but to be safe..
                 this.mxUserProfileCache.delete(event.sender);
             }
@@ -368,7 +374,7 @@ export class MatrixEventProcessor {
     private async GetUserProfileForRoom(roomId: string, userId: string) {
         const mxClient = this.bridge.getClientFactory().getClientAs();
         const intent = this.bridge.getIntent();
-        let profile: {displayname: string, avatar_url: string} | undefined;
+        let profile: {displayname: string, avatar_url: string|undefined} | undefined;
         try {
             // First try to pull out the room-specific profile from the cache.
             profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
@@ -433,7 +439,7 @@ export class MatrixEventProcessor {
 
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
         displayname: string,
-        avatar_url: string}) {
+        avatar_url: string|undefined }) {
         let displayName = sender;
         let avatarUrl;
 
