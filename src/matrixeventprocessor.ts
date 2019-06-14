@@ -210,6 +210,11 @@ export class MatrixEventProcessor {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
+            if (membership === "join") {
+                this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
+                // We don't know if the user also updated their profile, but to be safe..
+                this.mxUserProfileCache.delete(event.sender);
+            }
             if (membership === "join" && isNew && allowJoinLeave) {
                 msg += "joined the room";
             } else if (membership === "invite") {
@@ -365,29 +370,38 @@ export class MatrixEventProcessor {
         const intent = this.bridge.getIntent();
         let profile: {displayname: string, avatar_url: string} | undefined;
         try {
+            // First try to pull out the room-specific profile from the cache.
             profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
-            if (!profile) {
-                log.verbose(`Profile ${userId}:${roomId} not cached`);
-                profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
+            if (profile) {
+                return profile;
             }
+            log.verbose(`Profile ${userId}:${roomId} not cached`);
+
+            // Failing that, try fetching the state.
+            profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
             if (profile) {
                 this.mxUserProfileCache.set(`${roomId}:${userId}`, profile);
-            } else {
-                profile = this.mxUserProfileCache.get(`${userId}`);
+                return profile;
             }
-            if (!profile) {
-                log.verbose(`Profile ${userId} not cached`);
-                profile = await intent.getProfileInfo(userId);
-                if (profile) {
-                    this.mxUserProfileCache.set(`${userId}`, profile);
-                } else {
-                    log.warn(`User ${userId} has no member state and no profile. That's odd.`);
-                }
+
+            // Try fetching the users profile from the cache
+            profile = this.mxUserProfileCache.get(userId);
+            if (profile) {
+                return profile;
             }
+
+            // Failing that, try fetching the profile.
+            log.verbose(`Profile ${userId} not cached`);
+            profile = await intent.getProfileInfo(userId);
+            if (profile) {
+                this.mxUserProfileCache.set(userId, profile);
+                return profile;
+            }
+            log.warn(`User ${userId} has no member state and no profile. That's odd.`);
         } catch (err) {
             log.warn(`Trying to fetch member state or profile for ${userId} failed`, err);
         }
-        return profile;
+        return undefined;
     }
 
     private async sendReadReceipt(event: IMatrixEvent) {
@@ -419,7 +433,7 @@ export class MatrixEventProcessor {
 
     private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
         displayname: string,
-        avatar_url: string} | undefined) {
+        avatar_url: string}) {
         let displayName = sender;
         let avatarUrl;
 

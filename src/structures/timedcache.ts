@@ -62,16 +62,17 @@ export class TimedCache<K, V> implements Map<K, V> {
                 }
                 let item: IteratorResult<[K, ITimedValue<V>]>|undefined;
                 let filteredValue: V|undefined;
-                // Loop if => 1) no item/filteredvalue OR item && !filteredValue && not done
+                // Loop if we have no item, or the item has expired.
                 while (!item || filteredValue === undefined) {
                     item = iterator.next();
+                    // No more items in map. Bye bye.
                     if (item.done) {
                         break;
                     }
                     filteredValue = this.filterV(item.value[1]);
                 }
                 if (!item || filteredValue === undefined) {
-                    // Typscript doesn't like us returning undefined for valuel, which is dumb.
+                    // Typscript doesn't like us returning undefined for value, which is dumb.
                     // tslint:disable-next-line: no-any
                     return {done: true, value: undefined} as any as IteratorResult<[K, V]>;
                 }
