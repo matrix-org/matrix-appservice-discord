@@ -63,7 +63,7 @@ export class TimedCache<K, V> implements Map<K, V> {
                 let item: IteratorResult<[K, ITimedValue<V>]>|undefined;
                 let filteredValue: V|undefined;
                 // Loop if => 1) no item/filteredvalue OR item && !filteredValue && not done
-                while (!item) {
+                while (!item || filteredValue === undefined) {
                     item = iterator.next();
                     if (item.done) {
                         break;
