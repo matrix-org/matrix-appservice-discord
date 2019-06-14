@@ -18,7 +18,7 @@ export class TimedCache<K, V> implements Map<K, V> {
         return this.map.delete(key);
     }
 
-    public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void): void {
+    public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void|Promise<void>): void {
         for (const item of this) {
             callbackfn(item[1], item[0], this);
         }
@@ -26,13 +26,15 @@ export class TimedCache<K, V> implements Map<K, V> {
 
     public get(key: K): V | undefined {
         const v = this.map.get(key);
-        if (v) {
-            const val = this.filterV(v);
-            if (val !== undefined) {
-                return val;
-            }
-            this.map.delete(key);
+        if (v === undefined) {
+            return;
         }
+        const val = this.filterV(v);
+        if (val !== undefined) {
+            return val;
+        }
+        // Cleanup expired key
+        this.map.delete(key);
     }
 
     public has(key: K): boolean {
