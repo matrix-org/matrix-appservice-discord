@@ -212,6 +212,7 @@ export class MatrixEventProcessor {
             const membership = event.content!.membership;
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
+                this.mxUserProfileCache.delete(`${event.sender}`);
                 if (event.content!.displayname) {
                     this.mxUserProfileCache.set(`${event.room_id}:${event.sender}`, {
                         avatar_url: event.content!.avatar_url,
