@@ -58,18 +58,12 @@ export class MatrixEventProcessor {
     private bridge: Bridge;
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
-    private mxCommandHandler: MatrixCommandHandler;
 
-    constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
+    constructor(opts: MatrixEventProcessorOpts, private mxCommandHandler: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
-        if (cm) {
-            this.mxCommandHandler = cm;
-        } else {
-            this.mxCommandHandler = new MatrixCommandHandler(this.discord, this.bridge, this.config);
-        }
     }
 
     public async OnEvent(request, context: BridgeContext): Promise<void> {
@@ -450,8 +444,8 @@ export class MatrixEventProcessor {
             if (path.extname(content.body) !== "") {
                 return content.body;
             }
-            return `${path.basename(content.body)}.${mime.extension(content.info.mimetype)}`;
+            return `${path.basename(content.body)}.${mime.getExtension(content.info.mimetype)}`;
         }
-        return "matrix-media." + mime.extension(content.info.mimetype);
+        return "matrix-media." + mime.getExtension(content.info.mimetype);
     }
 }

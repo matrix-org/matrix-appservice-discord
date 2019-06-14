@@ -19,14 +19,14 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
-import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
+import { MatrixUser, Bridge, Intent } from "matrix-appservice-bridge";
 import { Util } from "./util";
 import {
     DiscordMessageProcessor,
     DiscordMessageProcessorOpts,
     DiscordMessageProcessorResult,
 } from "./discordmessageprocessor";
-import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
+import { IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
 import { UserSyncroniser } from "./usersyncroniser";
@@ -70,7 +70,6 @@ export class DiscordBot {
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
-    private mxEventProcessor: MatrixEventProcessor;
     private presenceHandler: PresenceHandler;
     private userSync!: UserSyncroniser;
     private channelSync: ChannelSyncroniser;
@@ -100,9 +99,6 @@ export class DiscordBot {
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.provisioner = new Provisioner(store.roomStore, this.channelSync);
-        this.mxEventProcessor = new MatrixEventProcessor(
-            new MatrixEventProcessorOpts(config, bridge, this),
-        );
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
         this.sentMessages = [];
@@ -130,10 +126,6 @@ export class DiscordBot {
 
     get RoomHandler(): MatrixRoomHandler {
         return this.roomHandler;
-    }
-
-    get MxEventProcessor(): MatrixEventProcessor {
-        return this.mxEventProcessor;
     }
 
     get Provisioner(): Provisioner {
@@ -793,7 +785,7 @@ export class DiscordBot {
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
-                const fileMime = mime.lookup(attachment.filename);
+                const fileMime = mime.getType(attachment.filename) || "not-found";
                 const type = fileMime.split("/")[0];
                 let msgtype = {
                     audio: "m.audio",

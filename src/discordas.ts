@@ -22,6 +22,8 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
+import { MatrixEventProcessor, MatrixEventProcessorOpts } from "./matrixeventprocessor";
+import { MatrixCommandHandler } from "./matrixcommandhandler";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
@@ -180,7 +182,10 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     const roomhandler = discordbot.RoomHandler;
-    const eventProcessor = discordbot.MxEventProcessor;
+    const eventProcessor = new MatrixEventProcessor(
+        new MatrixEventProcessorOpts(config, bridge, discordbot),
+        new MatrixCommandHandler(discordbot, bridge, config, store),
+    );
 
     try {
         callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);

@@ -29,7 +29,7 @@ import {
 } from "matrix-appservice-bridge";
 
 const log = new Log("DiscordStore");
-export const CURRENT_SCHEMA = 10;
+export const CURRENT_SCHEMA = 11;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
