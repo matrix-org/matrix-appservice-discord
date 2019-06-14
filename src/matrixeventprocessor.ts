@@ -201,7 +201,6 @@ export class MatrixEventProcessor {
 
         let msg = `\`${event.sender}\` `;
 
-        const isNew = event.unsigned === undefined || event.unsigned.prev_content === undefined;
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
 
         if (event.type === "m.room.name") {
@@ -210,9 +209,12 @@ export class MatrixEventProcessor {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
+            const intent = this.bridge.getIntent();
+            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
+                await intent.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
-                this.mxUserProfileCache.delete(`${event.sender}`);
+                this.mxUserProfileCache.delete(event.sender);
                 if (event.content!.displayname) {
                     this.mxUserProfileCache.set(`${event.room_id}:${event.sender}`, {
                         avatar_url: event.content!.avatar_url,
@@ -222,7 +224,7 @@ export class MatrixEventProcessor {
                 // We don't know if the user also updated their profile, but to be safe..
                 this.mxUserProfileCache.delete(event.sender);
             }
-            if (membership === "join" && isNew && allowJoinLeave) {
+            if (membership === "join" && isNewJoin && allowJoinLeave) {
                 msg += "joined the room";
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
