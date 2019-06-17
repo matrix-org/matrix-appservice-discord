@@ -243,6 +243,19 @@ export class MatrixMessageProcessor {
         return msg;
     }
 
+    private async parseSpanContent(node: Parser.HTMLElement): Promise<string> {
+        const content = await this.walkChildNodes(node);
+        const attrs = node.attributes;
+        if (attrs["data-mx-spoiler"] !== undefined) {
+            const spoilerReason = attrs["data-mx-spoiler"];
+            if (spoilerReason) {
+                return `(${spoilerReason})||${content}||`;
+            }
+            return `||${content}||`;
+        }
+        return content;
+    }
+
     private async parseUlContent(node: Parser.HTMLElement): Promise<string> {
         this.listDepth++;
         const entries = await this.arrayChildNodes(node, ["li"]);
@@ -350,6 +363,8 @@ export class MatrixMessageProcessor {
                 case "h6":
                     const level = parseInt(nodeHtml.tagName[1], 10);
                     return `**${"#".repeat(level)} ${await this.walkChildNodes(nodeHtml)}**\n`;
+                case "span":
+                    return await this.parseSpanContent(nodeHtml);
                 default:
                     return await this.walkChildNodes(nodeHtml);
             }
