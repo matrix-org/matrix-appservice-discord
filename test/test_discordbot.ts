@@ -25,6 +25,8 @@ import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockUser } from "./mocks/user";
+import { MockChannel } from "./mocks/channel";
+import { DiscordBot } from "../src/bot";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -43,11 +45,11 @@ const modDiscordBot = Proxyquire("../src/bot", {
             AsyncForEach: Util.AsyncForEach,
             DelayedPromise: Util.DelayedPromise,
             DownloadFile: async () => {
-                return Buffer.alloc(1024);
+                return Buffer.alloc(1000);
             },
             UploadContentFromUrl: async () => {
                 return {mxcUrl: "uploaded"};
-            }
+            },
         },
     },
 });
@@ -181,10 +183,10 @@ describe("DiscordBot", () => {
                 body: "someimage.png",
                 external_url: "asdf",
                 info: {
+                    h: 0,
                     mimetype: "image/png",
                     size: 42,
                     w: 0,
-                    h: 0,
                 },
                 msgtype: "m.image",
                 url: "mxc://someimage.png",
@@ -206,10 +208,10 @@ describe("DiscordBot", () => {
                 body: "foxes.mov",
                 external_url: "asdf",
                 info: {
+                    h: 0,
                     mimetype: "video/quicktime",
                     size: 42,
                     w: 0,
-                    h: 0,
                 },
                 msgtype: "m.video",
                 url: "mxc://foxes.mov",
@@ -255,7 +257,7 @@ describe("DiscordBot", () => {
                 external_url: "asdf",
                 info: {
                     mimetype: "application/zip",
-                    size: 42
+                    size: 42,
                 },
                 msgtype: "m.file",
                 url: "mxc://meow.zip",
@@ -399,6 +401,48 @@ describe("DiscordBot", () => {
             }
             await discordBot.discordMessageQueue[CHANID];
             assert.equal(expected, ITERATIONS);
+        });
+    });
+    describe("locks", () => {
+        it("should lock and unlock a channel", async () => {
+            const bot = new modDiscordBot.DiscordBot(
+                "",
+                config,
+                mockBridge,
+                {},
+            ) as DiscordBot;
+            const chan = new MockChannel("123") as any;
+            const t = Date.now();
+            bot.lockChannel(chan);
+            await bot.waitUnlock(chan);
+            const diff = Date.now() - t;
+            expect(diff).to.be.greaterThan(config.limits.discordSendDelay - 1);
+        });
+        it("should lock and unlock a channel early, if unlocked", async () => {
+            const discordSendDelay = 500;
+            const SHORTDELAY = 100;
+            const MINEXPECTEDDELAY = 95;
+            const bot = new modDiscordBot.DiscordBot(
+                "",
+                {
+                    bridge: {
+                        domain: "localhost",
+                    },
+                    limits: {
+                        discordSendDelay,
+                    },
+                },
+                mockBridge,
+                {},
+            ) as DiscordBot;
+            const chan = new MockChannel("123") as any;
+            setTimeout(() => bot.unlockChannel(chan), SHORTDELAY);
+            const t = Date.now();
+            bot.lockChannel(chan);
+            await bot.waitUnlock(chan);
+            const diff = Date.now() - t;
+            // Date accuracy can be off by a few ms sometimes.
+            expect(diff).to.be.greaterThan(MINEXPECTEDDELAY);
         });
     });
 });

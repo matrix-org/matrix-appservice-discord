@@ -17,9 +17,6 @@ limitations under the License.
 import { IDbSchema } from "./dbschema";
 import { DiscordStore } from "../../store";
 import { Log } from "../../log";
-import { RemoteUser } from "../userstore";
-import * as Queue from "p-queue";
-const log = new Log("SchemaV9");
 
 export class Schema implements IDbSchema {
     public description = "create user store tables";

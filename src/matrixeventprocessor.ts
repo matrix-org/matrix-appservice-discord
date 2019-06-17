@@ -27,6 +27,8 @@ import { Log } from "./log";
 import { IRoomStoreEntry } from "./db/roomstore";
 import { Appservice, MatrixClient } from "matrix-bot-sdk";
 import { DiscordStore } from "./store";
+import { TimedCache } from "./structures/timedcache";
+import { MetricPeg } from "./metrics";
 
 const log = new Log("MatrixEventProcessor");
 
@@ -37,6 +39,7 @@ const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
+const PROFILE_CACHE_LIFETIME = 900000;
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -61,6 +64,7 @@ export class MatrixEventProcessor {
     private store: DiscordStore;
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
+    private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string|undefined}>;
 
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
@@ -68,6 +72,7 @@ export class MatrixEventProcessor {
         this.discord = opts.discord;
         this.store = opts.store;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config.bridge.homeserverUrl);
+        this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
         } else {
@@ -79,6 +84,7 @@ export class MatrixEventProcessor {
         const remoteRoom = rooms[0];
         if (event.unsigned.age > AGE_LIMIT) {
             log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
             return;
         }
         if (
@@ -130,12 +136,11 @@ export class MatrixEventProcessor {
                 const srvChanPair = remoteRoom.remote!.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
                     await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
-                    return;
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
-                    return;
                 }
             }
+            return;
         } else if (event.type === "m.room.encryption" && remoteRoom) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
@@ -143,10 +148,9 @@ export class MatrixEventProcessor {
             } catch (err) {
                 throw new Error(`Failed to handle encrypted room, ${err}`);
             }
-        } else {
-            log.verbose("Got non m.room.message event");
         }
         log.verbose("Event not processed by bridge");
+        MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
@@ -172,7 +176,6 @@ export class MatrixEventProcessor {
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
-        const botUser = roomLookup.botUser;
 
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
@@ -184,7 +187,10 @@ export class MatrixEventProcessor {
         }
 
         await this.discord.send(embedSet, opts, roomLookup, event);
-        await this.sendReadReceipt(event);
+        // Don't await this.
+        this.sendReadReceipt(event).catch((ex) => {
+            log.verbose("Failed to send read reciept for ", event.event_id, ex);
+        });
     }
 
     public async ProcessStateEvent(event: IMatrixEvent) {
@@ -204,31 +210,42 @@ export class MatrixEventProcessor {
 
         let msg = `\`${event.sender}\` `;
 
+        const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
+
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
         } else if (event.type === "m.room.topic") {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
-            if (membership === "join"
-                && event.unsigned.prev_content === undefined) {
-                    if (!this.config.bridge.disableJoinLeaveNotifications) {
-                        msg += `joined the room`;
-                    } else {
-                        return;
-                    }
+            const client = this.bridge.botIntent.underlyingClient;
+            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
+                await client.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+            if (membership === "join") {
+                this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
+                this.mxUserProfileCache.delete(event.sender);
+                if (event.content!.displayname) {
+                    this.mxUserProfileCache.set(`${event.room_id}:${event.sender}`, {
+                        avatar_url: event.content!.avatar_url,
+                        displayname: event.content!.displayname!,
+                    });
+                }
+                // We don't know if the user also updated their profile, but to be safe..
+                this.mxUserProfileCache.delete(event.sender);
+            }
+            if (membership === "join" && isNewJoin && allowJoinLeave) {
+                msg += "joined the room";
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
             } else if (membership === "leave" && event.state_key !== event.sender) {
                 msg += `kicked \`${event.state_key}\` from the room`;
-            } else if (membership === "leave") {
-                if (!this.config.bridge.disableJoinLeaveNotifications) {
-                    msg += `left the room`;
-                } else {
-                    return;
-                }
+            } else if (membership === "leave" && allowJoinLeave) {
+                msg += "left the room";
             } else if (membership === "ban") {
                 msg += `banned \`${event.state_key}\` from the room`;
+            } else {
+                // Ignore anything else
+                return;
             }
         }
 
@@ -241,19 +258,7 @@ export class MatrixEventProcessor {
         event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
         const mxClient = this.bridge.botIntent.underlyingClient;
-        let profile: IMatrixEvent | null = null;
-        try {
-            profile = await mxClient.getRoomStateEvent(event.room_id, "m.room.member", event.sender);
-            if (!profile) {
-                profile = await mxClient.getUserProfile(event.sender);
-            }
-            if (!profile) {
-                log.warn(`User ${event.sender} has no member state and no profile. That's odd.`);
-            }
-        } catch (err) {
-            log.warn(`Trying to fetch member state or profile for ${event.sender} failed`, err);
-        }
-
+        const profile = await this.GetUserProfileForRoom(event.room_id, event.sender);
         const params = {
             mxClient,
             roomId: event.room_id,
@@ -377,6 +382,44 @@ export class MatrixEventProcessor {
         return embed;
     }
 
+    private async GetUserProfileForRoom(roomId: string, userId: string) {
+        const mxClient = this.bridge.botIntent.underlyingClient;
+        let profile: {displayname: string, avatar_url: string|undefined} | undefined;
+        try {
+            // First try to pull out the room-specific profile from the cache.
+            profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
+            if (profile) {
+                return profile;
+            }
+            log.verbose(`Profile ${userId}:${roomId} not cached`);
+
+            // Failing that, try fetching the state.
+            profile = await mxClient.getRoomStateEvent(roomId, "m.room.member", userId);
+            if (profile) {
+                this.mxUserProfileCache.set(`${roomId}:${userId}`, profile);
+                return profile;
+            }
+
+            // Try fetching the users profile from the cache
+            profile = this.mxUserProfileCache.get(userId);
+            if (profile) {
+                return profile;
+            }
+
+            // Failing that, try fetching the profile.
+            log.verbose(`Profile ${userId} not cached`);
+            profile = await mxClient.getUserProfile(userId);
+            if (profile) {
+                this.mxUserProfileCache.set(userId, profile);
+                return profile;
+            }
+            log.warn(`User ${userId} has no member state and no profile. That's odd.`);
+        } catch (err) {
+            log.warn(`Trying to fetch member state or profile for ${userId} failed`, err);
+        }
+        return undefined;
+    }
+
     private async sendReadReceipt(event: IMatrixEvent) {
         if (!this.config.bridge.disableReadReceipts) {
             try {
@@ -404,8 +447,9 @@ export class MatrixEventProcessor {
         return hasAttachment;
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {
-        const intent = this.bridge.botIntent;
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
+        displayname: string,
+        avatar_url: string|undefined }) {
         let displayName = sender;
         let avatarUrl;
 
@@ -427,13 +471,6 @@ export class MatrixEventProcessor {
                 return;
             }
             // Let it fall through.
-        }
-        if (!profile) {
-            try {
-                profile = await intent.underlyingClient.getUserProfile(sender);
-            } catch (ex) {
-                log.warn(`Failed to fetch profile for ${sender}`, ex);
-            }
         }
 
         if (profile) {

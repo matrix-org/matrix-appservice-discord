@@ -636,6 +636,7 @@ describe("MatrixEventProcessor", () => {
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -657,6 +658,7 @@ This is where the reply goes`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -678,6 +680,7 @@ This is where the reply goes`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -699,6 +702,7 @@ This is the second reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -720,6 +724,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -739,10 +744,12 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
-            expect(result!.timestamp!.getTime()).to.be.equal(TEST_TIMESTAMP);
+            // NOTE: Due to https://github.com/discordjs/discord.js/issues/3283, the typing is wrong here.
+            expect(result!.timestamp!).to.be.equal(TEST_TIMESTAMP);
         });
         it("should add field for discord replies", async () => {
             const processor = createMatrixEventProcessor();
@@ -755,6 +762,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -779,6 +787,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -796,6 +805,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);

@@ -23,6 +23,7 @@ export interface IMatrixEventContent {
     msgtype?: string;
     url?: string;
     displayname?: string;
+    avatar_url?: string;
     reason?: string;
     "m.relates_to"?: any; // tslint:disable-line no-any
 }

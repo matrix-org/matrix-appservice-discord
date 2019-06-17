@@ -13,7 +13,7 @@ export class ToolsHelper {
     } {
         const registration = yaml.safeLoad(fs.readFileSync(regFile, "utf8"));
         const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(configFile, "utf8")) as DiscordBridgeConfig;
-
+        config.applyEnvironmentOverrides(process.env);
         if (registration === null) {
             throw Error("Failed to parse registration file");
         }

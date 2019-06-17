@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Appservice, IAppserviceRegistration, ConsoleLogger, LogService } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -25,6 +25,7 @@ import * as cliArgs from "command-line-args";
 import * as usage from "command-line-usage";
 import * as uuid from "uuid/v4";
 import { IMatrixEvent } from "./matrixtypes";
+import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
 
@@ -46,17 +47,17 @@ function generateRegistration(opts, registrationPath)  {
         hs_token: uuid(),
         id: "discord-bridge",
         namespaces: {
-            users: [
-                {
-                    exclusive: true,
-                    regex: "@_discord_.*",
-                },
-            ],
-            rooms: [ ],
             aliases: [
                 {
                     exclusive: true,
                     regex: "#_discord_.*",
+                },
+            ],
+            rooms: [ ],
+            users: [
+                {
+                    exclusive: true,
+                    regex: "@_discord_.*",
                 },
             ],
         },
@@ -66,6 +67,33 @@ function generateRegistration(opts, registrationPath)  {
         url: opts.url,
     } as IAppserviceRegistration;
     fs.writeFileSync(registrationPath, yaml.safeDump(reg));
+}
+
+function setupLogging() {
+    const logMap = new Map<string, Log>();
+    const logFunc = (level: string, module: string, args: any[]) => {
+        if (!Array.isArray(args)) {
+            args = [args];
+        }
+        if (args.find((s) => s.includes && s.includes("M_USER_IN_USE"))) {
+            // Spammy logs begon
+            return;
+        }
+        const mod =  "bot-sdk" + module;
+        let logger = logMap.get(mod);
+        if (!logger) {
+            logger = new Log(mod);
+            logMap.set(mod, logger);
+        }
+        logger[level](args);
+    };
+
+    LogService.setLogger({
+        debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
+        error: (mod: string, args: any[]) => logFunc("error", mod, args),
+        info: (mod: string, args: any[]) => logFunc("info", mod, args),
+        warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
+    });
 }
 
 async function run() {
@@ -101,40 +129,16 @@ async function run() {
     if (!port) {
         throw Error("Port not given in command line or config file");
     }
-    config.ApplyConfig(yaml.safeLoad(fs.readFileSync(configPath, "utf8")));
+    config.applyConfig(yaml.safeLoad(fs.readFileSync(configPath, "utf8")));
     Log.Configure(config.logging);
     const registration = yaml.safeLoad(fs.readFileSync(registrationPath, "utf8")) as IAppserviceRegistration;
+    setupLogging();
     const appservice = new Appservice({
         bindAddress: config.bridge.bindAddress || "0.0.0.0",
         homeserverName: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
         port,
         registration,
-    });
-
-    const logMap = new Map<string, Log>();
-    const logFunc = (level: string, module: string, args: any[]) => {
-        if (!Array.isArray(args)) {
-            args = [args];
-        }
-        if (args.find((s) => s.includes && s.includes("M_USER_IN_USE"))) {
-            // Spammy logs begon
-            return;
-        }
-        const mod =  "bot-sdk" + module;
-        let logger = logMap.get(mod);
-        if (!logger) {
-            logger = new Log(mod);
-            logMap.set(mod, logger);
-        }
-        logger[level](args);
-    };
-
-    LogService.setLogger({
-        debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
-        error: (mod: string, args: any[]) => logFunc("error", mod, args),
-        info: (mod: string, args: any[]) => logFunc("info", mod, args),
-        warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
     });
 
     const store = new DiscordStore(config.database);
@@ -148,6 +152,12 @@ async function run() {
         log.warn("[DEPRECATED] The user store is now part of the SQL database."
                + "The config option userStorePath no longer has any use.");
     }
+
+    if (config.bridge.enableMetrics) {
+        log.info("Enabled metrics");
+        MetricPeg.set(new PrometheusBridgeMetrics().init());
+    }
+
 
     try {
         await store.init();
@@ -192,4 +202,4 @@ async function run() {
 run().catch((err) => {
     log.error("A fatal error occurred during startup:", err);
     process.exit(1);
-})
+});

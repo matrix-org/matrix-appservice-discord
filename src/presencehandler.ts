@@ -17,6 +17,7 @@ limitations under the License.
 import { User, Presence } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
+import { MetricPeg } from "./metrics";
 const log = new Log("PresenceHandler");
 
 export class PresenceHandlerStatus {
@@ -65,6 +66,7 @@ export class PresenceHandler {
         if (user.id !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.id === user.id) === undefined) {
             log.verbose(`Adding ${user.id} (${user.username}) to the presence queue`);
             this.presenceQueue.push(user);
+            MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         }
     }
 
@@ -74,6 +76,7 @@ export class PresenceHandler {
         });
         if (index !== -1) {
             this.presenceQueue.splice(index, 1);
+            MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         } else {
             log.warn(
                 `Tried to remove ${user.id} from the presence queue but it could not be found`,
@@ -95,6 +98,7 @@ export class PresenceHandler {
                 this.presenceQueue.push(user);
             } else {
                 log.verbose(`Dropping ${user.id} from the presence queue.`);
+                MetricPeg.get.setPresenceCount(this.presenceQueue.length);
             }
         }
     }

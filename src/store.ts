@@ -68,7 +68,7 @@ export class DiscordStore {
                 return resolve(err === null);
             });
         }).then(async (result) => {
-            return new Promise((resolve, reject) => {
+            return new Promise<void|{}>((resolve, reject) => {
                 if (!result) {
                     log.warn("NOT backing up database while a file already exists");
                     resolve(true);
@@ -226,7 +226,6 @@ export class DiscordStore {
             throw err;
         }
     }
-    
     // tslint:disable-next-line no-any
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
