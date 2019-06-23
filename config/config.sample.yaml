@@ -59,9 +59,20 @@ database:
   filename: "discord.db"
   # connString: "postgresql://user:password@localhost/database_name"
 room:
-  # Set the default visibility of alias rooms, defaults to "public".
+  # Set the default visibility of alias rooms.
   # One of: "public", "private"
   defaultVisibility: "public"
+  # Default join rule of alias rooms.
+  # One of: "public"
+  # "invited" is not yet supported, as the bridge cannot know who to permit into the room.
+  joinRule: "public"
+  # Default history visibility setting of alias rooms.
+  # One of: "invited", "joined", "shared", "world_readable
+  historyVisibility: "joined"
+  # When a user is kicked from a room on Matrix, how long should they remain kicked for on Discord.
+  # In milliseconds.
+  kickFor: 30000
+
 channel:
     # Pattern of the name given to bridged rooms.
     # Can use :guild for the guild name and :name for the channel name.
