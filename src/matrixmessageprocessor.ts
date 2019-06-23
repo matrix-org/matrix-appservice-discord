@@ -246,6 +246,8 @@ export class MatrixMessageProcessor {
     private async parseSpanContent(node: Parser.HTMLElement): Promise<string> {
         const content = await this.walkChildNodes(node);
         const attrs = node.attributes;
+        // matrix spoilers are still in MSC stage
+        // see https://github.com/matrix-org/matrix-doc/pull/2010
         if (attrs["data-mx-spoiler"] !== undefined) {
             const spoilerReason = attrs["data-mx-spoiler"];
             if (spoilerReason) {

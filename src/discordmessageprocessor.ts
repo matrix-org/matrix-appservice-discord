@@ -243,6 +243,8 @@ export class DiscordMessageProcessor {
     }
 
     public InsertSpoiler(node: ISpoilerNode, html: boolean = false): string {
+        // matrix spoilers are still in MSC stage
+        // see https://github.com/matrix-org/matrix-doc/pull/2010
         if (!html) {
             return `(Spoiler: ${node.content})`;
         }
