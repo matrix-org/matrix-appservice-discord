@@ -9,6 +9,7 @@
     "coverage": "tsc && nyc mocha",
     "build": "tsc",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
+    "debug": "npm run-script build && node --inspect ./build/src/discordas.js -p 9005 -c config.yaml",
     "addbot": "node ./build/tools/addbot.js",
     "adminme": "node ./build/tools/adminme.js",
     "usertool": "node ./build/tools/userClientTools.js",
