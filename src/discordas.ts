@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
+import {
+    AppServiceRegistration,
+    Bridge,
+    BridgeContext,
+    Cli,
+    ClientFactory,
+    thirdPartyLookup,
+} from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -55,8 +62,19 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
-// tslint:disable-next-line no-any
-type callbackFn = (...args: any[]) => Promise<any>;
+interface IBridgeCallbacks {
+    onAliasQueried?: (alias: string, roomId: string) => Promise<void>;
+    onAliasQuery?: (alias: string, aliasLocalpart: string) => Promise<IProvisionedRoom>;
+    onEvent: (request: Request, context: BridgeContext) => Promise<void>;
+    thirdPartyLookup?: thirdPartyLookup;
+}
+
+type RemoteRoom = any; // tslint:disable-line no-any
+
+interface IProvisionedRoom {
+    creationOpts: Record<string, any>; // tslint:disable-line no-any
+    remote?: RemoteRoom;
+}
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
@@ -78,20 +96,20 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     });
     const store = new DiscordStore(config.database);
 
-    const callbacks: { [id: string]: callbackFn; } = {};
+    let callbacks: IBridgeCallbacks;
 
     const bridge = new Bridge({
         clientFactory,
         controller: {
             // onUserQuery: userQuery,
-            onAliasQueried: async (alias: string, roomId: string) => {
+            onAliasQueried: async (alias: string, roomId: string): Promise<void> => {
                 try {
-                    return await callbacks.onAliasQueried(alias, roomId);
+                    return await callbacks.onAliasQueried!(alias, roomId);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
-            onAliasQuery: async (alias: string, aliasLocalpart: string) => {
+            onAliasQuery: async (alias: string, aliasLocalpart: string): Promise<IProvisionedRoom|undefined> => {
                 try {
-                    return await callbacks.onAliasQuery(alias, aliasLocalpart);
+                    return await callbacks.onAliasQuery!(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request) => {
@@ -183,11 +201,13 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const eventProcessor = discordbot.MxEventProcessor;
 
     try {
-        callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
-        callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
-        callbacks.onEvent = eventProcessor.OnEvent.bind(eventProcessor);
-        callbacks.thirdPartyLookup = async () => {
-            return roomhandler.ThirdPartyLookup;
+        callbacks = {
+            onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
+            onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
+            onEvent: eventProcessor.OnEvent.bind(eventProcessor),
+            thirdPartyLookup: async () => {
+                return roomhandler.ThirdPartyLookup;
+            },
         };
     } catch (err) {
         log.error("Failed to register callbacks. Exiting.", err);
