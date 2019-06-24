@@ -421,3 +421,13 @@ interface IUploadResult {
     mxcUrl: string;
     size: number;
 }
+
+// Type type
+type Type = Function;  // tslint:disable-line ban-types
+
+/**
+ * Returns true if `obj` is subtype of at least one of the given types.
+ */
+export function instanceofsome(obj: object, types: Type[]): boolean {
+    return types.some((type) => obj instanceof type);
+}

@@ -20,6 +20,9 @@ import {
     BridgeContext,
     Cli,
     ClientFactory,
+    EventNotHandledError,
+    EventUnknownError,
+    Request,
     default_message,
     thirdPartyLookup,
 } from "matrix-appservice-bridge";
@@ -31,6 +34,8 @@ import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
+import { IMatrixEvent } from "./matrixtypes";
+import { instanceofsome } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -113,25 +118,21 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     return await callbacks.onAliasQuery!(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
-            onEvent: async (request) => {
-                const data = request.getData();
+            onEvent: async (request: Request, _: BridgeContext): Promise<void> => {
                 try {
-                    const roomId = data.room_id;
-                    MetricPeg.get.registerRequest(data.event_id);
+                    const event = request.getData() as IMatrixEvent;
+                    const roomId = event.room_id;
+
+                    MetricPeg.get.registerRequest(event.event_id);
 
                     const context = await buildOwnContext(roomId, store);
-                    const callback = callbacks.onEvent(request, context);
-                    request.outcomeFrom(callback);
-                    MetricPeg.get.requestOutcome(data.event_id, false, "success");
+                    const callbackResult = callbacks.onEvent(request, context);
+                    request.outcomeFrom(callbackResult);
                 } catch (err) {
-                    if (err instanceof NotReadyError) {
-                        log.warn("Discord store not ready yet, dropping message");
-                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
-                    } else {
-                        MetricPeg.get.requestOutcome(data.event_id, false, "fail");
-                        log.error("Exception thrown while handling \"onEvent\" event", err);
-                        await request.outcomeFrom(Promise.reject("Failed to handle"));
-                    }
+                    logOnEventError(err);
+                    request.reject(err);
+                } finally {
+                    recordRequestOutcome(request);
                 }
             },
             onLog: (text: string, isError: boolean): void => {
@@ -222,6 +223,43 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.error("Failure during startup. Exiting");
         process.exit(1);
     }
+}
+
+/**
+ * Logs an error which occured during event processing.
+ *
+ * Depending on the error type different log levels are hardcoded.
+ */
+function logOnEventError(err: Error): void {
+    const errTypes = [];
+    // const warn = [EventInternalError, EventTooOldError, NotReadyError, …];
+    const infoTypes = [];
+    const verboseTypes = [EventUnknownError];
+
+    switch (true) {
+        case instanceofsome(err, errTypes): log.error(err);
+        case instanceofsome(err, infoTypes): log.info(err);
+        case instanceofsome(err, verboseTypes): log.verbose(err);
+        default: log.warn(err);
+    }
+}
+
+/**
+ * Records in which way the request was handled.
+ */
+function recordRequestOutcome(request: Request): void {
+    const eventId = request.getData().eventId;
+    request.getPromise()
+        .then(() =>
+            MetricPeg.get.requestOutcome(eventId, false, "success"),
+        )
+        .catch(EventNotHandledError, (e) =>
+            MetricPeg.get.requestOutcome(eventId, false, "dropped"),
+        )
+        .catch((e) =>
+            MetricPeg.get.requestOutcome(eventId, false, "fail"),
+        )
+    ;
 }
 
 /**
