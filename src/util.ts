@@ -431,3 +431,25 @@ type Type = Function;  // tslint:disable-line ban-types
 export function instanceofsome(obj: object, types: Type[]): boolean {
     return types.some((type) => obj instanceof type);
 }
+
+/**
+ * Append the old error message to the new one and keep its stack trace.
+ * Example:
+ *     throw wrap(e, HighLevelError, "This error is more specific");
+ */
+export function wrap<T extends Error>(
+    oldError: Type,
+    newErrorType: new (...args: any[]) => T,  // tslint:disable-line no-any
+    ...args: any[]  // tslint:disable-line no-any trailing-comma
+): T {
+    const newError = new newErrorType(...args);
+    let appendMsg;
+    if (oldError instanceof Error) {
+        appendMsg = oldError.message;
+        newError.stack = oldError.stack;
+    } else {
+        appendMsg = oldError.toString();
+    }
+    newError.message += ":\n" + appendMsg;
+    return newError;
+}

@@ -18,10 +18,19 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util } from "./util";
+import { Util, wrap } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import { MatrixUser, Bridge, BridgeContext } from "matrix-appservice-bridge";
+import {
+    Bridge,
+    BridgeContext,
+    EventInternalError,
+    EventNotHandledError,
+    EventTooOldError,
+    EventUnknownError,
+    MatrixUser,
+    Request,
+} from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
@@ -72,11 +81,17 @@ export class MatrixEventProcessor {
         }
     }
 
-    public async OnEvent(request, context: BridgeContext): Promise<void> {
+    /**
+     * Callback which is called when the HS notifies the bridge of a new event.
+     *
+     * @param request Request object containing the event for which this callback is called.
+     * @param context The current context of the bridge.
+     * @throws {EventNotHandledError} When the event can finally not be handled.
+     */
+    public async OnEvent(request: Request, context: BridgeContext): Promise<void> {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
-            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            return;
+            throw new EventTooOldError(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
         }
         if (
             event.type === "m.room.member" &&
@@ -106,7 +121,11 @@ export class MatrixEventProcessor {
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
             await this.ProcessStateEvent(event);
             return;
-        } else if (event.type === "m.room.redaction" && context.rooms.remote) {
+        } else if (event.type === "m.room.redaction") {
+            if (!context.rooms.remote) {
+                log.info("Got radaction event with no linked room. Ignoring.");
+                return;
+            }
             await this.discord.ProcessMatrixRedact(event);
             return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
@@ -123,21 +142,23 @@ export class MatrixEventProcessor {
                     await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
                     return;
                 } catch (err) {
-                    log.warn("There was an error sending a matrix event", err);
-                    return;
+                    throw wrap(err, Error, "There was an error sending a matrix event");
                 }
+            } else {
+                log.info("Got event with no linked room. Ignoring.");
+                return;
             }
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
                 return;
             } catch (err) {
-                throw new Error(`Failed to handle encrypted room, ${err}`);
+                throw wrap(err, EventNotHandledError, `Failed to handle encrypted room, ${err}`);
             }
         } else {
-            log.verbose("Got non m.room.message event");
+            throw new EventUnknownError("Got non m.room.message event");
         }
-        log.verbose("Event not processed by bridge");
+        throw new EventUnknownError(); // Shouldn't be reachable
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
