@@ -20,6 +20,7 @@ import {
     BridgeContext,
     Cli,
     ClientFactory,
+    default_message,
     thirdPartyLookup,
 } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
@@ -115,30 +116,22 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             onEvent: async (request) => {
                 const data = request.getData();
                 try {
-                    MetricPeg.get.registerRequest(data.event_id);
-                    // Build our own context.
-                    if (!store.roomStore) {
-                        log.warn("Discord store not ready yet, dropping message");
-                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
-                        return;
-                    }
                     const roomId = data.room_id;
+                    MetricPeg.get.registerRequest(data.event_id);
 
-                    const context: BridgeContext = {
-                        rooms: {},
-                    };
-
-                    if (roomId) {
-                        const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
-                        context.rooms = entries[0] || {};
-                    }
-
-                    await request.outcomeFrom(callbacks.onEvent(request, context));
+                    const context = await buildOwnContext(roomId, store);
+                    const callback = callbacks.onEvent(request, context);
+                    request.outcomeFrom(callback);
                     MetricPeg.get.requestOutcome(data.event_id, false, "success");
                 } catch (err) {
-                    MetricPeg.get.requestOutcome(data.event_id, false, "fail");
-                    log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom(Promise.reject("Failed to handle"));
+                    if (err instanceof NotReadyError) {
+                        log.warn("Discord store not ready yet, dropping message");
+                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
+                    } else {
+                        MetricPeg.get.requestOutcome(data.event_id, false, "fail");
+                        log.error("Exception thrown while handling \"onEvent\" event", err);
+                        await request.outcomeFrom(Promise.reject("Failed to handle"));
+                    }
                 }
             },
             onLog: (line, isError) => {
@@ -227,5 +220,35 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.error(err);
         log.error("Failure during startup. Exiting");
         process.exit(1);
+    }
+}
+
+/**
+ * Builds a custom BridgeContext with rooms known to the bridge.
+ */
+async function buildOwnContext(
+    roomId: string,
+    store: DiscordStore,
+): Promise<BridgeContext> {
+    if (!store.roomStore) {
+        throw new NotReadyError("Discord store not ready yet, will retry later");
+    }
+
+    const entries = await store.roomStore.getEntriesByMatrixId(roomId);
+
+    return {
+        rooms: entries[0] || {},
+        senders: {},
+        targets: {},
+    };
+}
+
+class NotReadyError extends Error {
+    public name: string;
+
+    constructor(...params) {
+        default_message(params, "The bridge was not ready when the message was sent");
+        super(...params);
+        this.name = "NotReadyError";
     }
 }
