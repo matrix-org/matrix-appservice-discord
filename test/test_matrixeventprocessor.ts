@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-import * as ChaiAsPromised from "chai-as-promised";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 import { EventTooOldError, EventUnknownError} from "matrix-appservice-bridge";
@@ -36,7 +35,6 @@ import { IMatrixEvent } from "../src/matrixtypes";
 
 const TEST_TIMESTAMP = 1337;
 
-Chai.use(ChaiAsPromised);
 const expect = Chai.expect;
 // const assert = Chai.assert;
 function buildRequest(eventData) {
@@ -816,18 +814,27 @@ This is the reply`,
         it("should reject old events", async () => {
             const AGE = 900001; // 15 * 60 * 1000 + 1
             const processor = createMatrixEventProcessor();
-            const callbackPromise = processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
-            expect(callbackPromise).to.eventually.be.rejectedWith(EventTooOldError);
+            let err;
+            try {
+                await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
+            } catch (e) { err = e; }
+            expect(err).to.be.an.instanceof(EventTooOldError);
         });
         it("should reject un-processable events", async () => {
             const AGE = 900000; // 15 * 60 * 1000
             const processor = createMatrixEventProcessor();
-            // check if nothing is thrown
-            const callbackPromise =  processor.OnEvent(buildRequest({
-                content: {},
-                type: "m.potato",
-                unsigned: {age: AGE}}), null);
-            expect(callbackPromise).to.eventually.be.rejectedWith(EventUnknownError);
+            let err;
+            try {
+                await processor.OnEvent(
+                    buildRequest({
+                        content: {},
+                        type: "m.potato",
+                        unsigned: {age: AGE},
+                    }),
+                    null,
+                );
+            } catch (e) { err = e; }
+            expect(err).to.be.an.instanceof(EventUnknownError);
         });
         it("should handle own invites", async () => {
             const processor = createMatrixEventProcessor();

@@ -34,9 +34,7 @@
   },
   "homepage": "https://github.com/Half-Shot/matrix-appservice-discord#readme",
   "dependencies": {
-    "@types/chai-as-promised": "^7.1.0",
     "better-sqlite3": "^5.0.1",
-    "chai-as-promised": "^7.1.1",
     "command-line-args": "^4.0.1",
     "command-line-usage": "^4.1.0",
     "discord-markdown": "^2.0.0",
