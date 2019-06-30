@@ -43,6 +43,14 @@ const optionDefinitions = [
     },
     {
         alias: "r",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
+        type: String,
+        typeLabel: "<discord-registration.yaml>",
+    },
+    {
+        alias: "m",
         description: "The roomid to modify",
         name: "roomid",
         type: String,
@@ -90,7 +98,7 @@ if (!options.userid) {
     process.exit(1);
 }
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
+const yamlConfig = yaml.safeLoad(fs.readFileSync(options.registration, "utf8"));
 const registration = AppServiceRegistration.fromObject(yamlConfig);
 const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig;
 
