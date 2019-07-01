@@ -603,6 +603,22 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mxClient);
             expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
+        it("Should reply embeds on large info.size images if set", async () => {
+            const LARGE_FILE = 8000000;
+            const processor = createMatrixEventProcessor();
+            const ret = await processor.HandleAttachment({
+                content: {
+                    body: "filename.jpg",
+                    info: {
+                        size: LARGE_FILE,
+                        mimetype: "image/jpeg",
+                    },
+                    msgtype: "m.image",
+                    url: "mxc://localhost/8000000",
+                },
+            } as IMatrixEvent, mxClient, true);
+            expect((ret as Discord.RichEmbed).image!.url).equals("https://localhost/8000000");
+        });
         it("Should handle stickers.", async () => {
             const processor = createMatrixEventProcessor();
             const attachment = (await processor.HandleAttachment({
