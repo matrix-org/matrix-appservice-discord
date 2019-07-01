@@ -303,7 +303,7 @@ export class MatrixEventProcessor {
         if (!event.content.info) {
             // Fractal sends images without an info, which is technically allowed
             // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
-            event.content.info = {size: 0, mimetype: ""};
+            event.content.info = {mimetype: "", size: 0};
         }
 
         if (!event.content.url) {
