@@ -419,6 +419,19 @@ export class DiscordBot {
             if (!roomLookup.canSendEmbeds) {
                 // NOTE: Don't send replies to discord if we are a puppet user.
                 msg = await chan.send(embed.description, opts);
+            } else if (!botUser) {
+                const sendEmbed = new Discord.RichEmbed();
+                if (embedSet.imageEmbed) {
+                    sendEmbed.setImage(embedSet.imageEmbed.image!.url);
+                }
+                if (embedSet.replyEmbed) {
+                    sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
+                    sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
+                }
+                if (embedSet.imageEmbed || embedSet.replyEmbed) {
+                    opts.embed = sendEmbed;
+                }
+                msg = await chan.send(embed.description, opts);
             } else if (hook) {
                 MetricPeg.get.remoteCall("hook.send");
                 const embeds: Discord.RichEmbed[] = [];
