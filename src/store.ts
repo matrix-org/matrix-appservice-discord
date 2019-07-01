@@ -181,14 +181,14 @@ export class DiscordStore {
                     DELETE FROM user_id_discord_id WHERE discord_id = $id;
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
                 this.db.Run(
                     `
                     DELETE FROM discord_id_token WHERE discord_id = $id;
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
             ]);
         } catch (err) {
