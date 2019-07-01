@@ -610,8 +610,8 @@ describe("MatrixEventProcessor", () => {
                 content: {
                     body: "filename.jpg",
                     info: {
-                        size: LARGE_FILE,
                         mimetype: "image/jpeg",
+                        size: LARGE_FILE,
                     },
                     msgtype: "m.image",
                     url: "mxc://localhost/8000000",
