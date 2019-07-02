@@ -420,15 +420,23 @@ export class DiscordBot {
                 // NOTE: Don't send replies to discord if we are a puppet user.
                 msg = await chan.send(embed.description, opts);
             } else if (!botUser) {
-                const sendEmbed = new Discord.RichEmbed();
-                if (embedSet.imageEmbed) {
-                    sendEmbed.setImage(embedSet.imageEmbed.image!.url);
-                }
-                if (embedSet.replyEmbed) {
-                    sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
-                    sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
-                }
                 if (embedSet.imageEmbed || embedSet.replyEmbed) {
+                    let sendEmbed = new Discord.RichEmbed();
+                    if (embedSet.imageEmbed) {
+                        if (!embedSet.replyEmbed) {
+                            sendEmbed = embedSet.imageEmbed;
+                        } else {
+                            sendEmbed.setImage(embedSet.imageEmbed.image!.url);
+                        }
+                    }
+                    if (embedSet.replyEmbed) {
+                        if (!embedSet.imageEmbed) {
+                            sendEmbed = embedSet.replyEmbed;
+                        } else {
+                            sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
+                            sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
+                        }
+                    }
                     opts.embed = sendEmbed;
                 }
                 msg = await chan.send(embed.description, opts);
