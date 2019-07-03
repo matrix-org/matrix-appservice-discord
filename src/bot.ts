@@ -418,7 +418,13 @@ export class DiscordBot {
             this.channelLock.set(chan.id);
             if (!roomLookup.canSendEmbeds) {
                 // NOTE: Don't send replies to discord if we are a puppet user.
-                msg = await chan.send(embed.description, opts);
+                let addText = "";
+                if (embedSet.replyEmbed) {
+                    for (const line of embedSet.replyEmbed.description.split("\n")) {
+                        addText += "\n> " + line;
+                    }
+                }
+                msg = await chan.send(embed.description + addText, opts);
             } else if (!botUser) {
                 if (embedSet.imageEmbed || embedSet.replyEmbed) {
                     let sendEmbed = new Discord.RichEmbed();
