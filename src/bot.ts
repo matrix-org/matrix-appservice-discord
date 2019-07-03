@@ -420,7 +420,7 @@ export class DiscordBot {
                 // NOTE: Don't send replies to discord if we are a puppet user.
                 let addText = "";
                 if (embedSet.replyEmbed) {
-                    for (const line of embedSet.replyEmbed.description.split("\n")) {
+                    for (const line of embedSet.replyEmbed.description!.split("\n")) {
                         addText += "\n> " + line;
                     }
                 }
