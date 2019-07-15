@@ -268,7 +268,11 @@ export class Util {
             }
             return reply;
         }
+        if (Object.keys(actions).length === 0) {
+            return "No commands found";
+        }
         reply += "Available Commands:\n";
+        let commandsHavePermission = 0;
         for (const actionKey of Object.keys(actions)) {
             const action = actions[actionKey];
             if (action.permission !== undefined && permissionCheck) {
@@ -277,11 +281,15 @@ export class Util {
                     continue;
                 }
             }
+            commandsHavePermission++;
             reply += ` - \`${prefix} ${actionKey}`;
             for (const param of action.params) {
                 reply += ` <${param}>`;
             }
             reply += `\`: ${action.description}\n`;
+        }
+        if (!commandsHavePermission) {
+            return "No commands found";
         }
         reply += "\nParameters:\n";
         for (const parameterKey of Object.keys(parameters)) {
