@@ -50,6 +50,7 @@ const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org
 class ChannelLookupResult {
     public channel: Discord.TextChannel;
     public botUser: boolean;
+    public canSendEmbeds: boolean;
 }
 
 interface IThirdPartyLookupField {
@@ -362,6 +363,7 @@ export class DiscordBot {
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
                 lookupResult.botUser = this.bot.user.id === client.user.id;
+                lookupResult.canSendEmbeds = client.user.bot; // only bots can send embeds
                 return lookupResult;
             }
             throw new Error(`Channel "${room}" not found`);
@@ -414,18 +416,55 @@ export class DiscordBot {
         }
         try {
             this.channelLock.set(chan.id);
-            if (!botUser) {
-                // NOTE: Don't send replies to discord if we are a puppet.
+            if (!roomLookup.canSendEmbeds) {
+                // NOTE: Don't send replies to discord if we are a puppet user.
+                let addText = "";
+                if (embedSet.replyEmbed) {
+                    for (const line of embedSet.replyEmbed.description!.split("\n")) {
+                        addText += "\n> " + line;
+                    }
+                }
+                msg = await chan.send(embed.description + addText, opts);
+            } else if (!botUser) {
+                if (embedSet.imageEmbed || embedSet.replyEmbed) {
+                    let sendEmbed = new Discord.RichEmbed();
+                    if (embedSet.imageEmbed) {
+                        if (!embedSet.replyEmbed) {
+                            sendEmbed = embedSet.imageEmbed;
+                        } else {
+                            sendEmbed.setImage(embedSet.imageEmbed.image!.url);
+                        }
+                    }
+                    if (embedSet.replyEmbed) {
+                        if (!embedSet.imageEmbed) {
+                            sendEmbed = embedSet.replyEmbed;
+                        } else {
+                            sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
+                            sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
+                        }
+                    }
+                    opts.embed = sendEmbed;
+                }
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
                 MetricPeg.get.remoteCall("hook.send");
+                const embeds: Discord.RichEmbed[] = [];
+                if (embedSet.imageEmbed) {
+                    embeds.push(embedSet.imageEmbed);
+                }
+                if (embedSet.replyEmbed) {
+                    embeds.push(embedSet.replyEmbed);
+                }
                 msg = await hook.send(embed.description, {
                     avatarURL: embed!.author!.icon_url,
-                    embeds: embedSet.replyEmbed ? [embedSet.replyEmbed] : undefined,
+                    embeds,
                     files: opts.file ? [opts.file] : undefined,
                     username: embed!.author!.name,
                 } as Discord.WebhookMessageOptions);
             } else {
+                if (embedSet.imageEmbed) {
+                    embed.setImage(embedSet.imageEmbed.image!.url);
+                }
                 if (embedSet.replyEmbed) {
                     embed.addField("Replying to", embedSet.replyEmbed!.author!.name);
                     embed.addField("Reply text", embedSet.replyEmbed.description);
