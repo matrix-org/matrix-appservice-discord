@@ -359,6 +359,13 @@ export class DiscordBot {
             }
             const channel = guild.channels.get(room);
             if (channel && channel.type === "text") {
+                if (hasSender) {
+                    const permissions = channel.permissionsFor(guild.me);
+                    if (!permissions || !permissions.has("VIEW_CHANNEL") || !permissions.has("SEND_MESSAGES")) {
+                        throw new Error(`Can't send into channel`);
+                    }
+                }
+
                 this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
