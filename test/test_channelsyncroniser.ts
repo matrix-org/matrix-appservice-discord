@@ -88,6 +88,10 @@ function CreateChannelSync(remoteChannels: any[] = []): ChannelSyncroniser {
                                     return {
                                         alias: "#alias:localhost",
                                     };
+                                } else if (mxid === "!discord:localhost") {
+                                    return {
+                                        alias: "#_discord_123_123:localhost",
+                                    };
                                 } else {
                                     return null;
                                 }
@@ -303,6 +307,15 @@ describe("ChannelSyncroniser", () => {
 
             expect(alias).to.equal("#alias:localhost");
         });
+        it("Should prefer non-discord canonical aliases", async () => {
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = async (_) => {
+                return ["!discord:localhost", "!valid:localhost"];
+            };
+            const alias = await channelSync.GetAliasFromChannel({} as any);
+
+            expect(alias).to.equal("#alias:localhost");
+        })
         it("Should return null if no alias found and no guild present", async () => {
             const chan = new MockChannel();
             chan.id = "123";

@@ -169,14 +169,22 @@ export class ChannelSyncroniser {
         try {
             rooms = await this.GetRoomIdsFromChannel(channel);
         } catch (err) { } // do nothing, our rooms array will just be empty
+        let fallbackAlias = "";
         for (const room of rooms) {
             try {
                 const al = (await this.bridge.getIntent().getClient()
                     .getStateEvent(room, "m.room.canonical_alias")).alias;
                 if (al) {
-                    return al; // we are done, we found an alias
+                    if (al.startsWith("#_discord_")) {
+                        fallbackAlias = al;
+                    } else {
+                        return al; // we are done, we found an alias
+                    }
                 }
             } catch (err) { } // do nothing, as if we error we just roll over to the next entry
+        }
+        if (fallbackAlias) {
+            return fallbackAlias;
         }
         const guildChannel = channel as Discord.TextChannel;
         if (!guildChannel.guild) {
