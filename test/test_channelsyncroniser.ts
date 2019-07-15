@@ -315,7 +315,16 @@ describe("ChannelSyncroniser", () => {
             const alias = await channelSync.GetAliasFromChannel({} as any);
 
             expect(alias).to.equal("#alias:localhost");
-        })
+        });
+        it("Should use discord canonical alias if none other present", async () => {
+            const channelSync = CreateChannelSync();
+            channelSync.GetRoomIdsFromChannel = async (_) => {
+                return ["!discord:localhost"];
+            };
+            const alias = await channelSync.GetAliasFromChannel({} as any);
+
+            expect(alias).to.equal("#_discord_123_123:localhost");
+        });
         it("Should return null if no alias found and no guild present", async () => {
             const chan = new MockChannel();
             chan.id = "123";
