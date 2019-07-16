@@ -201,6 +201,10 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
     };
     const config = new DiscordBridgeConfig();
 
+    const store = {
+        
+    };
+
     const Util = Object.assign(require("../src/util").Util, {
         DownloadFile: (name: string) => {
             const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
@@ -244,6 +248,7 @@ function createMatrixEventProcessor(): MatrixEventProcessor {
         new MatrixEventProcessorOpts(
             config,
             bridge,
+            store as any,
             discordbot as any,
     ), ch);
 }

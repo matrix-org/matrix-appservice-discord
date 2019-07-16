@@ -35,7 +35,7 @@ import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as mime from "mime";
-import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
+import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
 import { DiscordCommandHandler } from "./discordcommandhandler";
 import { MetricPeg } from "./metrics";
 import { Lock } from "./structures/lock";
@@ -102,7 +102,7 @@ export class DiscordBot {
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
-            new MatrixEventProcessorOpts(config, bridge, this),
+            new MatrixEventProcessorOpts(config, bridge, store, this),
         );
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
@@ -387,12 +387,76 @@ export class DiscordBot {
         this.channelLock.release(channel.id);
     }
 
+    public async edit(
+        embedSet: IMatrixEventProcessorResult,
+        opts: Discord.MessageOptions,
+        roomLookup: ChannelLookupResult,
+        event: IMatrixEvent,
+        editEventId: string,
+    ): Promise<void> {
+        const chan = roomLookup.channel;
+        const botUser = roomLookup.botUser;
+        const embed = embedSet.messageEmbed;
+        log.verbose("============");
+        log.verbose(botUser, roomLookup);
+        log.verbose(editEventId);
+        const oldMsg = await chan.fetchMessage(editEventId);
+        if (!oldMsg) {
+            // old message not found, just sending this normally
+            embedSet.messageEmbed.description = `EDIT: ${embedSet.messageEmbed.description}`;
+            await this.send(embedSet, opts, roomLookup, event);
+            return;
+        }
+        if (!botUser) {
+            try {
+                if (!roomLookup.canSendEmbeds) {
+                    await oldMsg.edit(this.prepareEmbedSetUserAccount(embedSet), opts);
+                } else {
+                    opts.embed = this.prepareEmbedSetBotAccount(embedSet);
+                    await oldMsg.edit(embed.description, opts);
+                }
+                return;
+            } catch (err) {
+                log.warning("Failed to edit discord message, falling back to delete and resend...", err);
+            }
+        }
+        if (editEventId === this.lastEventIds[chan.id]) {
+            log.info("Immediate edit, deleting and re-sending");
+            this.channelLock.set(chan.id);
+            // we need to delete the event off of the store
+            // else the delete bridges over back to matrix
+            const dbEvent = await this.store.Get(DbEvent, { discord_id: editEventId });
+            log.verbose("Event to delete", dbEvent);
+            if (dbEvent && dbEvent.Next()) {
+                await this.store.Delete(dbEvent);
+            }
+            await oldMsg.delete();
+            this.channelLock.release(chan.id);
+            const msg = await this.send(embedSet, opts, roomLookup, event, true);
+            // we re-insert the old matrix event with the new discord id
+            // to allow consecutive edits, as matrix edits are typically
+            // done on the original event
+            const dummyEvent = {
+                event_id: event.content!["m.relates_to"].event_id,
+                room_id: event.room_id,
+            } as IMatrixEvent;
+            this.StoreMessagesSent(msg, chan, dummyEvent).catch(() => {
+                log.warn("Failed to store edit sent message for ", event.event_id);
+            });
+            return;
+        }
+        const link = `https://discordapp.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
+        embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
+        await this.send(embedSet, opts, roomLookup, event);
+    }
+
     public async send(
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
         roomLookup: ChannelLookupResult,
         event: IMatrixEvent,
-    ): Promise<void> {
+        awaitStore: boolean = false,
+    ): Promise<Discord.Message | null | (Discord.Message | null)[]> {
         const chan = roomLookup.channel;
         const botUser = roomLookup.botUser;
         const embed = embedSet.messageEmbed;
@@ -418,43 +482,13 @@ export class DiscordBot {
             this.channelLock.set(chan.id);
             if (!roomLookup.canSendEmbeds) {
                 // NOTE: Don't send replies to discord if we are a puppet user.
-                let addText = "";
-                if (embedSet.replyEmbed) {
-                    for (const line of embedSet.replyEmbed.description!.split("\n")) {
-                        addText += "\n> " + line;
-                    }
-                }
-                msg = await chan.send(embed.description + addText, opts);
+                msg = await chan.send(this.prepareEmbedSetUserAccount(embedSet), opts);
             } else if (!botUser) {
-                if (embedSet.imageEmbed || embedSet.replyEmbed) {
-                    let sendEmbed = new Discord.RichEmbed();
-                    if (embedSet.imageEmbed) {
-                        if (!embedSet.replyEmbed) {
-                            sendEmbed = embedSet.imageEmbed;
-                        } else {
-                            sendEmbed.setImage(embedSet.imageEmbed.image!.url);
-                        }
-                    }
-                    if (embedSet.replyEmbed) {
-                        if (!embedSet.imageEmbed) {
-                            sendEmbed = embedSet.replyEmbed;
-                        } else {
-                            sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
-                            sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
-                        }
-                    }
-                    opts.embed = sendEmbed;
-                }
+                opts.embed = this.prepareEmbedSetBotAccount(embedSet);
                 msg = await chan.send(embed.description, opts);
             } else if (hook) {
                 MetricPeg.get.remoteCall("hook.send");
-                const embeds: Discord.RichEmbed[] = [];
-                if (embedSet.imageEmbed) {
-                    embeds.push(embedSet.imageEmbed);
-                }
-                if (embedSet.replyEmbed) {
-                    embeds.push(embedSet.replyEmbed);
-                }
+                const embeds = this.prepareEmbedSetWebhook(embedSet);
                 msg = await hook.send(embed.description, {
                     avatarURL: embed!.author!.icon_url,
                     embeds,
@@ -462,26 +496,22 @@ export class DiscordBot {
                     username: embed!.author!.name,
                 } as Discord.WebhookMessageOptions);
             } else {
-                if (embedSet.imageEmbed) {
-                    embed.setImage(embedSet.imageEmbed.image!.url);
-                }
-                if (embedSet.replyEmbed) {
-                    embed.addField("Replying to", embedSet.replyEmbed!.author!.name);
-                    embed.addField("Reply text", embedSet.replyEmbed.description);
-                }
-                opts.embed = embed;
+                opts.embed = this.prepareEmbedSetBot(embedSet);
                 msg = await chan.send("", opts);
             }
             // Don't block on this.
-            this.StoreMessagesSent(msg, chan, event).then(() => {
+            const storePromise = this.StoreMessagesSent(msg, chan, event).then(() => {
                 this.channelLock.release(chan.id);
             }).catch(() => {
                 log.warn("Failed to store sent message for ", event.event_id);
             });
-
+            if (awaitStore) {
+                await storePromise;
+            }
         } catch (err) {
             log.error("Couldn't send message. ", err);
         }
+        return msg;
     }
 
     public async ProcessMatrixRedact(event: IMatrixEvent) {
@@ -711,6 +741,63 @@ export class DiscordBot {
         return dbEmoji;
     }
 
+    private prepareEmbedSetUserAccount(embedSet: IMatrixEventProcessorResult): string {
+        const embed = embedSet.messageEmbed;
+        let addText = "";
+        if (embedSet.replyEmbed) {
+            for (const line of embedSet.replyEmbed.description!.split("\n")) {
+                addText += "\n> " + line;
+            }
+        }
+        return embed.description += addText;
+    }
+
+    private prepareEmbedSetBotAccount(embedSet: IMatrixEventProcessorResult): Discord.RichEmbed | undefined {
+        if (!embedSet.imageEmbed && !embedSet.replyEmbed) {
+            return undefined;
+        }
+        let sendEmbed = new Discord.RichEmbed();
+        if (embedSet.imageEmbed) {
+            if (!embedSet.replyEmbed) {
+                sendEmbed = embedSet.imageEmbed;
+            } else {
+                sendEmbed.setImage(embedSet.imageEmbed.image!.url);
+            }
+        }
+        if (embedSet.replyEmbed) {
+            if (!embedSet.imageEmbed) {
+                sendEmbed = embedSet.replyEmbed;
+            } else {
+                sendEmbed.addField("Replying to", embedSet.replyEmbed!.author!.name);
+                sendEmbed.addField("Reply text", embedSet.replyEmbed.description);
+            }
+        }
+        return sendEmbed;
+    }
+
+    private prepareEmbedSetWebhook(embedSet: IMatrixEventProcessorResult): Discord.RichEmbed[] {
+        const embeds: Discord.RichEmbed[] = [];
+        if (embedSet.imageEmbed) {
+            embeds.push(embedSet.imageEmbed);
+        }
+        if (embedSet.replyEmbed) {
+            embeds.push(embedSet.replyEmbed);
+        }
+        return embeds;
+    }
+
+    private prepareEmbedSetBot(embedSet: IMatrixEventProcessorResult): Discord.RichEmbed {
+        const embed = embedSet.messageEmbed;
+        if (embedSet.imageEmbed) {
+            embed.setImage(embedSet.imageEmbed.image!.url);
+        }
+        if (embedSet.replyEmbed) {
+            embed.addField("Replying to", embedSet.replyEmbed!.author!.name);
+            embed.addField("Reply text", embedSet.replyEmbed.description);
+        }
+        return embed;
+    }
+
     private async SendMatrixMessage(matrixMsg: DiscordMessageProcessorResult, chan: Discord.Channel,
                                     guild: Discord.Guild, author: Discord.User,
                                     msgID: string): Promise<boolean> {
@@ -724,7 +811,6 @@ export class DiscordBot {
                 formatted_body: matrixMsg.formattedBody,
                 msgtype: "m.text",
             });
-            this.lastEventIds[room] = res.event_id;
             const evt = new DbEvent();
             evt.MatrixId = `${res.event_id};${room}`;
             evt.DiscordId = msgID;
@@ -749,7 +835,7 @@ export class DiscordBot {
         }
     }
 
-    private async OnMessage(msg: Discord.Message) {
+    private async OnMessage(msg: Discord.Message, editEventId: string = "") {
         const indexOfMsg = this.sentMessages.indexOf(msg.id);
         if (indexOfMsg !== -1) {
             log.verbose("Got repeated message, ignoring.");
@@ -797,43 +883,47 @@ export class DiscordBot {
         try {
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             // Check Attachements
-            await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
-                const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
-                const fileMime = mime.lookup(attachment.filename);
-                const type = fileMime.split("/")[0];
-                let msgtype = {
-                    audio: "m.audio",
-                    image: "m.image",
-                    video: "m.video",
-                }[type];
-                if (!msgtype) {
-                    msgtype = "m.file";
-                }
-                const info = {
-                    mimetype: fileMime,
-                    size: attachment.filesize,
-                } as IMatrixMediaInfo;
-                if (msgtype === "m.image" || msgtype === "m.video") {
-                    info.w = attachment.width;
-                    info.h = attachment.height;
-                }
-                await Util.AsyncForEach(rooms, async (room) => {
-                    const res = await intent.sendMessage(room, {
-                        body: attachment.filename,
-                        external_url: attachment.url,
-                        info,
-                        msgtype,
-                        url: content.mxcUrl,
+            if (!editEventId) {
+                // on discord you can't edit in images, you can only edit text
+                // so it is safe to only check image upload stuff if we don't have
+                // an edit
+                await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
+                    const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
+                    const fileMime = mime.lookup(attachment.filename);
+                    const type = fileMime.split("/")[0];
+                    let msgtype = {
+                        audio: "m.audio",
+                        image: "m.image",
+                        video: "m.video",
+                    }[type];
+                    if (!msgtype) {
+                        msgtype = "m.file";
+                    }
+                    const info = {
+                        mimetype: fileMime,
+                        size: attachment.filesize,
+                    } as IMatrixMediaInfo;
+                    if (msgtype === "m.image" || msgtype === "m.video") {
+                        info.w = attachment.width;
+                        info.h = attachment.height;
+                    }
+                    await Util.AsyncForEach(rooms, async (room) => {
+                        const res = await intent.sendMessage(room, {
+                            body: attachment.filename,
+                            external_url: attachment.url,
+                            info,
+                            msgtype,
+                            url: content.mxcUrl,
+                        });
+                        const evt = new DbEvent();
+                        evt.MatrixId = `${res.event_id};${room}`;
+                        evt.DiscordId = msg.id;
+                        evt.ChannelId = msg.channel.id;
+                        evt.GuildId = msg.guild.id;
+                        await this.store.Insert(evt);
                     });
-                    this.lastEventIds[room] = res.event_id;
-                    const evt = new DbEvent();
-                    evt.MatrixId = `${res.event_id};${room}`;
-                    evt.DiscordId = msg.id;
-                    evt.ChannelId = msg.channel.id;
-                    evt.GuildId = msg.guild.id;
-                    await this.store.Insert(evt);
                 });
-            });
+            }
             if (msg.content === null) {
                 return;
             }
@@ -842,14 +932,28 @@ export class DiscordBot {
                 return;
             }
             await Util.AsyncForEach(rooms, async (room) => {
-                const trySend = async () => intent.sendMessage(room, {
+                const sendContent = {
                     body: result.body,
                     format: "org.matrix.custom.html",
                     formatted_body: result.formattedBody,
                     msgtype: result.msgtype,
-                });
+                } as IMatrixMessage;
+                if (editEventId) {
+                    sendContent.body = `* ${result.body}`;
+                    sendContent.formatted_body = `* ${result.formattedBody}`
+                    sendContent["m.new_content"] = {
+                        body: result.body,
+                        format: "org.matrix.custom.html",
+                        formatted_body: result.formattedBody,
+                        msgtype: result.msgtype,
+                    };
+                    sendContent["m.relates_to"] = {
+                        event_id: editEventId,
+                        rel_type: "m.replace",
+                    };
+                }
+                const trySend = async () => intent.sendMessage(room, sendContent);
                 const afterSend = async (re) => {
-                    this.lastEventIds[room] = re.event_id;
                     const evt = new DbEvent();
                     evt.MatrixId = `${re.event_id};${room}`;
                     evt.DiscordId = msg.id;
@@ -888,28 +992,16 @@ export class DiscordBot {
             return;
         }
         log.info(`Got edit event for ${newMsg.id}`);
-        let link = "";
         const storeEvent = await this.store.Get(DbEvent, {discord_id: oldMsg.id});
         if (storeEvent && storeEvent.Result) {
             while (storeEvent.Next()) {
                 const matrixIds = storeEvent.MatrixId.split(";");
-                if (matrixIds[0] === this.lastEventIds[matrixIds[1]]) {
-                    log.info("Immediate edit, deleting and re-sending");
-                    await this.DeleteDiscordMessage(oldMsg);
-                    await this.OnMessage(newMsg);
-                    return;
-                }
-                link = `https://matrix.to/#/${matrixIds[1]}/${matrixIds[0]}`;
+                await this.OnMessage(newMsg, matrixIds[0]);
+                return;
             }
         }
-
-        // Create a new edit message using the old and new message contents
-        const editedMsg = await this.discordMsgProcessor.FormatEdit(oldMsg, newMsg, link);
-
-        // Send the message to all bridged matrix rooms
-        if (!await this.SendMatrixMessage(editedMsg, newMsg.channel, newMsg.guild, newMsg.author, newMsg.id)) {
-            log.error("Unable to announce message edit for msg id:", newMsg.id);
-        }
+        newMsg.content = `Edit: ${newMsg.content}`;
+        await this.OnMessage(newMsg);
     }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {
@@ -950,7 +1042,7 @@ export class DiscordBot {
             }
             log.verbose("Sent ", m.id);
             this.sentMessages.push(m.id);
-            this.lastEventIds[event.room_id] = event.event_id;
+            this.lastEventIds[chan.id] = m.id;
             try {
                 const evt = new DbEvent();
                 evt.MatrixId = `${event.event_id};${event.room_id}`;

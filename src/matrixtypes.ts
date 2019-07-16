@@ -52,6 +52,8 @@ export interface IMatrixMessage {
     msgtype: string;
     formatted_body?: string;
     format?: string;
+    "m.new_content"?: any;
+    "m.relates_to"?: any;
 }
 
 export interface IMatrixMediaInfo {
