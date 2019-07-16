@@ -337,8 +337,8 @@ describe("DiscordBot", () => {
                 Get: (a, b) => {
                     return {
                         MatrixId: "editedid",
-                        Result: true,
                         Next: () => storeMockResults--,
+                        Result: true,
                     };
                 },
             };
@@ -382,8 +382,8 @@ describe("DiscordBot", () => {
                 Get: (a, b) => {
                     return {
                         MatrixId: "editedid",
-                        Result: true,
                         Next: () => storeMockResults--,
+                        Result: true,
                     };
                 },
             };

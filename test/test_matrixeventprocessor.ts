@@ -210,8 +210,8 @@ function createMatrixEventProcessor(storeMockResults = 0): MatrixEventProcessor 
             return {
                 DiscordId: "123456",
                 MatrixId: "editedevent",
-                Result: true,
                 Next: () => storeMockResults--,
+                Result: true,
             };
         },
     };
@@ -235,8 +235,8 @@ function createMatrixEventProcessor(storeMockResults = 0): MatrixEventProcessor 
         },
         LookupRoom: async (guildId, chanId) => {
             return {
-                canSendEmbeds: true,
                 botUser: true,
+                canSendEmbeds: true,
             };
         },
         ProcessMatrixRedact: async (evt) => {
@@ -292,7 +292,7 @@ describe("MatrixEventProcessor", () => {
                 type: "m.room.message",
             } as any;
             processor.HandleAttachment = async () => "";
-            processor.EventToEmbed = async (event, chan) => {
+            processor.EventToEmbed = async (evt, chan) => {
                 return {
                     messageEmbed: new Discord.RichEmbed(),
                 };
@@ -304,9 +304,8 @@ describe("MatrixEventProcessor", () => {
         it("Should eventually send edits", async () => {
             const processor = createMatrixEventProcessor(1);
             const event = {
-                "content": {
-                    body: "* blah",
-                    msgtype: "m.text",
+                content: {
+                    "body": "* blah",
                     "m.new_content": {
                         body: "blah",
                         msgtype: "m.text",
@@ -315,13 +314,14 @@ describe("MatrixEventProcessor", () => {
                         event_id: "editedevent",
                         rel_type: "m.replace",
                     },
+                    "msgtype": "m.text",
                 },
-                "room_id": "!someroom:localhost",
-                "sender": "@user:localhost",
-                "type": "m.room.message",
+                room_id: "!someroom:localhost",
+                sender: "@user:localhost",
+                type: "m.room.message",
             } as any;
             processor.HandleAttachment = async () => "";
-            processor.EventToEmbed = async (event, chan) => {
+            processor.EventToEmbed = async (evt, chan) => {
                 return {
                     messageEmbed: new Discord.RichEmbed(),
                 };
