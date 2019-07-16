@@ -175,17 +175,11 @@ export class MatrixEventProcessor {
         const chan = roomLookup.channel;
 
         let editEventId = "";
-        log.verbose("=================");
-        log.verbose(event);
         if (event.content && event.content["m.relates_to"] && event.content["m.relates_to"].rel_type === "m.replace") {
-            log.verbose("POTENTIAL edit");
             const editMatrixId = `${event.content["m.relates_to"].event_id};${event.room_id}`;
             const storeEvent = await this.store.Get(DbEvent, {matrix_id: editMatrixId});
-            if (storeEvent && storeEvent.Result) {
-                while (storeEvent.Next()) {
-                    editEventId = storeEvent.DiscordId;
-                    break;
-                }
+            if (storeEvent && storeEvent.Result && storeEvent.Next()) {
+                editEventId = storeEvent.DiscordId;
             }
         }
 

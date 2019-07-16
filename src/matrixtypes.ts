@@ -52,8 +52,8 @@ export interface IMatrixMessage {
     msgtype: string;
     formatted_body?: string;
     format?: string;
-    "m.new_content"?: any;
-    "m.relates_to"?: any;
+    "m.new_content"?: any; // tslint:disable-line no-any
+    "m.relates_to"?: any; // tslint:disable-line no-any
 }
 
 export interface IMatrixMediaInfo {

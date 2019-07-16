@@ -940,7 +940,7 @@ export class DiscordBot {
                 } as IMatrixMessage;
                 if (editEventId) {
                     sendContent.body = `* ${result.body}`;
-                    sendContent.formatted_body = `* ${result.formattedBody}`
+                    sendContent.formatted_body = `* ${result.formattedBody}`;
                     sendContent["m.new_content"] = {
                         body: result.body,
                         format: "org.matrix.custom.html",

@@ -137,11 +137,13 @@ describe("DiscordBot", () => {
         let HANDLE_COMMAND = false;
         let ATTACHMENT = {} as any;
         let MSGTYPE = "";
+        let SENT_MSG_CONTENT = {} as any;
         function getDiscordBot() {
             SENT_MESSAGE = false;
             HANDLE_COMMAND = false;
             ATTACHMENT = {};
             MSGTYPE = "";
+            SENT_MSG_CONTENT = {};
             const discord = new modDiscordBot.DiscordBot(
                 "",
                 config,
@@ -156,6 +158,7 @@ describe("DiscordBot", () => {
                         ATTACHMENT = msg.info;
                     }
                     MSGTYPE = msg.msgtype;
+                    SENT_MSG_CONTENT = msg;
                     return {
                         event_id: "$fox:localhost",
                     };
@@ -210,6 +213,14 @@ describe("DiscordBot", () => {
             msg.content = "Foxies are amazing!";
             await discordBot.OnMessage(msg);
             Chai.assert.equal(SENT_MESSAGE, true);
+        });
+        it("sends edit messages", async () => {
+            discordBot = getDiscordBot();
+            const channel = new Discord.TextChannel({} as any, {} as any);
+            const msg = new MockMessage(channel) as any;
+            msg.content = "Foxies are amazing!";
+            await discordBot.OnMessage(msg, "editevent");
+            Chai.assert.equal(SENT_MSG_CONTENT["m.relates_to"].event_id, "editevent");
         });
         it("uploads images", async () => {
             discordBot = getDiscordBot();
@@ -300,7 +311,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             Chai.assert.equal(checkMsgSent, false);
         });
-        it("should send a matrix message on an edited discord message", async () => {
+        it("should send a matrix edit on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 "",
                 config,
@@ -321,14 +332,26 @@ describe("DiscordBot", () => {
             oldMsg.content = "a";
             newMsg.content = "b";
 
-            // Mock the SendMatrixMessage method to check if it is called
-            let checkMsgSent = false;
-            discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
+            let storeMockResults = 1;
+            discordBot.store = {
+                Get: (a, b) => {
+                    return {
+                        MatrixId: "editedid",
+                        Result: true,
+                        Next: () => storeMockResults--,
+                    };
+                },
+            };
+
+            let checkEditEventSent = "";
+            discordBot.OnMessage = (str, event) => {
+                checkEditEventSent = event;
+            };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkMsgSent, true);
+            Chai.assert.equal(checkEditEventSent, "editedid");
         });
-        it("should delete and re-send if it is the newest message", async () => {
+        it("should send a new message if no store event found", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 "",
                 config,
@@ -354,14 +377,24 @@ describe("DiscordBot", () => {
             oldMsg.content = "a";
             newMsg.content = "b";
 
-            let deletedMessage = false;
-            discordBot.DeleteDiscordMessage = async (_) => { deletedMessage = true; };
-            let sentMessage = false;
-            discordBot.OnMessage = async (_) => { sentMessage = true; };
+            let storeMockResults = 0;
+            discordBot.store = {
+                Get: (a, b) => {
+                    return {
+                        MatrixId: "editedid",
+                        Result: true,
+                        Next: () => storeMockResults--,
+                    };
+                },
+            };
+
+            let checkEditEventSent = "wrong";
+            discordBot.OnMessage = (str, event) => {
+                checkEditEventSent = event;
+            };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(deletedMessage, true);
-            Chai.assert.equal(sentMessage, true);
+            Chai.assert.equal(checkEditEventSent, undefined);
         });
     });
     describe("event:message", () => {
