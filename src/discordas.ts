@@ -69,10 +69,10 @@ function generateRegistration(reg, callback)  {
 }
 
 interface IBridgeCallbacks {
-    onAliasQueried?: (alias: string, roomId: string) => Promise<void>;
-    onAliasQuery?: (alias: string, aliasLocalpart: string) => Promise<IProvisionedRoom>;
+    onAliasQueried: (alias: string, roomId: string) => Promise<void>;
+    onAliasQuery: (alias: string, aliasLocalpart: string) => Promise<IProvisionedRoom>;
     onEvent: (request: Request, context: BridgeContext) => Promise<void>;
-    thirdPartyLookup?: thirdPartyLookup;
+    thirdPartyLookup: thirdPartyLookup;
 }
 
 type RemoteRoom = any; // tslint:disable-line no-any
@@ -110,12 +110,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             // onUserQuery: userQuery,
             onAliasQueried: async (alias: string, roomId: string): Promise<void> => {
                 try {
-                    return await callbacks.onAliasQueried!(alias, roomId);
+                    return await callbacks.onAliasQueried(alias, roomId);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
             onAliasQuery: async (alias: string, aliasLocalpart: string): Promise<IProvisionedRoom|undefined> => {
                 try {
-                    return await callbacks.onAliasQuery!(alias, aliasLocalpart);
+                    return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
             onEvent: async (request: Request, _: BridgeContext): Promise<void> => {
@@ -142,7 +142,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     log.verbose("matrix-appservice-bridge", text);
                 }
             },
-            thirdPartyLookup: async () => {
+            thirdPartyLookup: async (): Promise<thirdPartyLookup> => {
                 try {
                     return await callbacks.thirdPartyLookup();
                 } catch (err) {
