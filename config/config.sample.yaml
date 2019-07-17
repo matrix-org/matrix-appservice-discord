@@ -31,6 +31,7 @@ bridge:
   disableJoinLeaveNotifications: false
 # Authentication configuration for the discord bot.
 auth:
+  # This MUST be a string (wrapped in quotes)
   clientID: "12345"
   botToken: "foobar"
 logging:
