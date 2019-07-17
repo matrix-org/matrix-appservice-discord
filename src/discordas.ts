@@ -136,8 +136,11 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 }
             },
             onLog: (text: string, isError: boolean): void => {
-                const logText = (isError ? log.error : log.verbose).bind(log);
-                logText("matrix-appservice-bridge", text);
+                if (isError) {
+                    log.error("matrix-appservice-bridge", text);
+                } else {
+                    log.verbose("matrix-appservice-bridge", text);
+                }
             },
             thirdPartyLookup: async () => {
                 try {
