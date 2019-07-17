@@ -866,7 +866,7 @@ export class DiscordBot {
                         log.error("Failed to send message into room.", e);
                         return;
                     }
-                    if (msg.member) {
+                    if (msg.member && !msg.webhookID) {
                         await this.userSync.JoinRoom(msg.member, room);
                     } else {
                         await this.userSync.JoinRoom(msg.author, room, msg.webhookID);

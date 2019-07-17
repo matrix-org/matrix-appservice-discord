@@ -236,7 +236,7 @@ export class UserSyncroniser {
             mxidExtra = `_${new MatrixUser(`@${discordUser.username}`).localpart}`;
         }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
-            id: discordUser.id,
+            id: discordUser.id + mxidExtra,
             mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
         const displayName = Util.ApplyPatternString(this.config.ghosts.usernamePattern, {
@@ -313,7 +313,7 @@ export class UserSyncroniser {
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
             displayName: user.username,
-            id: user.id,
+            id: user.id + mxidExtra,
             mxUserId: `@_discord_${user.id}${mxidExtra}:${this.config.bridge.domain}`,
             roles: [],
             username: user.tag,
