@@ -42,10 +42,11 @@ const optionDefinitions = [
     },
     {
         alias: "r",
-        defaultValue: "room-store.db",
-        description: "The location of the registration file.",
-        name: "reg",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
         type: String,
+        typeLabel: "<discord-registration.yaml>",
     },
 ];
 
@@ -66,7 +67,7 @@ if (options.help) {
     process.exit(0);
 }
 
-const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.reg);
+const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration);
 
 async function run() {
     try {

@@ -20,9 +20,45 @@ limitations under the License.
  */
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import * as args from "command-line-args";
+import * as usage from "command-line-usage";
 import { Util } from "../src/util";
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync("config.yaml", "utf8"));
+const optionDefinitions = [
+  {
+      alias: "h",
+      description: "Display this usage guide.",
+      name: "help",
+      type: Boolean,
+  },
+  {
+      alias: "c",
+      defaultValue: "config.yaml",
+      description: "The AS config file.",
+      name: "config",
+      type: String,
+      typeLabel: "<config.yaml>",
+  },
+];
+
+const options = args(optionDefinitions);
+
+if (options.help) {
+  /* tslint:disable:no-console */
+  console.log(usage([
+  {
+      content: "A tool to obtain the Discord bot invitation URL.",
+      header: "Add bot",
+  },
+  {
+      header: "Options",
+      optionList: optionDefinitions,
+  },
+  ]));
+  process.exit(0);
+}
+
+const yamlConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
 if (yamlConfig === null) {
   console.error("You have an error in your discord config.");
 }

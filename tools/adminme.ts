@@ -40,6 +40,14 @@ const optionDefinitions = [
     },
     {
         alias: "r",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
+        type: String,
+        typeLabel: "<discord-registration.yaml>",
+    },
+    {
+        alias: "m",
         description: "The roomid to modify",
         name: "roomid",
         type: String,

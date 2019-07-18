@@ -55,6 +55,7 @@ export class MatrixEventProcessorOpts {
 export interface IMatrixEventProcessorResult {
     messageEmbed: Discord.RichEmbed;
     replyEmbed?: Discord.RichEmbed;
+    imageEmbed?: Discord.RichEmbed;
 }
 
 export class MatrixEventProcessor {
@@ -179,11 +180,13 @@ export class MatrixEventProcessor {
 
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
-        const file = await this.HandleAttachment(event, mxClient);
+        const file = await this.HandleAttachment(event, mxClient, roomLookup.canSendEmbeds);
         if (typeof(file) === "string") {
             embedSet.messageEmbed.description += " " + file;
+        } else if ((file as Discord.FileOptions).name && (file as Discord.FileOptions).attachment) {
+            opts.file = file as Discord.FileOptions;
         } else {
-            opts.file = file;
+            embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
         await this.discord.send(embedSet, opts, roomLookup, event);
@@ -293,7 +296,11 @@ export class MatrixEventProcessor {
         };
     }
 
-    public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
+    public async HandleAttachment(
+        event: IMatrixEvent,
+        mxClient: MatrixClient,
+        sendEmbeds: boolean = false,
+    ): Promise<string|Discord.FileOptions|Discord.RichEmbed> {
         if (!this.HasAttachment(event)) {
             return "";
         }
@@ -305,7 +312,7 @@ export class MatrixEventProcessor {
         if (!event.content.info) {
             // Fractal sends images without an info, which is technically allowed
             // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
-            event.content.info = {size: 0};
+            event.content.info = {mimetype: "", size: 0};
         }
 
         if (!event.content.url) {
@@ -325,6 +332,10 @@ export class MatrixEventProcessor {
                     name,
                 } as Discord.FileOptions;
             }
+        }
+        if (sendEmbeds && event.content.info.mimetype.split("/")[0] === "image") {
+            return new Discord.RichEmbed()
+                .setImage(url);
         }
         return `[${name}](${url})`;
     }

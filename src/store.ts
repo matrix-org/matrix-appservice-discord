@@ -160,23 +160,30 @@ export class DiscordStore {
         }
     }
 
-    public async deleteUserToken(discordId: string): Promise<void> {
+    public async deleteUserToken(mxid: string): Promise<void> {
+        const res = await this.db.Get("SELECT * from user_id_discord_id WHERE user_id = $id", {
+            id: mxid,
+        });
+        if (!res) {
+            return;
+        }
+        const discordId = res.discord_id;
         log.silly("SQL", "deleteUserToken => ", discordId);
         try {
             await Promise.all([
                 this.db.Run(
                     `
-                    DELETE FROM user_id_discord_id WHERE discord_id = $id;
+                    DELETE FROM user_id_discord_id WHERE discord_id = $id
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
                 this.db.Run(
                     `
-                    DELETE FROM discord_id_token WHERE discord_id = $id;
+                    DELETE FROM discord_id_token WHERE discord_id = $id
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
             ]);
         } catch (err) {

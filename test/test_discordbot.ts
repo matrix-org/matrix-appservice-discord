@@ -403,46 +403,4 @@ describe("DiscordBot", () => {
             assert.equal(expected, ITERATIONS);
         });
     });
-    describe("locks", () => {
-        it("should lock and unlock a channel", async () => {
-            const bot = new modDiscordBot.DiscordBot(
-                "",
-                config,
-                mockBridge,
-                {},
-            ) as DiscordBot;
-            const chan = new MockChannel("123") as any;
-            const t = Date.now();
-            bot.lockChannel(chan);
-            await bot.waitUnlock(chan);
-            const diff = Date.now() - t;
-            expect(diff).to.be.greaterThan(config.limits.discordSendDelay - 1);
-        });
-        it("should lock and unlock a channel early, if unlocked", async () => {
-            const discordSendDelay = 500;
-            const SHORTDELAY = 100;
-            const MINEXPECTEDDELAY = 95;
-            const bot = new modDiscordBot.DiscordBot(
-                "",
-                {
-                    bridge: {
-                        domain: "localhost",
-                    },
-                    limits: {
-                        discordSendDelay,
-                    },
-                },
-                mockBridge,
-                {},
-            ) as DiscordBot;
-            const chan = new MockChannel("123") as any;
-            setTimeout(() => bot.unlockChannel(chan), SHORTDELAY);
-            const t = Date.now();
-            bot.lockChannel(chan);
-            await bot.waitUnlock(chan);
-            const diff = Date.now() - t;
-            // Date accuracy can be off by a few ms sometimes.
-            expect(diff).to.be.greaterThan(MINEXPECTEDDELAY);
-        });
-    });
 });
