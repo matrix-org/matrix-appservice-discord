@@ -71,6 +71,7 @@ function generateRegistration(opts, registrationPath)  {
 
 function setupLogging() {
     const logMap = new Map<string, Log>();
+    // tslint:disable-next-line:no-any
     const logFunc = (level: string, module: string, args: any[]) => {
         if (!Array.isArray(args)) {
             args = [args];
@@ -89,9 +90,13 @@ function setupLogging() {
     };
 
     LogService.setLogger({
+        // tslint:disable-next-line:no-any
         debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
+        // tslint:disable-next-line:no-any
         error: (mod: string, args: any[]) => logFunc("error", mod, args),
+        // tslint:disable-next-line:no-any
         info: (mod: string, args: any[]) => logFunc("info", mod, args),
+        // tslint:disable-next-line:no-any
         warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
     });
 }
@@ -153,11 +158,10 @@ async function run() {
                + "The config option userStorePath no longer has any use.");
     }
 
-    if (config.bridge.enableMetrics) {
+    if (config.metrics.enable) {
         log.info("Enabled metrics");
-        MetricPeg.set(new PrometheusBridgeMetrics().init());
+        MetricPeg.set(new PrometheusBridgeMetrics().init(appservice, config.metrics));
     }
-
 
     try {
         await store.init();
@@ -170,6 +174,7 @@ async function run() {
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
 
+    // tslint:disable-next-line:no-any
     appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
         try {
             const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);

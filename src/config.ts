@@ -28,6 +28,7 @@ export class DiscordBridgeConfig {
     public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
     public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
     public ghosts: DiscordBridgeConfigGhosts = new DiscordBridgeConfigGhosts();
+    public metrics: DiscordBridgeConfigMetrics = new DiscordBridgeConfigMetrics();
 
     /**
      * Apply a set of keys and values over the default config.
@@ -92,7 +93,6 @@ class DiscordBridgeConfigBridge {
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
-    public enableMetrics: boolean = false;
 }
 
 export class DiscordBridgeConfigDatabase {
@@ -151,4 +151,10 @@ export class LoggingFile {
 class DiscordBridgeConfigGhosts {
     public nickPattern: string = ":nick";
     public usernamePattern: string = ":username#:tag";
+}
+
+export class DiscordBridgeConfigMetrics {
+    public enable: boolean;
+    public port: number = 9001;
+    public host: string = "127.0.0.1";
 }
