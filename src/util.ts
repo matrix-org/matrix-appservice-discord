@@ -128,8 +128,8 @@ export class Util {
         const matrixUsers = {};
         let matches = 0;
         await Promise.all(channelMxids.map( async (chan) => {
-            (await client.getRoomMembers(chan)).forEach((member) => {
-                if (member.membership !== "join" && member.membership !== "ban") {
+            (await client.getRoomMembers(chan, undefined, "leave")).forEach((member) => {
+                if (member.content.membership !== "invite") {
                     return;
                 }
                 const mxid = member.state_key;
@@ -360,7 +360,7 @@ export class Util {
         return `${homeserverUrl}/_matrix/media/r0/download/${part}`;
     }
 
-    public static ParseMxid(unescapedMxid: string, escape: boolean = true){
+    public static ParseMxid(unescapedMxid: string, escape: boolean = true) {
         const RADIX = 16;
         const parts = unescapedMxid.substr(1).split(":");
         const domain = parts[1];
@@ -379,6 +379,6 @@ export class Util {
             domain,
             localpart,
             mxid: `@${localpart}:${domain}`,
-        }
+        };
     }
 }

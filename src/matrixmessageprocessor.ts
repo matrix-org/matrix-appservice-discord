@@ -227,9 +227,8 @@ export class MatrixMessageProcessor {
 
         if (!emoji) {
             const content = await this.escapeDiscord(name);
-            const url = this.params && this.params.mxClient ? Util.GetUrlFromMxc(
+            const url = this.params && this.params.mxClient ? this.params.mxClient.mxcToHttp(
                 attrs.src,
-                this.homeserverUrl,
             ) : attrs.src;
             return attrs.src ? `[${content}](${url})` : content;
         }

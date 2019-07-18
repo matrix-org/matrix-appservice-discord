@@ -335,6 +335,7 @@ export class ChannelSyncroniser {
         overrideOptions?: DiscordBridgeConfigChannelDeleteOptions): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
         const intent = this.bridge.botIntent;
+        const client = this.bridge.botClient;
         const options = overrideOptions || this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
 
@@ -343,7 +344,7 @@ export class ChannelSyncroniser {
             for (const member of channel.members.array()) {
                 try {
                     const mIntent = this.bot.GetIntentFromDiscordMember(member);
-                    await mIntent.underlyingClient.leaveRoom(roomId);
+                    await client.leaveRoom(roomId);
                     log.verbose(`${member.id} left ${roomId}.`);
                 } catch (e) {
                     log.warn(`Failed to make ${member.id} leave `);
@@ -352,9 +353,9 @@ export class ChannelSyncroniser {
         }
         if (options.namePrefix) {
             try {
-                const name = await intent.underlyingClient.getRoomStateEvent(roomId, "m.room.name", "");
+                const name = await client.getRoomStateEvent(roomId, "m.room.name", "");
                 name.name = options.namePrefix + name.name;
-                await intent.underlyingClient.sendStateEvent(
+                await client.sendStateEvent(
                     roomId,
                     "m.room.name",
                     "",
@@ -366,9 +367,9 @@ export class ChannelSyncroniser {
         }
         if (options.topicPrefix) {
             try {
-                const topic = await intent.underlyingClient.getRoomStateEvent(roomId, "m.room.topic", "");
+                const topic = await client.getRoomStateEvent(roomId, "m.room.topic", "");
                 topic.topic = options.topicPrefix + topic.topic;
-                await intent.underlyingClient.sendStateEvent(
+                await client.sendStateEvent(
                     roomId,
                     "m.room.topic",
                     "",
@@ -383,15 +384,15 @@ export class ChannelSyncroniser {
             if (options.unsetRoomAlias) {
                 try {
                     const alias = `#_${entry.remote!.roomId}:${this.config.bridge.domain}`;
-                    const canonicalAlias = await intent.underlyingClient.getRoomStateEvent(
+                    const canonicalAlias = await client.getRoomStateEvent(
                         roomId,
                         "m.room.canonical_alias",
-                        ""
+                        "",
                     );
                     if (canonicalAlias.alias === alias) {
-                        await intent.underlyingClient.sendStateEvent(roomId, "m.room.canonical_alias", "", {});
+                        await client.sendStateEvent(roomId, "m.room.canonical_alias", "", {});
                     }
-                    await intent.underlyingClient.deleteRoomAlias(alias);
+                    await client.deleteRoomAlias(alias);
                 } catch (e) {
                     log.error(`Couldn't remove alias of ${roomId} ${e}`);
                 }
@@ -399,7 +400,7 @@ export class ChannelSyncroniser {
 
             if (options.unlistFromDirectory) {
                 try {
-                    await intent.underlyingClient.setDirectoryVisibility(roomId, "private");
+                    await client.setDirectoryVisibility(roomId, "private");
                 } catch (e) {
                     log.error(`Couldn't remove ${roomId} from room directory ${e}`);
                 }
@@ -408,7 +409,7 @@ export class ChannelSyncroniser {
 
             if (options.setInviteOnly) {
                 try {
-                    await intent.underlyingClient.sendStateEvent(
+                    await client.sendStateEvent(
                         roomId,
                         "m.room.join_rules",
                         "",
@@ -421,9 +422,9 @@ export class ChannelSyncroniser {
 
             if (options.disableMessaging) {
                 try {
-                    const state = await intent.underlyingClient.getRoomStateEvent(roomId, "m.room.power_levels", "");
+                    const state = await client.getRoomStateEvent(roomId, "m.room.power_levels", "");
                     state.events_default = POWER_LEVEL_MESSAGE_TALK;
-                    await intent.underlyingClient.sendStateEvent(roomId, "m.room.power_levels", "", state);
+                    await client.sendStateEvent(roomId, "m.room.power_levels", "", state);
                 } catch (e) {
                     log.error(`Couldn't disable messaging for ${roomId} ${e}`);
                 }

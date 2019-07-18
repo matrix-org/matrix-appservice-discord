@@ -322,13 +322,13 @@ export class MatrixEventProcessor {
 
         let size = event.content.info.size || 0;
         const name = this.GetFilenameForMediaEvent(event.content);
-        const url = Util.GetUrlFromMxc(event.content.url, this.config.bridge.homeserverUrl);
+        const url = this.bridge.botClient.mxcToHttp(event.content.url);
         if (size < MaxFileSize) {
-            const attachment = await this.bridge.botIntent.underlyingClient.downloadContent(event.content.url);
-            size = attachment.data.byteLength;
+            const attachment = await Util.DownloadFile(url);
+            size = attachment.byteLength;
             if (size < MaxFileSize) {
                 return {
-                    attachment: attachment.data,
+                    attachment,
                     name,
                 } as Discord.FileOptions;
             }
@@ -372,7 +372,7 @@ export class MatrixEventProcessor {
             replyEmbed.setTimestamp(new Date(sourceEvent.origin_server_ts!));
 
             if (this.HasAttachment(sourceEvent)) {
-                const url = Util.GetUrlFromMxc(sourceEvent.content!.url!, this.config.bridge.homeserverUrl);
+                const url = this.bridge.botClient.mxcToHttp(sourceEvent.content!.url!);
                 if (["m.image", "m.sticker"].includes(sourceEvent.content!.msgtype as string)
                     || sourceEvent.type === "m.sticker") {
                     // we have an image reply
@@ -492,11 +492,11 @@ export class MatrixEventProcessor {
             }
 
             if (profile.avatar_url) {
-                avatarUrl = Util.GetUrlFromMxc(
+                avatarUrl = this.bridge.botClient.mxcToHttpThumbnail(
                     profile.avatar_url,
-                    this.config.bridge.homeserverUrl,
                     DISCORD_AVATAR_WIDTH,
                     DISCORD_AVATAR_HEIGHT,
+                    "scale",
                 );
             }
         }

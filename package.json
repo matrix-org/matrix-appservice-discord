@@ -45,7 +45,7 @@
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
     "js-yaml": "^3.13.1",
-    "matrix-bot-sdk": "0.4.0-beta.3",
+    "matrix-bot-sdk": "half-shot/matrix-js-bot-sdk#hs/roomMembers",
     "mime": "^1.6.0",
     "node-html-parser": "^1.1.15",
     "pg-promise": "^8.5.1",
