@@ -782,7 +782,7 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        await this.userSync.OnUpdateUser(msg.author, msg.webhookID);
+        await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID));
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
@@ -866,10 +866,10 @@ export class DiscordBot {
                         log.error("Failed to send message into room.", e);
                         return;
                     }
-                    if (msg.member) {
+                    if (msg.member && !msg.webhookID) {
                         await this.userSync.JoinRoom(msg.member, room);
                     } else {
-                        await this.userSync.JoinRoom(msg.author, room, msg.webhookID);
+                        await this.userSync.JoinRoom(msg.author, room, Boolean(msg.webhookID));
                     }
                     res = await trySend();
                     await afterSend(res);
