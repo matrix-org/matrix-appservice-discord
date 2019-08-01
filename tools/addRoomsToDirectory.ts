@@ -100,6 +100,10 @@ const bridge = new Bridge({
     registration: true,
 });
 
+// Hack to disable legacy stores
+bridge.opts.userStore = undefined;
+bridge.opts.roomStore = undefined;
+
 const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
 
 async function run() {

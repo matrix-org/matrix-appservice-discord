@@ -111,14 +111,16 @@ const bridge = new Bridge({
       },
     },
     registration,
-    roomStore: config.database.roomStorePath,
-    userStore: config.database.userStorePath,
 });
+
+// Hack to disable legacy stores
+bridge.opts.userStore = undefined;
+bridge.opts.roomStore = undefined;
 
 async function run() {
     await bridge.loadDatabases();
     const store = new DiscordStore(config.database);
-    await store.init(undefined, bridge.getRoomStore());
+    await store.init();
     const discordbot = new DiscordBot(botUserId, config, bridge, store);
     await discordbot.init();
     bridge._clientFactory = clientFactory;
