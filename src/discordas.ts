@@ -20,11 +20,9 @@ import {
     BridgeContext,
     Cli,
     ClientFactory,
-    EventNotHandledError,
-    EventUnknownError,
     Request,
-    default_message,
     thirdPartyLookup,
+    unstable,
 } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -158,6 +156,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 dontJoin: true, // handled manually
             },
         },
+        networkName: "Discord",
         // To avoid out of order message sending.
         queue: {
             perRequest: true,
@@ -237,7 +236,7 @@ function logOnEventError(err: Error): void {
     const errTypes = [];
     // const warn = [EventInternalError, EventTooOldError, NotReadyError, …];
     const infoTypes = [];
-    const verboseTypes = [EventUnknownError];
+    const verboseTypes = [unstable.EventUnknownError];
 
     switch (true) {
         case instanceofsome(err, errTypes): log.error(err);
@@ -256,7 +255,7 @@ function recordRequestOutcome(request: Request): void {
         .then(() =>
             MetricPeg.get.requestOutcome(eventId, false, "success"),
         )
-        .catch(EventNotHandledError, (e) =>
+        .catch(unstable.EventNotHandledError, (e) =>
             MetricPeg.get.requestOutcome(eventId, false, "dropped"),
         )
         .catch((e) =>
@@ -289,7 +288,10 @@ class NotReadyError extends Error {
     public name: string;
 
     constructor(...params) {
-        default_message(params, "The bridge was not ready when the message was sent");
+        unstable.defaultMessage(
+            params,
+            "The bridge was not ready when the message was sent",
+        );
         super(...params);
         this.name = "NotReadyError";
     }

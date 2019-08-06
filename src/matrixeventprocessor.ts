@@ -24,12 +24,9 @@ import * as mime from "mime";
 import {
     Bridge,
     BridgeContext,
-    EventInternalError,
-    EventNotHandledError,
-    EventTooOldError,
-    EventUnknownError,
     MatrixUser,
     Request,
+    unstable,
 } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
@@ -86,12 +83,14 @@ export class MatrixEventProcessor {
      *
      * @param request Request object containing the event for which this callback is called.
      * @param context The current context of the bridge.
-     * @throws {EventNotHandledError} When the event can finally not be handled.
+     * @throws {unstable.EventNotHandledError} When the event can finally not be handled.
      */
     public async OnEvent(request: Request, context: BridgeContext): Promise<void> {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
-            throw new EventTooOldError(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            throw new unstable.EventTooOldError(
+                `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
+            );
         }
         if (
             event.type === "m.room.member" &&
@@ -153,12 +152,12 @@ export class MatrixEventProcessor {
                 await this.HandleEncryptionWarning(event.room_id);
                 return;
             } catch (err) {
-                throw wrap(err, EventNotHandledError, `Failed to handle encrypted room, ${err}`);
+                throw wrap(err, unstable.EventNotHandledError, `Failed to handle encrypted room, ${err}`);
             }
         } else {
-            throw new EventUnknownError("Got non m.room.message event");
+            throw new unstable.EventUnknownError("Got non m.room.message event");
         }
-        throw new EventUnknownError(); // Shouldn't be reachable
+        throw new unstable.EventUnknownError(); // Shouldn't be reachable
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
