@@ -907,7 +907,7 @@ This is the reply`,
                 },
             };
             let processed = false;
-            processor.ProcessMsgEvent = async (evt, _, __) => {
+            processor.ProcessMsgEvent = async (evt, _) => {
                 processed = true;
             };
             await processor.OnEvent(buildRequest({
@@ -967,7 +967,7 @@ This is the reply`,
                 },
             };
             let processed = false;
-            processor.ProcessMsgEvent = async (evt, _, __) => {
+            processor.ProcessMsgEvent = async (evt, _) => {
                 processed = true;
             };
             await processor.OnEvent(buildRequest({

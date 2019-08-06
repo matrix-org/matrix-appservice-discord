@@ -18,7 +18,7 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util, wrap } from "./util";
+import { Util, guildAndChannelOf, isBotCommand, wrap } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import {
@@ -41,7 +41,6 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
-const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 
 export class MatrixEventProcessorOpts {
@@ -129,24 +128,16 @@ export class MatrixEventProcessor {
             return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
-            const isBotCommand = event.type === "m.room.message" &&
-                event.content!.body &&
-                event.content!.body!.startsWith("!discord");
-            if (isBotCommand) {
+            if (isBotCommand(event)) {
                 await this.mxCommandHandler.Process(event, context);
-                return;
-            } else if (context.rooms.remote) {
-                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+            } else {
                 try {
-                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
-                    return;
+                    await this.ProcessMsgEvent(event, context);
                 } catch (err) {
                     throw wrap(err, Error, "There was an error sending a matrix event");
                 }
-            } else {
-                log.info("Got event with no linked room. Ignoring.");
-                return;
             }
+            return;
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
@@ -179,7 +170,20 @@ export class MatrixEventProcessor {
         await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
     }
 
-    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
+    /**
+     * Processes the message event by sending it and marking it as read.
+     *
+     * @param event The message event to process.
+     * @param context Context of the bridge.
+     */
+    public async ProcessMsgEvent(event: IMatrixEvent, context: BridgeContext): Promise<void> {
+        const room = context.rooms.remote;
+        if (!room) {
+            log.info("Got event with no linked room. Ignoring.");
+            return;
+        }
+
+        const [guildId, channelId] = guildAndChannelOf(room);
         const mxClient = this.bridge.getClientFactory().getClientAs();
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
