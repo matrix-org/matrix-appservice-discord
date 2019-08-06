@@ -131,11 +131,7 @@ export class MatrixEventProcessor {
             if (isBotCommand(event)) {
                 await this.mxCommandHandler.Process(event, context);
             } else {
-                try {
-                    await this.ProcessMsgEvent(event, context);
-                } catch (err) {
-                    throw wrap(err, Error, "There was an error sending a matrix event");
-                }
+                await this.ProcessMsgEvent(event, context);
             }
             return;
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
@@ -175,6 +171,7 @@ export class MatrixEventProcessor {
      *
      * @param event The message event to process.
      * @param context Context of the bridge.
+     * @throws {unstable.ForeignNetworkError}
      */
     public async ProcessMsgEvent(event: IMatrixEvent, context: BridgeContext): Promise<void> {
         const room = context.rooms.remote;
@@ -199,7 +196,7 @@ export class MatrixEventProcessor {
             opts.file = file;
         }
 
-        await this.discord.send(embedSet, opts, roomLookup, event);
+        await this.discord.send(embedSet, opts, roomLookup, event); // throws
         await this.sendReadReceipt(event);
     }
 
