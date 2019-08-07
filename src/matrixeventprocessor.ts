@@ -171,7 +171,7 @@ export class MatrixEventProcessor {
     /**
      * Processes the message event by sending it and marking it as read.
      *
-     * @param event The message event to process.
+     * @param event The matrix m.room.message event to process.
      * @param context Context of the bridge.
      * @throws {Unstable.ForeignNetworkError}
      */
