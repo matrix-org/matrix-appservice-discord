@@ -284,7 +284,7 @@ async function buildOwnContext(
     };
 }
 
-class NotReadyError extends Error {
+class NotReadyError extends Unstable.EventNotHandledError {
     public name: string;
 
     constructor(...params) {
