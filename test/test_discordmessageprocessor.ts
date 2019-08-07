@@ -391,6 +391,18 @@ describe("DiscordMessageProcessor", () => {
             Chai.assert.equal(reply, "<span data-mx-color=\"#dead88\"><strong>@role</strong></span>");
         });
     });
+    describe("InsertSpoiler / HTML", () => {
+        it("parses spoilers", () => {
+            const processor = new DiscordMessageProcessor(
+                new DiscordMessageProcessorOpts("localhost"), bot as DiscordBot);
+            const content = { content: "foxies" };
+            let reply = processor.InsertSpoiler(content);
+            Chai.assert.equal(reply, "(Spoiler: foxies)");
+
+            reply = processor.InsertSpoiler(content, true);
+            Chai.assert.equal(reply, "<span data-mx-spoiler>foxies</span>");
+        });
+    });
     describe("InsertEmoji", () => {
         it("inserts static emojis to their post-parse flag", () => {
             const processor = new DiscordMessageProcessor(

@@ -50,6 +50,10 @@ export class DiscordMessageProcessorResult {
     public msgtype: string;
 }
 
+interface ISpoilerNode {
+    content: string;
+}
+
 interface IDiscordNode {
     id: string;
 }
@@ -79,6 +83,7 @@ export class DiscordMessageProcessor {
         // as else it'll HTML escape the result of the discord syntax
         let contentPostmark = markdown.toHTML(content, {
             discordCallback: this.getDiscordParseCallbacksHTML(msg),
+            noExtraSpanTags: true,
         });
 
         // parse the plain text stuff
@@ -86,6 +91,7 @@ export class DiscordMessageProcessor {
             discordCallback: this.getDiscordParseCallbacks(msg),
             discordOnly: true,
             escapeHTML: false,
+            noExtraSpanTags: true,
         });
         content = this.InsertEmbeds(content, msg);
         content = await this.InsertMxcImages(content, msg);
@@ -145,6 +151,7 @@ export class DiscordMessageProcessor {
                     discordCallback: this.getDiscordParseCallbacks(msg),
                     discordOnly: true,
                     escapeHTML: false,
+                    noExtraSpanTags: true,
                 });
             }
             if (embed.fields) {
@@ -154,6 +161,7 @@ export class DiscordMessageProcessor {
                         discordCallback: this.getDiscordParseCallbacks(msg),
                         discordOnly: true,
                         escapeHTML: false,
+                        noExtraSpanTags: true,
                     });
                 }
             }
@@ -165,6 +173,7 @@ export class DiscordMessageProcessor {
                     discordCallback: this.getDiscordParseCallbacks(msg),
                     discordOnly: true,
                     escapeHTML: false,
+                    noExtraSpanTags: true,
                 });
             }
             content += embedContent;
@@ -192,6 +201,7 @@ export class DiscordMessageProcessor {
                 embedContent += markdown.toHTML(embed.description, {
                     discordCallback: this.getDiscordParseCallbacksHTML(msg),
                     embed: true,
+                    noExtraSpanTags: true,
                 }) + "</p>";
             }
             if (embed.fields) {
@@ -200,6 +210,7 @@ export class DiscordMessageProcessor {
                     embedContent += markdown.toHTML(field.value, {
                         discordCallback: this.getDiscordParseCallbacks(msg),
                         embed: true,
+                        noExtraSpanTags: true,
                     }) + "</p>";
                 }
             }
@@ -212,6 +223,7 @@ export class DiscordMessageProcessor {
                 embedContent += markdown.toHTML(embed.footer.text, {
                     discordCallback: this.getDiscordParseCallbacksHTML(msg),
                     embed: true,
+                    noExtraSpanTags: true,
                 }) + "</p>";
             }
             content += embedContent;
@@ -228,6 +240,15 @@ export class DiscordMessageProcessor {
             return memberName;
         }
         return `<a href="${MATRIX_TO_LINK}${escapeHtml(memberId)}">${escapeHtml(memberName)}</a>`;
+    }
+
+    public InsertSpoiler(node: ISpoilerNode, html: boolean = false): string {
+        // matrix spoilers are still in MSC stage
+        // see https://github.com/matrix-org/matrix-doc/pull/2010
+        if (!html) {
+            return `(Spoiler: ${node.content})`;
+        }
+        return `<span data-mx-spoiler>${node.content}</span>`;
     }
 
     public InsertChannel(node: IDiscordNode): string {
@@ -333,6 +354,7 @@ export class DiscordMessageProcessor {
             everyone: (_) => this.InsertRoom(msg, "@everyone"),
             here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg),
+            spoiler: (node) => this.InsertSpoiler(node),
             user: (node) => this.InsertUser(node, msg),
         };
     }
@@ -344,6 +366,7 @@ export class DiscordMessageProcessor {
             everyone: (_) => this.InsertRoom(msg, "@everyone"),
             here: (_) => this.InsertRoom(msg, "@here"),
             role: (node) => this.InsertRole(node, msg, true),
+            spoiler: (node) => this.InsertSpoiler(node, true),
             user: (node) => this.InsertUser(node, msg, true),
         };
     }

@@ -35,6 +35,8 @@ import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixm
 import { MatrixCommandHandler } from "./matrixcommandhandler";
 
 import { Log } from "./log";
+import { TimedCache } from "./structures/timedcache";
+import { MetricPeg } from "./metrics";
 const log = new Log("MatrixEventProcessor");
 
 const MaxFileSize = 8000000;
@@ -44,6 +46,7 @@ const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
 const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
+const PROFILE_CACHE_LIFETIME = 900000;
 
 export class MatrixEventProcessorOpts {
     constructor(
@@ -58,6 +61,7 @@ export class MatrixEventProcessorOpts {
 export interface IMatrixEventProcessorResult {
     messageEmbed: Discord.RichEmbed;
     replyEmbed?: Discord.RichEmbed;
+    imageEmbed?: Discord.RichEmbed;
 }
 
 export class MatrixEventProcessor {
@@ -66,12 +70,14 @@ export class MatrixEventProcessor {
     private discord: DiscordBot;
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
+    private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string|undefined}>;
 
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
+        this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
         } else {
@@ -185,21 +191,24 @@ export class MatrixEventProcessor {
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
-        const botUser = roomLookup.botUser;
 
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
-        const file = await this.HandleAttachment(event, mxClient);
+        const file = await this.HandleAttachment(event, mxClient, roomLookup.canSendEmbeds);
         if (typeof(file) === "string") {
             embedSet.messageEmbed.description += " " + file;
+        } else if ((file as Discord.FileOptions).name && (file as Discord.FileOptions).attachment) {
+            opts.file = file as Discord.FileOptions;
         } else {
-            opts.file = file;
+            embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
         // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
         await this.discord.send(embedSet, opts, roomLookup, event);
 
-        await this.sendReadReceipt(event);
+        this.sendReadReceipt(event).catch((ex) => {
+            log.verbose("Failed to send read reciept for ", event.event_id, ex);
+        });
     }
 
     public async ProcessStateEvent(event: IMatrixEvent) {
@@ -219,7 +228,6 @@ export class MatrixEventProcessor {
 
         let msg = `\`${event.sender}\` `;
 
-        const isNew = event.unsigned === undefined || event.unsigned.prev_content === undefined;
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
 
         if (event.type === "m.room.name") {
@@ -228,7 +236,22 @@ export class MatrixEventProcessor {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
-            if (membership === "join" && isNew && allowJoinLeave) {
+            const intent = this.bridge.getIntent();
+            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
+                await intent.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+            if (membership === "join") {
+                this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
+                this.mxUserProfileCache.delete(event.sender);
+                if (event.content!.displayname) {
+                    this.mxUserProfileCache.set(`${event.room_id}:${event.sender}`, {
+                        avatar_url: event.content!.avatar_url,
+                        displayname: event.content!.displayname!,
+                    });
+                }
+                // We don't know if the user also updated their profile, but to be safe..
+                this.mxUserProfileCache.delete(event.sender);
+            }
+            if (membership === "join" && isNewJoin && allowJoinLeave) {
                 msg += "joined the room";
             } else if (membership === "invite") {
                 msg += `invited \`${event.state_key}\` to the room`;
@@ -253,19 +276,7 @@ export class MatrixEventProcessor {
         event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
         const mxClient = this.bridge.getClientFactory().getClientAs();
-        let profile: IMatrixEvent | null = null;
-        try {
-            profile = await mxClient.getStateEvent(event.room_id, "m.room.member", event.sender);
-            if (!profile) {
-                profile = await mxClient.getProfileInfo(event.sender);
-            }
-            if (!profile) {
-                log.warn(`User ${event.sender} has no member state and no profile. That's odd.`);
-            }
-        } catch (err) {
-            log.warn(`Trying to fetch member state or profile for ${event.sender} failed`, err);
-        }
-
+        const profile = await this.GetUserProfileForRoom(event.room_id, event.sender);
         const params = {
             mxClient,
             roomId: event.room_id,
@@ -300,7 +311,11 @@ export class MatrixEventProcessor {
         };
     }
 
-    public async HandleAttachment(event: IMatrixEvent, mxClient: MatrixClient): Promise<string|Discord.FileOptions> {
+    public async HandleAttachment(
+        event: IMatrixEvent,
+        mxClient: MatrixClient,
+        sendEmbeds: boolean = false,
+    ): Promise<string|Discord.FileOptions|Discord.RichEmbed> {
         if (!this.HasAttachment(event)) {
             return "";
         }
@@ -312,7 +327,7 @@ export class MatrixEventProcessor {
         if (!event.content.info) {
             // Fractal sends images without an info, which is technically allowed
             // but super unhelpful:  https://gitlab.gnome.org/World/fractal/issues/206
-            event.content.info = {size: 0};
+            event.content.info = {mimetype: "", size: 0};
         }
 
         if (!event.content.url) {
@@ -332,6 +347,10 @@ export class MatrixEventProcessor {
                     name,
                 } as Discord.FileOptions;
             }
+        }
+        if (sendEmbeds && event.content.info.mimetype.split("/")[0] === "image") {
+            return new Discord.RichEmbed()
+                .setImage(url);
         }
         return `[${name}](${url})`;
     }
@@ -390,6 +409,45 @@ export class MatrixEventProcessor {
         return embed;
     }
 
+    private async GetUserProfileForRoom(roomId: string, userId: string) {
+        const mxClient = this.bridge.getClientFactory().getClientAs();
+        const intent = this.bridge.getIntent();
+        let profile: {displayname: string, avatar_url: string|undefined} | undefined;
+        try {
+            // First try to pull out the room-specific profile from the cache.
+            profile = this.mxUserProfileCache.get(`${roomId}:${userId}`);
+            if (profile) {
+                return profile;
+            }
+            log.verbose(`Profile ${userId}:${roomId} not cached`);
+
+            // Failing that, try fetching the state.
+            profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
+            if (profile) {
+                this.mxUserProfileCache.set(`${roomId}:${userId}`, profile);
+                return profile;
+            }
+
+            // Try fetching the users profile from the cache
+            profile = this.mxUserProfileCache.get(userId);
+            if (profile) {
+                return profile;
+            }
+
+            // Failing that, try fetching the profile.
+            log.verbose(`Profile ${userId} not cached`);
+            profile = await intent.getProfileInfo(userId);
+            if (profile) {
+                this.mxUserProfileCache.set(userId, profile);
+                return profile;
+            }
+            log.warn(`User ${userId} has no member state and no profile. That's odd.`);
+        } catch (err) {
+            log.warn(`Trying to fetch member state or profile for ${userId} failed`, err);
+        }
+        return undefined;
+    }
+
     private async sendReadReceipt(event: IMatrixEvent) {
         if (!this.config.bridge.disableReadReceipts) {
             try {
@@ -417,8 +475,9 @@ export class MatrixEventProcessor {
         return hasAttachment;
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: IMatrixEvent | null) {
-        const intent = this.bridge.getIntent();
+    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
+        displayname: string,
+        avatar_url: string|undefined }) {
         let displayName = sender;
         let avatarUrl;
 
@@ -441,13 +500,6 @@ export class MatrixEventProcessor {
             }
             // Let it fall through.
         }
-        if (!profile) {
-            try {
-                profile = await intent.getProfileInfo(sender);
-            } catch (ex) {
-                log.warn(`Failed to fetch profile for ${sender}`, ex);
-            }
-        }
 
         if (profile) {
             if (profile.displayname &&
@@ -469,13 +521,17 @@ export class MatrixEventProcessor {
     }
 
     private GetFilenameForMediaEvent(content: IMatrixEventContent): string {
+        let ext = "";
+        try {
+            ext = "." + mime.extension(content.info.mimetype);
+        } catch (err) { } // pass, we don't have an extension
         if (content.body) {
             if (path.extname(content.body) !== "") {
                 return content.body;
             }
-            return `${path.basename(content.body)}.${mime.extension(content.info.mimetype)}`;
+            return path.basename(content.body) + ext;
         }
-        return "matrix-media." + mime.extension(content.info.mimetype);
+        return "matrix-media" + ext;
     }
 }
 

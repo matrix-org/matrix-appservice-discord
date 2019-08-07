@@ -17,6 +17,7 @@ limitations under the License.
 import { IDatabaseConnector } from "./connector";
 import { Log } from "../log";
 import { MetricPeg } from "../metrics";
+import { TimedCache } from "../structures/timedcache";
 
 /**
  * A UserStore compatible with
@@ -45,17 +46,17 @@ export interface IUserStoreEntry {
 }
 
 export class DbUserStore {
-    private remoteUserCache: Map<string, {e: RemoteUser, ts: number}>;
+    private remoteUserCache: TimedCache<string, RemoteUser>;
 
     constructor(private db: IDatabaseConnector) {
-        this.remoteUserCache = new Map();
+        this.remoteUserCache = new TimedCache(ENTRY_CACHE_LIMETIME);
     }
 
     public async getRemoteUser(remoteId: string): Promise<RemoteUser|null> {
         const cached = this.remoteUserCache.get(remoteId);
-        if (cached && cached.ts + ENTRY_CACHE_LIMETIME > Date.now()) {
+        if (cached) {
             MetricPeg.get.storeCall("UserStore.getRemoteUser", true);
-            return cached.e;
+            return cached;
         }
         MetricPeg.get.storeCall("UserStore.getRemoteUser", false);
 
@@ -84,7 +85,7 @@ export class DbUserStore {
                 remoteUser.guildNicks.set(guild_id as string, nick as string);
             });
         }
-        this.remoteUserCache.set(remoteId, {e: remoteUser, ts: Date.now()});
+        this.remoteUserCache.set(remoteId, remoteUser);
         return remoteUser;
     }
 

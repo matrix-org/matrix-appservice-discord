@@ -194,6 +194,13 @@ code
 **##### tail**
 **###### foxies**`);
         });
+        it("strips simple span tags", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<span>bunny</span>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("bunny");
+        });
     });
     describe("FormatMessage / formatted_body / complex", () => {
         it("html unescapes stuff inside of code", async () => {
@@ -341,6 +348,20 @@ code
             const msg = getHtmlMessage("<a href=\"http://example.com\"><em>yay?</em></a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("[*yay?*](http://example.com)");
+        });
+        it("Handles spoilers", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<span data-mx-spoiler>foxies</span>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("||foxies||");
+        });
+        it("Handles spoilers with reason", async () => {
+            const mp = new MatrixMessageProcessor(bot);
+            const guild = new MockGuild("1234");
+            const msg = getHtmlMessage("<span data-mx-spoiler=\"floof\">foxies</span>");
+            const result = await mp.FormatMessage(msg, guild as any);
+            expect(result).is.equal("(floof)||foxies||");
         });
     });
     describe("FormatMessage / formatted_body / emoji", () => {

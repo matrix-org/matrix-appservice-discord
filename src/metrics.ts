@@ -133,11 +133,10 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
     public requestOutcome(id: string, isRemote: boolean, outcome: string) {
         const startTime = this.requestsInFlight.get(id);
-        this.requestsInFlight.delete(id);
         if (!startTime) {
-            log.verbose(`Got "requestOutcome" for ${id}, but this request was never started`);
             return;
         }
+        this.requestsInFlight.delete(id);
         const duration = Date.now() - startTime;
         (isRemote ? this.remoteRequest : this.matrixRequest).observe({outcome}, duration / 1000);
     }

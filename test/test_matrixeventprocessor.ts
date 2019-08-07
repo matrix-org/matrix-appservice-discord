@@ -604,6 +604,22 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mxClient);
             expect(ret).equals("[filename.webm](https://localhost/8000000)");
         });
+        it("Should reply embeds on large info.size images if set", async () => {
+            const LARGE_FILE = 8000000;
+            const processor = createMatrixEventProcessor();
+            const ret = await processor.HandleAttachment({
+                content: {
+                    body: "filename.jpg",
+                    info: {
+                        mimetype: "image/jpeg",
+                        size: LARGE_FILE,
+                    },
+                    msgtype: "m.image",
+                    url: "mxc://localhost/8000000",
+                },
+            } as IMatrixEvent, mxClient, true);
+            expect((ret as Discord.RichEmbed).image!.url).equals("https://localhost/8000000");
+        });
         it("Should handle stickers.", async () => {
             const processor = createMatrixEventProcessor();
             const attachment = (await processor.HandleAttachment({
@@ -643,6 +659,7 @@ describe("MatrixEventProcessor", () => {
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -664,6 +681,7 @@ This is where the reply goes`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -685,6 +703,7 @@ This is where the reply goes`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -706,6 +725,7 @@ This is the second reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -727,6 +747,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -746,6 +767,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -763,6 +785,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -787,6 +810,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
@@ -804,6 +828,7 @@ This is the reply`,
                         },
                     },
                 },
+                room_id: "!fakeroom:localhost",
                 sender: "@test:localhost",
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
