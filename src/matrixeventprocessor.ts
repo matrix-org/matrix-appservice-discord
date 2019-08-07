@@ -123,7 +123,7 @@ export class MatrixEventProcessor {
             return;
         } else if (event.type === "m.room.redaction") {
             if (!context.rooms.remote) {
-                log.info("Got radaction event with no linked room. Ignoring.");
+                log.warn("Got radaction event with no linked room. Ignoring.");
                 return;
             }
             await this.discord.ProcessMatrixRedact(event);
