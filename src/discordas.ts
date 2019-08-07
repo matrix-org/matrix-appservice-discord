@@ -33,7 +33,7 @@ import { Log } from "./log";
 import "source-map-support/register";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 import { IMatrixEvent } from "./matrixtypes";
-import { isInstanceOfTypes } from "./util";
+import { wrapError, isInstanceOfTypes } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -128,6 +128,12 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                     request.outcomeFrom(callbackResult);
                 } catch (err) {
                     logOnEventError(err);
+
+                    // Raise bridge errors in case of an unexpected error, too.
+                    if (!(err instanceof Unstable.EventNotHandledError)) {
+                        err = wrapError(err, Unstable.InternalError);
+                    }
+
                     request.reject(err);
                 } finally {
                     recordRequestOutcome(request);
