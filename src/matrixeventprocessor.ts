@@ -169,7 +169,7 @@ export class MatrixEventProcessor {
     }
 
     /**
-     * Processes the message event by sending it and marking it as read.
+     * Processes a matrix event by sending it to Discord and marking the event as read.
      *
      * @param event The matrix m.room.message event to process.
      * @param context Context of the bridge.
