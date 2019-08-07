@@ -33,7 +33,7 @@ import { Log } from "./log";
 import "source-map-support/register";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 import { IMatrixEvent } from "./matrixtypes";
-import { instanceofsome } from "./util";
+import { isInstanceOfTypes } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -239,9 +239,9 @@ function logOnEventError(err: Error): void {
     const verboseTypes = [Unstable.EventUnknownError];
 
     switch (true) {
-        case instanceofsome(err, errTypes): log.error(err);
-        case instanceofsome(err, infoTypes): log.info(err);
-        case instanceofsome(err, verboseTypes): log.verbose(err);
+        case isInstanceOfTypes(err, errTypes): log.error(err);
+        case isInstanceOfTypes(err, infoTypes): log.info(err);
+        case isInstanceOfTypes(err, verboseTypes): log.verbose(err);
         default: log.warn(err);
     }
 }
