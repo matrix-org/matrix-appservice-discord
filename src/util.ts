@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as http from "http";
 import * as https from "https";
-import { Intent, RemoteRoom } from "matrix-appservice-bridge";
+import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
 import * as mime from "mime";
 import { Permissions } from "discord.js";
@@ -452,25 +452,4 @@ export function wrap<T extends Error>(
     }
     newError.message += ":\n" + appendMsg;
     return newError;
-}
-
-/**
- * Returns the guild and channel of the given remote room extracted from its ID.
- * @param remoteRoom The room from which to get the guild and channel.
- * @returns (guild, channel)-tuple.
- */
-export function guildAndChannelOf(remoteRoom: RemoteRoom): [string, string] {
-    const ROOM_NAME_PARTS = 2;
-    return remoteRoom.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
-}
-
-/**
- * Returns true if the given event is a bot command.
- */
-export function isBotCommand(event: IMatrixEvent): boolean {
-    return !!(
-        event.type === "m.room.message" &&
-        event.content!.body &&
-        event.content!.body!.startsWith("!discord")
-    );
 }

@@ -18,13 +18,14 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util, guildAndChannelOf, isBotCommand, wrap } from "./util";
+import { Util, wrap } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import {
     Bridge,
     BridgeContext,
     MatrixUser,
+    RemoteRoom,
     Request,
     unstable as Unstable,
 } from "matrix-appservice-bridge";
@@ -41,6 +42,7 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
+const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 
 export class MatrixEventProcessorOpts {
@@ -475,4 +477,24 @@ export class MatrixEventProcessor {
         }
         return "matrix-media." + mime.extension(content.info.mimetype);
     }
+}
+
+/**
+ * Returns the guild and channel of the given remote room extracted from its ID.
+ * @param remoteRoom The room from which to get the guild and channel.
+ * @returns (guild, channel)-tuple.
+ */
+function guildAndChannelOf(remoteRoom: RemoteRoom): [string, string] {
+    return remoteRoom.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+}
+
+/**
+ * Returns true if the given event is a bot command.
+ */
+function isBotCommand(event: IMatrixEvent): boolean {
+    return !!(
+        event.type === "m.room.message" &&
+        event.content!.body &&
+        event.content!.body!.startsWith("!discord")
+    );
 }
