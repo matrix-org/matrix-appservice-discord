@@ -198,7 +198,9 @@ export class MatrixEventProcessor {
             opts.file = file;
         }
 
-        await this.discord.send(embedSet, opts, roomLookup, event); // throws
+        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
+        await this.discord.send(embedSet, opts, roomLookup, event);
+
         await this.sendReadReceipt(event);
     }
 
