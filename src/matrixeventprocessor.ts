@@ -139,14 +139,12 @@ export class MatrixEventProcessor {
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
-                return;
             } catch (err) {
                 throw wrapError(err, Unstable.EventNotHandledError, `Failed to handle encrypted room, ${err}`);
             }
-        } else {
-            throw new Unstable.EventUnknownError("Got non m.room.message event");
+            return;
         }
-        throw new Unstable.EventUnknownError(); // Shouldn't be reachable
+        throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
