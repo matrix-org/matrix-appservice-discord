@@ -131,7 +131,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
 
                     // Raise bridge errors in case of an unexpected error, too.
                     if (!(err instanceof Unstable.EventNotHandledError)) {
-                        err = wrapError(err, Unstable.InternalError);
+                        err = wrapError(err, Unstable.BridgeInternalError);
                     }
 
                     // Don't send bridge errors out for EventTooOldError.
@@ -244,15 +244,15 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
  * Depending on the error type different log levels are hardcoded.
  */
 function logOnEventError(err: Error): void {
-    const errTypes = [];
-    // const warn = [EventInternalError, EventTooOldError, NotReadyError, …];
+    const errTypes = [Unstable.BridgeInternalError];
+    // const warn = [EventTooOldError, NotReadyError, …];
     const infoTypes = [];
     const verboseTypes = [Unstable.EventUnknownError];
 
     switch (true) {
-        case isInstanceOfTypes(err, errTypes): log.error(err);
-        case isInstanceOfTypes(err, infoTypes): log.info(err);
-        case isInstanceOfTypes(err, verboseTypes): log.verbose(err);
+        case isInstanceOfTypes(err, errTypes): log.error(err); return;
+        case isInstanceOfTypes(err, infoTypes): log.info(err); return;
+        case isInstanceOfTypes(err, verboseTypes): log.verbose(err); return;
         default: log.warn(err);
     }
 }
