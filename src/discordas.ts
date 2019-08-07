@@ -261,7 +261,7 @@ function logOnEventError(err: Error): void {
  * Records in which way the request was handled.
  */
 function recordRequestOutcome(request: Request): void {
-    const eventId = request.getData().eventId;
+    const eventId = request.getData().event_id;
     request.getPromise()
         .then(() =>
             MetricPeg.get.requestOutcome(eventId, false, "success"),
