@@ -434,11 +434,17 @@ export function instanceofsome(obj: object, types: Type[]): boolean {
 
 /**
  * Append the old error message to the new one and keep its stack trace.
- * Example:
- *     throw wrap(e, HighLevelError, "This error is more specific");
+ *
+ * @example
+ * throw wrapError(e, HighLevelError, "This error is more specific");
+ *
+ * @param oldError The original error to wrap.
+ * @param newErrorType Type of the error returned by this function.
+ * @returns A new error of type `newErrorType` containing the information of
+ * the original error (stacktrace and error message).
  */
-export function wrap<T extends Error>(
-    oldError: Type,
+export function wrapError<T extends Error>(
+    oldError: object|Error,
     newErrorType: new (...args: any[]) => T,  // tslint:disable-line no-any
     ...args: any[]  // tslint:disable-line no-any trailing-comma
 ): T {

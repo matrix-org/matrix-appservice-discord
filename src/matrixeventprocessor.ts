@@ -18,7 +18,7 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util, wrap } from "./util";
+import { Util, wrapError } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import {
@@ -141,7 +141,7 @@ export class MatrixEventProcessor {
                 await this.HandleEncryptionWarning(event.room_id);
                 return;
             } catch (err) {
-                throw wrap(err, Unstable.EventNotHandledError, `Failed to handle encrypted room, ${err}`);
+                throw wrapError(err, Unstable.EventNotHandledError, `Failed to handle encrypted room, ${err}`);
             }
         } else {
             throw new Unstable.EventUnknownError("Got non m.room.message event");
