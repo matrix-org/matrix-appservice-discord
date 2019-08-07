@@ -25,7 +25,7 @@ import {
     Intent,
     MatrixUser,
     RemoteUser,
-    unstable,
+    Unstable,
 } from "matrix-appservice-bridge";
 import { Util, wrap } from "./util";
 import {
@@ -432,7 +432,7 @@ export class DiscordBot {
 
     /**
      * Sends an event to Discord.
-     * @throws {unstable.ForeignNetworkError}
+     * @throws {Unstable.ForeignNetworkError}
      */
     public async send(
         embedSet: IMatrixEventProcessorResult,
@@ -458,7 +458,7 @@ export class DiscordBot {
                         "Matrix Bridge: Allow rich user messages");
                 }
             } catch (err) {
-                throw wrap(err, unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
+                throw wrap(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
             }
         }
         try {
@@ -485,7 +485,7 @@ export class DiscordBot {
             await this.StoreMessagesSent(msg, chan, event);
             this.unlockChannel(chan);
         } catch (err) {
-            throw wrap(err, unstable.ForeignNetworkError, "Couldn't send message");
+            throw wrap(err, Unstable.ForeignNetworkError, "Couldn't send message");
         }
     }
 

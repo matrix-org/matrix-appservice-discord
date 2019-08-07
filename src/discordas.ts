@@ -22,7 +22,7 @@ import {
     ClientFactory,
     Request,
     thirdPartyLookup,
-    unstable,
+    unstable as Unstable,
 } from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -236,7 +236,7 @@ function logOnEventError(err: Error): void {
     const errTypes = [];
     // const warn = [EventInternalError, EventTooOldError, NotReadyError, …];
     const infoTypes = [];
-    const verboseTypes = [unstable.EventUnknownError];
+    const verboseTypes = [Unstable.EventUnknownError];
 
     switch (true) {
         case instanceofsome(err, errTypes): log.error(err);
@@ -255,7 +255,7 @@ function recordRequestOutcome(request: Request): void {
         .then(() =>
             MetricPeg.get.requestOutcome(eventId, false, "success"),
         )
-        .catch(unstable.EventNotHandledError, (e) =>
+        .catch(Unstable.EventNotHandledError, (e) =>
             MetricPeg.get.requestOutcome(eventId, false, "dropped"),
         )
         .catch((e) =>
@@ -288,7 +288,7 @@ class NotReadyError extends Error {
     public name: string;
 
     constructor(...params) {
-        unstable.defaultMessage(
+        Unstable.defaultMessage(
             params,
             "The bridge was not ready when the message was sent",
         );

@@ -17,7 +17,7 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
-import { unstable } from "matrix-appservice-bridge";
+import { unstable as Unstable } from "matrix-appservice-bridge";
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
@@ -818,7 +818,7 @@ This is the reply`,
             try {
                 await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
             } catch (e) { err = e; }
-            expect(err).to.be.an.instanceof(unstable.EventTooOldError);
+            expect(err).to.be.an.instanceof(Unstable.EventTooOldError);
         });
         it("should reject un-processable events", async () => {
             const AGE = 900000; // 15 * 60 * 1000
@@ -834,7 +834,7 @@ This is the reply`,
                     null,
                 );
             } catch (e) { err = e; }
-            expect(err).to.be.an.instanceof(unstable.EventUnknownError);
+            expect(err).to.be.an.instanceof(Unstable.EventUnknownError);
         });
         it("should handle own invites", async () => {
             const processor = createMatrixEventProcessor();
