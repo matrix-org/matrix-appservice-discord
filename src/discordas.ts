@@ -134,6 +134,11 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                         err = wrapError(err, Unstable.InternalError);
                     }
 
+                    // Don't send bridge errors out for EventTooOldError.
+                    if (err instanceof Unstable.EventTooOldError) {
+                        err = wrapError(err, Error);
+                    }
+
                     request.reject(err);
                 } finally {
                     recordRequestOutcome(request);
