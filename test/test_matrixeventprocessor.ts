@@ -17,6 +17,7 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
+import { unstable as Unstable } from "matrix-appservice-bridge";
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
@@ -836,20 +837,29 @@ This is the reply`,
     });
     describe("OnEvent", () => {
         it("should reject old events", async () => {
-            const AGE = 900001; // 15 * 60 * 1000
+            const AGE = 900001; // 15 * 60 * 1000 + 1
             const processor = createMatrixEventProcessor();
-            await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
-            expect(MESSAGE_PROCCESS).equals("");
+            let err;
+            try {
+                await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), null);
+            } catch (e) { err = e; }
+            expect(err).to.be.an.instanceof(Unstable.EventTooOldError);
         });
         it("should reject un-processable events", async () => {
             const AGE = 900000; // 15 * 60 * 1000
             const processor = createMatrixEventProcessor();
-            // check if nothing is thrown
-            await processor.OnEvent(buildRequest({
-                content: {},
-                type: "m.potato",
-                unsigned: {age: AGE}}), null);
-            expect(MESSAGE_PROCCESS).equals("");
+            let err;
+            try {
+                await processor.OnEvent(
+                    buildRequest({
+                        content: {},
+                        type: "m.potato",
+                        unsigned: {age: AGE},
+                    }),
+                    null,
+                );
+            } catch (e) { err = e; }
+            expect(err).to.be.an.instanceof(Unstable.EventUnknownError);
         });
         it("should handle own invites", async () => {
             const processor = createMatrixEventProcessor();
@@ -922,7 +932,7 @@ This is the reply`,
                 },
             };
             let processed = false;
-            processor.ProcessMsgEvent = async (evt, _, __) => {
+            processor.ProcessMsgEvent = async (evt, _) => {
                 processed = true;
             };
             await processor.OnEvent(buildRequest({
@@ -982,7 +992,7 @@ This is the reply`,
                 },
             };
             let processed = false;
-            processor.ProcessMsgEvent = async (evt, _, __) => {
+            processor.ProcessMsgEvent = async (evt, _) => {
                 processed = true;
             };
             await processor.OnEvent(buildRequest({

@@ -19,8 +19,15 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
-import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
-import { Util } from "./util";
+import {
+    Bridge,
+    Entry,
+    Intent,
+    MatrixUser,
+    RemoteUser,
+    Unstable,
+} from "matrix-appservice-bridge";
+import { Util, wrapError } from "./util";
 import {
     DiscordMessageProcessor,
     DiscordMessageProcessorOpts,
@@ -387,6 +394,10 @@ export class DiscordBot {
         this.channelLock.release(channel.id);
     }
 
+    /**
+     * Sends an event to Discord.
+     * @throws {Unstable.ForeignNetworkError}
+     */
     public async send(
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
@@ -411,7 +422,7 @@ export class DiscordBot {
                         "Matrix Bridge: Allow rich user messages");
                 }
             } catch (err) {
-                log.error("Unable to create \"_matrix\" webhook. ", err);
+                throw wrapError(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
             }
         }
         try {
@@ -480,7 +491,7 @@ export class DiscordBot {
             });
 
         } catch (err) {
-            log.error("Couldn't send message. ", err);
+            throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't send message");
         }
     }
 

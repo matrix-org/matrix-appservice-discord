@@ -18,10 +18,17 @@ import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import * as escapeStringRegexp from "escape-string-regexp";
-import { Util } from "./util";
+import { Util, wrapError } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import { MatrixUser, Bridge, BridgeContext } from "matrix-appservice-bridge";
+import {
+    Bridge,
+    BridgeContext,
+    MatrixUser,
+    RemoteRoom,
+    Request,
+    unstable as Unstable,
+} from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
@@ -78,12 +85,19 @@ export class MatrixEventProcessor {
         }
     }
 
-    public async OnEvent(request, context: BridgeContext): Promise<void> {
+    /**
+     * Callback which is called when the HS notifies the bridge of a new event.
+     *
+     * @param request Request object containing the event for which this callback is called.
+     * @param context The current context of the bridge.
+     * @throws {Unstable.EventNotHandledError} When the event can finally not be handled.
+     */
+    public async OnEvent(request: Request, context: BridgeContext): Promise<void> {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
-            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
-            return;
+            throw new Unstable.EventTooOldError(
+                `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
+            );
         }
         if (
             event.type === "m.room.member" &&
@@ -113,35 +127,30 @@ export class MatrixEventProcessor {
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
             await this.ProcessStateEvent(event);
             return;
-        } else if (event.type === "m.room.redaction" && context.rooms.remote) {
+        } else if (event.type === "m.room.redaction") {
+            if (!context.rooms.remote) {
+                log.warn("Got redaction event with no linked room. Ignoring.");
+                return;
+            }
             await this.discord.ProcessMatrixRedact(event);
             return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
-            const isBotCommand = event.type === "m.room.message" &&
-                event.content!.body &&
-                event.content!.body!.startsWith("!discord");
-            if (isBotCommand) {
+            if (isBotCommand(event)) {
                 await this.mxCommandHandler.Process(event, context);
-            } else if (context.rooms.remote) {
-                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
-                try {
-                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
-                } catch (err) {
-                    log.warn("There was an error sending a matrix event", err);
-                }
+            } else {
+                await this.ProcessMsgEvent(event, context);
             }
             return;
         } else if (event.type === "m.room.encryption" && context.rooms.remote) {
             try {
                 await this.HandleEncryptionWarning(event.room_id);
-                return;
             } catch (err) {
-                throw new Error(`Failed to handle encrypted room, ${err}`);
+                throw wrapError(err, Unstable.EventNotHandledError, `Failed to handle encrypted room, ${err}`);
             }
+            return;
         }
-        log.verbose("Event not processed by bridge");
-        MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
+        throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
@@ -163,7 +172,21 @@ export class MatrixEventProcessor {
         await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
     }
 
-    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
+    /**
+     * Processes a matrix event by sending it to Discord and marking the event as read.
+     *
+     * @param event The matrix m.room.message event to process.
+     * @param context Context of the bridge.
+     * @throws {Unstable.ForeignNetworkError}
+     */
+    public async ProcessMsgEvent(event: IMatrixEvent, context: BridgeContext): Promise<void> {
+        const room = context.rooms.remote;
+        if (!room) {
+            log.info("Got event with no linked room. Ignoring.");
+            return;
+        }
+
+        const [guildId, channelId] = guildAndChannelOf(room);
         const mxClient = this.bridge.getClientFactory().getClientAs();
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
@@ -180,8 +203,9 @@ export class MatrixEventProcessor {
             embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
+        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
         await this.discord.send(embedSet, opts, roomLookup, event);
-        // Don't await this.
+
         this.sendReadReceipt(event).catch((ex) => {
             log.verbose("Failed to send read reciept for ", event.event_id, ex);
         });
@@ -509,4 +533,24 @@ export class MatrixEventProcessor {
         }
         return "matrix-media" + ext;
     }
+}
+
+/**
+ * Returns the guild and channel of the given remote room extracted from its ID.
+ * @param remoteRoom The room from which to get the guild and channel.
+ * @returns (guild, channel)-tuple.
+ */
+function guildAndChannelOf(remoteRoom: RemoteRoom): [string, string] {
+    return remoteRoom.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+}
+
+/**
+ * Returns true if the given event is a bot command.
+ */
+function isBotCommand(event: IMatrixEvent): boolean {
+    return !!(
+        event.type === "m.room.message" &&
+        event.content!.body &&
+        event.content!.body!.startsWith("!discord")
+    );
 }
