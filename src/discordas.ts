@@ -174,9 +174,6 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
             type: "per_room",
         },
         registration,
-        // These must be kept for a while yet since we use them for migrations.
-        roomStore: config.database.roomStorePath,
-        userStore: config.database.userStorePath,
     });
 
     if (config.database.roomStorePath) {
@@ -188,6 +185,10 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.warn("[DEPRECATED] The user store is now part of the SQL database."
                + "The config option userStorePath no longer has any use.");
     }
+
+    // Hack to remove roomStore and userStore
+    bridge.opts.userStore = undefined;
+    bridge.opts.roomStore = undefined;
 
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
