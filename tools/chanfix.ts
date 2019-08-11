@@ -108,7 +108,6 @@ const bridge = new Bridge({
 bridge.opts.userStore = undefined;
 bridge.opts.roomStore = undefined;
 
-
 async function run() {
     const store = new DiscordStore(config.database);
     await store.init(undefined, bridge.getRoomStore());
