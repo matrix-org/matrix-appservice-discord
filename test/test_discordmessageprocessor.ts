@@ -71,10 +71,10 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const msg = new MockMessage() as any;
             msg.embeds = [];
-            msg.content = "> inb4 tests";
+            msg.content = ">inb4 tests";
             let result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "> inb4 tests");
-            Chai.assert.equal(result.formattedBody, "&gt; inb4 tests");
+            Chai.assert.equal(result.body, ">inb4 tests");
+            Chai.assert.equal(result.formattedBody, "&gt;inb4 tests");
 
             msg.embeds = [];
             msg.content = "[test](http://example.com)";
