@@ -39,7 +39,11 @@ export class DiscordMessageProcessor {
         return await this.parser.FormatMessage(opts, msg);
     }
 
-    public async FormatEdit(msg1: Discord.Message, msg2: Discord.Message, link: string): Promise<DiscordMessageParserResult> {
+    public async FormatEdit(
+        msg1: Discord.Message,
+        msg2: Discord.Message,
+        link: string,
+    ): Promise<DiscordMessageParserResult> {
         // obsolete once edit PR is merged
         const opts = {
             callbacks: this.generateDiscordCallbacks(msg2),
@@ -49,15 +53,6 @@ export class DiscordMessageProcessor {
 
     private generateDiscordCallbacks(msg: Discord.Message): IDiscordMessageParserCallbacks {
         return {
-            getUser: async (id: string) => {
-                const member = msg.guild.members.get(id);
-                const mxid = `@_discord_${id}:${this.domain}`;
-                const name = member ? member.displayName : mxid;
-                return {
-                    mxid,
-                    name,
-                };
-            },
             getChannel: async (id: string) => {
                 const channel = msg.guild.channels.get(id);
                 if (!channel) {
@@ -75,11 +70,20 @@ export class DiscordMessageProcessor {
             getEmoji: async (name: string, animated: boolean, id: string) => {
                 try {
                     const mxcUrl = await this.bot.GetEmoji(name, animated, id);
-                    return mxcUrl; 
+                    return mxcUrl;
                 } catch (ex) {
                     log.warn(`Could not get emoji ${id} with name ${name}`, ex);
                 }
                 return null;
+            },
+            getUser: async (id: string) => {
+                const member = msg.guild.members.get(id);
+                const mxid = `@_discord_${id}:${this.domain}`;
+                const name = member ? member.displayName : mxid;
+                return {
+                    mxid,
+                    name,
+                };
             },
         };
     }

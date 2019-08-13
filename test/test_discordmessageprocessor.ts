@@ -135,7 +135,8 @@ describe("DiscordMessageProcessor", () => {
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "@_discord_12345:localhost");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">@_discord_12345:localhost</a>");
+            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_12345:l" +
+                "ocalhost\">@_discord_12345:localhost</a>");
         });
         it("processes members with usernames correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -148,7 +149,8 @@ describe("DiscordMessageProcessor", () => {
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "TestUsername");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
+            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_123" +
+                "45:localhost\">TestUsername</a>");
         });
         it("processes members with nickname correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -161,7 +163,8 @@ describe("DiscordMessageProcessor", () => {
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "TestNickname");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestNickname</a>");
+            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_disc" +
+                "ord_12345:localhost\">TestNickname</a>");
         });
     });
     describe("InsertMxcImages / HTML", () => {
@@ -188,7 +191,8 @@ describe("DiscordMessageProcessor", () => {
             msg.content = "Hello <:hello:3333333>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "Hello :hello:");
-            Chai.assert.equal(result.formattedBody, "Hello <img alt=\"hello\" title=\"hello\" height=\"32\" src=\"mxc://image\" />");
+            Chai.assert.equal(result.formattedBody, "Hello <img alt=\"hello\" ti" +
+                "tle=\"hello\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertChannelPills / HTML", () => {
