@@ -34,7 +34,7 @@ export class DiscordMessageProcessor {
 
     public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageParserResult> {
         const opts = {
-            callbacks: this.generateDiscordCallbacks(msg),
+            callbacks: this.getParserCallbacks(msg),
         } as IDiscordMessageParserOpts;
         return await this.parser.FormatMessage(opts, msg);
     }
@@ -46,12 +46,12 @@ export class DiscordMessageProcessor {
     ): Promise<DiscordMessageParserResult> {
         // obsolete once edit PR is merged
         const opts = {
-            callbacks: this.generateDiscordCallbacks(msg2),
+            callbacks: this.getParserCallbacks(msg2),
         } as IDiscordMessageParserOpts;
         return await this.parser.FormatEdit(opts, msg1, msg2, link);
     }
 
-    private generateDiscordCallbacks(msg: Discord.Message): IDiscordMessageParserCallbacks {
+    private getParserCallbacks(msg: Discord.Message): IDiscordMessageParserCallbacks {
         return {
             getChannel: async (id: string) => {
                 const channel = msg.guild.channels.get(id);
