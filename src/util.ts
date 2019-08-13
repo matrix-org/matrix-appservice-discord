@@ -268,7 +268,11 @@ export class Util {
             }
             return reply;
         }
+        if (Object.keys(actions).length === 0) {
+            return "No commands found";
+        }
         reply += "Available Commands:\n";
+        let commandsHavePermission = 0;
         for (const actionKey of Object.keys(actions)) {
             const action = actions[actionKey];
             if (action.permission !== undefined && permissionCheck) {
@@ -277,11 +281,15 @@ export class Util {
                     continue;
                 }
             }
+            commandsHavePermission++;
             reply += ` - \`${prefix} ${actionKey}`;
             for (const param of action.params) {
                 reply += ` <${param}>`;
             }
             reply += `\`: ${action.description}\n`;
+        }
+        if (!commandsHavePermission) {
+            return "No commands found";
         }
         reply += "\nParameters:\n";
         for (const parameterKey of Object.keys(parameters)) {
@@ -420,4 +428,42 @@ export class Util {
 interface IUploadResult {
     mxcUrl: string;
     size: number;
+}
+
+// Type type
+type Type = Function;  // tslint:disable-line ban-types
+
+/**
+ * Returns true if `obj` is subtype of at least one of the given types.
+ */
+export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
+    return types.some((type) => obj instanceof type);
+}
+
+/**
+ * Append the old error message to the new one and keep its stack trace.
+ *
+ * @example
+ * throw wrapError(e, HighLevelError, "This error is more specific");
+ *
+ * @param oldError The original error to wrap.
+ * @param newErrorType Type of the error returned by this function.
+ * @returns A new error of type `newErrorType` containing the information of
+ * the original error (stacktrace and error message).
+ */
+export function wrapError<T extends Error>(
+    oldError: object|Error,
+    newErrorType: new (...args: any[]) => T,  // tslint:disable-line no-any
+    ...args: any[]  // tslint:disable-line no-any trailing-comma
+): T {
+    const newError = new newErrorType(...args);
+    let appendMsg;
+    if (oldError instanceof Error) {
+        appendMsg = oldError.message;
+        newError.stack = oldError.stack;
+    } else {
+        appendMsg = oldError.toString();
+    }
+    newError.message += ":\n" + appendMsg;
+    return newError;
 }

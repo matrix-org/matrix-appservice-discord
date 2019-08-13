@@ -14,7 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Cli, Bridge, AppServiceRegistration, ClientFactory, BridgeContext } from "matrix-appservice-bridge";
+import {
+    AppServiceRegistration,
+    Bridge,
+    BridgeContext,
+    Cli,
+    ClientFactory,
+    Request,
+    thirdPartyLookup,
+    unstable as Unstable,
+} from "matrix-appservice-bridge";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -23,6 +32,8 @@ import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
+import { IMatrixEvent } from "./matrixtypes";
+import { wrapError, isInstanceOfTypes } from "./util";
 
 const log = new Log("DiscordAS");
 
@@ -55,8 +66,19 @@ function generateRegistration(reg, callback)  {
     callback(reg);
 }
 
-// tslint:disable-next-line no-any
-type callbackFn = (...args: any[]) => Promise<any>;
+interface IBridgeCallbacks {
+    onAliasQueried: (alias: string, roomId: string) => Promise<void>;
+    onAliasQuery: (alias: string, aliasLocalpart: string) => Promise<IProvisionedRoom>;
+    onEvent: (request: Request, context: BridgeContext) => Promise<void>;
+    thirdPartyLookup: thirdPartyLookup;
+}
+
+type RemoteRoom = any; // tslint:disable-line no-any
+
+interface IProvisionedRoom {
+    creationOpts: Record<string, any>; // tslint:disable-line no-any
+    remote?: RemoteRoom;
+}
 
 async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const config = new DiscordBridgeConfig();
@@ -78,55 +100,58 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     });
     const store = new DiscordStore(config.database);
 
-    const callbacks: { [id: string]: callbackFn; } = {};
+    let callbacks: IBridgeCallbacks;
 
     const bridge = new Bridge({
         clientFactory,
         controller: {
             // onUserQuery: userQuery,
-            onAliasQueried: async (alias: string, roomId: string) => {
+            onAliasQueried: async (alias: string, roomId: string): Promise<void> => {
                 try {
                     return await callbacks.onAliasQueried(alias, roomId);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
             },
-            onAliasQuery: async (alias: string, aliasLocalpart: string) => {
+            onAliasQuery: async (alias: string, aliasLocalpart: string): Promise<IProvisionedRoom|undefined> => {
                 try {
                     return await callbacks.onAliasQuery(alias, aliasLocalpart);
                 } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
             },
-            onEvent: async (request) => {
-                const data = request.getData();
+            onEvent: async (request: Request, _: BridgeContext): Promise<void> => {
                 try {
-                    MetricPeg.get.registerRequest(data.event_id);
-                    // Build our own context.
-                    if (!store.roomStore) {
-                        log.warn("Discord store not ready yet, dropping message");
-                        MetricPeg.get.requestOutcome(data.event_id, false, "dropped");
-                        return;
-                    }
-                    const roomId = data.room_id;
+                    const event = request.getData() as IMatrixEvent;
+                    const roomId = event.room_id;
 
-                    const context: BridgeContext = {
-                        rooms: {},
-                    };
+                    MetricPeg.get.registerRequest(event.event_id);
 
-                    if (roomId) {
-                        const entries  = await store.roomStore.getEntriesByMatrixId(roomId);
-                        context.rooms = entries[0] || {};
-                    }
-
-                    await request.outcomeFrom(callbacks.onEvent(request, context));
-                    MetricPeg.get.requestOutcome(data.event_id, false, "success");
+                    const context = await buildOwnContext(roomId, store);
+                    const callbackResult = callbacks.onEvent(request, context);
+                    request.outcomeFrom(callbackResult);
                 } catch (err) {
-                    MetricPeg.get.requestOutcome(data.event_id, false, "fail");
-                    log.error("Exception thrown while handling \"onEvent\" event", err);
-                    await request.outcomeFrom(Promise.reject("Failed to handle"));
+                    logOnEventError(err);
+
+                    // Raise bridge errors in case of an unexpected error, too.
+                    if (!(err instanceof Unstable.EventNotHandledError)) {
+                        err = wrapError(err, Unstable.BridgeInternalError);
+                    }
+
+                    // Don't send bridge errors out for EventTooOldError.
+                    if (err instanceof Unstable.EventTooOldError) {
+                        err = wrapError(err, Error);
+                    }
+
+                    request.reject(err);
+                } finally {
+                    recordRequestOutcome(request);
                 }
             },
-            onLog: (line, isError) => {
-                log.verbose("matrix-appservice-bridge", line);
+            onLog: (text: string, isError: boolean): void => {
+                if (isError) {
+                    log.error("matrix-appservice-bridge", text);
+                } else {
+                    log.verbose("matrix-appservice-bridge", text);
+                }
             },
-            thirdPartyLookup: async () => {
+            thirdPartyLookup: async (): Promise<thirdPartyLookup> => {
                 try {
                     return await callbacks.thirdPartyLookup();
                 } catch (err) {
@@ -142,15 +167,13 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
                 dontJoin: true, // handled manually
             },
         },
+        networkName: "Discord",
         // To avoid out of order message sending.
         queue: {
             perRequest: true,
             type: "per_room",
         },
         registration,
-        // These must be kept for a while yet since we use them for migrations.
-        roomStore: config.database.roomStorePath,
-        userStore: config.database.userStorePath,
     });
 
     if (config.database.roomStorePath) {
@@ -162,6 +185,10 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.warn("[DEPRECATED] The user store is now part of the SQL database."
                + "The config option userStorePath no longer has any use.");
     }
+
+    // Hack to remove roomStore and userStore
+    bridge.opts.userStore = undefined;
+    bridge.opts.roomStore = undefined;
 
     await bridge.run(port, config);
     log.info(`Started listening on port ${port}`);
@@ -183,11 +210,13 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     const eventProcessor = discordbot.MxEventProcessor;
 
     try {
-        callbacks.onAliasQueried = roomhandler.OnAliasQueried.bind(roomhandler);
-        callbacks.onAliasQuery = roomhandler.OnAliasQuery.bind(roomhandler);
-        callbacks.onEvent = eventProcessor.OnEvent.bind(eventProcessor);
-        callbacks.thirdPartyLookup = async () => {
-            return roomhandler.ThirdPartyLookup;
+        callbacks = {
+            onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
+            onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
+            onEvent: eventProcessor.OnEvent.bind(eventProcessor),
+            thirdPartyLookup: async () => {
+                return roomhandler.ThirdPartyLookup;
+            },
         };
     } catch (err) {
         log.error("Failed to register callbacks. Exiting.", err);
@@ -207,5 +236,75 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
         log.error(err);
         log.error("Failure during startup. Exiting");
         process.exit(1);
+    }
+}
+
+/**
+ * Logs an error which occured during event processing.
+ *
+ * Depending on the error type different log levels are hardcoded.
+ */
+function logOnEventError(err: Error): void {
+    const errTypes = [Unstable.BridgeInternalError];
+    // const warn = [EventTooOldError, NotReadyError, …];
+    const infoTypes = [];
+    const verboseTypes = [Unstable.EventUnknownError];
+
+    switch (true) {
+        case isInstanceOfTypes(err, errTypes): log.error(err); return;
+        case isInstanceOfTypes(err, infoTypes): log.info(err); return;
+        case isInstanceOfTypes(err, verboseTypes): log.verbose(err); return;
+        default: log.warn(err);
+    }
+}
+
+/**
+ * Records in which way the request was handled.
+ */
+function recordRequestOutcome(request: Request): void {
+    const eventId = request.getData().event_id;
+    request.getPromise()
+        .then(() =>
+            MetricPeg.get.requestOutcome(eventId, false, "success"),
+        )
+        .catch(Unstable.EventNotHandledError, (e) =>
+            MetricPeg.get.requestOutcome(eventId, false, "dropped"),
+        )
+        .catch((e) =>
+            MetricPeg.get.requestOutcome(eventId, false, "fail"),
+        )
+    ;
+}
+
+/**
+ * Builds a custom BridgeContext with rooms known to the bridge.
+ */
+async function buildOwnContext(
+    roomId: string,
+    store: DiscordStore,
+): Promise<BridgeContext> {
+    if (!store.roomStore) {
+        throw new NotReadyError("Discord store not ready yet, will retry later");
+    }
+
+    const entries = await store.roomStore.getEntriesByMatrixId(roomId);
+
+    return {
+        rooms: entries[0] || {},
+        senders: {},
+        targets: {},
+    };
+}
+
+class NotReadyError extends Unstable.EventNotHandledError {
+    public name: string;
+
+    constructor(...params) {
+        Unstable.defaultMessage(
+            params,
+            "The bridge was not ready when the message was sent",
+        );
+        super(...params);
+        this.name = "NotReadyError";
     }
 }

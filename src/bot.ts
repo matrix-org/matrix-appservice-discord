@@ -19,8 +19,15 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
-import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
-import { Util } from "./util";
+import {
+    Bridge,
+    Entry,
+    Intent,
+    MatrixUser,
+    RemoteUser,
+    Unstable,
+} from "matrix-appservice-bridge";
+import { Util, wrapError } from "./util";
 import {
     DiscordMessageProcessor,
     DiscordMessageProcessorOpts,
@@ -387,6 +394,10 @@ export class DiscordBot {
         this.channelLock.release(channel.id);
     }
 
+    /**
+     * Edits an event on Discord.
+     * @throws {Unstable.ForeignNetworkError}
+     */
     public async edit(
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
@@ -450,6 +461,10 @@ export class DiscordBot {
         await this.send(embedSet, opts, roomLookup, event);
     }
 
+    /**
+     * Sends an event to Discord.
+     * @throws {Unstable.ForeignNetworkError}
+     */
     public async send(
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
@@ -475,7 +490,7 @@ export class DiscordBot {
                         "Matrix Bridge: Allow rich user messages");
                 }
             } catch (err) {
-                log.error("Unable to create \"_matrix\" webhook. ", err);
+                throw wrapError(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
             }
         }
         try {
@@ -509,7 +524,7 @@ export class DiscordBot {
                 await storePromise;
             }
         } catch (err) {
-            log.error("Couldn't send message. ", err);
+            throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't send message");
         }
         return msg;
     }
@@ -868,7 +883,7 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        await this.userSync.OnUpdateUser(msg.author, msg.webhookID);
+        await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID));
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
@@ -970,10 +985,10 @@ export class DiscordBot {
                         log.error("Failed to send message into room.", e);
                         return;
                     }
-                    if (msg.member) {
+                    if (msg.member && !msg.webhookID) {
                         await this.userSync.JoinRoom(msg.member, room);
                     } else {
-                        await this.userSync.JoinRoom(msg.author, room, msg.webhookID);
+                        await this.userSync.JoinRoom(msg.author, room, Boolean(msg.webhookID));
                     }
                     res = await trySend();
                     await afterSend(res);

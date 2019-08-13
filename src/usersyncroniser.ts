@@ -96,8 +96,8 @@ export class UserSyncroniser {
      * @returns {Promise<void>}
      * @constructor
      */
-    public async OnUpdateUser(discordUser: User, webhookID?: string) {
-        const userState = await this.GetUserUpdateState(discordUser, webhookID);
+    public async OnUpdateUser(discordUser: User, isWebhook: boolean = false) {
+        const userState = await this.GetUserUpdateState(discordUser, isWebhook);
         try {
             await this.ApplyStateToProfile(userState);
         } catch (e) {
@@ -157,10 +157,10 @@ export class UserSyncroniser {
         }
     }
 
-    public async JoinRoom(member: GuildMember | User, roomId: string, webhookID?: string) {
+    public async JoinRoom(member: GuildMember | User, roomId: string, isWebhook: boolean = false) {
         let state: IGuildMemberState;
         if (member instanceof User) {
-            state = await this.GetUserStateForDiscordUser(member, webhookID);
+            state = await this.GetUserStateForDiscordUser(member, isWebhook);
         } else {
             state = await this.GetUserStateForGuildMember(member);
         }
@@ -228,15 +228,18 @@ export class UserSyncroniser {
         }
     }
 
-    public async GetUserUpdateState(discordUser: User, webhookID?: string): Promise<IUserState> {
+    public async GetUserUpdateState(discordUser: User, isWebhook: boolean = false): Promise<IUserState> {
         log.verbose(`State update requested for ${discordUser.id}`);
         let mxidExtra = "";
-        if (webhookID) {
+        if (isWebhook) {
+            // for webhooks we append the username to the mxid, as webhooks with the same
+            // id can have multiple different usernames set. This way we don't spam
+            // userstate changes
             // no need to escape as this mxid is only used to create an intent
-            mxidExtra = `_${new MatrixUser(`@${webhookID}`).localpart}`;
+            mxidExtra = `_${new MatrixUser(`@${discordUser.username}`).localpart}`;
         }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
-            id: discordUser.id,
+            id: discordUser.id + mxidExtra,
             mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
         const displayName = Util.ApplyPatternString(this.config.ghosts.usernamePattern, {
@@ -303,17 +306,20 @@ export class UserSyncroniser {
 
     public async GetUserStateForDiscordUser(
         user: User,
-        webhookID?: string,
+        isWebhook: boolean = false,
     ): Promise<IGuildMemberState> {
         let mxidExtra = "";
-        if (webhookID) {
+        if (isWebhook) {
+            // for webhooks we append the username to the mxid, as webhooks with the same
+            // id can have multiple different usernames set. This way we don't spam
+            // userstate changes
             // no need to escape as this mxid is only used to create an Intent
             mxidExtra = `_${new MatrixUser(`@${user.username}`).localpart}`;
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
             displayName: user.username,
-            id: user.id,
+            id: user.id + mxidExtra,
             mxUserId: `@_discord_${user.id}${mxidExtra}:${this.config.bridge.domain}`,
             roles: [],
             username: user.tag,
