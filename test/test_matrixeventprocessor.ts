@@ -298,7 +298,10 @@ describe("MatrixEventProcessor", () => {
                     messageEmbed: new Discord.RichEmbed(),
                 };
             };
-            await processor.ProcessMsgEvent(event, "1234", "1234");
+            const context = { rooms: { remote: {
+                roomId: "_discord_1234_1234",
+            }}};
+            await processor.ProcessMsgEvent(event, context);
             expect(MESSAGE_SENT).to.be.true;
             expect(MESSAGE_EDITED).to.be.false;
         });
@@ -327,7 +330,10 @@ describe("MatrixEventProcessor", () => {
                     messageEmbed: new Discord.RichEmbed(),
                 };
             };
-            await processor.ProcessMsgEvent(event, "1234", "1234");
+            const context = { rooms: { remote: {
+                roomId: "_discord_1234_1234",
+            }}};
+            await processor.ProcessMsgEvent(event, context);
             expect(MESSAGE_SENT).to.be.false;
             expect(MESSAGE_EDITED).to.be.true;
         });

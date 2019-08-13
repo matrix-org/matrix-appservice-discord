@@ -408,13 +408,9 @@ export class DiscordBot {
         const chan = roomLookup.channel;
         const botUser = roomLookup.botUser;
         const embed = embedSet.messageEmbed;
-        log.verbose("============");
-        log.verbose(botUser, roomLookup);
-        log.verbose(editEventId);
         const oldMsg = await chan.fetchMessage(editEventId);
         if (!oldMsg) {
             // old message not found, just sending this normally
-            embedSet.messageEmbed.description = `EDIT: ${embedSet.messageEmbed.description}`;
             await this.send(embedSet, opts, roomLookup, event);
             return;
         }
@@ -431,34 +427,38 @@ export class DiscordBot {
                 log.warning("Failed to edit discord message, falling back to delete and resend...", err);
             }
         }
-        if (editEventId === this.lastEventIds[chan.id]) {
-            log.info("Immediate edit, deleting and re-sending");
-            this.channelLock.set(chan.id);
-            // we need to delete the event off of the store
-            // else the delete bridges over back to matrix
-            const dbEvent = await this.store.Get(DbEvent, { discord_id: editEventId });
-            log.verbose("Event to delete", dbEvent);
-            if (dbEvent && dbEvent.Next()) {
-                await this.store.Delete(dbEvent);
+        try {
+            if (editEventId === this.lastEventIds[chan.id]) {
+                log.info("Immediate edit, deleting and re-sending");
+                this.channelLock.set(chan.id);
+                // we need to delete the event off of the store
+                // else the delete bridges over back to matrix
+                const dbEvent = await this.store.Get(DbEvent, { discord_id: editEventId });
+                log.verbose("Event to delete", dbEvent);
+                if (dbEvent && dbEvent.Next()) {
+                    await this.store.Delete(dbEvent);
+                }
+                await oldMsg.delete();
+                this.channelLock.release(chan.id);
+                const msg = await this.send(embedSet, opts, roomLookup, event, true);
+                // we re-insert the old matrix event with the new discord id
+                // to allow consecutive edits, as matrix edits are typically
+                // done on the original event
+                const dummyEvent = {
+                    event_id: event.content!["m.relates_to"].event_id,
+                    room_id: event.room_id,
+                } as IMatrixEvent;
+                this.StoreMessagesSent(msg, chan, dummyEvent).catch(() => {
+                    log.warn("Failed to store edit sent message for ", event.event_id);
+                });
+                return;
             }
-            await oldMsg.delete();
-            this.channelLock.release(chan.id);
-            const msg = await this.send(embedSet, opts, roomLookup, event, true);
-            // we re-insert the old matrix event with the new discord id
-            // to allow consecutive edits, as matrix edits are typically
-            // done on the original event
-            const dummyEvent = {
-                event_id: event.content!["m.relates_to"].event_id,
-                room_id: event.room_id,
-            } as IMatrixEvent;
-            this.StoreMessagesSent(msg, chan, dummyEvent).catch(() => {
-                log.warn("Failed to store edit sent message for ", event.event_id);
-            });
-            return;
+            const link = `https://discordapp.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
+            embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
+            await this.send(embedSet, opts, roomLookup, event);
+        } catch (err) {
+            throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't edit message");
         }
-        const link = `https://discordapp.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
-        embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
-        await this.send(embedSet, opts, roomLookup, event);
     }
 
     /**
