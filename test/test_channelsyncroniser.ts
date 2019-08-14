@@ -408,7 +408,7 @@ describe("ChannelSyncroniser", () => {
                 }),
             ];
 
-            const channelSync = CreateChannelSync(testStore);
+            const { channelSync } = CreateChannelSync(testStore);
             const state = await channelSync.GetChannelUpdateState(chan as any);
             expect(state.mxChannels.length).equals(1);
             expect(state.mxChannels[0].iconUrl).equals("https://cdn.discordapp.com/icons/654321/a_new_icon.gif");

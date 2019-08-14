@@ -80,7 +80,7 @@ function setupLogging() {
             // Spammy logs begon
             return;
         }
-        const mod =  "bot-sdk" + module;
+        const mod = "bot-sdk" + module;
         let logger = logMap.get(mod);
         if (!logger) {
             logger = new Log(mod);
@@ -120,7 +120,6 @@ async function run() {
 
     const configPath = opts.config || "config.yaml";
     const registrationPath = opts.file || "discord-registration.yaml";
-
     if (opts["generate-registration"]) {
         if (fs.existsSync(registrationPath)) {
             throw Error("Not writing new registration file, file already exists");
@@ -148,16 +147,6 @@ async function run() {
 
     const store = new DiscordStore(config.database);
 
-    if (config.database.roomStorePath) {
-        log.warn("[DEPRECATED] The room store is now part of the SQL database."
-               + "The config option roomStorePath no longer has any use.");
-    }
-
-    if (config.database.userStorePath) {
-        log.warn("[DEPRECATED] The user store is now part of the SQL database."
-               + "The config option userStorePath no longer has any use.");
-    }
-
     if (config.metrics.enable) {
         log.info("Enabled metrics");
         MetricPeg.set(new PrometheusBridgeMetrics().init(appservice, config.metrics));
@@ -180,14 +169,18 @@ async function run() {
             const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
             await createRoom(createRoomOpts);
             await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
-        } catch (err) { log.error("Exception thrown while handling \"query.room\" event", err); }
+        } catch (err) {
+            log.error("Exception thrown while handling \"query.room\" event", err);
+        }
     });
 
     appservice.on("room.event", async (roomId: string, event: IMatrixEvent) => {
         try {
             const entries = await store.roomStore.getEntriesByMatrixId(roomId);
             await eventProcessor.OnEvent(event, entries);
-        } catch (err) { log.error("Exception thrown while handling \"room.event\" event", err); }
+        } catch (err) {
+            log.error("Exception thrown while handling \"room.event\" event", err);
+        }
     });
 
     await appservice.begin();

@@ -476,7 +476,7 @@ describe("UserSyncroniser", () => {
                 "123456",
                 "username",
                 "1234");
-            const state = await userSync.GetUserStateForDiscordUser(member as any, "654321");
+            const state = await userSync.GetUserStateForDiscordUser(member as any, true);
             expect(state.displayName).to.be.equal("username");
             expect(state.mxUserId).to.be.equal("@_discord_123456_username:localhost");
         });

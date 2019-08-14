@@ -17,18 +17,17 @@ limitations under the License.
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
-import { Util } from "./util";
+import { Util, wrapError } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
 import { Log } from "./log";
-import { IRoomStoreEntry } from "./db/roomstore";
+import { IRoomStoreEntry, RemoteStoreRoom } from "./db/roomstore";
 import { Appservice, MatrixClient } from "matrix-bot-sdk";
 import { DiscordStore } from "./store";
 import { TimedCache } from "./structures/timedcache";
-import { MetricPeg } from "./metrics";
 
 const log = new Log("MatrixEventProcessor");
 
@@ -72,7 +71,7 @@ export class MatrixEventProcessor {
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.store = opts.store;
-        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config.bridge.homeserverUrl);
+        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
         this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
@@ -81,12 +80,17 @@ export class MatrixEventProcessor {
         }
     }
 
+    /**
+     * Callback which is called when the HS notifies the bridge of a new event.
+     *
+     * @param request Request object containing the event for which this callback is called.
+     * @param context The current context of the bridge.
+     * @throws {Unstable.EventNotHandledError} When the event can finally not be handled.
+     */
     public async OnEvent(event: IMatrixEvent, rooms: IRoomStoreEntry[]): Promise<void> {
         const remoteRoom = rooms[0];
         if (event.unsigned.age > AGE_LIMIT) {
-            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
-            return;
+            log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
         }
         if (
             event.type === "m.room.member" &&
@@ -127,31 +131,22 @@ export class MatrixEventProcessor {
             return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
-            const isBotCommand = event.type === "m.room.message" &&
-                event.content!.body &&
-                event.content!.body!.startsWith("!discord");
-            if (isBotCommand) {
-                await this.mxCommandHandler.Process(event, rooms[0] || null);
-                return;
+            if (isBotCommand(event)) {
+                await this.mxCommandHandler.Process(event, remoteRoom);
             } else if (remoteRoom) {
-                const srvChanPair = remoteRoom.remote!.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
                 try {
-                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    await this.ProcessMsgEvent(event, remoteRoom.remote!);
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
                 }
             }
             return;
         } else if (event.type === "m.room.encryption" && remoteRoom) {
-            try {
-                await this.HandleEncryptionWarning(event.room_id);
-                return;
-            } catch (err) {
-                throw new Error(`Failed to handle encrypted room, ${err}`);
-            }
+            await this.HandleEncryptionWarning(event.room_id);
+            return;
         }
-        log.verbose("Event not processed by bridge");
-        MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
+        // throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
+        log.verbose(`${event.event_id} not processed by bridge`);
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
@@ -172,8 +167,17 @@ export class MatrixEventProcessor {
         await this.store.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 
-    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
-        const mxClient = this.bridge.botIntent.underlyingClient;
+    /**
+     * Processes a matrix event by sending it to Discord and marking the event as read.
+     *
+     * @param event The matrix m.room.message event to process.
+     * @param context Context of the bridge.
+     * @throws {Unstable.ForeignNetworkError}
+     */
+    public async ProcessMsgEvent(event: IMatrixEvent, room: RemoteStoreRoom): Promise<void> {
+        const guildId = room.data.discord_guild!;
+        const channelId = room.data.discord_channel!;
+        const mxClient = this.bridge.botClient;
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
@@ -189,8 +193,9 @@ export class MatrixEventProcessor {
             embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
+        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
         await this.discord.send(embedSet, opts, roomLookup, event);
-        // Don't await this.
+
         this.sendReadReceipt(event).catch((ex) => {
             log.verbose("Failed to send read reciept for ", event.event_id, ex);
         });
@@ -520,4 +525,15 @@ export class MatrixEventProcessor {
         }
         return "matrix-media" + ext;
     }
+}
+
+/**
+ * Returns true if the given event is a bot command.
+ */
+function isBotCommand(event: IMatrixEvent): boolean {
+    return !!(
+        event.type === "m.room.message" &&
+        event.content!.body &&
+        event.content!.body!.startsWith("!discord")
+    );
 }
