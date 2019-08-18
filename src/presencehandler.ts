@@ -135,7 +135,7 @@ export class PresenceHandler {
         }
         try {
             await intent.ensureRegistered();
-            await intent.underlyingClient.setPresence(status.Presence, status.StatusMsg);
+            await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg);
         } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);
