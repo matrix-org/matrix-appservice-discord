@@ -102,68 +102,73 @@ function createContext(remoteData?: any) {
 }
 
 describe("MatrixCommandHandler", () => {
+
     describe("Process", () => {
         it("should not process command if not in room", async () => {
             const {handler, bridge} = createCH({disableSS: true});
             await handler.Process(createEvent("", "!666:localhost"), createContext());
-            expect(bridge.botIntent.underlyingClient.)
+            bridge.botIntent.wasNotCalled("sendText", true);
         });
         it("should warn if self service is disabled", async () => {
-            const handler: any = createCH({disableSS: true});
+            const {handler, bridge} = createCH({disableSS: true});
             await handler.Process(createEvent("!discord bridge"), createContext());
-            expect(MESSAGESENT.body).to.equal("**ERROR:** The owner of this bridge does " +
-                "not permit self-service bridging.");
+            const expected = "**ERROR:** The owner of this bridge does not permit self-service bridging.";
+            bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
         });
         it("should warn if user is not powerful enough", async () => {
-            const handler: any = createCH({
-                power: false,
-            });
+            const {handler, bridge} = createCH({power: false});
             await handler.Process(createEvent("!discord bridge"), createContext());
-            expect(MESSAGESENT.body).to.equal("**ERROR:** insufficiant permissions to use this " +
-                "command! Try `!discord help` to see all available commands");
+            const expected = "**ERROR:** insufficiant permissions to use this " +
+            "command! Try `!discord help` to see all available commands";
+            bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
         });
         describe("!discord bridge", () => {
             it("will bridge a new room, and ask for permissions", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
-                expect(MESSAGESENT.body).to.equal("I have bridged this room to your channel");
+                const expected = "I have bridged this room to your channel";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
             it("will fail to bridge if permissions were denied", async () => {
-                const handler: any = createCH({
+                const {handler, bridge} = createCH({
                     denyBridgePermission: true,
                 });
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
-                expect(MESSAGESENT.body).to.equal("The bridge has been declined by the Discord guild");
+                const expected = "The bridge has been declined by the Discord guild";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
             it("will fail to bridge if permissions were failed", async () => {
-                const handler: any = createCH({
+                const {handler, bridge}= createCH({
                     failBridgeMatrix: true,
                 });
-                const evt = await handler.Process(createEvent("!discord bridge 123 456"), createContext());
-                expect(MESSAGESENT.body).to.equal("There was a problem bridging that channel - has " +
-                    "the guild owner approved the bridge?");
+                await handler.Process(createEvent("!discord bridge 123 456"), createContext());
+                const expected = "There was a problem bridging that channel - has the guild owner approved the bridge?";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
             it("will not bridge if a link already exists", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 const evt = await handler.Process(createEvent("!discord bridge 123 456"), createContext(true));
-                expect(MESSAGESENT.body).to.equal("This room is already bridged to a Discord guild.");
+                const expected = "This room is already bridged to a Discord guild.";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
             it("will not bridge without required args", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 const evt = await handler.Process(createEvent("!discord bridge"), createContext());
-                expect(MESSAGESENT.body).to.contain("Invalid syntax");
+                const expected = "Invalid syntax";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
             it("will bridge with x/y syntax", async () => {
-                const handler: any = createCH({powerLevels: {
+                const {handler, bridge} = createCH({powerLevels: {
                         users_default: 100,
                     }});
                 const evt = await handler.Process(createEvent("!discord bridge 123/456"), createContext());
-                expect(MESSAGESENT.body).equals("I have bridged this room to your channel");
+                const expected = "I have bridged this room to your channel";
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", expected);
             });
         });
         describe("!discord unbridge", () => {
             it("will unbridge", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext(
                     {
                         data: {
@@ -173,15 +178,15 @@ describe("MatrixCommandHandler", () => {
                         },
                     },
                 ));
-                expect(MESSAGESENT.body).equals("This room has been unbridged");
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", "This room has been unbridged");
             });
             it("will not unbridge if a link does not exist", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext());
-                expect(MESSAGESENT.body).equals("This room is not bridged.");
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", "This room is not bridged.");
             });
             it("will not unbridge non-plumbed rooms", async () => {
-                const handler: any = createCH();
+                const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext(
                     {
                         data: {
@@ -191,10 +196,10 @@ describe("MatrixCommandHandler", () => {
                         },
                     },
                 ));
-                expect(MESSAGESENT.body).equals("This room cannot be unbridged.");
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", "This room cannot be unbridged.");
             });
             it("will show error if unbridge fails", async () => {
-                const handler: any = createCH({
+                const {handler, bridge} = createCH({
                     failUnbridge: true,
                 });
                 await handler.Process(createEvent("!discord unbridge"), createContext(
@@ -206,13 +211,13 @@ describe("MatrixCommandHandler", () => {
                         },
                     },
                 ));
-                expect(MESSAGESENT.body).to.contain("There was an error unbridging this room.");
+                bridge.botIntent.wasCalled("sendText", true, "!123:localhost", "There was an error unbridging this room.");
             });
         });
     });
     describe("HandleInvite", () => {
         it("should accept invite for bot user", async () => {
-            const handler: any = createCH();
+            const { handler, bridge } = createCH();
             let joinedRoom = false;
             handler.joinRoom = async () => {
                 joinedRoom = true;
@@ -220,10 +225,10 @@ describe("MatrixCommandHandler", () => {
             await handler.HandleInvite({
                 state_key: "@botuser:localhost",
             });
-            expect(USERSJOINED).to.equal(1);
+            bridge.botIntent.wasCalled("joinRoom", true);
         });
         it("should deny invite for other users", async () => {
-            const handler: any = createCH();
+            const { handler, bridge } = createCH();
             let joinedRoom = false;
             handler.joinRoom = async () => {
                 joinedRoom = true;
@@ -231,6 +236,7 @@ describe("MatrixCommandHandler", () => {
             await handler.HandleInvite({
                 state_key: "@user:localhost",
             });
+            bridge.getIntent("@user:localhost").wasNotCalled("joinRoom", true);
             expect(joinedRoom).to.be.false;
         });
     });

@@ -29,6 +29,16 @@ class AppserviceMockBase {
         return calls;
     }
 
+    public wasNotCalled(funcName: string, throwOnFound: boolean = true, ...args: any[]): boolean {
+        if (this.wasCalled(funcName, false, args)) {
+            if (throwOnFound) {
+                throw Error(`${funcName} was called`);
+            }
+            return false;
+        }
+        return true;
+    }
+
     protected funcCalled(funcName: string, ...args: any[]) {
         this.calls[funcName] = this.calls[funcName] || [];
         this.calls[funcName].push(args);
