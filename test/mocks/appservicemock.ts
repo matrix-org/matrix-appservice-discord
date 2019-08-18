@@ -112,11 +112,11 @@ class MatrixClientMock extends AppserviceMockBase {
 
     public sendMessage(roomId: string, eventContent: IMatrixEvent) {
         this.funcCalled("sendMessage", roomId, eventContent);
-    } 
+    }
 
     public sendEvent(roomId: string, body: string, msgtype: string) {
         this.funcCalled("sendEvent", roomId, body, msgtype);
-    } 
+    }
 
     public getRoomMembers(roomId: string) {
         this.funcCalled("getRoomMembers", roomId);
@@ -150,7 +150,7 @@ class MatrixClientMock extends AppserviceMockBase {
         return "mxc://" + filename;
     }
 
-    public async getRoomStateEvent (roomId: string, type: string, stateKey: string): Promise<any> {
+    public async getRoomStateEvent(roomId: string, type: string, stateKey: string): Promise<any> {
         this.funcCalled("getRoomStateEvent", roomId, type, stateKey);
         if (type === "m.room.canonical_alias") {
             return { alias: "#alias:localhost" };
