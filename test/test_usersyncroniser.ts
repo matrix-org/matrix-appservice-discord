@@ -48,7 +48,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
     },
 })).UserSyncroniser;
 
-function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): UserSyncroniser {
+function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
     UTIL_UPLOADED_AVATAR = false;
     const bridge = new AppserviceMock();
     const discordbot: any = {
@@ -66,7 +66,7 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): 
             return [];
         },
         GetIntentFromDiscordMember: (id) => {
-            return bridge.getIntentForUserId(id);
+            return bridge.getIntentForSuffix(id);
         },
         GetRoomIdsFromGuild: async (guild, member?) => {
             if (member && member.roles.get("1234")) {
@@ -92,13 +92,14 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}): 
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.ghosts = Object.assign({}, config.ghosts, ghostConfig);
-    return new UserSync(bridge as any, config, discordbot, userStore as any);
+    const userSync = new UserSync(bridge as any, config, discordbot, userStore as any);
+    return { bridge, userSync};
 }
 
 describe("UserSyncroniser", () => {
     describe("GetUserUpdateState", () => {
         it("Will create a new user", async () => {
-            const userSync = CreateUserSync();
+            const {userSync} = CreateUserSync();
             const user = new MockUser(
                 "123456",
                 "TestUsername",
@@ -119,7 +120,7 @@ describe("UserSyncroniser", () => {
             remoteUser.avatarurl = "test.jpg";
             remoteUser.displayname = "TestUsername";
 
-            const userSync = CreateUserSync([remoteUser]);
+            const {userSync} = CreateUserSync([remoteUser]);
             const user = new MockUser(
                 "123456",
                 "TestUsername",
@@ -140,7 +141,7 @@ describe("UserSyncroniser", () => {
             remoteUser.avatarurl = "test.jpg";
             remoteUser.displayname = "TestUsername";
 
-            const userSync = CreateUserSync([remoteUser], {usernamePattern: ":username#:tag (Discord)"});
+            const {userSync} = CreateUserSync([remoteUser], {usernamePattern: ":username#:tag (Discord)"});
             const user = new MockUser(
                 "123456",
                 "TestUsername",
@@ -161,7 +162,7 @@ describe("UserSyncroniser", () => {
             remoteUser.avatarurl = "test.jpg";
             remoteUser.displayname = "TestUsername#6969";
 
-            const userSync = CreateUserSync([remoteUser]);
+            const {userSync} = CreateUserSync([remoteUser]);
             const user = new MockUser(
                 "123456",
                 "TestUsername",
@@ -182,7 +183,7 @@ describe("UserSyncroniser", () => {
             remoteUser.avatarurl = "test.jpg";
             remoteUser.displayname = "TestUsername#6969";
 
-            const userSync = CreateUserSync([remoteUser]);
+            const {userSync} = CreateUserSync([remoteUser]);
             const user = new MockUser(
                 "123456",
                 "TestUsername",
@@ -201,7 +202,7 @@ describe("UserSyncroniser", () => {
     });
     describe("ApplyStateToProfile", () => {
         it("Will create a new user", async () => {
-            const userSync = CreateUserSync();
+            const {userSync} = CreateUserSync();
             const state: IUserState = {
                 avatarId: "",
                 avatarUrl: null, // Nullable
@@ -217,7 +218,7 @@ describe("UserSyncroniser", () => {
             expect(REMOTEUSER_SET).is.null;
         });
         it("Will set a display name", async () => {
-            const userSync = CreateUserSync();
+            const {userSync, bridge} = CreateUserSync();
             const state: IUserState = {
                 avatarId: "",
                 avatarUrl: null, // Nullable
@@ -231,13 +232,13 @@ describe("UserSyncroniser", () => {
             expect(LINK_MX_USER).is.not.null;
             expect(LINK_RM_USER).is.not.null;
             expect(REMOTEUSER_SET).is.not.null;
-            expect(DISPLAYNAME_SET).equal("123456");
             expect(REMOTEUSER_SET.displayname).equal("123456");
-            expect(AVATAR_SET).is.null;
             expect(REMOTEUSER_SET.avatarurl).is.null;
+            bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("setDisplayName", true, "123456");
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setAvatarUrl", true);
         });
         it("Will set an avatar", async () => {
-            const userSync = CreateUserSync();
+            const {userSync, bridge} = CreateUserSync();
             const state: IUserState = {
                 avatarId: "",
                 avatarUrl: "654321", // Nullable
@@ -250,15 +251,15 @@ describe("UserSyncroniser", () => {
             await userSync.ApplyStateToProfile(state);
             expect(LINK_MX_USER).is.not.null;
             expect(LINK_RM_USER).is.not.null;
-            expect(AVATAR_SET).equal("avatarset");
             expect(UTIL_UPLOADED_AVATAR).to.be.true;
             expect(REMOTEUSER_SET).is.not.null;
             expect(REMOTEUSER_SET.avatarurl).equal("654321");
             expect(REMOTEUSER_SET.displayname).is.null;
-            expect(DISPLAYNAME_SET).is.null;
+            bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("setAvatarUrl", true, "avatarset");
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setDisplayName", true);
         });
         it("Will remove an avatar", async () => {
-            const userSync = CreateUserSync();
+            const {userSync, bridge} = CreateUserSync();
             const state: IUserState = {
                 avatarId: "",
                 avatarUrl: null, // Nullable
@@ -271,15 +272,15 @@ describe("UserSyncroniser", () => {
             await userSync.ApplyStateToProfile(state);
             expect(LINK_MX_USER).is.not.null;
             expect(LINK_RM_USER).is.not.null;
-            expect(AVATAR_SET).is.null;
             expect(UTIL_UPLOADED_AVATAR).to.be.false;
             expect(REMOTEUSER_SET).is.not.null;
             expect(REMOTEUSER_SET.avatarurl).is.null;
             expect(REMOTEUSER_SET.displayname).is.null;
-            expect(DISPLAYNAME_SET).is.null;
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setAvatarUrl", true);
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setDisplayName", true);
         });
         it("will do nothing if nothing needs to be done", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IUserState = {
                 avatarId: "",
                 avatarUrl: null, // Nullable
@@ -292,14 +293,14 @@ describe("UserSyncroniser", () => {
             await userSync.ApplyStateToProfile(state);
             expect(LINK_MX_USER).is.null;
             expect(LINK_RM_USER).is.null;
-            expect(AVATAR_SET).is.null;
             expect(REMOTEUSER_SET).is.null;
-            expect(DISPLAYNAME_SET).is.null;
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setAvatarUrl", true);
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("setDisplayName", true);
         });
     });
     describe("ApplyStateToRoom", () => {
         it("Will apply a new nick", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
                 bot: false,
                 displayColor: 0,
@@ -312,12 +313,13 @@ describe("UserSyncroniser", () => {
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.not.null;
             expect(REMOTEUSER_SET.guildNicks.get("123456")).is.equal("Good Boy");
-            expect(SEV_ROOM_ID).is.equal("!abc:localhost");
-            expect(SEV_CONTENT.displayname).is.equal("Good Boy");
-            expect(SEV_KEY).is.equal("@_discord_123456:localhost");
+            bridge.getIntentForSuffix("123456").underlyingClient.wasCalled(
+                "sendStateEvent", true, "!abc:localhost",
+                "m.room.member", "@_discord_123456:localhost", { displayname: "Good Boy"}
+            );
         });
         it("Will not apply unchanged nick", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
                 bot: false,
                 displayColor: 0,
@@ -329,12 +331,10 @@ describe("UserSyncroniser", () => {
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.null;
-            expect(SEV_ROOM_ID).is.null;
-            expect(SEV_CONTENT).is.null;
-            expect(SEV_KEY).is.null;
+            bridge.getIntentForSuffix("123456").underlyingClient.wasNotCalled("sendStateEvent", true);
         });
         it("Will apply roles", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const TESTROLE_NAME = "testrole";
             const TESTROLE_COLOR = 1337;
             const TESTROLE_POSITION = 42;
@@ -363,7 +363,7 @@ describe("UserSyncroniser", () => {
             expect(roles[0].position).is.equal(TESTROLE_POSITION);
         });
         it("Will set bot correctly", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
                 bot: false,
                 displayColor: 0,
@@ -384,7 +384,7 @@ describe("UserSyncroniser", () => {
         });
         it("Will set the displayColor correctly", async () => {
             const TEST_COLOR = 1234;
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
                 bot: false,
                 displayColor: TEST_COLOR,
@@ -399,7 +399,7 @@ describe("UserSyncroniser", () => {
             expect(custKey.displayColor).is.equal(TEST_COLOR);
         });
         it("Will set username correctly", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const state: IGuildMemberState = {
                 bot: false,
                 displayColor: 0,
@@ -416,7 +416,7 @@ describe("UserSyncroniser", () => {
     });
     describe("GetUserStateForGuildMember", () => {
         it("Will apply a new nick", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -428,7 +428,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("BestDog");
         });
         it("Will will obay nick pattern", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -440,7 +440,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("BestDog (Discord)");
         });
         it("Will correctly add roles", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -462,7 +462,7 @@ describe("UserSyncroniser", () => {
     });
     describe("GetUserStateForDiscordUser", () => {
         it("Will apply a new nick", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const member = new MockUser(
                 "123456",
                 "username",
@@ -471,7 +471,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("username");
         });
         it("Will handle webhooks", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const member = new MockUser(
                 "123456",
                 "username",
@@ -483,7 +483,7 @@ describe("UserSyncroniser", () => {
     });
     describe("OnAddGuildMember", () => {
         it("will update user and join to rooms", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -491,12 +491,12 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild);
             await userSync.OnAddGuildMember(member as any);
-            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("sendStateEvent")).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnRemoveGuildMember", () => {
         it("will leave users from rooms", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -504,12 +504,12 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild);
             await userSync.OnRemoveGuildMember(member as any);
-            expect(LEAVES).to.equal(GUILD_ROOM_IDS.length);
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("leaveRoom")).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnUpdateGuildMember", () => {
         it("will update state for rooms", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const newMember = new MockMember(
@@ -518,10 +518,10 @@ describe("UserSyncroniser", () => {
                 guild,
                 "FiddleDee");
             await userSync.OnUpdateGuildMember(newMember as any);
-            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS.length);
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("sendStateEvent")).to.equal(GUILD_ROOM_IDS.length);
         });
         it("will part rooms based on role removal", async () => {
-            const userSync = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const role = new MockRole("1234", "role");
             const guild = new MockGuild(
                 "654321");
@@ -532,9 +532,8 @@ describe("UserSyncroniser", () => {
                 "FiddleDee");
             newMember.roles.set("1234", role);
             await userSync.OnUpdateGuildMember(newMember as any);
-            expect(SEV_COUNT).to.equal(GUILD_ROOM_IDS_WITH_ROLE.length);
-            expect(LEAVES).to.equal(GUILD_ROOM_IDS.length - GUILD_ROOM_IDS_WITH_ROLE.length);
-            expect(LEAVE_ROOM_ID).to.equal("!ghi:localhost");
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("sendStateEvent")).to.equal(GUILD_ROOM_IDS_WITH_ROLE.length);
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("leaveRoom", true, "!ghi:localhost")).to.equal(GUILD_ROOM_IDS.length - GUILD_ROOM_IDS_WITH_ROLE.length);
         });
     });
 });

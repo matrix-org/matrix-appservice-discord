@@ -36,7 +36,7 @@ function CreateMockIntent(members): any {
             }),
         ),
     });
-    return as.getIntent();
+    return as.botIntent;
 }
 
 describe("Util", () => {
