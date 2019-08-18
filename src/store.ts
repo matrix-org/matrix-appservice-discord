@@ -17,13 +17,12 @@ limitations under the License.
 import * as fs from "fs";
 import { IDbSchema } from "./db/schema/dbschema";
 import { IDbData} from "./db/dbdatainterface";
-import { SQLite3 } from "./db/sqlite3";
 import { Log } from "./log";
 import { DiscordBridgeConfigDatabase } from "./config";
-import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
+
 const log = new Log("DiscordStore");
 export const CURRENT_SCHEMA = 10;
 /**
@@ -285,14 +284,19 @@ export class DiscordStore {
     }
 
     private async openDatabase(): Promise<void|Error> {
+        let Engine;
+        let connString: string;
         if (this.config.filename) {
-            log.info("Filename present in config, using sqlite");
-            this.db = new SQLite3(this.config.filename);
+            log.info("filename present in config, using sqlite");
+            Engine = require("./db/sqlite3").SQLite3;
+            connString = this.config.filename;
         } else if (this.config.connString) {
             log.info("connString present in config, using postgres");
-            this.db = new Postgres(this.config.connString);
+            Engine = require("./db/postgres").Postgres;
+            connString = this.config.connString;
         }
         try {
+            this.db = new Engine(this.config.connString);
             this.db.Open();
             this.pRoomStore = new DbRoomStore(this.db);
             this.pUserStore = new DbUserStore(this.db);
