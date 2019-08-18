@@ -17,13 +17,6 @@
         "test/config.ts",
         "test/db/*",
         "test/mocks/*",
-        "test/test_channelsyncroniser.ts",
-        "test/test_clientfactory.ts",
-        "test/test_config.ts",
-        "test/test_discordbot.ts",
-        "test/test_discordcommandhandler.ts",
-        "test/test_discordmessageprocessor.ts",
-        "test/test_log.ts",
-        "test/test_store.ts",
+        "test/**/test_*",
     ]
 }
