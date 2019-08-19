@@ -1,4 +1,5 @@
 import { IMatrixEvent } from "../../src/matrixtypes";
+import { expect } from "chai";
 
 /* tslint:disable:no-unused-expression no-any */
 
@@ -24,12 +25,19 @@ class AppserviceMockBase {
             return called.length;
         }
         const calls = called.filter((callArgs) => {
-            const j1 = JSON.stringify(callArgs);
-            const j2 = JSON.stringify(args);
-            return j1 === j2;
+            try {
+                expect(callArgs).to.deep.equal(args);
+                return true;
+            } catch {
+                return false;
+            }
         }).length;
         if (calls === 0 && throwOnMissing) {
-            throw Error(`${funcName} was not called with the correct parameters`);
+            let msg = `${funcName} was not called with the correct parameters`;
+            if (called.length) {
+                msg += `. Calls that were made:\n${JSON.stringify(called, undefined, 2)}`;
+            }
+            throw Error(msg);
         }
         return calls;
     }
