@@ -129,7 +129,7 @@ export class Util {
         let matches = 0;
         await Promise.all(channelMxids.map( async (chan) => {
             (await client.getRoomMembers(chan, undefined, "leave")).forEach((member) => {
-                if (member.content.membership !== "invite") {
+                if (member.content.membership === "invite") {
                     return;
                 }
                 const mxid = member.state_key;
