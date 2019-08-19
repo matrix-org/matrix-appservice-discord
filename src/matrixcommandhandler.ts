@@ -78,7 +78,6 @@ export class MatrixCommandHandler {
                     subcat: "m.room.power_levels",
                 },
                 run: async ({guildId, channelId}) => {
-                    console.log(roomEntry);
                     if (roomEntry && roomEntry.remote) {
                         return "This room is already bridged to a Discord guild.";
                     }
@@ -174,7 +173,6 @@ export class MatrixCommandHandler {
         };
 
         const permissionCheck: CommandPermissonCheck = async (permission) => {
-            console.log("Wap");
             if (permission.selfService && !this.config.bridge.enableSelfServiceBridging) {
                 return "The owner of this bridge does not permit self-service bridging.";
             }
