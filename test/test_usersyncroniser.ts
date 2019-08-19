@@ -92,8 +92,8 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
     const config = new DiscordBridgeConfig();
     config.bridge.domain = "localhost";
     config.ghosts = Object.assign({}, config.ghosts, ghostConfig);
-    const userSync = new UserSync(bridge as any, config, discordbot, userStore as any);
-    return { bridge, userSync};
+    const userSync: UserSyncroniser = new UserSync(bridge as any, config, discordbot, userStore as any);
+    return {bridge, userSync};
 }
 
 describe("UserSyncroniser", () => {
@@ -354,13 +354,18 @@ describe("UserSyncroniser", () => {
                 username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
-            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-            const roles = custKey.roles;
-            expect(custKey.id).is.equal("123456");
-            expect(roles.length).is.equal(1);
-            expect(roles[0].name).is.equal(TESTROLE_NAME);
-            expect(roles[0].color).is.equal(TESTROLE_COLOR);
-            expect(roles[0].position).is.equal(TESTROLE_POSITION);
+            bridge.getIntent("@_discord_123456:localhost").underlyingClient.sendStateEvent(
+                "!abc:localhost",
+                "m.room.member",
+                "@_discord_123456:localhost", {
+                    "displayname": state.displayName,
+                    "displayColor": 0,
+                    "uk.half-shot.discord.member": {
+                        id: "123456",
+                        roles: state.roles,
+                    },
+                },
+            );
         });
         it("Will set bot correctly", async () => {
             const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
@@ -374,13 +379,35 @@ describe("UserSyncroniser", () => {
                 username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
-            let custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-            expect(custKey.bot).is.false;
+            bridge.getIntent("@_discord_123456:localhost").underlyingClient.sendStateEvent(
+                "!abc:localhost",
+                "m.room.member",
+                "@_discord_123456:localhost", {
+                    "bot": false,
+                    "displayColor": 0,
+                    "displayname": state.displayName,
+                    "uk.half-shot.discord.member": {
+                        id: "123456",
+                        roles: state.roles,
+                    },
+                },
+            );
 
+            const sync2 = CreateUserSync([new RemoteUser("123456")]);
             state.bot = true;
-            await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
-            custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-            expect(custKey.bot).is.true;
+            await sync2.userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
+            sync2.bridge.getIntent("@_discord_123456:localhost").underlyingClient.sendStateEvent(
+                "!abc:localhost",
+                "m.room.member",
+                "@_discord_123456:localhost", {
+                    "bot": true,
+                    "displayname": state.displayName,
+                    "uk.half-shot.discord.member": {
+                        id: "123456",
+                        roles: state.roles,
+                    },
+                },
+            );
         });
         it("Will set the displayColor correctly", async () => {
             const TEST_COLOR = 1234;
@@ -395,8 +422,19 @@ describe("UserSyncroniser", () => {
                 username: "",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
-            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-            expect(custKey.displayColor).is.equal(TEST_COLOR);
+            bridge.getIntent("@_discord_123456:localhost").underlyingClient.sendStateEvent(
+                "!abc:localhost",
+                "m.room.member",
+                "@_discord_123456:localhost", {
+                    "bot": false,
+                    "displayColor": TEST_COLOR,
+                    "displayname": state.displayName,
+                    "uk.half-shot.discord.member": {
+                        id: "123456",
+                        roles: state.roles,
+                    },
+                },
+            );
         });
         it("Will set username correctly", async () => {
             const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
@@ -410,8 +448,20 @@ describe("UserSyncroniser", () => {
                 username: "user#1234",
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "12345678");
-            const custKey = SEV_CONTENT["uk.half-shot.discord.member"];
-            expect(custKey.username).is.equal("user#1234");
+            bridge.getIntent("@_discord_123456:localhost").underlyingClient.sendStateEvent(
+                "!abc:localhost",
+                "m.room.member",
+                "@_discord_123456:localhost", {
+                    "bot": false,
+                    "displayColor": 0,
+                    "displayname": state.displayName,
+                    "uk.half-shot.discord.member": {
+                        id: "123456",
+                        roles: state.roles,
+                    },
+                    "username": "user#1234",
+                },
+            );
         });
     });
     describe("GetUserStateForGuildMember", () => {

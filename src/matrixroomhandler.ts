@@ -99,9 +99,8 @@ export class MatrixRoomHandler {
             roomId,
             "public",
         ).catch((err) => {
-            // Catch this async
             log.warn("Failed to set room directory visibility for new room:", err);
-        })
+        });
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
         const promiseList: Promise<void>[] = [];
         // Join a whole bunch of users.

@@ -4,6 +4,11 @@ import { IMatrixEvent } from "../../src/matrixtypes";
 
 interface IAppserviceMockOpts {
     roommembers?: IMatrixEvent[];
+    stateEventFetcher?: (roomId, stateType, stateKey) => Promise<any>;
+    eventFetcher?: (roomId, eventId) => Promise<any>;
+    profileFetcher?: (userId) => Promise<any>;
+    botUserId?: string;
+    userIdPrefix?: string;
 }
 
 class AppserviceMockBase {
@@ -48,11 +53,24 @@ class AppserviceMockBase {
 export class AppserviceMock extends AppserviceMockBase {
     public botIntent: IntentMock;
     public intents: {[id: string]: IntentMock};
+
+    public get botUserId(): string {
+        return this.opts.botUserId || "@bot:localhost";
+    }
+
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
         opts.roommembers = opts.roommembers || [];
         this.intents = {};
         this.botIntent = new IntentMock(this.opts);
+    }
+
+    public isNamespacedUser(userId: string) {
+        this.funcCalled("isNamespacedUser", userId);
+        if (this.opts.userIdPrefix) {
+            return userId.startsWith(this.opts.userIdPrefix);
+        }
+        throw Error("No prefix defined");
     }
 
     public getIntentForSuffix(prefix: string) {
@@ -145,16 +163,38 @@ class MatrixClientMock extends AppserviceMockBase {
         this.funcCalled("setDisplayName", displayName);
     }
 
+    public async getUserProfile(userId: string) {
+        this.funcCalled("getUserProfile", userId);
+        if (this.opts.profileFetcher) {
+            return await this.opts.profileFetcher(userId);
+        }
+        throw Error("No stateEventFetcher defined");
+    }
+
     public async uploadContent(data: Buffer, contentType: string, filename: string) {
         this.funcCalled("uploadContent", data, contentType, filename);
         return "mxc://" + filename;
     }
 
+    public async mxcUrlToHttp(mxcUrl: string) {
+        this.funcCalled("mxcUrlToHttp", mxcUrl);
+        return mxcUrl.replace("mxc://", "https://");
+    }
+
     public async getRoomStateEvent(roomId: string, type: string, stateKey: string): Promise<any> {
         this.funcCalled("getRoomStateEvent", roomId, type, stateKey);
-        if (type === "m.room.canonical_alias") {
-            return { alias: "#alias:localhost" };
+        if (this.opts.stateEventFetcher) {
+            return await this.opts.stateEventFetcher(roomId, type, stateKey);
         }
+        throw Error("No stateEventFetcher defined");
+    }
+
+    public async getEvent(roomId: string, eventId: string): Promise<any> {
+        this.funcCalled("getEvent", roomId, eventId);
+        if (this.opts.eventFetcher) {
+            return await this.opts.eventFetcher(roomId, eventId);
+        }
+        throw Error("No getEvent defined");
     }
 
     public unbanUser(roomId: string, userId: string) {
