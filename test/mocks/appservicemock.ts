@@ -94,7 +94,7 @@ class IntentMock extends AppserviceMockBase {
     public readonly underlyingClient: MatrixClientMock;
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
-        this.underlyingClient = new MatrixClientMock();
+        this.underlyingClient = new MatrixClientMock(opts);
     }
 
     public join() {
@@ -115,6 +115,10 @@ class IntentMock extends AppserviceMockBase {
 
     public sendEvent(roomId: string, body: string) {
         this.funcCalled("sendEvent", roomId, body);
+    }
+
+    public async ensureRegistered(): Promise<void> {
+        this.funcCalled("ensureRegistered");
     }
 }
 
@@ -138,9 +142,10 @@ class MatrixClientMock extends AppserviceMockBase {
 
     public getRoomMembers(roomId: string) {
         this.funcCalled("getRoomMembers", roomId);
-        return {
-            chunk: this.opts.roommembers!,
-        };
+        if (!this.opts.roommembers) {
+            throw Error("No roommembers defined");
+        }
+        return this.opts.roommembers;
     }
 
     public leaveRoom(roomId: string) {

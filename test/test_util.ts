@@ -44,7 +44,6 @@ describe("Util", () => {
         it("parses arguments", () => {
             const {command, args} = Util.MsgToArgs("!matrix command arg1 arg2", "!matrix");
             Chai.assert.equal(command, "command");
-            // tslint:disable-next-line:no-magic-numbers
             Chai.assert.equal(args.length, 2);
             Chai.assert.equal(args[0], "arg1");
             Chai.assert.equal(args[1], "arg2");
@@ -130,14 +129,14 @@ Fox goes floof!`);
     });
     describe("GetMxidFromName", () => {
         it("Finds a single member", async () => {
-            const mockRooms = [
+            const mockUsers = [
                 {
                     displayname: "GoodBoy",
                     membership: "join",
                     mxid: "@123:localhost",
                 },
             ];
-            const intent = CreateMockIntent(mockRooms);
+            const intent = CreateMockIntent(mockUsers);
             const mxid = await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
             expect(mxid).equal("@123:localhost");
         });
@@ -230,7 +229,7 @@ Fox goes floof!`);
         it("should deny", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: {
                                 blubb: PERM_LEVEL,
@@ -249,7 +248,7 @@ Fox goes floof!`);
         it("should allow cat/subcat", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: {
                                 blubb: PERM_LEVEL,
@@ -271,7 +270,7 @@ Fox goes floof!`);
         it("should allow cat", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: PERM_LEVEL,
                             users: {
@@ -290,7 +289,7 @@ Fox goes floof!`);
         it("should allow based on default", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: PERM_LEVEL,
                             users_default: PERM_LEVEL,
