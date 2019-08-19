@@ -10,6 +10,7 @@ interface IAppserviceMockOpts {
     profileFetcher?: (userId) => Promise<any>;
     botUserId?: string;
     userIdPrefix?: string;
+    joinedrooms?: string[];
 }
 
 class AppserviceMockBase {
@@ -60,6 +61,7 @@ class AppserviceMockBase {
 
 export class AppserviceMock extends AppserviceMockBase {
     public botIntent: IntentMock;
+    public botClient: MatrixClientMock;
     public intents: {[id: string]: IntentMock};
 
     public get botUserId(): string {
@@ -71,6 +73,7 @@ export class AppserviceMock extends AppserviceMockBase {
         opts.roommembers = opts.roommembers || [];
         this.intents = {};
         this.botIntent = new IntentMock(this.opts);
+        this.botClient = this.botIntent.underlyingClient;
     }
 
     public isNamespacedUser(userId: string) {
@@ -154,6 +157,14 @@ class MatrixClientMock extends AppserviceMockBase {
             throw Error("No roommembers defined");
         }
         return this.opts.roommembers;
+    }
+
+    public getJoinedRooms() {
+        this.funcCalled("getJoinedRooms");
+        if (!this.opts.joinedrooms) {
+            throw Error("No joinedrooms defined");
+        }
+        return this.opts.joinedrooms;
     }
 
     public leaveRoom(roomId: string) {
