@@ -4,9 +4,9 @@
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
   "scripts": {
-    "test": "npm run-script build && mocha --opts test/mocha.opts",
+    "test": "npm run-script build && mocha --opts test/mocha.opts build/test/config.js build/test",
     "lint": "tslint --project ./tsconfig.json -t stylish",
-    "coverage": "tsc && nyc mocha",
+    "coverage": "tsc && nyc mocha build/test/config.js build/test",
     "build": "tsc",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
     "debug": "npm run-script build && node --inspect ./build/src/discordas.js -p 9005 -c config.yaml",
