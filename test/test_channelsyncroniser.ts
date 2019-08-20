@@ -56,7 +56,14 @@ class Entry implements IRoomStoreEntry {
 }
 
 function CreateChannelSync(remoteChannels: any[] = []) {
-    const bridge = new AppserviceMock();
+    const bridge = new AppserviceMock({
+        stateEventFetcher: async (roomId: string, type: string, key: string) => {
+            if (roomId === "!valid:localhost" && type === "m.room.canonical_alias" && key == "") {
+                return { alias: "#alias:localhost"};
+            }
+            throw Error("Event not found");
+        }
+    });
     REMOTECHANNEL_REMOVED = false;
     REMOTECHANNEL_SET = false;
     const roomStore = {
@@ -246,7 +253,6 @@ describe("ChannelSyncroniser", () => {
             const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = getIds;
             const alias = await channelSync.GetAliasFromChannel(chan as any);
-
             expect(alias).to.equal(null);
         });
         it("Should return a #_discord_ alias if a guild is present", async () => {
@@ -257,7 +263,6 @@ describe("ChannelSyncroniser", () => {
             const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = getIds;
             const alias = await channelSync.GetAliasFromChannel(chan as any);
-
             expect(alias).to.equal("#_discord_123_123:localhost");
         });
     });
