@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import * as Chai from "chai"; // TODO: Use expect
 import * as Discord from "discord.js";
 import { DiscordMessageProcessor } from "../src/discordmessageprocessor";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
-import { MockRole } from "./mocks/role";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */

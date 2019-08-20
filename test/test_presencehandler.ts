@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { assert } from "chai";
+import { expect } from "chai";
 import * as Discord from "discord.js";
 
 import { PresenceHandler } from "../src/presencehandler";
@@ -56,18 +56,18 @@ describe("PresenceHandler", () => {
             const COUNT = 2;
             handler.EnqueueUser(new MockUser("abc", "def") as any);
             handler.EnqueueUser(new MockUser("123", "ghi") as any);
-            assert.equal(handler.QueueCount, COUNT);
+            expect(handler.QueueCount).to.be.equal(COUNT);
         });
         it("does not add duplicate users", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             handler.EnqueueUser(new MockUser("abc", "def") as any);
             handler.EnqueueUser(new MockUser("abc", "def") as any);
-            assert.equal(handler.QueueCount, 1);
+            expect(handler.QueueCount).to.be.equal(1);
         });
         it("does not add the bot user", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             handler.EnqueueUser(new MockUser("1234", "def") as any);
-            assert.equal(handler.QueueCount, 0);
+            expect(handler.QueueCount).to.be.equal(0);
         });
     });
     describe("DequeueUser", () => {
@@ -83,11 +83,11 @@ describe("PresenceHandler", () => {
             handler.EnqueueUser(members[members.length - 1]);
 
             handler.DequeueUser(members[members.length - 1]);
-            assert.equal(handler.QueueCount, members.length - 1);
+            expect(handler.QueueCount).to.be.equal(members.length - 1);
             handler.DequeueUser(members[1]);
-            assert.equal(handler.QueueCount, 1);
+            expect(handler.QueueCount).to.be.equal(1);
             handler.DequeueUser(members[0]);
-            assert.equal(handler.QueueCount, 0);
+            expect(handler.QueueCount).to.be.equal(0);
         });
     });
     describe("ProcessUser", () => {

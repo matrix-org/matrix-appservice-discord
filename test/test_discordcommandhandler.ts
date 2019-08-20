@@ -16,7 +16,6 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Proxyquire from "proxyquire";
 
-import { DiscordCommandHandler } from "../src/discordcommandhandler";
 import { MockChannel } from "./mocks/channel";
 import { MockMember } from "./mocks/member";
 import { MockGuild } from "./mocks/guild";

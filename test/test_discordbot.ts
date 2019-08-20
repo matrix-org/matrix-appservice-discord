@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
 
@@ -25,16 +25,9 @@ import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockUser } from "./mocks/user";
-import { MockChannel } from "./mocks/channel";
-import { DiscordBot } from "../src/bot";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
-
-const assert = Chai.assert;
-// const should = Chai.should as any;
 
 const mockBridge = new AppserviceMock({});
 
@@ -151,7 +144,7 @@ describe("DiscordBot", () => {
             msg.author = author;
             msg.content = "!matrix test";
             await discordBot.OnMessage(msg);
-            Chai.assert.equal(HANDLE_COMMAND, true);
+            expect(HANDLE_COMMAND).to.be.true;
         });
         it("skips empty messages", async () => {
             discordBot = getDiscordBot();
@@ -289,7 +282,7 @@ describe("DiscordBot", () => {
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkMsgSent, false);
+            expect(checkMsgSent).to.be.false;
         });
         it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -316,7 +309,7 @@ describe("DiscordBot", () => {
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkMsgSent, true);
+            expect(checkMsgSent).to.be.true;
         });
         it("should delete and re-send if it is the newest message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -349,8 +342,8 @@ describe("DiscordBot", () => {
             discordBot.OnMessage = async (_) => { sentMessage = true; };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(deletedMessage, true);
-            Chai.assert.equal(sentMessage, true);
+            expect(deletedMessage).to.be.true;
+            expect(sentMessage).to.be.true;
         });
     });
     describe("event:message", () => {
@@ -362,7 +355,7 @@ describe("DiscordBot", () => {
             );
             let expected = 0;
             discordBot.OnMessage = async (msg: any) => {
-                assert.equal(msg.n, expected);
+                expect(msg.n).to.eq(expected);
                 expected++;
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
@@ -384,7 +377,7 @@ describe("DiscordBot", () => {
             let expected = 0;
             const THROW_EVERY = 5;
             discordBot.OnMessage = async (msg: any) => {
-                assert.equal(msg.n, expected);
+                expect(msg.n).to.eq(expected);
                 expected++;
                 if (expected % THROW_EVERY === 0) {
                     return Promise.reject("Deliberate throw in test");
@@ -400,7 +393,7 @@ describe("DiscordBot", () => {
                 await client.emit("message", { n, channel: { guild: { id: CHANID }, id: CHANID} });
             }
             await discordBot.discordMessageQueue[CHANID];
-            assert.equal(expected, ITERATIONS);
+            expect(expected).to.eq(ITERATIONS);
         });
     });
 });
