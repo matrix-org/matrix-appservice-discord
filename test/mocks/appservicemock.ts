@@ -72,7 +72,7 @@ export class AppserviceMock extends AppserviceMockBase {
         super();
         opts.roommembers = opts.roommembers || [];
         this.intents = {};
-        this.botIntent = new IntentMock(this.opts);
+        this.botIntent = new IntentMock(this.opts, "BOT");
         this.botClient = this.botIntent.underlyingClient;
     }
 
@@ -87,7 +87,7 @@ export class AppserviceMock extends AppserviceMockBase {
     public getIntent(userId: string) {
         this.funcCalled("getIntent", userId);
         if (!this.intents[userId]) {
-            this.intents[userId] = new IntentMock(this.opts);
+            this.intents[userId] = new IntentMock(this.opts, userId);
         }
         return this.intents[userId];
     }
@@ -95,7 +95,7 @@ export class AppserviceMock extends AppserviceMockBase {
     public getIntentForSuffix(suffix: string) {
         this.funcCalled("getIntentForSuffix", suffix);
         if (!this.intents[suffix]) {
-            this.intents[suffix] = new IntentMock(this.opts);
+            this.intents[suffix] = new IntentMock(this.opts, suffix);
         }
         return this.intents[suffix];
     }
@@ -103,7 +103,7 @@ export class AppserviceMock extends AppserviceMockBase {
     public getIntentForUserId(userId: string) {
         this.funcCalled("getIntentForUserId", userId);
         if (!this.intents[userId]) {
-            this.intents[userId] = new IntentMock(this.opts);
+            this.intents[userId] = new IntentMock(this.opts, userId);
         }
         return this.intents[userId];
     }
@@ -124,7 +124,7 @@ export class AppserviceMock extends AppserviceMockBase {
 
 class IntentMock extends AppserviceMockBase {
     public readonly underlyingClient: MatrixClientMock;
-    constructor(private opts: IAppserviceMockOpts = {}) {
+    constructor(private opts: IAppserviceMockOpts = {}, private id: string) {
         super();
         this.underlyingClient = new MatrixClientMock(opts);
     }
@@ -216,7 +216,7 @@ class MatrixClientMock extends AppserviceMockBase {
         throw Error("No stateEventFetcher defined");
     }
 
-    public async uploadContent(data: Buffer, contentType: string, filename: string) {
+    public async uploadContent(data: Buffer, contentType: string, filename: string = "noname") {
         this.funcCalled("uploadContent", data, contentType, filename);
         return "mxc://" + filename;
     }

@@ -340,7 +340,7 @@ export class UserSyncroniser {
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
-                async (roomId) => this.leave(intent, roomId, false),
+                async (roomId) => this.leave(intent, roomId),
             ),
         );
     }
@@ -386,7 +386,7 @@ export class UserSyncroniser {
             leaveRooms.map(
                 async (roomId) => {
                     try {
-                        await this.leave(intent, roomId, true);
+                        await this.leave(intent, roomId);
                     } catch (e) { } // not in room
                 },
             ),
@@ -416,7 +416,7 @@ export class UserSyncroniser {
         });
     }
 
-    private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {
+    private async leave(intent: Intent, roomId: string) {
         await intent.underlyingClient.leaveRoom(roomId);
     }
 }

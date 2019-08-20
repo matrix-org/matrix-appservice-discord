@@ -43,6 +43,11 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
         Util: {
             ApplyPatternString: Util.ApplyPatternString,
             AsyncForEach: Util.AsyncForEach,
+            ParseMxid: Util.ParseMxid,
+            DownloadFile: async () => {
+                UTIL_UPLOADED_AVATAR = true;
+                return Buffer.from([]);
+            },
         },
     },
 })).UserSyncroniser;
@@ -64,8 +69,8 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
         GetGuilds: () => {
             return [];
         },
-        GetIntentFromDiscordMember: (id) => {
-            return bridge.getIntentForSuffix(id);
+        GetIntentFromDiscordMember: (member) => {
+            return bridge.getIntentForSuffix(member.id);
         },
         GetRoomIdsFromGuild: async (guild, member?) => {
             if (member && member.roles.get("1234")) {
@@ -239,7 +244,7 @@ describe("UserSyncroniser", () => {
         it("Will set an avatar", async () => {
             const {userSync, bridge} = CreateUserSync();
             const state: IUserState = {
-                avatarId: "",
+                avatarId: "avatarurl",
                 avatarUrl: "654321", // Nullable
                 createUser: true,
                 displayName: null, // Nullable
@@ -254,7 +259,7 @@ describe("UserSyncroniser", () => {
             expect(REMOTEUSER_SET).is.not.null;
             expect(REMOTEUSER_SET.avatarurl).equal("654321");
             expect(REMOTEUSER_SET.displayname).is.null;
-            bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasCalled("setAvatarUrl", true, "avatarset");
+            bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasCalled("setAvatarUrl", true, "mxc://avatarurl");
             bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasNotCalled("setDisplayName", true);
         });
         it("Will remove an avatar", async () => {
@@ -312,9 +317,20 @@ describe("UserSyncroniser", () => {
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.not.null;
             expect(REMOTEUSER_SET.guildNicks.get("123456")).is.equal("Good Boy");
-            bridge.getIntentForUserId("123456").underlyingClient.wasCalled(
+            bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasCalled(
                 "sendStateEvent", true, "!abc:localhost",
-                "m.room.member", "@_discord_123456:localhost", { displayname: "Good Boy"}
+                "m.room.member", "@_discord_123456:localhost", {
+                    "avatar_url": "",
+                    "displayname": "Good Boy",
+                    "membership": "join",
+                    "uk.half-shot.discord.member": {
+                        "bot": false,
+                        "displayColor": 0,
+                        "id": "123456",
+                        "roles": [],
+                        "username": ""
+                    }
+                }
             );
         });
         it("Will not apply unchanged nick", async () => {
@@ -330,7 +346,7 @@ describe("UserSyncroniser", () => {
             };
             await userSync.ApplyStateToRoom(state, "!abc:localhost", "123456");
             expect(REMOTEUSER_SET).is.null;
-            bridge.getIntentForUserId("123456").underlyingClient.wasNotCalled("sendStateEvent", true);
+            bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasNotCalled("sendStateEvent", true);
         });
         it("Will apply roles", async () => {
             const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
@@ -553,7 +569,7 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild);
             await userSync.OnRemoveGuildMember(member as any);
-            expect(bridge.getIntentForUserId("@_discord_123456:localhost").underlyingClient.wasCalled("leaveRoom")).to.equal(GUILD_ROOM_IDS.length);
+            expect(bridge.getIntentForSuffix("123456").underlyingClient.wasCalled("leaveRoom")).to.equal(GUILD_ROOM_IDS.length);
         });
     });
     describe("OnUpdateGuildMember", () => {
