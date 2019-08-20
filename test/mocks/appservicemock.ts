@@ -237,4 +237,8 @@ class MatrixClientMock extends AppserviceMockBase {
     public unbanUser(roomId: string, userId: string) {
         this.funcCalled("unbanUser", roomId, userId);
     }
+
+    public async setPresenceStatus(presence: string, status: string) {
+        this.funcCalled("setPresenceStatus", presence, status);
+    }
 }
