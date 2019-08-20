@@ -143,7 +143,6 @@ export class MatrixRoomHandler {
         } catch (err) {
             log.error(`Couldn't find discord room '${aliasLocalpart}'.`, err);
         }
-
     }
 
     // public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {

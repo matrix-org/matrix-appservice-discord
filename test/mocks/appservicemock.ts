@@ -133,12 +133,12 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("join");
     }
 
-    public joinRoom() {
-        this.funcCalled("joinRoom");
+    public joinRoom(roomIdOrAlias: string) {
+        this.funcCalled("joinRoom", roomIdOrAlias);
     }
 
-    public leave() {
-        this.funcCalled("leave");
+    public leave(roomIdOrAlias: string) {
+        this.funcCalled("leave", roomIdOrAlias);
     }
 
     public sendText(roomId: string, body: string) {
