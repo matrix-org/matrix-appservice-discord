@@ -725,9 +725,9 @@ This is the reply`,
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
             expect(result!.description).to.be.equal("Reply with unknown content");
-            expect(result!.author!.name).to.be.equal("Doggo!");
-            expect(result!.author!.icon_url).to.be.equal("https://fakeurl.com");
-            expect(result!.author!.url).to.be.equal("https://matrix.to/#/@doggo:localhost");
+            expect(result!.author!.name).to.be.equal("Unknown");
+            expect(result!.author!.icon_url).to.be.undefined;
+            expect(result!.author!.url).to.be.undefined;
         });
         it("should add the reply time", async () => {
             const {processor} =  createMatrixEventProcessor();
