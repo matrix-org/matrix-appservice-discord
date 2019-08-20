@@ -112,7 +112,7 @@ describe("MatrixCommandHandler", () => {
             bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                 body: "**ERROR:** The owner of this bridge does not permit self-service bridging.",
                 format: "org.matrix.custom.html",
-                formatted_body: "<strong>ERROR:</strong> The owner of this bridge" +
+                formatted_body: "<strong>ERROR:</strong> The owner of this bridge " +
                     "does not permit self-service bridging.",
                 msgtype: "m.notice",
             });
@@ -257,7 +257,7 @@ describe("MatrixCommandHandler", () => {
                 });
             });
             it("will show error if unbridge fails", async () => {
-                const expected = "There was an error unbridging this room. Please" +
+                const expected = "There was an error unbridging this room. Please " +
                 "try again later or contact the bridge operator.";
                 const {handler, bridge} = createCH({
                     failUnbridge: true,
