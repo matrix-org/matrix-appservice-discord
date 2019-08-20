@@ -39,7 +39,7 @@ function buildRequest(eventData): IMatrixEvent {
         eventData.sender = "@foobar:localhost";
     }
     return eventData;
-};
+}
 
 const bot = {
     GetIntentFromDiscordMember: (member) => {

@@ -165,20 +165,19 @@ describe("MatrixRoomHandler", () => {
     describe("OnAliasQuery", () => {
         it("will create room", async () => {
             const {handler} = createRH({});
-            const ret = await handler.OnAliasQuery(
-                "#_discord_123_456:localhost");
+            const ret = await handler.OnAliasQuery("#_discord_123_456:localhost");
             expect(ret).to.be.deep.equal({
-                    "initial_state": [
+                    initial_state: [
                     {
-                        "content": {
-                            "join_rule": "public"
+                        content: {
+                            join_rule: "public",
                         },
-                        "state_key": "",
-                        "type": "m.room.join_rules"
-                    }
+                        state_key: "",
+                        type: "m.room.join_rules",
+                    },
                 ],
-                "room_alias_name": "_discord_123_456",
-                "visibility": "public"
+                room_alias_name: "_discord_123_456",
+                visibility: "public",
             });
         });
         it("will not create room if guild cannot be found", async () => {

@@ -128,6 +128,7 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
+    // tslint:disable-next-line no-any
     public async OnAliasQuery(alias: string): Promise<any> {
         const aliasLocalpart = alias.substr("#".length, alias.indexOf(":") - 1);
         log.info("Got request for #", aliasLocalpart);
@@ -245,7 +246,7 @@ export class MatrixRoomHandler {
     }
 
     private async createMatrixRoom(channel: Discord.TextChannel,
-                                   alias: string, aliasLocalpart: string): Promise<any> {
+                                   alias: string, aliasLocalpart: string) {
         const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}`, {
             discord_channel: channel.id,
             discord_guild: channel.guild.id,

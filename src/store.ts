@@ -233,7 +233,8 @@ export class DiscordStore {
             throw err;
         }
     }
-    // tslint:disable-next-line no-any
+
+    // tslint:disable-next-line no-any callable-types
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);
