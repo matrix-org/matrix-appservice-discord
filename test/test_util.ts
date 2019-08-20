@@ -14,15 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 
 import { Util, ICommandActions, ICommandParameters } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 function CreateMockIntent(members): any {
     const as = new AppserviceMock({
@@ -43,10 +41,10 @@ describe("Util", () => {
     describe("MsgToArgs", () => {
         it("parses arguments", () => {
             const {command, args} = Util.MsgToArgs("!matrix command arg1 arg2", "!matrix");
-            Chai.assert.equal(command, "command");
-            Chai.assert.equal(args.length, 2);
-            Chai.assert.equal(args[0], "arg1");
-            Chai.assert.equal(args[1], "arg2");
+            expect(command).to.be.eq("command");
+            expect(args.length).to.be.eq(2);
+            expect(args[0]).to.be.eq("arg1");
+            expect(args[1]).to.be.eq("arg2");
         });
     });
     describe("Command Stuff", () => {

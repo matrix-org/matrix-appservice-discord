@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-// import * as Proxyquire from "proxyquire";
 import { DiscordStore } from "../src/store";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { DbEvent } from "../src/db/dbdataevent";

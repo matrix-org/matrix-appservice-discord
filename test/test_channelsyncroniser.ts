@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
-import * as Discord from "discord.js";
+import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
 
 import { ChannelSyncroniser } from "../src/channelsyncroniser";
@@ -26,10 +25,9 @@ import { MockChannel } from "./mocks/channel";
 import { MatrixStoreRoom, RemoteStoreRoom, IRoomStoreEntry } from "../src/db/roomstore";
 import { Appservice } from "matrix-bot-sdk";
 import { AppserviceMock } from "./mocks/appservicemock";
+
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 let REMOTECHANNEL_SET: any = false;
 let REMOTECHANNEL_REMOVED: any = false;

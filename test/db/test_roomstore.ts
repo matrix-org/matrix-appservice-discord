@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-// import * as Proxyquire from "proxyquire";
 import { DiscordStore, CURRENT_SCHEMA } from "../../src/store";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
 

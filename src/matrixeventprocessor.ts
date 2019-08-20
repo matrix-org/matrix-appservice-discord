@@ -365,7 +365,9 @@ export class MatrixEventProcessor {
         // Try to get the event.
         try {
             const sourceEvent = (await intent.underlyingClient.getEvent(event.room_id, eventId)) as IMatrixEvent;
-            sourceEvent.content!.body = sourceEvent.content!.body  || "Reply with unknown content";
+            if (!sourceEvent || !sourceEvent.content || !sourceEvent.content.body) {
+                throw Error("No content could be found");
+            }
             const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
 
             // if we reply to a discord member, ping them!
@@ -389,7 +391,6 @@ export class MatrixEventProcessor {
             }
             return replyEmbed;
         } catch (ex) {
-            console.log(ex);
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
         }
         // For some reason we failed to get the event, so using fallback.

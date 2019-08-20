@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import {IGuildMemberState, IUserState, UserSyncroniser} from "../src/usersyncroniser";
 import {MockUser} from "./mocks/user";
 import {DiscordBridgeConfig} from "../src/config";
@@ -29,7 +29,6 @@ import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-const expect = Chai.expect;
 
 let LINK_MX_USER: any = null;
 let LINK_RM_USER: any = null;

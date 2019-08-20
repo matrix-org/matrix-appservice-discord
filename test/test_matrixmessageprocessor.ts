@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockChannel } from "./mocks/channel";
@@ -24,8 +24,6 @@ import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 const bot = {
     GetChannelFromRoomId: async (roomId: string): Promise<MockChannel> => {
