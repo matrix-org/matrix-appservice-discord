@@ -185,7 +185,7 @@ export class ChannelSyncroniser {
         if (!guildChannel.guild) {
             return null; // we didn't pass a guild, so we have no way of bridging this room, thus no alias
         }
-        // at last, no known canonical aliases and we are ag uild....so we know an alias!
+        // at last, no known canonical aliases and we are a guild....so we know an alias!
         return `#_discord_${guildChannel.guild.id}_${channel.id}:${this.config.bridge.domain}`;
     }
 

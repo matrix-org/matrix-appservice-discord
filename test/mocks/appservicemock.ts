@@ -84,15 +84,32 @@ export class AppserviceMock extends AppserviceMockBase {
         throw Error("No prefix defined");
     }
 
-    public getIntentForSuffix(prefix: string) {
-        this.funcCalled("getIntentForSuffix", prefix);
-        if (!this.intents[prefix]) {
-            this.intents[prefix] = new IntentMock(this.opts);
+    public getIntent(userId: string) {
+        this.funcCalled("getIntent", userId);
+        if (!this.intents[userId]) {
+            this.intents[userId] = new IntentMock(this.opts);
         }
-        return this.intents[prefix];
+        return this.intents[userId];
+    }
+
+    public getIntentForSuffix(suffix: string) {
+        this.funcCalled("getIntentForSuffix", suffix);
+        if (!this.intents[suffix]) {
+            this.intents[suffix] = new IntentMock(this.opts);
+        }
+        return this.intents[suffix];
+    }
+
+    public getIntentForUserId(userId: string) {
+        this.funcCalled("getIntentForUserId", userId);
+        if (!this.intents[userId]) {
+            this.intents[userId] = new IntentMock(this.opts);
+        }
+        return this.intents[userId];
     }
 
     public getSuffixForUserId(userId: string) {
+        this.funcCalled("getSuffixForUserId", userId);
         const localpart = userId.split(":")[0];
         if (this.opts.userIdPrefix) {
             return localpart.replace(this.opts.userIdPrefix!, "");
@@ -100,12 +117,8 @@ export class AppserviceMock extends AppserviceMockBase {
         throw Error("No prefix defined");
     }
 
-    public getIntent(userId: string) {
-        this.funcCalled("getIntent", userId);
-        if (!this.intents[userId]) {
-            this.intents[userId] = new IntentMock(this.opts);
-        }
-        return this.intents[userId];
+    public async setRoomDirectoryVisibility(roomId: string, vis: string) {
+        this.funcCalled("setRoomDirectoryVisibility", roomId, vis);
     }
 }
 

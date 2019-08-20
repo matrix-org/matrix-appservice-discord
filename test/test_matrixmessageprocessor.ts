@@ -290,7 +290,7 @@ describe("MatrixMessageProcessor", () => {
          */
         function getMxClient(roomNotificationLevel?: number) {
             return {
-                getStateEvent: async (roomId, stateType, _) => {
+                getRoomStateEvent: async (roomId, stateType, _) => {
                     if (stateType === "m.room.power_levels") {
                         return {
                             // Only include notifications.room when
