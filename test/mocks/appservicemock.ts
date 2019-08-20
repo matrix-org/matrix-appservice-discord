@@ -92,6 +92,14 @@ export class AppserviceMock extends AppserviceMockBase {
         return this.intents[prefix];
     }
 
+    public getSuffixForUserId(userId: string) {
+        const localpart = userId.split(":")[0];
+        if (this.opts.userIdPrefix) {
+            return localpart.replace(this.opts.userIdPrefix!, "");
+        }
+        throw Error("No prefix defined");
+    }
+
     public getIntent(userId: string) {
         this.funcCalled("getIntent", userId);
         if (!this.intents[userId]) {
@@ -200,8 +208,13 @@ class MatrixClientMock extends AppserviceMockBase {
         return "mxc://" + filename;
     }
 
-    public async mxcUrlToHttp(mxcUrl: string) {
-        this.funcCalled("mxcUrlToHttp", mxcUrl);
+    public mxcToHttp(mxcUrl: string) {
+        this.funcCalled("mxcToHttp", mxcUrl);
+        return mxcUrl.replace("mxc://", "https://");
+    }
+
+    public mxcToHttpThumbnail(mxcUrl: string) {
+        this.funcCalled("mxcToHttpThumbnail", mxcUrl);
         return mxcUrl.replace("mxc://", "https://");
     }
 

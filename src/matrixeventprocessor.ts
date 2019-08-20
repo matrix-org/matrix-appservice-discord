@@ -370,7 +370,7 @@ export class MatrixEventProcessor {
 
             // if we reply to a discord member, ping them!
             if (this.bridge.isNamespacedUser(sourceEvent.sender)) {
-                const uid = sourceEvent.sender.substr("@_discord_".length, sourceEvent.sender.indexOf(":") - 1);
+                const uid = this.bridge.getSuffixForUserId(sourceEvent.sender);
                 replyEmbed.addField("ping", `<@${uid}>`);
             }
 
@@ -389,6 +389,7 @@ export class MatrixEventProcessor {
             }
             return replyEmbed;
         } catch (ex) {
+            console.log(ex);
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
         }
         // For some reason we failed to get the event, so using fallback.

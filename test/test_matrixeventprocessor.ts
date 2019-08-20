@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import * as Discord from "discord.js";
 import * as Proxyquire from "proxyquire";
 import { MockMember } from "./mocks/member";
@@ -31,14 +31,16 @@ import { RemoteStoreRoom } from "../src/db/roomstore";
 
 const TEST_TIMESTAMP = 1337;
 
-const expect = Chai.expect;
-// const assert = Chai.assert;
 function buildRequest(eventData): IMatrixEvent {
     if (eventData.unsigned === undefined) {
         eventData.unsigned = {age: 0};
     }
+    if (eventData.sender === undefined) {
+        eventData.sender = "@foobar:localhost";
+    }
     return eventData;
-}
+};
+
 const bot = {
     GetIntentFromDiscordMember: (member) => {
         return {
@@ -348,9 +350,9 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "Test User");
-            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
-            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
+            expect(author!.name).to.equal("Test User");
+            expect(author!.icon_url).to.equal("https://localhost/avatarurl");
+            expect(author!.url).to.equal("https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users displayname if it exists.", async () => {
@@ -362,9 +364,9 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "Test User");
-            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
-            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
+            expect(author!.name).to.equal("Test User");
+            expect(author!.icon_url).to.equal("https://localhost/avatarurl");
+            expect(author!.url).to.equal("https://matrix.to/#/@test:localhost");
         });
 
         it("Should contain the users userid if the displayname is not set", async () => {
@@ -376,9 +378,9 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test_nonexistant:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "@test_nonexistant:localhost");
-            Chai.assert.isUndefined(author!.icon_url);
-            Chai.assert.equal(author!.url, "https://matrix.to/#/@test_nonexistant:localhost");
+            expect(author!.name).to.equal("@test_nonexistant:localhost");
+            expect(author!.icon_url).to.be.undefined;
+            expect(author!.url).to.equal("https://matrix.to/#/@test_nonexistant:localhost");
         });
 
         it("Should use the userid when the displayname is too short", async () => {
@@ -390,7 +392,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test_short:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "@test_short:localhost");
+            expect(author!.name).to.equal("@test_short:localhost");
         });
 
         it("Should use the userid when displayname is too long", async () => {
@@ -402,7 +404,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test_long:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "@test_long:localhost");
+            expect(author!.name).to.equal("@test_long:localhost");
         });
 
         it("Should cap the sender name if it is too long", async () => {
@@ -414,7 +416,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@testwithalottosayaboutitselfthatwillgoonandonandonandon:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "@testwithalottosayaboutitselftha");
+            expect(author!.name).to.equal("@testwithalottosayaboutitselftha");
         });
 
         it("Should contain the users avatar if it exists.", async () => {
@@ -426,9 +428,9 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
-            Chai.assert.equal(author!.name, "Test User");
-            Chai.assert.equal(author!.icon_url, "https://localhost/avatarurl");
-            Chai.assert.equal(author!.url, "https://matrix.to/#/@test:localhost");
+            expect(author!.name).to.equal("Test User");
+            expect(author!.icon_url).to.equal("https://localhost/avatarurl");
+            expect(author!.url).to.equal("https://matrix.to/#/@test:localhost");
         });
 
         it("Should remove everyone mentions.", async () => {
@@ -439,7 +441,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Beveryone Hello!");
+            expect(embeds.messageEmbed.description).to.equal("@\u200Beveryone Hello!");
         });
 
         it("Should remove here mentions.", async () => {
@@ -450,7 +452,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "@\u200Bhere Hello!");
+            expect(embeds.messageEmbed.description).to.equal("@\u200Bhere Hello!");
         });
 
         it("Should replace /me with * displayname, and italicize message", async () => {
@@ -462,8 +464,7 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@test:localhost",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(
-                embeds.messageEmbed.description,
+            expect(embeds.messageEmbed.description).to.equal(
                 "_Test User likes puppies_",
             );
         });
@@ -477,7 +478,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
                 type: "m.sticker",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "");
+            expect(embeds.messageEmbed.description).to.be.empty;
         });
         it("Should ping the user on discord replies", async () => {
             const {processor} =  createMatrixEventProcessor();
@@ -494,7 +495,7 @@ describe("MatrixEventProcessor", () => {
                 sender: "@test:localhost",
                 type: "m.room.member",
             } as IMatrixEvent, mockChannel as any);
-            Chai.assert.equal(embeds.messageEmbed.description, "Bunnies\n(<@1234>)");
+            expect(embeds.messageEmbed.description).to.equal("Bunnies\n(<@1234>)");
         });
     });
     describe("HandleAttachment", () => {
@@ -890,11 +891,7 @@ This is the reply`,
         });
         it("should ignore redactions with no linked room", async () => {
             const {processor} =  createMatrixEventProcessor();
-            const context = [ {
-                id: "foo",
-                matrix: { } as any,
-                remote: { } as any,
-            }];
+            const context = [ ];
             await processor.OnEvent(buildRequest({
                     type: "m.room.redaction"}), context);
             expect(MESSAGE_PROCCESS).equals("");
