@@ -150,7 +150,8 @@ export class MatrixEventProcessor {
             }
             return;
         }
-        throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
+        log.verbose(`${event.event_id} not processed by bridge`);
+        //throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
