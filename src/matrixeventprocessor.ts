@@ -95,9 +95,10 @@ export class MatrixEventProcessor {
     public async OnEvent(request: Request, context: BridgeContext): Promise<void> {
         const event = request.getData() as IMatrixEvent;
         if (event.unsigned.age > AGE_LIMIT) {
-            throw new Unstable.EventTooOldError(
-                `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
-            );
+            // throw new Unstable.EventTooOldError(
+            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
+            // );
+            return;
         }
         if (
             event.type === "m.room.member" &&
