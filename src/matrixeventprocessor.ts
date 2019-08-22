@@ -91,6 +91,10 @@ export class MatrixEventProcessor {
         const remoteRoom = rooms[0];
         if (event.unsigned.age > AGE_LIMIT) {
             log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            // throw new Unstable.EventTooOldError(
+            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
+            // );
+            return;
         }
         if (
             event.type === "m.room.member" &&
