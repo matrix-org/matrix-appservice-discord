@@ -98,6 +98,7 @@ class DiscordBridgeConfigBridge {
 export class DiscordBridgeConfigDatabase {
     public connString: string;
     public filename: string;
+    // These parameters are legacy, and will stop the bridge if defined.
     public userStorePath: string;
     public roomStorePath: string;
 }
