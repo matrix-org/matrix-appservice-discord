@@ -302,4 +302,18 @@ Fox goes floof!`);
             expect(ret).to.be.true;
         });
     });
+    describe("EscapeStringForUserId", () => {
+        it("should encode a string properly", () => {
+            expect(Util.EscapeStringForUserId("ThisIsAString")).to
+            .equal("=54his=49s=41=53tring");
+            expect(Util.EscapeStringForUserId('1!2"3£4$5%6^7&8*9(0)')).to
+            .equal("1=212=223=a34=245=256=5e7=268=2a9=280=29");
+        });
+        it("should not-reencode a string", () => {
+            expect(Util.EscapeStringForUserId("=54his=49s=41=53tring")).to
+            .equal("=54his=49s=41=53tring");
+            expect(Util.EscapeStringForUserId("1=212=223=a34=245=256=5e7=268=2a9=280=29")).to
+            .equal("1=212=223=a34=245=256=5e7=268=2a9=280=29");
+        });
+    });
 });

@@ -352,22 +352,6 @@ export class Util {
         return haveLevel >= requiredLevel;
     }
 
-    public static GetUrlFromMxc(mxc: string, homeserverUrl: string, width: number = 0,
-                                height: number = 0, method: "crop"|"scale" = "crop"): string {
-        const part = mxc.substr("mxc://".length);
-        if (width || height) {
-            let u = `${homeserverUrl}/_matrix/media/r0/thumbnail/${part}?method=${method}`;
-            if (width) {
-                u += `&width=${width}`;
-            }
-            if (height) {
-                u += `&height=${height}`;
-            }
-            return u;
-        }
-        return `${homeserverUrl}/_matrix/media/r0/download/${part}`;
-    }
-
     public static ParseMxid(unescapedMxid: string, escape: boolean = true) {
         const RADIX = 16;
         const parts = unescapedMxid.substr(1).split(":");
@@ -388,6 +372,22 @@ export class Util {
             localpart,
             mxid: `@${localpart}:${domain}`,
         };
+    }
+
+    // Taken from https://github.com/matrix-org/matrix-appservice-bridge/blob/master/lib/models/users/matrix.js
+    public static EscapeStringForUserId(localpart: string) {
+        // NOTE: Currently Matrix accepts / in the userId, although going forward it will be removed.
+        const badChars = new Set(localpart.replace(/([a-z]|[0-9]|-|\.|=|_)+/g, ""));
+        console.log(badChars);
+        let res = localpart;
+        badChars.forEach((c) => {
+            const hex = c.charCodeAt(0).toString(16).toLowerCase();
+            res = res.replace(
+                new RegExp(`\\x${hex}`, "g"),
+                `=${hex}`,
+            );
+        });
+        return res;
     }
 }
 

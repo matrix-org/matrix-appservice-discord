@@ -139,7 +139,7 @@ export class DiscordBot {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.User ? member.username : member.user.username;
             // TODO: We need to sanitize name
-            return this.bridge.getIntentForSuffix(`${webhookID}_${name}`);
+            return this.bridge.getIntentForSuffix(`${webhookID}_${Util.EscapeStringForUserId(name)}`);
         }
         return this.bridge.getIntentForSuffix(member.id);
     }
