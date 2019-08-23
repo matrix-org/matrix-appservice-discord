@@ -135,6 +135,12 @@ async function run() {
     }
     config.applyConfig(yaml.safeLoad(fs.readFileSync(configPath, "utf8")));
     Log.Configure(config.logging);
+    if (config.database.roomStorePath || config.database.userStorePath) {
+        log.error("The keys 'roomStorePath' and/or 'userStorePath' is still defined in the config. " +
+                  "Please see docs/bridge-migrations.md on " +
+                  "https://github.com/Half-Shot/matrix-appservice-discord/");
+        throw Error("Bridge has legacy configuration options and is unable to start");
+    }
     const registration = yaml.safeLoad(fs.readFileSync(registrationPath, "utf8")) as IAppserviceRegistration;
     setupLogging();
     const appservice = new Appservice({
