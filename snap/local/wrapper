@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Fail if not running in from the snap 
+: ${SNAP?} ${SNAP_DATA?}
+export PATH=$SNAP/bin:$PATH
+cp -pn $SNAP/config/config.sample.yaml $SNAP_COMMON/config.yaml
+$SNAP/bin/node $SNAP/build/src/discordas.js -p 9005 -c $SNAP_COMMON/config.yaml

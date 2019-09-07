@@ -1,0 +1,64 @@
+name: matrix-appservice-discord 
+base: core18
+version: git 
+summary: Node.js Matrix bridge for Discord 
+description: |
+  A bridge between Matrix and Discord. Currently the bridge is in
+  Beta and quite usable for everyday bridging, with one or two bugs
+  cropping up.
+
+grade: stable 
+confinement: strict 
+
+apps:
+  matrix-appservice-discord: 
+    command: 'bin/matrix-appservice-discord'
+    plugs: [network-bind, network]
+    daemon: simple
+parts:
+  nodejs-lts:
+    plugin: nil
+    override-build: |
+      NODE_VERSION=10.16.3
+      case $SNAPCRAFT_ARCH_TRIPLET in
+      x86_64-*)
+        NODE_ARCH="x64"
+        ;;
+      aarch64-*)
+        NODE_ARCH="arm64"
+        ;;
+      arm-linux-gnueabihf)
+        NODE_ARCH="armv7l"
+        ;;
+      powerpc64le-*)
+        NODE_ARCH="ppc64le"
+        ;;
+      s390x-*)
+        NODE_ARCH="s390x"
+        ;;
+      esac
+      echo "Fetching node $NODE_VERSION for $NODE_ARCH"
+      wget "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$NODE_ARCH.tar.xz" -O /tmp/nodejs.tar.xz
+      tar Jxf /tmp/nodejs.tar.xz -C $SNAPCRAFT_PART_INSTALL/ --strip 1
+      rm $SNAPCRAFT_PART_INSTALL/README.md
+      rm $SNAPCRAFT_PART_INSTALL/LICENSE
+      snapcraftctl build
+  matrix-appservice-discord:
+    source: .
+    plugin: dump
+    build-packages:
+      - make
+      - gcc
+      - g++
+      - binutils
+      - python
+      - git
+    override-build: |
+      npm install @types/mocha
+      npm install @types/node
+      npm install -g
+      npm run build
+      snapcraftctl build
+    organize:
+      snap/local/wrapper: bin/matrix-appservice-discord
+    after: [nodejs-lts]
