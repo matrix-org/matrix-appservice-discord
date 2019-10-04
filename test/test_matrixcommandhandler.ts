@@ -157,7 +157,7 @@ describe("MatrixCommandHandler", () => {
                 power: false,
             });
             await handler.Process(createEvent("!discord bridge"), createContext());
-            expect(MESSAGESENT.body).to.equal("**ERROR:** insufficiant permissions to use this " +
+            expect(MESSAGESENT.body).to.equal("**ERROR:** insufficient permissions to use this " +
                 "command! Try `!discord help` to see all available commands");
         });
         describe("!discord bridge", () => {
