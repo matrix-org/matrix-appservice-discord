@@ -30,7 +30,7 @@ import {
     unstable as Unstable,
 } from "matrix-appservice-bridge";
 import { Client as MatrixClient } from "matrix-js-sdk";
-import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
+import { IMatrixEvent, IMatrixEventContent, IMatrixMessage, IJoinedMembersMap } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
 
@@ -290,7 +290,19 @@ export class MatrixEventProcessor {
 
         let body: string = "";
         if (event.type !== "m.sticker") {
-            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, params);
+            // Check if this user has an overlapping display name with another Matrix
+            // user. In that case, prepend an informational message before their actual
+            // message.
+            const roomMembers: IJoinedMembersMap = await this.bridge.getBot().getJoinedMembers(event.room_id);
+            console.log(roomMembers, params.displayname);
+            if (Object.keys(roomMembers)
+                    .map((userId) => roomMembers[userId].display_name)
+                    .filter((name) => name === params.displayname).length > 1) {
+                log.info("Found duplicate display name on the Matrix side; " +
+                    "prepending full user id to message.");
+                body += `_Sent by \`${event.sender}\`_\n`;
+            }
+            body += await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, params);
         }
 
         const messageEmbed = new Discord.RichEmbed();
