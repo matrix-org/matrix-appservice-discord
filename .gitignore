@@ -1,7 +1,7 @@
 /.idea
 
 # Logs
-logs
+logs/*
 *.log
 *.log.*
 npm-debug.log*
