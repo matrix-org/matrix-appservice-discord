@@ -112,8 +112,10 @@ export class DiscordBridgeConfigLogging {
 }
 
 class DiscordBridgeConfigRoom {
-    public defaultVisibility: string;
+    public defaultVisibility: "public"|"private" = "public";
+    public joinRule: "public"|"invite" = "public";
     public kickFor: number = 30000;
+    public historyVisibility: "invited"|"joined"|"shared"|"world_readable" = "joined";
 }
 
 class DiscordBridgeConfigChannel {

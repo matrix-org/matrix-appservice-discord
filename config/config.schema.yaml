@@ -77,9 +77,17 @@ properties:
     room:
         type: "object"
         properties:
+          joinRule:
+            type: "string"
+            enum: ["public", "invite"]
           defaultVisibility:
             type: "string"
             enum: ["public", "private"]
+          historyVisibility:
+            type: "string"
+            enum: ["invited", "joined", "shared", "world_readable"]
+          kickFor:
+            type: "number"
     limits:
         type: "object"
         properties:

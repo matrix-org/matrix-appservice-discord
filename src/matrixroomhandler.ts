@@ -107,7 +107,7 @@ export class MatrixRoomHandler {
         this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
             channel.guild.id,
             roomId,
-            "public",
+            this.config.room.defaultVisibility,
         );
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
         const promiseList: Promise<void>[] = [];
@@ -266,10 +266,18 @@ export class MatrixRoomHandler {
             initial_state: [
                 {
                     content: {
-                        join_rule: "public",
+                        // TODO: We only really support "public", since we don't know who to invite.
+                        join_rule: this.config.room.joinRule,
                     },
                     state_key: "",
                     type: "m.room.join_rules",
+                },
+                {
+                    content: {
+                        history_visibility: this.config.room.historyVisibility,
+                    },
+                    state_key: "",
+                    type: "m.room.history_visibility",
                 },
             ],
             room_alias_name: aliasLocalpart,
