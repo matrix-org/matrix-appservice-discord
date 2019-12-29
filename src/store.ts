@@ -24,16 +24,21 @@ import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
+import { IAppserviceStorageProvider } from "matrix-bot-sdk";
 const log = new Log("DiscordStore");
-export const CURRENT_SCHEMA = 10;
+export const CURRENT_SCHEMA = 11;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
-export class DiscordStore {
+export class DiscordStore implements IAppserviceStorageProvider {
     public db: IDatabaseConnector;
     private config: DiscordBridgeConfigDatabase;
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
+
+    private registeredUsers: Set<string>;
+    private asTxns: Set<string>;
+
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
@@ -118,6 +123,14 @@ export class DiscordStore {
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
+        // We need to prepopulate some sets
+        for (const row of await this.db.All("SELECT * FROM registered_users")) {
+            this.registeredUsers.add(row.user_id as string);
+        }
+
+        for (const row of await this.db.All("SELECT * FROM as_txns")) {
+            this.asTxns.add(row.txn_id as string);
+        }
     }
 
     public async close() {
@@ -261,6 +274,22 @@ export class DiscordStore {
     public async Delete<T extends IDbData>(data: T): Promise<void>  {
         log.silly(`insert <${data.constructor.name}>`);
         await data.Delete(this);
+    }
+
+    public addRegisteredUser(userId: string) {
+        this.registeredUsers.add(userId);
+        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId});
+    }
+    public isUserRegistered(userId: string): boolean {
+        return this.registeredUsers.has(userId);
+    }
+
+    public setTransactionCompleted(transactionId: string) {
+        this.asTxns.add(transactionId);
+        this.db.Run("INSERT INTO txn_id VALUES ($transactionId)", {transactionId});
+    }
+    public isTransactionCompleted(transactionId: string): boolean {
+        return this.asTxns.has(transactionId);
     }
 
     private async getSchemaVersion( ): Promise<number> {

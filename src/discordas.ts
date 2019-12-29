@@ -143,15 +143,17 @@ async function run() {
     }
     const registration = yaml.safeLoad(fs.readFileSync(registrationPath, "utf8")) as IAppserviceRegistration;
     setupLogging();
+
+    const store = new DiscordStore(config.database);
+
     const appservice = new Appservice({
         bindAddress: config.bridge.bindAddress || "0.0.0.0",
         homeserverName: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
         port,
         registration,
+        storage: store,
     });
-
-    const store = new DiscordStore(config.database);
 
     if (config.metrics.enable) {
         log.info("Enabled metrics");
