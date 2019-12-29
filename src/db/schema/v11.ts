@@ -25,8 +25,14 @@ export class Schema implements IDbSchema {
 
     public async run(store: DiscordStore): Promise<void> {
         try {
-            store.createTable("CREATE TABLE registered_users (user_id TEXT UNIQUE NOT NULL);", "registered_users");
-            store.createTable("CREATE TABLE as_txns (txn_id TEXT UNIQUE NOT NULL);", "as_txns");
+            await store.createTable(
+                "CREATE TABLE registered_users (user_id TEXT UNIQUE NOT NULL);",
+                "registered_users",
+            );
+            await store.createTable(
+                "CREATE TABLE as_txns (txn_id TEXT UNIQUE NOT NULL);",
+                "as_txns",
+            );
         } catch (ex) {
             log.error("Failed to apply indexes:", ex);
         }

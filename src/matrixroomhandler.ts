@@ -62,12 +62,16 @@ export class MatrixRoomHandler {
     public bindThirdparty() {
         this.bridge.on("thirdparty.protocol",
             (protocol: string, cb: (protocolResponse: IApplicationServiceProtocol) => void) => {
-                this.tpGetProtocol(protocol).then(cb);
+                this.tpGetProtocol(protocol)
+                    .then(cb)
+                    .catch((err) => log.warn("Failed to get protocol", err));
         });
 
         // tslint:disable-next-line:no-any
         this.bridge.on("thirdparty.location.remote", (protocol: string, fields: any, cb: (response: any) => void) => {
-            this.tpGetLocation(protocol, fields).then(cb);
+            this.tpGetLocation(protocol, fields)
+            .then(cb)
+            .catch((err) => log.warn("Failed to get remote locations", err));
         });
 
         // These are not supported.

@@ -278,7 +278,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public addRegisteredUser(userId: string) {
         this.registeredUsers.add(userId);
-        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId});
+        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId}).catch((err) => {
+            log.warn("Failed to insert registered user", err);
+        });
     }
     public isUserRegistered(userId: string): boolean {
         return this.registeredUsers.has(userId);
@@ -286,7 +288,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public setTransactionCompleted(transactionId: string) {
         this.asTxns.add(transactionId);
-        this.db.Run("INSERT INTO txn_id VALUES ($transactionId)", {transactionId});
+        this.db.Run("INSERT INTO txn_id VALUES ($transactionId)", {transactionId}).catch((err) => {
+            log.warn("Failed to insert txn", err);
+        });
     }
     public isTransactionCompleted(transactionId: string): boolean {
         return this.asTxns.has(transactionId);
