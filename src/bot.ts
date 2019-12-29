@@ -56,7 +56,7 @@ interface IThirdPartyLookupField {
     guild_id: string;
 }
 
-interface IThirdPartyLookup {
+export interface IThirdPartyLookup {
     alias: string;
     fields: IThirdPartyLookupField;
     protocol: string;
@@ -809,7 +809,7 @@ export class DiscordBot {
                     undefined,
                     attachment.filename,
                 );
-                const fileMime = mime.lookup(attachment.filename);
+                const fileMime = mime.getType(attachment.filename) || "application/octet-stream";
                 const type = fileMime.split("/")[0];
                 let msgtype = {
                     audio: "m.audio",

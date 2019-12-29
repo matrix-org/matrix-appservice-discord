@@ -521,7 +521,7 @@ export class MatrixEventProcessor {
     private GetFilenameForMediaEvent(content: IMatrixEventContent): string {
         let ext = "";
         try {
-            ext = "." + mime.extension(content.info.mimetype);
+            ext = "." + mime.getExtension(content.info.mimetype);
         } catch (err) { } // pass, we don't have an extension
         if (content.body) {
             if (path.extname(content.body) !== "") {

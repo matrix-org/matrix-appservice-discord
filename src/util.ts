@@ -128,18 +128,17 @@ export class Util {
         const matrixUsers = {};
         let matches = 0;
         await Promise.all(channelMxids.map( async (chan) => {
-            (await client.getRoomMembers(chan, undefined, "leave")).forEach((member) => {
-                if (member.content.membership === "invite") {
+            (await client.getRoomMembers(chan, undefined, ["leave"])).forEach((member) => {
+                if (member.membership === "invite") {
                     return;
                 }
-                const mxid = member.state_key;
+                const mxid = member.stateKey;
                 if (mxid.startsWith("@_discord_")) {
                     return;
                 }
                 let displayName = member.content.displayname;
-                if (!displayName && member.unsigned && member.unsigned.prev_content &&
-                    member.unsigned.prev_content.displayname) {
-                    displayName = member.unsigned.prev_content.displayname;
+                if (!displayName && member.previousContent.displayname) {
+                    displayName = member.previousContent.displayname;
                 }
                 if (!displayName) {
                     displayName = mxid.substring(1, mxid.indexOf(":"));
@@ -378,7 +377,6 @@ export class Util {
     public static EscapeStringForUserId(localpart: string) {
         // NOTE: Currently Matrix accepts / in the userId, although going forward it will be removed.
         const badChars = new Set(localpart.replace(/([a-z]|[0-9]|-|\.|=|_)+/g, ""));
-        console.log(badChars);
         let res = localpart;
         badChars.forEach((c) => {
             const hex = c.charCodeAt(0).toString(16).toLowerCase();

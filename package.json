@@ -8,6 +8,7 @@
     "lint": "tslint --project ./tsconfig.json -t stylish",
     "coverage": "tsc && nyc mocha build/test/config.js build/test",
     "build": "tsc",
+    "preinstall": "npm run build",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",
     "debug": "npm run-script build && node --inspect ./build/src/discordas.js -p 9005 -c config.yaml",
     "addbot": "node ./build/tools/addbot.js",
