@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { DiscordBot } from "./bot";
+import { DiscordBot, IThirdPartyLookup } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
@@ -23,7 +23,7 @@ import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
-import { Appservice, Intent } from "matrix-bot-sdk";
+import { Appservice, Intent, IApplicationServiceProtocol } from "matrix-bot-sdk";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
@@ -59,16 +59,28 @@ export class MatrixRoomHandler {
         this.botJoinedRooms = new Set();
     }
 
-    // public get ThirdPartyLookup(): thirdPartyLookup {
-    //     return {
-    //         getLocation: this.tpGetLocation.bind(this),
-    //         getProtocol: this.tpGetProtocol.bind(this),
-    //         getUser: this.tpGetUser.bind(this),
-    //         parseLocation: this.tpParseLocation.bind(this),
-    //         parseUser: this.tpParseUser.bind(this),
-    //         protocols: ["discord"],
-    //     };
-    // }
+    public bindThirdparty() {
+        this.bridge.on("thirdparty.protocol",
+            (protocol: string, cb: (protocolResponse: IApplicationServiceProtocol) => void) => {
+                this.tpGetProtocol(protocol).then(cb);
+        });
+
+        // tslint:disable-next-line:no-any
+        this.bridge.on("thirdparty.location.remote", (protocol: string, fields: any, cb: (response: any) => void) => {
+            this.tpGetLocation(protocol, fields).then(cb);
+        });
+
+        // These are not supported.
+        this.bridge.on("thirdparty.location.matrix", (matrixId: string, cb: (response: null) => void) => {
+            cb(null);
+        });
+        this.bridge.on("thirdparty.user.remote", (matrixId: string, fields: unknown, cb: (response: null) => void) => {
+            cb(null);
+        });
+        this.bridge.on("thirdparty.user.matrix", (matrixId: string, cb: (response: null) => void) => {
+            cb(null);
+        });
+    }
 
     public async OnAliasQueried(alias: string, roomId: string) {
         log.verbose(`Got OnAliasQueried for ${alias} ${roomId}`);
@@ -146,70 +158,59 @@ export class MatrixRoomHandler {
         }
     }
 
-    // public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
-    //     return {
-    //         field_types: {
-    //             // guild_name: {
-    //             //   regexp: "\S.{0,98}\S",
-    //             //   placeholder: "Guild",
-    //             // },
-    //             channel_id: {
-    //                 placeholder: "",
-    //                 regexp: "[0-9]*",
-    //             },
-    //             channel_name: {
-    //                 placeholder: "#Channel",
-    //                 regexp: "[A-Za-z0-9_\-]{2,100}",
-    //             },
-    //             discriminator: {
-    //                 placeholder: "1234",
-    //                 regexp: "[0-9]{4}",
-    //             },
-    //             guild_id: {
-    //                 placeholder: "",
-    //                 regexp: "[0-9]*",
-    //             },
-    //             username: {
-    //                 placeholder: "Username",
-    //                 regexp: "[A-Za-z0-9_\-]{2,100}",
-    //             },
-    //         },
-    //         instances: this.discord.GetGuilds().map((guild) => {
-    //             return {
-    //                 bot_user_id: this.botUserId,
-    //                 desc: guild.name,
-    //                 fields: {
-    //                     guild_id: guild.id,
-    //                 },
-    //                 icon: guild.iconURL || ICON_URL,
-    //                 network_id: guild.id,
-    //             };
-    //         }),
-    //         location_fields: ["guild_id", "channel_name"],
-    //         user_fields: ["username", "discriminator"],
-    //     };
-    // }
+    public async tpGetProtocol(protocol: string): Promise<IApplicationServiceProtocol> {
+        const instances = {};
+        for (const guild of this.discord.GetGuilds()) {
+            instances[guild.name] = {
+                bot_user_id: this.botUserId,
+                desc: guild.name,
+                fields: {
+                    guild_id: guild.id,
+                },
+                icon: guild.iconURL || ICON_URL,
+                network_id: guild.id,
+            };
+        }
+        return {
+            field_types: {
+                // guild_name: {
+                //   regexp: "\S.{0,98}\S",
+                //   placeholder: "Guild",
+                // },
+                channel_id: {
+                    placeholder: "",
+                    regexp: "[0-9]*",
+                },
+                channel_name: {
+                    placeholder: "#Channel",
+                    regexp: "[A-Za-z0-9_\-]{2,100}",
+                },
+                discriminator: {
+                    placeholder: "1234",
+                    regexp: "[0-9]{4}",
+                },
+                guild_id: {
+                    placeholder: "",
+                    regexp: "[0-9]*",
+                },
+                username: {
+                    placeholder: "Username",
+                    regexp: "[A-Za-z0-9_\-]{2,100}",
+                },
+            },
+            icon: "", // TODO: Add this.
+            instances,
+            location_fields: ["guild_id", "channel_name"],
+            user_fields: ["username", "discriminator"],
+        };
+    }
 
-    // // tslint:disable-next-line no-any
-    // public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
-    //     log.info("Got location request ", protocol, fields);
-    //     const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
-    //     return chans;
-    // }
-
-    // public async tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
-    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    // }
-
-    // // tslint:disable-next-line no-any
-    // public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
-    //     log.info("Got user request ", protocol, fields);
-    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    // }
-
-    // public async tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
-    //     throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    //
+    // tslint:disable-next-line no-any
+    public async tpGetLocation(protocol: string, fields: any): Promise<IThirdPartyLookup[]> {
+        log.info("Got location request ", protocol, fields);
+        const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
+        return chans;
+    }
 
     private async joinRoom(intent: Intent, roomIdOrAlias: string, member?: Discord.GuildMember): Promise<void> {
         let currentSchedule = JOIN_ROOM_SCHEDULE[0];

@@ -191,6 +191,8 @@ async function run() {
         }
     });
 
+    roomhandler.bindThirdparty();
+
     await appservice.begin();
     log.info(`Started listening on port ${port}`);
 
