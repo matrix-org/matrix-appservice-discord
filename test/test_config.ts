@@ -30,6 +30,7 @@ describe("DiscordBridgeConfig.applyConfig", () => {
                 disableDeletionForwarding: true,
                 disableDiscordMentions: false,
                 disableJoinLeaveNotifications: true,
+                disableInviteNotifications: true,
                 disableTypingNotifications: true,
                 enableSelfServiceBridging: false,
                 homeserverUrl: "blah",
@@ -44,6 +45,7 @@ describe("DiscordBridgeConfig.applyConfig", () => {
         expect(config.bridge.disableDeletionForwarding).to.be.true;
         expect(config.bridge.enableSelfServiceBridging).to.be.false;
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
+        expect(config.bridge.disableInviteNotifications).to.be.true;
         expect(config.logging.console).to.equal("warn");
     });
     it("should merge environment overrides correctly", () => {
@@ -61,9 +63,11 @@ describe("DiscordBridgeConfig.applyConfig", () => {
         config.applyEnvironmentOverrides({
             APPSERVICE_DISCORD_BRIDGE_DISABLE_DELETION_FORWARDING: false,
             APPSERVICE_DISCORD_BRIDGE_DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            APPSERVICE_DISCORD_BRIDGE_DISABLE_INVITE_NOTIFICATIONS: true,
             APPSERVICE_DISCORD_LOGGING_CONSOLE: "debug",
         });
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
+        expect(config.bridge.disableInviteNotifications).to.be.true;
         expect(config.bridge.disableDeletionForwarding).to.be.false;
         expect(config.bridge.disableDiscordMentions).to.be.false;
         expect(config.bridge.homeserverUrl).to.equal("blah");
