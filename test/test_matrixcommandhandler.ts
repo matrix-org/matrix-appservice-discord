@@ -120,7 +120,7 @@ describe("MatrixCommandHandler", () => {
         it("should warn if user is not powerful enough", async () => {
             const {handler, bridge} = createCH({power: false});
             await handler.Process(createEvent("!discord bridge"), createContext());
-            const expected = "**ERROR:** insufficiant permissions to use this " +
+            const expected = "**ERROR:** insufficient permissions to use this " +
             "command! Try `!discord help` to see all available commands";
             const htmlExpected = "<strong>ERROR:</strong> insufficiant permissions to use this command!" +
             " Try <code>!discord help</code> to see all available commands";
