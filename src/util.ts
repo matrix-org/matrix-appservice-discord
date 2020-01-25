@@ -248,7 +248,7 @@ export class Util {
                 return `**ERROR:** ${permCheck}`;
             }
             if (!permCheck) {
-                return `**ERROR:** insufficiant permissions to use this command! ` +
+                return `**ERROR:** insufficient permissions to use this command! ` +
                     `Try \`${prefix} help\` to see all available commands`;
             }
         }

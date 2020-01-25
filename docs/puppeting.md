@@ -13,8 +13,8 @@ has the benefits of (not all of these may be implemented):
 Discord is currently __not__ offering any way to authenticate on behalf
 of a user _and_ interact on their behalf. The OAuth system does not allow
 remote access beyond reading information about the users. While [developers have
-expressed a wish for this](https://feedback.discordapp.com/forums/326712-discord-dream-land/suggestions/16753837-support-custom-clients)
-,it is my opinion that Discord are unlikely to support this any time soon. With
+expressed a wish for this](https://feedback.discordapp.com/forums/326712-discord-dream-land/suggestions/16753837-support-custom-clients),
+it is my opinion that Discord are unlikely to support this any time soon. With
 all this said, Discord will not be banning users or the bridge itself for acting
 on the behalf of the user.
 
