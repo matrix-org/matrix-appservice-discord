@@ -122,7 +122,7 @@ describe("MatrixCommandHandler", () => {
             await handler.Process(createEvent("!discord bridge"), createContext());
             const expected = "**ERROR:** insufficient permissions to use this " +
             "command! Try `!discord help` to see all available commands";
-            const htmlExpected = "<strong>ERROR:</strong> insufficiant permissions to use this command!" +
+            const htmlExpected = "<strong>ERROR:</strong> insufficient permissions to use this command!" +
             " Try <code>!discord help</code> to see all available commands";
             bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                 body: expected,
