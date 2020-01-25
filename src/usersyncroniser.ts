@@ -17,11 +17,11 @@ limitations under the License.
 import { User, GuildMember } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { Bridge, Intent, MatrixUser } from "matrix-appservice-bridge";
 import { DiscordBridgeConfig } from "./config";
 import { Log } from "./log";
 import { IMatrixEvent } from "./matrixtypes";
 import { DbUserStore, RemoteUser } from "./db/userstore";
+import { Appservice, Intent } from "matrix-bot-sdk";
 
 const log = new Log("UserSync");
 
@@ -82,7 +82,7 @@ export class UserSyncroniser {
     // roomId+userId => ev
     public userStateHold: Map<string, IMatrixEvent>;
     constructor(
-        private bridge: Bridge,
+        private bridge: Appservice,
         private config: DiscordBridgeConfig,
         private discord: DiscordBot,
         private userStore: DbUserStore) {
@@ -106,7 +106,7 @@ export class UserSyncroniser {
     }
 
     public async ApplyStateToProfile(userState: IUserState) {
-        const intent = this.bridge.getIntent(userState.mxUserId);
+        const intent = this.bridge.getIntentForUserId(userState.mxUserId);
         let userUpdated = false;
         let remoteUser: RemoteUser;
         if (userState.createUser) {
@@ -122,30 +122,32 @@ export class UserSyncroniser {
             const rUser = await this.userStore.getRemoteUser(userState.id);
             remoteUser = rUser ? rUser : new RemoteUser(userState.id);
         }
+        await intent.ensureRegistered();
 
         if (userState.displayName !== null) {
             log.verbose(`Updating displayname for ${userState.mxUserId} to "${userState.displayName}"`);
-            await intent.setDisplayName(userState.displayName);
+            await intent.underlyingClient.setDisplayName(userState.displayName);
             remoteUser.displayname = userState.displayName;
             userUpdated = true;
         }
 
         if (userState.avatarUrl !== null) {
             log.verbose(`Updating avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
-            const avatarMxc = await Util.UploadContentFromUrl(
-                userState.avatarUrl,
-                intent,
+            const data = await Util.DownloadFile(userState.avatarUrl);
+            const avatarMxc = await this.bridge.botIntent.underlyingClient.uploadContent(
+                data,
+                undefined, // TODO: Set mimetype?
                 userState.avatarId,
             );
-            await intent.setAvatarUrl(avatarMxc.mxcUrl);
+            await intent.underlyingClient.setAvatarUrl(avatarMxc);
             remoteUser.avatarurl = userState.avatarUrl;
-            remoteUser.avatarurlMxc = avatarMxc.mxcUrl;
+            remoteUser.avatarurlMxc = avatarMxc;
             userUpdated = true;
         }
 
         if (userState.removeAvatar) {
             log.verbose(`Clearing avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
-            await intent.setAvatarUrl(null);
+            await intent.underlyingClient.setAvatarUrl("");
             remoteUser.avatarurl = null;
             remoteUser.avatarurlMxc = null;
             userUpdated = true;
@@ -175,7 +177,7 @@ export class UserSyncroniser {
             } else {
                 log.info(`User not in room ${roomId}, inviting`);
                 try {
-                    await this.bridge.getIntent().invite(roomId, state.mxUserId);
+                    await this.bridge.botIntent.underlyingClient.inviteUser(state.mxUserId, roomId);
                     await this.ApplyStateToRoom(state, roomId, guildId);
                 } catch (e) {
                     log.error(`Failed to join ${state.id} to ${roomId}`, e);
@@ -204,10 +206,10 @@ export class UserSyncroniser {
         } else {
             log.warn("Remote user wasn't found, using blank avatar");
         }
-        const intent = this.bridge.getIntent(memberState.mxUserId);
+        const intent = this.bridge.getIntentForUserId(memberState.mxUserId);
         /* The intent class tries to be smart and deny a state update for <PL50 users.
            Obviously a user can change their own state so we use the client instead. */
-        await intent.getClient().sendStateEvent(roomId, "m.room.member", {
+        await intent.underlyingClient.sendStateEvent(roomId, "m.room.member", memberState.mxUserId, {
             "avatar_url": avatar,
             "displayname": memberState.displayName,
             "membership": "join",
@@ -218,7 +220,7 @@ export class UserSyncroniser {
                 roles: memberState.roles,
                 username: memberState.username,
             },
-        }, memberState.mxUserId);
+        });
 
         if (remoteUser) {
             if (guildId) {
@@ -235,8 +237,8 @@ export class UserSyncroniser {
             // for webhooks we append the username to the mxid, as webhooks with the same
             // id can have multiple different usernames set. This way we don't spam
             // userstate changes
-            // no need to escape as this mxid is only used to create an intent
-            mxidExtra = `_${new MatrixUser(`@${discordUser.username}`).localpart}`;
+
+            mxidExtra = `_${Util.ParseMxid(`@${discordUser.username}`).localpart}`;
         }
         const userState: IUserState = Object.assign({}, DEFAULT_USER_STATE, {
             id: discordUser.id + mxidExtra,
@@ -313,8 +315,7 @@ export class UserSyncroniser {
             // for webhooks we append the username to the mxid, as webhooks with the same
             // id can have multiple different usernames set. This way we don't spam
             // userstate changes
-            // no need to escape as this mxid is only used to create an Intent
-            mxidExtra = `_${new MatrixUser(`@${user.username}`).localpart}`;
+            mxidExtra = "_" + Util.ParseMxid(`@${user.username}`, false).localpart;
         }
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
@@ -339,7 +340,7 @@ export class UserSyncroniser {
         const intent = this.discord.GetIntentFromDiscordMember(member);
         return Promise.all(
             rooms.map(
-                async (roomId) => this.leave(intent, roomId, false),
+                async (roomId) => this.leave(intent, roomId),
             ),
         );
     }
@@ -380,12 +381,12 @@ export class UserSyncroniser {
             ),
         );
         const userId = state.mxUserId;
-        const intent = this.bridge.getIntent(userId);
+        const intent = this.bridge.getIntentForUserId(userId);
         await Promise.all(
             leaveRooms.map(
                 async (roomId) => {
                     try {
-                        await this.leave(intent, roomId, true);
+                        await this.leave(intent, roomId);
                     } catch (e) { } // not in room
                 },
             ),
@@ -415,13 +416,7 @@ export class UserSyncroniser {
         });
     }
 
-    private async leave(intent: Intent, roomId: string, checkCache: boolean = true) {
-        const userId = intent.getClient().getUserId();
-        if (checkCache && ![null, "join", "invite"]
-            .includes(intent.opts.backingStore.getMembership(roomId, userId))) {
-            return;
-        }
-        await intent.leave(roomId);
-        intent.opts.backingStore.setMembership(roomId, userId, "leave");
+    private async leave(intent: Intent, roomId: string) {
+        await intent.underlyingClient.leaveRoom(roomId);
     }
 }

@@ -13,7 +13,10 @@
     "compileOnSave": true,
     "include": [
         "src/**/*",
-        "test/**/*",
-        "tools/**/*"
+        "tools/**/*",
+        "test/config.ts",
+        "test/db/*",
+        "test/mocks/*",
+        "test/**/test_*",
     ]
 }

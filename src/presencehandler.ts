@@ -21,14 +21,13 @@ import { MetricPeg } from "./metrics";
 const log = new Log("PresenceHandler");
 
 export class PresenceHandlerStatus {
-    /* One of: ["online", "offline", "unavailable"] */
-    public Presence: string;
+    public Presence: "online"|"offline"|"unavailable";
     public StatusMsg: string;
     public ShouldDrop: boolean = false;
 }
 
 interface IMatrixPresence {
-    presence?: string;
+    presence?: "online"|"offline"|"unavailable";
     status_msg?: string;
 }
 
@@ -65,7 +64,7 @@ export class PresenceHandler {
 
     public EnqueueUser(user: User) {
         if (user.id !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.id === user.id) === undefined) {
-            log.info(`Adding ${user.id} (${user.username}) to the presence queue`);
+            log.verbose(`Adding ${user.id} (${user.username}) to the presence queue`);
             this.presenceQueue.push(user);
             MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         }
@@ -98,7 +97,7 @@ export class PresenceHandler {
             if (!proccessed) {
                 this.presenceQueue.push(user);
             } else {
-                log.info(`Dropping ${user.id} from the presence queue.`);
+                log.verbose(`Dropping ${user.id} from the presence queue.`);
                 MetricPeg.get.setPresenceCount(this.presenceQueue.length);
             }
         }
@@ -135,7 +134,8 @@ export class PresenceHandler {
             statusObj.status_msg = status.StatusMsg;
         }
         try {
-            await intent.getClient().setPresence(statusObj);
+            await intent.ensureRegistered();
+            await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg);
         } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);

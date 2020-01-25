@@ -16,45 +16,23 @@ limitations under the License.
 import * as Chai from "chai";
 import * as Proxyquire from "proxyquire";
 
-import { DiscordCommandHandler } from "../src/discordcommandhandler";
 import { MockChannel } from "./mocks/channel";
 import { MockMember } from "./mocks/member";
 import { MockGuild } from "./mocks/guild";
 import { Util } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const expect = Chai.expect;
 
-let USERSJOINED = 0;
-let USERSKICKED = 0;
-let USERSBANNED = 0;
-let USERSUNBANNED = 0;
 let ROOMSUNBRIDGED = 0;
-let MESSAGESENT: any = {};
 let MARKED = -1;
 function createCH(opts: any = {}) {
-    USERSJOINED = 0;
-    USERSKICKED = 0;
-    USERSBANNED = 0;
-    USERSUNBANNED = 0;
     ROOMSUNBRIDGED = 0;
-    MESSAGESENT = {};
     MARKED = -1;
-    const bridge = {
-        getIntent: () => {
-            return {
-                ban: async () => { USERSBANNED++; },
-                getEvent: () => ({ content: { } }),
-                join: () => { USERSJOINED++; },
-                kick: async () => { USERSKICKED++; },
-                leave: () => { },
-                sendMessage: async (roomId, content) => { MESSAGESENT = content; return content; },
-                unban: async () => { USERSUNBANNED++; },
-            };
-        },
-    };
+    const bridge = new AppserviceMock();
     const cs = {
         GetRoomIdsFromChannel: async (chan) => {
             return [`#${chan.id}:localhost`];
@@ -83,12 +61,12 @@ function createCH(opts: any = {}) {
             },
         },
     })).DiscordCommandHandler;
-    return new discordCommandHndlr(bridge as any, discord as any);
+    return {handler: new discordCommandHndlr(bridge as any, discord as any), bridge};
 }
 
 describe("DiscordCommandHandler", () => {
     it("will kick a member", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -102,10 +80,10 @@ describe("DiscordCommandHandler", () => {
             member,
         };
         await handler.Process(message);
-        expect(USERSKICKED).equals(1);
+        bridge.botIntent.underlyingClient.wasCalled("kickUser", true, "#123:localhost", "@123456:localhost");
     });
     it("will kick a member in all guild rooms", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel, (new MockChannel("456"))]);
         channel.guild = guild;
@@ -120,10 +98,10 @@ describe("DiscordCommandHandler", () => {
         };
         await handler.Process(message);
         // tslint:disable-next-line:no-magic-numbers
-        expect(USERSKICKED).equals(2);
+        expect(bridge.botIntent.underlyingClient.wasCalled("kickUser")).to.equal(2);
     });
     it("will deny permission", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -137,10 +115,10 @@ describe("DiscordCommandHandler", () => {
             member,
         };
         await handler.Process(message);
-        expect(USERSKICKED).equals(0);
+        expect(bridge.botIntent.underlyingClient.wasCalled("kickUser", false)).to.equal(0);
     });
     it("will ban a member", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -154,10 +132,10 @@ describe("DiscordCommandHandler", () => {
             member,
         };
         await handler.Process(message);
-        expect(USERSBANNED).equals(1);
+        expect(bridge.botIntent.underlyingClient.wasCalled("banUser")).to.equal(1);
     });
     it("will unban a member", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -171,10 +149,10 @@ describe("DiscordCommandHandler", () => {
             member,
         };
         await handler.Process(message);
-        expect(USERSUNBANNED).equals(1);
+        expect(bridge.botIntent.underlyingClient.wasCalled("unbanUser")).to.equal(1);
     });
     it("handles !matrix approve", async () => {
-        const handler: any = createCH();
+        const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -191,7 +169,7 @@ describe("DiscordCommandHandler", () => {
         expect(MARKED).equals(1);
     });
     it("handles !matrix deny", async () => {
-        const handler: any = createCH();
+        const {handler} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
@@ -208,7 +186,7 @@ describe("DiscordCommandHandler", () => {
         expect(MARKED).equals(0);
     });
     it("handles !matrix unbridge", async () => {
-        const handler: any = createCH();
+        const {handler} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;

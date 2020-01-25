@@ -13,17 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-import {
-    AppServiceRegistration,
-    Bridge,
-    BridgeContext,
-    Cli,
-    ClientFactory,
-    Request,
-    thirdPartyLookup,
-    unstable as Unstable,
-} from "matrix-appservice-bridge";
+import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -31,205 +21,183 @@ import { DiscordBot } from "./bot";
 import { DiscordStore } from "./store";
 import { Log } from "./log";
 import "source-map-support/register";
-import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
+import * as cliArgs from "command-line-args";
+import * as usage from "command-line-usage";
+import * as uuid from "uuid/v4";
 import { IMatrixEvent } from "./matrixtypes";
-import { wrapError, isInstanceOfTypes } from "./util";
+import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
 const log = new Log("DiscordAS");
 
-const cli = new Cli({
-    bridgeConfig: {
-        affectsRegistration: true,
-        schema: "./config/config.schema.yaml",
-    },
-    generateRegistration,
-    registrationPath: "discord-registration.yaml",
-    run,
-});
+const commandOptions = [
+    { name: "config", alias: "c", type: String },
+    { name: "url", alias: "u", type: String },
+    { name: "port", alias: "p", type: Number },
+    { name: "file", alias: "f", type: String },
+    { name: "generate-registration", alias: "r", type: Boolean },
+    { name: "help", alias: "h", type: Boolean },
+];
 
-try {
-    cli.run();
-} catch (err) {
-    log.error("Failed to start bridge.");
-    log.error(err);
+function generateRegistration(opts, registrationPath)  {
+    if (!opts.url) {
+        throw Error("'url' not given in command line opts, cannot generate registration file");
+    }
+    const reg = {
+        as_token: uuid(),
+        hs_token: uuid(),
+        id: "discord-bridge",
+        namespaces: {
+            aliases: [
+                {
+                    exclusive: true,
+                    regex: "#_discord_.*",
+                },
+            ],
+            rooms: [ ],
+            users: [
+                {
+                    exclusive: true,
+                    regex: "@_discord_.*",
+                },
+            ],
+        },
+        protocols: ["discord"],
+        rate_limited: false,
+        sender_localpart: "_discord_bot",
+        url: opts.url,
+    } as IAppserviceRegistration;
+    fs.writeFileSync(registrationPath, yaml.safeDump(reg));
 }
 
-function generateRegistration(reg, callback)  {
-    reg.setId(AppServiceRegistration.generateToken());
-    reg.setHomeserverToken(AppServiceRegistration.generateToken());
-    reg.setAppServiceToken(AppServiceRegistration.generateToken());
-    reg.setSenderLocalpart("_discord_bot");
-    reg.addRegexPattern("users", "@_discord_.*", true);
-    reg.addRegexPattern("aliases", "#_discord_.*", true);
-    reg.setRateLimited(false);
-    reg.setProtocols(["discord"]);
-    callback(reg);
+function setupLogging() {
+    const logMap = new Map<string, Log>();
+    // tslint:disable-next-line:no-any
+    const logFunc = (level: string, module: string, args: any[]) => {
+        if (!Array.isArray(args)) {
+            args = [args];
+        }
+        if (args.find((s) => s.includes && s.includes("M_USER_IN_USE"))) {
+            // Spammy logs begon
+            return;
+        }
+        const mod = "bot-sdk" + module;
+        let logger = logMap.get(mod);
+        if (!logger) {
+            logger = new Log(mod);
+            logMap.set(mod, logger);
+        }
+        logger[level](args);
+    };
+
+    LogService.setLogger({
+        // tslint:disable-next-line:no-any
+        debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
+        // tslint:disable-next-line:no-any
+        error: (mod: string, args: any[]) => logFunc("error", mod, args),
+        // tslint:disable-next-line:no-any
+        info: (mod: string, args: any[]) => logFunc("info", mod, args),
+        // tslint:disable-next-line:no-any
+        warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
+    });
 }
 
-interface IBridgeCallbacks {
-    onAliasQueried: (alias: string, roomId: string) => Promise<void>;
-    onAliasQuery: (alias: string, aliasLocalpart: string) => Promise<IProvisionedRoom>;
-    onEvent: (request: Request, context: BridgeContext) => Promise<void>;
-    thirdPartyLookup: thirdPartyLookup;
-}
-
-type RemoteRoom = any; // tslint:disable-line no-any
-
-interface IProvisionedRoom {
-    creationOpts: Record<string, any>; // tslint:disable-line no-any
-    remote?: RemoteRoom;
-}
-
-async function run(port: number, fileConfig: DiscordBridgeConfig) {
-    const config = new DiscordBridgeConfig();
-    config.applyConfig(fileConfig);
-    config.applyEnvironmentOverrides(process.env);
-    Log.Configure(config.logging);
-    log.info("Starting Discord AS");
-    const yamlConfig = yaml.safeLoad(fs.readFileSync(cli.opts.registrationPath, "utf8"));
-    const registration = AppServiceRegistration.fromObject(yamlConfig);
-    if (registration === null) {
-        throw new Error("Failed to parse registration file");
+async function run() {
+    const opts = cliArgs(commandOptions);
+    if (opts.help) {
+        /* tslint:disable:no-console */
+        console.log(usage([
+            {
+                content: "The matrix appservice for discord",
+                header: "Matrix Discord Bridge",
+            },
+            {
+                header: "Options",
+                optionList: commandOptions,
+            },
+        ]));
+        process.exit(0);
     }
 
-    const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
-    const clientFactory = new ClientFactory({
-        appServiceUserId: botUserId,
-        token: registration.as_token,
-        url: config.bridge.homeserverUrl,
-    });
+    const configPath = opts.config || "config.yaml";
+    const registrationPath = opts.file || "discord-registration.yaml";
+    if (opts["generate-registration"]) {
+        if (fs.existsSync(registrationPath)) {
+            throw Error("Not writing new registration file, file already exists");
+        }
+        generateRegistration(opts, registrationPath);
+        return;
+    }
+
+    const config = new DiscordBridgeConfig();
+    const port = opts.port || config.bridge.port;
+    if (!port) {
+        throw Error("Port not given in command line or config file");
+    }
+    config.applyConfig(yaml.safeLoad(fs.readFileSync(configPath, "utf8")));
+    Log.Configure(config.logging);
+    if (config.database.roomStorePath || config.database.userStorePath) {
+        log.error("The keys 'roomStorePath' and/or 'userStorePath' is still defined in the config. " +
+                  "Please see docs/bridge-migrations.md on " +
+                  "https://github.com/Half-Shot/matrix-appservice-discord/");
+        throw Error("Bridge has legacy configuration options and is unable to start");
+    }
+    const registration = yaml.safeLoad(fs.readFileSync(registrationPath, "utf8")) as IAppserviceRegistration;
+    setupLogging();
+
     const store = new DiscordStore(config.database);
 
-    let callbacks: IBridgeCallbacks;
-
-    const bridge = new Bridge({
-        clientFactory,
-        controller: {
-            // onUserQuery: userQuery,
-            onAliasQueried: async (alias: string, roomId: string): Promise<void> => {
-                try {
-                    return await callbacks.onAliasQueried(alias, roomId);
-                } catch (err) { log.error("Exception thrown while handling \"onAliasQueried\" event", err); }
-            },
-            onAliasQuery: async (alias: string, aliasLocalpart: string): Promise<IProvisionedRoom|undefined> => {
-                try {
-                    return await callbacks.onAliasQuery(alias, aliasLocalpart);
-                } catch (err) { log.error("Exception thrown while handling \"onAliasQuery\" event", err); }
-            },
-            onEvent: async (request: Request, _: BridgeContext): Promise<void> => {
-                try {
-                    const event = request.getData() as IMatrixEvent;
-                    const roomId = event.room_id;
-
-                    MetricPeg.get.registerRequest(event.event_id);
-
-                    const context = await buildOwnContext(roomId, store);
-                    const callbackResult = callbacks.onEvent(request, context);
-                    request.outcomeFrom(callbackResult);
-                } catch (err) {
-                    logOnEventError(err);
-
-                    // Raise bridge errors in case of an unexpected error, too.
-                    if (!(err instanceof Unstable.EventNotHandledError)) {
-                        err = wrapError(err, Unstable.BridgeInternalError);
-                    }
-
-                    // Don't send bridge errors out for EventTooOldError.
-                    if (err instanceof Unstable.EventTooOldError) {
-                        err = wrapError(err, Error);
-                    }
-
-                    request.reject(err);
-                } finally {
-                    recordRequestOutcome(request);
-                }
-            },
-            onLog: (text: string, isError: boolean): void => {
-                if (isError) {
-                    log.error("matrix-appservice-bridge", text);
-                } else {
-                    log.verbose("matrix-appservice-bridge", text);
-                }
-            },
-            thirdPartyLookup: async (): Promise<thirdPartyLookup> => {
-                try {
-                    return await callbacks.thirdPartyLookup();
-                } catch (err) {
-                    log.error("Exception thrown while handling \"thirdPartyLookup\" event", err);
-                }
-            },
-        },
-        disableContext: true,
-        domain: config.bridge.domain,
+    const appservice = new Appservice({
+        bindAddress: config.bridge.bindAddress || "0.0.0.0",
+        homeserverName: config.bridge.domain,
         homeserverUrl: config.bridge.homeserverUrl,
-        intentOptions: {
-            clients: {
-                dontJoin: true, // handled manually
-            },
-        },
-        networkName: "Discord",
-        // To avoid out of order message sending.
-        queue: {
-            perRequest: true,
-            type: "per_room",
-        },
+        port,
         registration,
+        storage: store,
     });
 
-    if (config.database.roomStorePath) {
-        log.warn("[DEPRECATED] The room store is now part of the SQL database."
-               + "The config option roomStorePath no longer has any use.");
-    }
-
-    if (config.database.userStorePath) {
-        log.warn("[DEPRECATED] The user store is now part of the SQL database."
-               + "The config option userStorePath no longer has any use.");
-    }
-
-    // Hack to remove roomStore and userStore
-    bridge.opts.userStore = undefined;
-    bridge.opts.roomStore = undefined;
-
-    await bridge.run(port, config);
-    log.info(`Started listening on port ${port}`);
-
-    if (config.bridge.enableMetrics) {
+    if (config.metrics.enable) {
         log.info("Enabled metrics");
-        MetricPeg.set(new PrometheusBridgeMetrics().init(bridge));
+        MetricPeg.set(new PrometheusBridgeMetrics().init(appservice, config.metrics));
     }
 
     try {
-        await store.init(undefined, bridge.getRoomStore(), bridge.getUserStore());
+        await store.init();
     } catch (ex) {
         log.error("Failed to init database. Exiting.", ex);
         process.exit(1);
     }
 
-    const discordbot = new DiscordBot(botUserId, config, bridge, store);
+    const discordbot = new DiscordBot(config, appservice, store);
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
 
-    try {
-        callbacks = {
-            onAliasQueried: roomhandler.OnAliasQueried.bind(roomhandler),
-            onAliasQuery: roomhandler.OnAliasQuery.bind(roomhandler),
-            onEvent: eventProcessor.OnEvent.bind(eventProcessor),
-            thirdPartyLookup: async () => {
-                return roomhandler.ThirdPartyLookup;
-            },
-        };
-    } catch (err) {
-        log.error("Failed to register callbacks. Exiting.", err);
-        process.exit(1);
-    }
+    // tslint:disable-next-line:no-any
+    appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
+        try {
+            const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
+            await createRoom(createRoomOpts);
+            await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
+        } catch (err) {
+            log.error("Exception thrown while handling \"query.room\" event", err);
+        }
+    });
 
-    log.info("Initing bridge");
+    appservice.on("room.event", async (roomId: string, event: IMatrixEvent) => {
+        try {
+            const entries = await store.roomStore.getEntriesByMatrixId(roomId);
+            await eventProcessor.OnEvent(event, entries);
+        } catch (err) {
+            log.error("Exception thrown while handling \"room.event\" event", err);
+        }
+    });
+
+    roomhandler.bindThirdparty();
+
+    await appservice.begin();
+    log.info(`Started listening on port ${port}`);
 
     try {
-        log.info("Initing store.");
         await discordbot.init();
-        log.info(`Started listening on port ${port}.`);
-        log.info("Initing bot.");
         await discordbot.run();
         log.info("Discordbot started successfully");
     } catch (err) {
@@ -239,72 +207,7 @@ async function run(port: number, fileConfig: DiscordBridgeConfig) {
     }
 }
 
-/**
- * Logs an error which occured during event processing.
- *
- * Depending on the error type different log levels are hardcoded.
- */
-function logOnEventError(err: Error): void {
-    const errTypes = [Unstable.BridgeInternalError];
-    // const warn = [EventTooOldError, NotReadyError, …];
-    const infoTypes = [];
-    const verboseTypes = [Unstable.EventUnknownError];
-
-    switch (true) {
-        case isInstanceOfTypes(err, errTypes): log.error(err); return;
-        case isInstanceOfTypes(err, infoTypes): log.info(err); return;
-        case isInstanceOfTypes(err, verboseTypes): log.verbose(err); return;
-        default: log.warn(err);
-    }
-}
-
-/**
- * Records in which way the request was handled.
- */
-function recordRequestOutcome(request: Request): void {
-    const eventId = request.getData().event_id;
-    request.getPromise()
-        .then(() =>
-            MetricPeg.get.requestOutcome(eventId, false, "success"),
-        )
-        .catch(Unstable.EventNotHandledError, (e) =>
-            MetricPeg.get.requestOutcome(eventId, false, "dropped"),
-        )
-        .catch((e) =>
-            MetricPeg.get.requestOutcome(eventId, false, "fail"),
-        )
-    ;
-}
-
-/**
- * Builds a custom BridgeContext with rooms known to the bridge.
- */
-async function buildOwnContext(
-    roomId: string,
-    store: DiscordStore,
-): Promise<BridgeContext> {
-    if (!store.roomStore) {
-        throw new NotReadyError("Discord store not ready yet, will retry later");
-    }
-
-    const entries = await store.roomStore.getEntriesByMatrixId(roomId);
-
-    return {
-        rooms: entries[0] || {},
-        senders: {},
-        targets: {},
-    };
-}
-
-class NotReadyError extends Unstable.EventNotHandledError {
-    public name: string;
-
-    constructor(...params) {
-        Unstable.defaultMessage(
-            params,
-            "The bridge was not ready when the message was sent",
-        );
-        super(...params);
-        this.name = "NotReadyError";
-    }
-}
+run().catch((err) => {
+    log.error("A fatal error occurred during startup:", err);
+    process.exit(1);
+});

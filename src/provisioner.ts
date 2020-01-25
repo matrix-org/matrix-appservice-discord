@@ -36,7 +36,6 @@ export class Provisioner {
             discord_type: "text",
             plumbed: true,
         });
-
         const local = new MatrixStoreRoom(roomId);
         return this.roomStore.linkRooms(local, remote);
     }

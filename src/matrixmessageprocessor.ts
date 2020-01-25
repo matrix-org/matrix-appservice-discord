@@ -19,7 +19,7 @@ import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";
-import { Client as MatrixClient } from "matrix-js-sdk";
+import { MatrixClient } from "matrix-bot-sdk";
 import {
     IMatrixMessageParserCallbacks,
     IMatrixMessageParserOpts,
@@ -91,9 +91,9 @@ export class MatrixMessageProcessor {
                     */
                     if (params && params.mxClient) {
                         try {
-                            const resp = await params.mxClient.getRoomIdForAlias(mxid);
-                            if (resp && resp.room_id) {
-                                const roomId = resp.room_id;
+                            const resp = await params.mxClient.lookupRoomAlias(mxid);
+                            if (resp && resp.roomId) {
+                                const roomId = resp.roomId;
                                 const channel = await this.bot.GetChannelFromRoomId(roomId);
                                 return channel.id;
                             }
@@ -127,7 +127,7 @@ export class MatrixMessageProcessor {
             },
             mxcUrlToHttp: (mxc: string) => {
                 if (params && params.mxClient) {
-                    return params.mxClient.mxcUrlToHttp(mxc);
+                    return params.mxClient.mxcToHttp(mxc);
                 }
                 return mxc;
             },

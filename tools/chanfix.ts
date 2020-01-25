@@ -14,18 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppServiceRegistration, ClientFactory, Bridge, Intent } from "matrix-appservice-bridge";
-import * as yaml from "js-yaml";
-import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import { ChannelSyncroniser } from "../src/channelsyncroniser";
-import { DiscordBridgeConfig } from "../src/config";
 import { DiscordBot } from "../src/bot";
-import { DiscordStore } from "../src/store";
-import { Provisioner } from "../src/provisioner";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
+import { ToolsHelper } from "./toolshelper";
 
 const log = new Log("ChanFix");
 
@@ -72,71 +66,31 @@ if (options.help) {
     process.exit(0);
 }
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync(options.registration, "utf8"));
-const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config = new DiscordBridgeConfig();
-config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
-config.applyEnvironmentOverrides(process.env);
-
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
-const clientFactory = new ClientFactory({
-    appServiceUserId: botUserId,
-    token: registration.as_token,
-    url: config.bridge.homeserverUrl,
-});
-
-const bridge = new Bridge({
-    clientFactory,
-    controller: {
-        onEvent: () => { },
-    },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
-    intentOptions: {
-        clients: {
-            dontJoin: true, // handled manually
-      },
-    },
-    registration,
-});
-
-// Hack to disable legacy stores
-bridge.opts.userStore = undefined;
-bridge.opts.roomStore = undefined;
-
 async function run() {
-    const store = new DiscordStore(config.database);
-    await store.init(undefined, bridge.getRoomStore());
-    const discordbot = new DiscordBot(botUserId, config, bridge, store);
+    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    await store!.init();
+    const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();
-
-    bridge._clientFactory = clientFactory;
-    bridge._botClient = bridge._clientFactory.getClientAs();
-    bridge._botIntent = new Intent(bridge._botClient, bridge._botClient, { registered: true });
     await discordbot.ClientFactory.init();
     const client = await discordbot.ClientFactory.getClient();
 
     // first set update_icon to true if needed
-    const mxRoomEntries = await bridge.getRoomStore().getEntriesByRemoteRoomData({
+    const mxRoomEntries = await store!.roomStore.getEntriesByRemoteRoomData({
         update_name: true,
         update_topic: true,
     });
 
     const promiseList: Promise<void>[] = [];
     mxRoomEntries.forEach((entry) => {
-        if (entry.remote.get("plumbed")) {
+        if (entry.remote!.get("plumbed")) {
             return; // skipping plumbed rooms
         }
-        const updateIcon = entry.remote.get("update_icon");
+        const updateIcon = entry.remote!.get("update_icon");
         if (updateIcon !== undefined && updateIcon !== null) {
             return; // skipping because something was set manually
         }
-        entry.remote.set("update_icon", true);
-        promiseList.push(bridge.getRoomStore().upsertEntry(entry));
+        entry.remote!.set("update_icon", true);
+        promiseList.push(store!.roomStore.upsertEntry(entry));
     });
     await Promise.all(promiseList);
 

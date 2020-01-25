@@ -19,15 +19,11 @@ limitations under the License.
  * Allows you to become an admin for a room the bot is in control of.
  */
 
-import { AppServiceRegistration, ClientFactory, Bridge } from "matrix-appservice-bridge";
-import * as yaml from "js-yaml";
-import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import { DiscordBridgeConfig } from "../src/config";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
-import { DiscordStore } from "../src/store";
+import { ToolsHelper } from "./toolshelper";
 const log = new Log("AddRoomsToDirectory");
 const optionDefinitions = [
     {
@@ -52,13 +48,6 @@ const optionDefinitions = [
         type: String,
         typeLabel: "<discord-registration.yaml>",
     },
-    {
-        alias: "s",
-        defaultValue: "room-store.db",
-        description: "The location of the room store.",
-        name: "store",
-        type: String,
-    },
 ];
 
 const options = args(optionDefinitions);
@@ -77,54 +66,26 @@ if (options.help) {
     ]));
     process.exit(0);
 }
-const yamlConfig = yaml.safeLoad(fs.readFileSync(options.registration, "utf8"));
-const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig;
 
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const clientFactory = new ClientFactory({
-    appServiceUserId: `@${registration.sender_localpart}:${config.bridge.domain}`,
-    token: registration.as_token,
-    url: config.bridge.homeserverUrl,
-});
-
-const bridge = new Bridge({
-    controller: {
-        onEvent: () => { },
-    },
-    domain: "rubbish",
-    homeserverUrl: true,
-    registration: true,
-});
-
-// Hack to disable legacy stores
-bridge.opts.userStore = undefined;
-bridge.opts.roomStore = undefined;
-
-const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
+const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration);
 
 async function run() {
     try {
-        await discordstore.init();
+        await store!.init();
     } catch (e) {
         log.error(`Failed to load database`, e);
     }
-    let rooms = await discordstore.roomStore.getEntriesByRemoteRoomData({
+    let rooms = await store!.roomStore.getEntriesByRemoteRoomData({
         discord_type: "text",
     });
     rooms = rooms.filter((r) => r.remote && r.remote.get("plumbed") !== true );
-    const client = clientFactory.getClientAs();
     log.info(`Got ${rooms.length} rooms to set`);
     try {
         await Util.AsyncForEach(rooms, async (room) => {
             const guild = room.remote.get("discord_guild");
             const roomId = room.matrix.getId();
             try {
-                await client.setRoomDirectoryVisibilityAppService(
-                    guild,
+                await appservice.botIntent.underlyingClient.setDirectoryVisibility(
                     roomId,
                     "public",
                 );
