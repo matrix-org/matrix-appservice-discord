@@ -46,6 +46,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         } else {
             this.config = configOrFile;
         }
+        this.registeredUsers = new Set();
+        this.asTxns = new Set();
     }
 
     get roomStore() {
@@ -288,7 +290,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public setTransactionCompleted(transactionId: string) {
         this.asTxns.add(transactionId);
-        this.db.Run("INSERT INTO txn_id VALUES ($transactionId)", {transactionId}).catch((err) => {
+        this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId}).catch((err) => {
             log.warn("Failed to insert txn", err);
         });
     }
