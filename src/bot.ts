@@ -809,8 +809,11 @@ export class DiscordBot {
                     undefined,
                     attachment.filename,
                 );
+                console.log("Uploaded file", mxcUrl, attachment.filename);
                 const fileMime = mime.getType(attachment.filename) || "application/octet-stream";
+                console.log("Mime:", fileMime);
                 const type = fileMime.split("/")[0];
+                console.log(fileMime, type);
                 let msgtype = {
                     audio: "m.audio",
                     image: "m.image",
@@ -827,7 +830,9 @@ export class DiscordBot {
                     info.w = attachment.width;
                     info.h = attachment.height;
                 }
+                console.log("info", info, rooms);
                 await Util.AsyncForEach(rooms, async (room) => {
+                    console.log("Sending event");
                     const eventId = await intent.sendEvent(room, {
                         body: attachment.filename,
                         external_url: attachment.url,

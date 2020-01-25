@@ -30,7 +30,7 @@ function CreateMockIntent(members): any {
                     displayname: member.displayname,
                 },
                 membership: member.membership,
-                state_key: member.mxid,
+                stateKey: member.mxid,
             }),
         ),
     });
