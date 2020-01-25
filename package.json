@@ -39,7 +39,7 @@
     "better-sqlite3": "^5.4.2",
     "command-line-args": "^4.0.7",
     "command-line-usage": "^4.1.0",
-    "discord-markdown": "git://github.com/Sorunome/discord-markdown#5086d4ccb10a90bcdc7656606f5b3f5430bffee9",
+    "discord-markdown": "git://github.com/Sorunome/discord-markdown#c9f412be79ba1185f98482dff466ec23cbf747d2",
     "discord.js": "^11.5.1",
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
