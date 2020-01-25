@@ -16,6 +16,7 @@ limitations under the License.
 
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
+import { Log } from "./log";
 import {
     DiscordMessageParser,
     IDiscordMessageParserOpts,
@@ -23,7 +24,6 @@ import {
     DiscordMessageParserResult,
 } from "matrix-discord-parser";
 
-import { Log } from "./log";
 const log = new Log("DiscordMessageProcessor");
 
 export class DiscordMessageProcessor {

@@ -14,20 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
-import * as Discord from "discord.js";
+import { expect } from "chai";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockChannel } from "./mocks/channel";
 import { MockEmoji } from "./mocks/emoji";
-import { DiscordBot } from "../src/bot";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 const bot = {
     GetChannelFromRoomId: async (roomId: string): Promise<MockChannel> => {
@@ -205,13 +201,13 @@ describe("MatrixMessageProcessor", () => {
 
             const result = await mp.FormatMessage(msg, guild as any, {
                 mxClient: {
-                    getRoomIdForAlias: async () => {
-                        return {
-                            room_id: "!bridged:localhost",
-                        };
-                    },
+                    lookupRoomAlias: async () => ({
+                            residentServers: [],
+                            roomId: "!bridged:localhost",
+                        }),
+                    } as any,
                 },
-            });
+            );
             expect(result).is.equal("<#1234>");
         });
         it("Ignores links without href", async () => {
@@ -292,7 +288,7 @@ describe("MatrixMessageProcessor", () => {
          */
         function getMxClient(roomNotificationLevel?: number) {
             return {
-                getStateEvent: async (roomId, stateType, _) => {
+                getRoomStateEvent: async (roomId, stateType, _) => {
                     if (stateType === "m.room.power_levels") {
                         return {
                             // Only include notifications.room when
