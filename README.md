@@ -33,7 +33,7 @@ The bridge supports any version of Node.js >= v10.X, including all [current rele
 
 * Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
 * Run ``npm run build`` to build the typescript into javascript.
-* Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
+* Copy ``config/config.sample.yaml`` to ``config.yaml`` (move to root app folder) and edit it to reflect your setup.
   * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
   While localhost would work, it does not resolve correctly with Webhooks/Avatars.
   Please note that a self-signed SSL certificate won't work, either.
