@@ -31,6 +31,7 @@ bridge:
   disableJoinLeaveNotifications: false
 # Authentication configuration for the discord bot.
 auth:
+  # This MUST be a string (wrapped in quotes)
   clientID: "12345"
   botToken: "foobar"
 logging:
@@ -83,10 +84,12 @@ channel:
 limits:
     # Delay in milliseconds between discord users joining a room.
     roomGhostJoinDelay: 6000
-    # Delay in milliseconds before sending messages to discord to avoid echos.
-    # (Copies of a sent message may arrive from discord before we've
+    # Lock timeout in milliseconds before seinding messages to discord to avoid
+    # echos. Default is rather high as the lock will most likely time out
+    # before anyways.
+    # echos = (Copies of a sent message may arrive from discord before we've
     # fininished handling it, causing us to echo it back to the room)
-    discordSendDelay: 750
+    discordSendDelay: 1500
 ghosts:
     # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
     nickPattern: ":nick"

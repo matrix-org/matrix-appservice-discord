@@ -31,4 +31,6 @@ export class DiscordClientFactory {
         }
         return this.botClient;
     }
+
+    public bindMetricsToChannel() {}
 }

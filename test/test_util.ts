@@ -14,50 +14,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 
 import { Util, ICommandActions, ICommandParameters } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const expect = Chai.expect;
-
-function CreateMockIntent(members) {
-    return {
-        getClient: () => {
-            return {
-                _http: {
-                    authedRequestWithPrefix: async (_, __, url, ___, ____, _____) => {
-                        const ret: any[] = [];
-                        for (const member of members[url]) {
-                            ret.push({
-                                content: {
-                                    displayname: member.displayname,
-                                },
-                                membership: member.membership,
-                                state_key: member.mxid,
-                            });
-                        }
-                        return {
-                            chunk: ret,
-                        };
-                    },
+function CreateMockIntent(members): any {
+    const as = new AppserviceMock({
+        roommembers: members.map((member) =>
+            ({
+                content: {
+                    displayname: member.displayname,
                 },
-            };
-        },
-    };
+                membership: member.membership,
+                stateKey: member.mxid,
+            }),
+        ),
+    });
+    return as.botIntent;
 }
 
 describe("Util", () => {
     describe("MsgToArgs", () => {
         it("parses arguments", () => {
             const {command, args} = Util.MsgToArgs("!matrix command arg1 arg2", "!matrix");
-            Chai.assert.equal(command, "command");
-            // tslint:disable-next-line:no-magic-numbers
-            Chai.assert.equal(args.length, 2);
-            Chai.assert.equal(args[0], "arg1");
-            Chai.assert.equal(args[1], "arg2");
+            expect(command).to.be.eq("command");
+            expect(args.length).to.be.eq(2);
+            expect(args[0]).to.be.eq("arg1");
+            expect(args[1]).to.be.eq("arg2");
         });
     });
     describe("Command Stuff", () => {
@@ -86,6 +73,16 @@ describe("Util", () => {
             },
         };
         describe("HandleHelpCommand", () => {
+            it("handles empty commands", async () => {
+                const {command, args} = Util.MsgToArgs("!fox help", "!fox");
+                const retStr = await Util.HandleHelpCommand(
+                    "!fox",
+                    {} as any,
+                    {} as any,
+                    args,
+                );
+                expect(retStr).to.equal("No commands found");
+            });
             it("parses general help message", async () => {
                 const {command, args} = Util.MsgToArgs("!fox help", "!fox");
                 const retStr = await Util.HandleHelpCommand(
@@ -130,34 +127,30 @@ Fox goes floof!`);
     });
     describe("GetMxidFromName", () => {
         it("Finds a single member", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                ],
-            };
-            const intent = CreateMockIntent(mockRooms);
+            const mockUsers = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+            ];
+            const intent = CreateMockIntent(mockUsers);
             const mxid = await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
             expect(mxid).equal("@123:localhost");
         });
         it("Errors on multiple members", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@456:localhost",
-                    },
-                ],
-            };
+            const mockRooms = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@456:localhost",
+                },
+            ];
             const intent = CreateMockIntent(mockRooms);
             try {
                 await Util.GetMxidFromName(intent, "goodboy", ["abc"]);
@@ -167,15 +160,13 @@ Fox goes floof!`);
             }
         });
         it("Errors on no member", async () => {
-            const mockRooms = {
-                "/rooms/abc/members": [
-                    {
-                        displayname: "GoodBoy",
-                        membership: "join",
-                        mxid: "@123:localhost",
-                    },
-                ],
-            };
+            const mockRooms = [
+                {
+                    displayname: "GoodBoy",
+                    membership: "join",
+                    mxid: "@123:localhost",
+                },
+            ];
             const intent = CreateMockIntent(mockRooms);
             try {
                 await Util.GetMxidFromName(intent, "badboy", ["abc"]);
@@ -236,7 +227,7 @@ Fox goes floof!`);
         it("should deny", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: {
                                 blubb: PERM_LEVEL,
@@ -255,7 +246,7 @@ Fox goes floof!`);
         it("should allow cat/subcat", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: {
                                 blubb: PERM_LEVEL,
@@ -277,7 +268,7 @@ Fox goes floof!`);
         it("should allow cat", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: PERM_LEVEL,
                             users: {
@@ -296,7 +287,7 @@ Fox goes floof!`);
         it("should allow based on default", async () => {
             const ret = await Util.CheckMatrixPermission(
                 {
-                    getStateEvent: async () => {
+                    getRoomStateEvent: async () => {
                         return {
                             blah: PERM_LEVEL,
                             users_default: PERM_LEVEL,
@@ -309,6 +300,20 @@ Fox goes floof!`);
                 "blah",
             );
             expect(ret).to.be.true;
+        });
+    });
+    describe("EscapeStringForUserId", () => {
+        it("should encode a string properly", () => {
+            expect(Util.EscapeStringForUserId("ThisIsAString")).to
+            .equal("=54his=49s=41=53tring");
+            expect(Util.EscapeStringForUserId('1!2"3£4$5%6^7&8*9(0)')).to
+            .equal("1=212=223=a34=245=256=5e7=268=2a9=280=29");
+        });
+        it("should not-reencode a string", () => {
+            expect(Util.EscapeStringForUserId("=54his=49s=41=53tring")).to
+            .equal("=54his=49s=41=53tring");
+            expect(Util.EscapeStringForUserId("1=212=223=a34=245=256=5e7=268=2a9=280=29")).to
+            .equal("1=212=223=a34=245=256=5e7=268=2a9=280=29");
         });
     });
 });

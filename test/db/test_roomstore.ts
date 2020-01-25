@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-// import * as Proxyquire from "proxyquire";
 import { DiscordStore, CURRENT_SCHEMA } from "../../src/store";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
 
@@ -191,77 +190,5 @@ describe("RoomStore", () => {
             const entries = await store.roomStore.getEntriesByMatrixId("test8_r");
             expect(entries).to.be.empty;
         });
-    });
-});
-describe("RoomStore.schema.v8", () => {
-    it("will successfully migrate rooms", async () => {
-        const SCHEMA_VERSION = 8;
-        store = new DiscordStore(":memory:");
-        const roomStore = {
-            select: () => {
-                return [
-                    {
-                        _id: "DGFUYs4hlXNDmmw0",
-                        id: "123",
-                        matrix: {extras: {}},
-                        matrix_id: "!badroom:localhost",
-                    },
-                    {
-                        _id: "Dd37MWDw57dAQz5p",
-                        data: {},
-                        id: "!xdnLTCNErGnwsGnmnm:localhost   discord_282616294245662720_514843269599985674_bridged",
-                        matrix: {
-                            extras: {},
-                        },
-                        matrix_id: "!bridged1:localhost",
-                        remote: {
-                            discord_channel: "514843269599985674",
-                            discord_guild: "282616294245662720",
-                            discord_type: "text",
-                            plumbed: false,
-                        },
-                        remote_id: "discord_282616294245662720_514843269599985674_bridged",
-                    },
-                    {
-                        _id: "H3XEftQWj8BZYuCe",
-                        data: {},
-                        id: "!oGkfjmeNEkJdFasVRF:localhost   discord_282616294245662720_520332167952334849",
-                        matrix: {
-                            extras: {},
-                        },
-                        matrix_id: "!bridged2:localhost",
-                        remote: {
-                            discord_channel: "514843269599985674",
-                            discord_guild: "282616294245662720",
-                            discord_type: "text",
-                            plumbed: true,
-                            update_icon: true,
-                            update_name: false,
-                            update_topic: true,
-                        },
-                        remote_id: "discord_282616294245662720_520332167952334849",
-                    },
-                ];
-            },
-        };
-        await store.init(SCHEMA_VERSION, roomStore);
-        expect(await store.roomStore.getEntriesByMatrixId("!badroom:localhost")).to.be.empty;
-        const bridge1 = (await store.roomStore.getEntriesByMatrixId("!bridged1:localhost"))[0];
-        expect(bridge1).to.exist;
-        expect(bridge1.remote).to.not.be.null;
-        expect(bridge1.remote!.data.discord_channel).to.be.equal("514843269599985674");
-        expect(bridge1.remote!.data.discord_guild).to.be.equal("282616294245662720");
-        expect(bridge1.remote!.data.discord_type).to.be.equal("text");
-        expect(!!bridge1.remote!.data.plumbed).to.be.false;
-        const bridge2 = (await store.roomStore.getEntriesByMatrixId("!bridged2:localhost"))[0];
-        expect(bridge2).to.exist;
-        expect(bridge2.remote).to.not.be.null;
-        expect(bridge2.remote!.data.discord_channel).to.be.equal("514843269599985674");
-        expect(bridge2.remote!.data.discord_guild).to.be.equal("282616294245662720");
-        expect(bridge2.remote!.data.discord_type).to.be.equal("text");
-        expect(!!bridge2.remote!.data.plumbed).to.be.true;
-        expect(!!bridge2.remote!.data.update_icon).to.be.true;
-        expect(!!bridge2.remote!.data.update_name).to.be.false;
-        expect(!!bridge2.remote!.data.update_topic).to.be.true;
     });
 });

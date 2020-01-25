@@ -24,20 +24,21 @@ import { Postgres } from "./db/postgres";
 import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
-import {
-    RoomStore, UserStore,
-} from "matrix-appservice-bridge";
-
+import { IAppserviceStorageProvider } from "matrix-bot-sdk";
 const log = new Log("DiscordStore");
-export const CURRENT_SCHEMA = 10;
+export const CURRENT_SCHEMA = 11;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
-export class DiscordStore {
+export class DiscordStore implements IAppserviceStorageProvider {
     public db: IDatabaseConnector;
     private config: DiscordBridgeConfigDatabase;
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
+
+    private registeredUsers: Set<string>;
+    private asTxns: Set<string>;
+
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
             this.config = new DiscordBridgeConfigDatabase();
@@ -72,7 +73,7 @@ export class DiscordStore {
                 return resolve(err === null);
             });
         }).then(async (result) => {
-            return new Promise((resolve, reject) => {
+            return new Promise<void|{}>((resolve, reject) => {
                 if (!result) {
                     log.warn("NOT backing up database while a file already exists");
                     resolve(true);
@@ -91,10 +92,8 @@ export class DiscordStore {
      * Checks the database has all the tables needed.
      */
     public async init(
-        overrideSchema: number = 0, roomStore: RoomStore = null, userStore: UserStore = null,
+        overrideSchema: number = 0,
     ): Promise<void> {
-        const SCHEMA_ROOM_STORE_REQUIRED = 8;
-        const SCHEMA_USER_STORE_REQUIRED = 9;
         log.info("Starting DB Init");
         await this.openDatabase();
         let version = await this.getSchemaVersion();
@@ -104,13 +103,7 @@ export class DiscordStore {
             version++;
             const schemaClass = require(`./db/schema/v${version}.js`).Schema;
             let schema: IDbSchema;
-            if (version === SCHEMA_ROOM_STORE_REQUIRED) { // 8 requires access to the roomstore.
-                schema = (new schemaClass(roomStore) as IDbSchema);
-            } else if (version === SCHEMA_USER_STORE_REQUIRED) {
-                schema = (new schemaClass(userStore) as IDbSchema);
-            } else {
-                schema = (new schemaClass() as IDbSchema);
-            }
+            schema = (new schemaClass() as IDbSchema);
             log.info(`Updating database to v${version}, "${schema.description}"`);
             try {
                 await schema.run(this);
@@ -130,6 +123,14 @@ export class DiscordStore {
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
+        // We need to prepopulate some sets
+        for (const row of await this.db.All("SELECT * FROM registered_users")) {
+            this.registeredUsers.add(row.user_id as string);
+        }
+
+        for (const row of await this.db.All("SELECT * FROM as_txns")) {
+            this.asTxns.add(row.txn_id as string);
+        }
     }
 
     public async close() {
@@ -172,23 +173,30 @@ export class DiscordStore {
         }
     }
 
-    public async deleteUserToken(discordId: string): Promise<void> {
+    public async deleteUserToken(mxid: string): Promise<void> {
+        const res = await this.db.Get("SELECT * from user_id_discord_id WHERE user_id = $id", {
+            id: mxid,
+        });
+        if (!res) {
+            return;
+        }
+        const discordId = res.discord_id;
         log.silly("SQL", "deleteUserToken => ", discordId);
         try {
             await Promise.all([
                 this.db.Run(
                     `
-                    DELETE FROM user_id_discord_id WHERE discord_id = $id;
+                    DELETE FROM user_id_discord_id WHERE discord_id = $id
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
                 this.db.Run(
                     `
-                    DELETE FROM discord_id_token WHERE discord_id = $id;
+                    DELETE FROM discord_id_token WHERE discord_id = $id
                     `
                 , {
-                    $id: discordId,
+                    id: discordId,
                 }),
             ]);
         } catch (err) {
@@ -238,7 +246,8 @@ export class DiscordStore {
             throw err;
         }
     }
-    // tslint:disable-next-line no-any
+
+    // tslint:disable-next-line no-any callable-types
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);
@@ -265,6 +274,26 @@ export class DiscordStore {
     public async Delete<T extends IDbData>(data: T): Promise<void>  {
         log.silly(`insert <${data.constructor.name}>`);
         await data.Delete(this);
+    }
+
+    public addRegisteredUser(userId: string) {
+        this.registeredUsers.add(userId);
+        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId}).catch((err) => {
+            log.warn("Failed to insert registered user", err);
+        });
+    }
+    public isUserRegistered(userId: string): boolean {
+        return this.registeredUsers.has(userId);
+    }
+
+    public setTransactionCompleted(transactionId: string) {
+        this.asTxns.add(transactionId);
+        this.db.Run("INSERT INTO txn_id VALUES ($transactionId)", {transactionId}).catch((err) => {
+            log.warn("Failed to insert txn", err);
+        });
+    }
+    public isTransactionCompleted(transactionId: string): boolean {
+        return this.asTxns.has(transactionId);
     }
 
     private async getSchemaVersion( ): Promise<number> {

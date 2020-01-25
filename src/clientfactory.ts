@@ -16,13 +16,11 @@ limitations under the License.
 
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient } from "discord.js";
+import { Client as DiscordClient, TextChannel } from "discord.js";
 import { Log } from "./log";
-import { Util } from "./util";
+import { MetricPeg } from "./metrics";
 
 const log = new Log("ClientFactory");
-
-const READY_TIMEOUT = 30000;
 
 export class DiscordClientFactory {
     private config: DiscordBridgeConfigAuth;
@@ -109,5 +107,20 @@ export class DiscordClientFactory {
             log.warn(`Could not log ${userId} in. Returning bot user for now.`, err);
             return this.botClient;
         }
+    }
+
+    public bindMetricsToChannel(channel: TextChannel) {
+        // tslint:disable-next-line:no-any
+        const flexChan = channel as any;
+        if (flexChan._xmet_send !== undefined) {
+            return;
+        }
+        // Prefix the real functions with _xmet_
+        flexChan._xmet_send = channel.send;
+        // tslint:disable-next-line:only-arrow-functions
+        channel.send = function() {
+            MetricPeg.get.remoteCall("channel.send");
+            return flexChan._xmet_send.apply(channel, arguments);
+        };
     }
 }

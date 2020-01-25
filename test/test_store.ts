@@ -15,20 +15,12 @@ limitations under the License.
 */
 
 import * as Chai from "chai";
-// import * as Proxyquire from "proxyquire";
-import { DiscordStore, CURRENT_SCHEMA } from "../src/store";
+import { DiscordStore } from "../src/store";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { DbEvent } from "../src/db/dbdataevent";
-import { Log } from "../src/log";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
-
-const TEST_SCHEMA = CURRENT_SCHEMA;
-
-// const assert = Chai.assert;
 
 describe("DiscordStore", () => {
     describe("init", () => {

@@ -14,18 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import { DiscordBridgeConfig } from "../src/config";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const expect = Chai.expect;
-
-describe("DiscordBridgeConfig.ApplyConfig", () => {
+describe("DiscordBridgeConfig.applyConfig", () => {
     it("should merge configs correctly", () => {
         const config = new DiscordBridgeConfig();
-        config.ApplyConfig({
+        config.applyConfig({
             bridge: {
                 disableDeletionForwarding: true,
                 disableDiscordMentions: false,
@@ -38,17 +36,40 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
                 console: "warn",
             },
         });
-        expect(config.bridge.homeserverUrl, "blah");
+        expect(config.bridge.homeserverUrl).to.equal("blah");
         expect(config.bridge.disableTypingNotifications).to.be.true;
         expect(config.bridge.disableDiscordMentions).to.be.false;
         expect(config.bridge.disableDeletionForwarding).to.be.true;
         expect(config.bridge.enableSelfServiceBridging).to.be.false;
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
-        expect(config.logging.console, "warn");
+        expect(config.logging.console).to.equal("warn");
+    });
+    it("should merge environment overrides correctly", () => {
+        const config = new DiscordBridgeConfig();
+        config.applyConfig({
+            bridge: {
+                disableDeletionForwarding: true,
+                disableDiscordMentions: false,
+                homeserverUrl: "blah",
+            },
+            logging: {
+                console: "warn",
+            },
+        });
+        config.applyEnvironmentOverrides({
+            APPSERVICE_DISCORD_BRIDGE_DISABLE_DELETION_FORWARDING: false,
+            APPSERVICE_DISCORD_BRIDGE_DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
+            APPSERVICE_DISCORD_LOGGING_CONSOLE: "debug",
+        });
+        expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
+        expect(config.bridge.disableDeletionForwarding).to.be.false;
+        expect(config.bridge.disableDiscordMentions).to.be.false;
+        expect(config.bridge.homeserverUrl).to.equal("blah");
+        expect(config.logging.console).to.equal("debug");
     });
     it("should merge logging.files correctly", () => {
         const config = new DiscordBridgeConfig();
-        config.ApplyConfig({
+        config.applyConfig({
             logging: {
                 console: "silent",
                 files: [
@@ -58,6 +79,6 @@ describe("DiscordBridgeConfig.ApplyConfig", () => {
                 ],
             },
         });
-        expect(config.logging.files[0].file, "./bacon.log");
+        expect(config.logging.files[0].file).to.equal("./bacon.log");
     });
 });
