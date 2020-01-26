@@ -93,6 +93,7 @@ class DiscordBridgeConfigBridge {
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
+    public determineCodeLanguage: boolean = false;
 }
 
 export class DiscordBridgeConfigDatabase {

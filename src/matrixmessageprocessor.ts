@@ -20,6 +20,7 @@ import * as Parser from "node-html-parser";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";
 import { MatrixClient } from "matrix-bot-sdk";
+import { DiscordBridgeConfig } from "./config";
 import {
     IMatrixMessageParserCallbacks,
     IMatrixMessageParserOpts,
@@ -38,7 +39,7 @@ export interface IMatrixMessageProcessorParams {
 export class MatrixMessageProcessor {
     private listBulletPoints: string[] = ["●", "○", "■", "‣"];
     private parser: MatrixMessageParser;
-    constructor(public bot: DiscordBot) {
+    constructor(public bot: DiscordBot, private config: DiscordBridgeConfig) {
         this.parser = new MatrixMessageParser();
     }
 
@@ -58,6 +59,7 @@ export class MatrixMessageProcessor {
     ): IMatrixMessageParserOpts {
         return {
             callbacks: this.getParserCallbacks(msg, guild, params),
+            determineCodeLanguage: this.config.bridge.determineCodeLanguage,
             displayname: params ? params.displayname || "" : "",
         };
     }

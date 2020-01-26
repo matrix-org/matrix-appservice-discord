@@ -71,7 +71,7 @@ export class MatrixEventProcessor {
         this.bridge = opts.bridge;
         this.discord = opts.discord;
         this.store = opts.store;
-        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
+        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config);
         this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
