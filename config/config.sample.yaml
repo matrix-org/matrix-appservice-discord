@@ -38,26 +38,27 @@ logging:
   console: "warn" #silly, verbose, info, http, warn, error, silent
   lineDateFormat: "MMM-D HH:mm:ss.SSS" # This is in moment.js format
   files:
-    - file: "debug.log"
+    - file: "logs/debug.log"
       disable:
         - "PresenceHandler" # Will not capture presence logging
-    - file: "warn.log" # Will capture warnings
+    - file: "logs/warn.log" # Will capture warnings
       level: "warn"
-    - file: "botlogs.log" # Will capture logs from DiscordBot
+    - file: "logs/botlogs.log" # Will capture logs from DiscordBot
       level: "info"
       enable:
         - "DiscordBot"
 database:
-  userStorePath: "user-store.db"
-  roomStorePath: "room-store.db"
   # You may either use SQLite or Postgresql for the bridge database, which contains
   # important mappings for events and user puppeting configurations.
-  # Use the filename option for SQLite, or connString for Postgresql.
+  # Use the filename option for SQLite.
+  userStorePath: "user-store.db"
+  roomStorePath: "room-store.db"
+  filename: "discord.db"
+  # For Postgresql use only connString and comment-out file names, format:
+  # connString: "postgresql://user:password@localhost/database_name"
   # If you are migrating, see https://github.com/Half-Shot/matrix-appservice-discord/blob/master/docs/howto.md#migrate-to-postgres-from-sqlite
   # WARNING: You will almost certainly be fine with sqlite unless your bridge
   # is in heavy demand and you suffer from IO slowness.
-  filename: "discord.db"
-  # connString: "postgresql://user:password@localhost/database_name"
 room:
   # Set the default visibility of alias rooms, defaults to "public".
   # One of: "public", "private"
