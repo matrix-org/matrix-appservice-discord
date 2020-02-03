@@ -42,6 +42,7 @@
     "discord.js": "^11.5.1",
     "escape-html": "^1.0.3",
     "escape-string-regexp": "^1.0.5",
+    "discord-markdown": "^2.2.0",
     "js-yaml": "^3.13.1",
     "matrix-bot-sdk": "0.4.1",
     "matrix-discord-parser": "0.0.4-1",
