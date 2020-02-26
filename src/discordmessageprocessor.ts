@@ -21,7 +21,7 @@ import {
     DiscordMessageParser,
     IDiscordMessageParserOpts,
     IDiscordMessageParserCallbacks,
-    DiscordMessageParserResult,
+    IDiscordMessageParserResult,
 } from "matrix-discord-parser";
 
 const log = new Log("DiscordMessageProcessor");
@@ -32,7 +32,7 @@ export class DiscordMessageProcessor {
         this.parser = new DiscordMessageParser();
     }
 
-    public async FormatMessage(msg: Discord.Message): Promise<DiscordMessageParserResult> {
+    public async FormatMessage(msg: Discord.Message): Promise<IDiscordMessageParserResult> {
         const opts = {
             callbacks: this.getParserCallbacks(msg),
         } as IDiscordMessageParserOpts;
@@ -43,7 +43,7 @@ export class DiscordMessageProcessor {
         msg1: Discord.Message,
         msg2: Discord.Message,
         link: string,
-    ): Promise<DiscordMessageParserResult> {
+    ): Promise<IDiscordMessageParserResult> {
         // obsolete once edit PR is merged
         const opts = {
             callbacks: this.getParserCallbacks(msg2),
