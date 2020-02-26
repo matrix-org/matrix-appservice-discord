@@ -29,6 +29,8 @@ bridge:
   disableReadReceipts: false
   # Disable Join Leave echos from matrix
   disableJoinLeaveNotifications: false
+  # Auto-determine the language of code blocks (this can be CPU-intensive)
+  determineCodeLanguage: false
 # Authentication configuration for the discord bot.
 auth:
   # This MUST be a string (wrapped in quotes)
@@ -49,8 +51,6 @@ logging:
       enable:
         - "DiscordBot"
 database:
-  userStorePath: "user-store.db"
-  roomStorePath: "room-store.db"
   # You may either use SQLite or Postgresql for the bridge database, which contains
   # important mappings for events and user puppeting configurations.
   # Use the filename option for SQLite, or connString for Postgresql.

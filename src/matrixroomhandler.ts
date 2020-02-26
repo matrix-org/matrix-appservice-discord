@@ -14,17 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { DiscordBot } from "./bot";
-import {
-    Bridge,
-    RemoteRoom,
-    thirdPartyLookup,
-    thirdPartyProtocolResult,
-    thirdPartyUserResult,
-    thirdPartyLocationResult,
-    ProvisionedRoom,
-    Intent,
-} from "matrix-appservice-bridge";
+import { DiscordBot, IThirdPartyLookup } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "discord.js";
@@ -32,8 +22,8 @@ import { Util } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
-import { IMatrixEvent } from "./matrixtypes";
 import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
+import { Appservice, Intent, IApplicationServiceProtocol } from "matrix-bot-sdk";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
@@ -63,21 +53,37 @@ export class MatrixRoomHandler {
         private discord: DiscordBot,
         private config: DiscordBridgeConfig,
         private provisioner: Provisioner,
-        private bridge: Bridge,
+        private bridge: Appservice,
         private roomStore: DbRoomStore) {
         this.botUserId = this.discord.BotUserId;
         this.botJoinedRooms = new Set();
     }
 
-    public get ThirdPartyLookup(): thirdPartyLookup {
-        return {
-            getLocation: this.tpGetLocation.bind(this),
-            getProtocol: this.tpGetProtocol.bind(this),
-            getUser: this.tpGetUser.bind(this),
-            parseLocation: this.tpParseLocation.bind(this),
-            parseUser: this.tpParseUser.bind(this),
-            protocols: ["discord"],
-        };
+    public bindThirdparty() {
+        this.bridge.on("thirdparty.protocol",
+            (protocol: string, cb: (protocolResponse: IApplicationServiceProtocol) => void) => {
+                this.tpGetProtocol(protocol)
+                    .then(cb)
+                    .catch((err) => log.warn("Failed to get protocol", err));
+        });
+
+        // tslint:disable-next-line:no-any
+        this.bridge.on("thirdparty.location.remote", (protocol: string, fields: any, cb: (response: any) => void) => {
+            this.tpGetLocation(protocol, fields)
+            .then(cb)
+            .catch((err) => log.warn("Failed to get remote locations", err));
+        });
+
+        // These are not supported.
+        this.bridge.on("thirdparty.location.matrix", (matrixId: string, cb: (response: null) => void) => {
+            cb(null);
+        });
+        this.bridge.on("thirdparty.user.remote", (matrixId: string, fields: unknown, cb: (response: null) => void) => {
+            cb(null);
+        });
+        this.bridge.on("thirdparty.user.matrix", (matrixId: string, cb: (response: null) => void) => {
+            cb(null);
+        });
     }
 
     public async OnAliasQueried(alias: string, roomId: string) {
@@ -104,11 +110,13 @@ export class MatrixRoomHandler {
         }
 
         // Fire and forget RoomDirectory mapping
-        this.bridge.getIntent().getClient().setRoomDirectoryVisibilityAppService(
+        this.bridge.setRoomDirectoryVisibility(
             channel.guild.id,
             roomId,
             "public",
-        );
+        ).catch((err) => {
+            log.warn("Failed to set room directory visibility for new room:", err);
+        });
         await this.discord.ChannelSyncroniser.OnUpdate(channel);
         const promiseList: Promise<void>[] = [];
         // Join a whole bunch of users.
@@ -136,7 +144,9 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
-    public async OnAliasQuery(alias: string, aliasLocalpart: string): Promise<ProvisionedRoom> {
+    // tslint:disable-next-line no-any
+    public async OnAliasQuery(alias: string): Promise<any> {
+        const aliasLocalpart = alias.substr("#".length, alias.indexOf(":") - 1);
         log.info("Got request for #", aliasLocalpart);
         const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
@@ -150,10 +160,21 @@ export class MatrixRoomHandler {
         } catch (err) {
             log.error(`Couldn't find discord room '${aliasLocalpart}'.`, err);
         }
-
     }
 
-    public async tpGetProtocol(protocol: string): Promise<thirdPartyProtocolResult> {
+    public async tpGetProtocol(protocol: string): Promise<IApplicationServiceProtocol> {
+        const instances = {};
+        for (const guild of this.discord.GetGuilds()) {
+            instances[guild.name] = {
+                bot_user_id: this.botUserId,
+                desc: guild.name,
+                fields: {
+                    guild_id: guild.id,
+                },
+                icon: guild.iconURL || ICON_URL,
+                network_id: guild.id,
+            };
+        }
         return {
             field_types: {
                 // guild_name: {
@@ -181,41 +202,18 @@ export class MatrixRoomHandler {
                     regexp: "[A-Za-z0-9_\-]{2,100}",
                 },
             },
-            instances: this.discord.GetGuilds().map((guild) => {
-                return {
-                    bot_user_id: this.botUserId,
-                    desc: guild.name,
-                    fields: {
-                        guild_id: guild.id,
-                    },
-                    icon: guild.iconURL || ICON_URL, // TODO: Use icons from our content repo. Potential security risk.
-                    network_id: guild.id,
-                };
-            }),
+            icon: "", // TODO: Add this.
+            instances,
             location_fields: ["guild_id", "channel_name"],
             user_fields: ["username", "discriminator"],
         };
     }
 
     // tslint:disable-next-line no-any
-    public async tpGetLocation(protocol: string, fields: any): Promise<thirdPartyLocationResult[]> {
+    public async tpGetLocation(protocol: string, fields: any): Promise<IThirdPartyLookup[]> {
         log.info("Got location request ", protocol, fields);
         const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
         return chans;
-    }
-
-    public async tpParseLocation(alias: string): Promise<thirdPartyLocationResult[]>  {
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    }
-
-    // tslint:disable-next-line no-any
-    public async tpGetUser(protocol: string, fields: any): Promise<thirdPartyUserResult[]> {
-        log.info("Got user request ", protocol, fields);
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
-    }
-
-    public async tpParseUser(userid: string): Promise<thirdPartyUserResult[]> {
-        throw {err: "Unsupported", code: HTTP_UNSUPPORTED};
     }
 
     private async joinRoom(intent: Intent, roomIdOrAlias: string, member?: Discord.GuildMember): Promise<void> {
@@ -225,15 +223,15 @@ export class MatrixRoomHandler {
             if (member) {
                 await this.discord.UserSyncroniser.JoinRoom(member, roomIdOrAlias);
             } else {
-                await intent.getClient().joinRoom(roomIdOrAlias);
+                await intent.joinRoom(roomIdOrAlias);
             }
         };
         const errorHandler = async (err) => {
-            log.error(`Error joining room ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+            log.error(`Error joining room ${roomIdOrAlias} as ${intent.userId}`);
             log.error(err);
             const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
             if (idx === JOIN_ROOM_SCHEDULE.length - 1) {
-                log.warn(`Cannot join ${roomIdOrAlias} as ${intent.getClient().getUserId()}`);
+                log.warn(`Cannot join ${roomIdOrAlias} as ${intent.userId}`);
                 throw new Error(err);
             } else {
                 currentSchedule = JOIN_ROOM_SCHEDULE[idx + 1];
@@ -253,7 +251,7 @@ export class MatrixRoomHandler {
     }
 
     private async createMatrixRoom(channel: Discord.TextChannel,
-                                   alias: string, aliasLocalpart: string): ProvisionedRoom {
+                                   alias: string, aliasLocalpart: string) {
         const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}`, {
             discord_channel: channel.id,
             discord_guild: channel.guild.id,
@@ -280,8 +278,6 @@ export class MatrixRoomHandler {
             new MatrixStoreRoom(alias),
             remote,
         );
-        return {
-            creationOpts,
-        } as ProvisionedRoom;
+        return creationOpts;
     }
 }
