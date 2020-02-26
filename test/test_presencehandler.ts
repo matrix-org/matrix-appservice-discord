@@ -14,35 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import * as Discord from "discord.js";
-import * as Proxyquire from "proxyquire";
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
 import { MockUser } from "./mocks/user";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const expect = Chai.expect;
 const INTERVAL = 250;
 let lastStatus = null;
-// const assert = Chai.assert;
-const bot = {
+const appservice = new AppserviceMock();
+const bot: any = {
     GetBotId: () => {
         return "1234";
     },
-    GetIntentFromDiscordMember: (member) => {
-        return {
-            getClient: () => {
-                return {
-                    setPresence: async (status) => {
-                        lastStatus = status;
-                    },
-                };
-            },
-        };
+    GetIntentFromDiscordMember: (member: MockUser) => {
+        return appservice.getIntentForSuffix(member.id);
     },
 };
 
@@ -65,18 +56,18 @@ describe("PresenceHandler", () => {
             const COUNT = 2;
             handler.EnqueueUser(new MockUser("abc", "def") as any);
             handler.EnqueueUser(new MockUser("123", "ghi") as any);
-            Chai.assert.equal(handler.QueueCount, COUNT);
+            expect(handler.QueueCount).to.be.equal(COUNT);
         });
         it("does not add duplicate users", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             handler.EnqueueUser(new MockUser("abc", "def") as any);
             handler.EnqueueUser(new MockUser("abc", "def") as any);
-            Chai.assert.equal(handler.QueueCount, 1);
+            expect(handler.QueueCount).to.be.equal(1);
         });
         it("does not add the bot user", () => {
             const handler = new PresenceHandler(bot as DiscordBot);
             handler.EnqueueUser(new MockUser("1234", "def") as any);
-            Chai.assert.equal(handler.QueueCount, 0);
+            expect(handler.QueueCount).to.be.equal(0);
         });
     });
     describe("DequeueUser", () => {
@@ -92,11 +83,11 @@ describe("PresenceHandler", () => {
             handler.EnqueueUser(members[members.length - 1]);
 
             handler.DequeueUser(members[members.length - 1]);
-            Chai.assert.equal(handler.QueueCount, members.length - 1);
+            expect(handler.QueueCount).to.be.equal(members.length - 1);
             handler.DequeueUser(members[1]);
-            Chai.assert.equal(handler.QueueCount, 1);
+            expect(handler.QueueCount).to.be.equal(1);
             handler.DequeueUser(members[0]);
-            Chai.assert.equal(handler.QueueCount, 0);
+            expect(handler.QueueCount).to.be.equal(0);
         });
     });
     describe("ProcessUser", () => {
@@ -108,9 +99,8 @@ describe("PresenceHandler", () => {
                 status: "online",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "online",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", undefined);
         });
         it("processes an offline user", async () => {
             lastStatus = null;
@@ -120,10 +110,8 @@ describe("PresenceHandler", () => {
                 status: "offline",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "offline",
-            });
-
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "offline", undefined);
         });
         it("processes an idle user", async () => {
             lastStatus = null;
@@ -133,9 +121,8 @@ describe("PresenceHandler", () => {
                 status: "idle",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "unavailable",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "unavailable", undefined);
         });
         it("processes an dnd user", async () => {
             lastStatus = null;
@@ -145,19 +132,15 @@ describe("PresenceHandler", () => {
                 status: "dnd",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "online",
-                status_msg: "Do not disturb",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb");
             member.MockSetPresence(new Discord.Presence({
                 game: new Discord.Game({name: "Test Game"}, {} as any),
                 status: "dnd",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "online",
-                status_msg: "Do not disturb | Playing Test Game",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb | Playing Test Game");
         });
         it("processes a user playing games", async () => {
             lastStatus = null;
@@ -168,19 +151,15 @@ describe("PresenceHandler", () => {
                 status: "online",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "online",
-                status_msg: "Playing Test Game",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Playing Test Game");
             member.MockSetPresence(new Discord.Presence({
                 game: new Discord.Game({name: "Test Game", type: 1}, {} as any),
                 status: "online",
             }, {} as any));
             await handler.ProcessUser(member);
-            Chai.assert.deepEqual(lastStatus, {
-                presence: "online",
-                status_msg: "Streaming Test Game",
-            });
+            appservice.getIntentForSuffix(member.id)
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Streaming Test Game");
         });
     });
 });

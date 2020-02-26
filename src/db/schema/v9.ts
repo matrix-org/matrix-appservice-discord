@@ -17,17 +17,11 @@ limitations under the License.
 import { IDbSchema } from "./dbschema";
 import { DiscordStore } from "../../store";
 import { Log } from "../../log";
-import {
-    UserStore,
-} from "matrix-appservice-bridge";
-import { RemoteUser } from "../userstore";
-import PQueue from "p-queue";
-const log = new Log("SchemaV9");
 
 export class Schema implements IDbSchema {
     public description = "create user store tables";
 
-    constructor(private userStore: UserStore|null) {
+    constructor() {
 
     }
 
@@ -56,54 +50,9 @@ export class Schema implements IDbSchema {
                 PRIMARY KEY(matrix_id, remote_id)
         );`, "user_entries");
 
-        if (this.userStore === null) {
-            log.warn("Not migrating users from users store, users store is null");
-            return;
-        }
-        log.warn("Migrating users from userstore, this may take a while...");
-        const remoteUsers = await this.userStore.select({type: "remote"});
-        log.info(`Found ${remoteUsers.length} remote users in the DB`);
-        let migrated = 0;
-        const processQueue = new PQueue({
-            autoStart: true,
-            concurrency: 100,
-        });
-        for (const user of remoteUsers) {
-            const matrixIds = await this.userStore.getMatrixLinks(user.id);
-            if (!matrixIds || matrixIds.length === 0) {
-                log.warn(`Not migrating ${user.id}, has no linked matrix user`);
-                continue;
-            } else if (matrixIds.length > 1) {
-                log.warn(`Multiple matrix ids for ${user.id}, using first`);
-            }
-            const matrixId = matrixIds[0];
-            try {
-                const remote = new RemoteUser(user.id);
-                remote.avatarurl = user.data.avatarurl;
-                remote.avatarurlMxc = user.data.avatarurl_mxc;
-                remote.displayname = user.data.displayname;
-                Object.keys(user.data).filter((k) => k.startsWith("nick_")).forEach((k) => {
-                    remote.guildNicks.set(k.substr("nick_".length), user.data[k]);
-                });
-                processQueue.add(async () => {
-                    await store.userStore.linkUsers(matrixId, remote.id);
-                    return store.userStore.setRemoteUser(remote);
-                }).then(() => {
-                    log.info(`Migrated ${matrixId}, ${processQueue.pending} to go.`);
-                    migrated++;
-                }).catch((err) => {
-                    log.error(`Failed to migrate ${matrixId} ${err}`);
-                });
-            } catch (ex) {
-                log.error(`Failed to link ${matrixId}: `, ex);
-            }
-        }
-        await processQueue.onIdle();
-        if (migrated !== remoteUsers.length) {
-            log.error(`Didn't migrate all users, ${remoteUsers.length - migrated} failed to be migrated.`);
-        } else {
-            log.info("Migrated all users successfully");
-        }
+        // XXX: This used to migrate rooms across from the old room store format but
+        // since we moved to the matrix-js-bot-sdk, we can no longer do this. Please
+        // use a 0.X release for this.
     }
 
     public async rollBack(store: DiscordStore): Promise<void> {

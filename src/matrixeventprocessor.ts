@@ -17,19 +17,18 @@ limitations under the License.
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
-import * as escapeStringRegexp from "escape-string-regexp";
-import { Util } from "./util";
+import { Util, wrapError } from "./util";
 import * as path from "path";
 import * as mime from "mime";
-import { MatrixUser, Bridge, BridgeContext } from "matrix-appservice-bridge";
-import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
-
 import { Log } from "./log";
+import { IRoomStoreEntry, RemoteStoreRoom } from "./db/roomstore";
+import { Appservice, MatrixClient } from "matrix-bot-sdk";
+import { DiscordStore } from "./store";
 import { TimedCache } from "./structures/timedcache";
-import { MetricPeg } from "./metrics";
+
 const log = new Log("MatrixEventProcessor");
 
 const MaxFileSize = 8000000;
@@ -44,8 +43,9 @@ const PROFILE_CACHE_LIFETIME = 900000;
 export class MatrixEventProcessorOpts {
     constructor(
         readonly config: DiscordBridgeConfig,
-        readonly bridge: Bridge,
+        readonly bridge: Appservice,
         readonly discord: DiscordBot,
+        readonly store: DiscordStore,
         ) {
 
     }
@@ -59,8 +59,9 @@ export interface IMatrixEventProcessorResult {
 
 export class MatrixEventProcessor {
     private config: DiscordBridgeConfig;
-    private bridge: Bridge;
+    private bridge: Appservice;
     private discord: DiscordBot;
+    private store: DiscordStore;
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
     private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string|undefined}>;
@@ -69,7 +70,8 @@ export class MatrixEventProcessor {
         this.config = opts.config;
         this.bridge = opts.bridge;
         this.discord = opts.discord;
-        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord);
+        this.store = opts.store;
+        this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config);
         this.mxUserProfileCache = new TimedCache(PROFILE_CACHE_LIFETIME);
         if (cm) {
             this.mxCommandHandler = cm;
@@ -78,27 +80,39 @@ export class MatrixEventProcessor {
         }
     }
 
-    public async OnEvent(request, context: BridgeContext): Promise<void> {
-        const event = request.getData() as IMatrixEvent;
+    /**
+     * Callback which is called when the HS notifies the bridge of a new event.
+     *
+     * @param request Request object containing the event for which this callback is called.
+     * @param context The current context of the bridge.
+     * @throws {Unstable.EventNotHandledError} When the event can finally not be handled.
+     */
+    public async OnEvent(event: IMatrixEvent, rooms: IRoomStoreEntry[]): Promise<void> {
+        const remoteRoom = rooms[0];
         if (event.unsigned.age > AGE_LIMIT) {
-            log.warn(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
+            log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
+            // throw new Unstable.EventTooOldError(
+            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
+            // );
             return;
         }
         if (
             event.type === "m.room.member" &&
             event.content!.membership === "invite" &&
-            event.state_key === this.bridge.getClientFactory()._botUserId
+            event.state_key === this.bridge.botUserId
         ) {
             await this.mxCommandHandler.HandleInvite(event);
             return;
-        } else if (event.type === "m.room.member" && this.bridge.getBot().isRemoteUser(event.state_key)) {
+        } else if (event.type === "m.room.member" && this.bridge.isNamespacedUser(event.state_key)) {
             if (["leave", "ban"].includes(event.content!.membership!) && event.sender !== event.state_key) {
                 // Kick/Ban handling
                 let prevMembership = "";
-                if (event.content!.membership === "leave") {
-                    const intent = this.bridge.getIntent();
-                    prevMembership = (await intent.getEvent(event.room_id, event.replaces_state)).content.membership;
+                if (event.content!.membership === "leave" && event.replaces_state) {
+                    const intent = this.bridge.botIntent;
+                    prevMembership = (await intent.underlyingClient.getEvent(
+                        event.room_id,
+                        event.replaces_state,
+                    )).content.membership;
                 }
                 await this.discord.HandleMatrixKickBan(
                     event.room_id,
@@ -110,46 +124,40 @@ export class MatrixEventProcessor {
                 );
             }
             return;
+        } else if (this.bridge.isNamespacedUser(event.sender)) {
+            // Ignore echo
+            return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
             await this.ProcessStateEvent(event);
             return;
-        } else if (event.type === "m.room.redaction" && context.rooms.remote) {
+        } else if (event.type === "m.room.redaction" && remoteRoom) {
             await this.discord.ProcessMatrixRedact(event);
             return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
-            const isBotCommand = event.type === "m.room.message" &&
-                event.content!.body &&
-                event.content!.body!.startsWith("!discord");
-            if (isBotCommand) {
-                await this.mxCommandHandler.Process(event, context);
-            } else if (context.rooms.remote) {
-                const srvChanPair = context.rooms.remote.roomId.substr("_discord".length).split("_", ROOM_NAME_PARTS);
+            if (isBotCommand(event)) {
+                await this.mxCommandHandler.Process(event, remoteRoom);
+            } else if (remoteRoom) {
                 try {
-                    await this.ProcessMsgEvent(event, srvChanPair[0], srvChanPair[1]);
+                    await this.ProcessMsgEvent(event, remoteRoom.remote!);
                 } catch (err) {
                     log.warn("There was an error sending a matrix event", err);
                 }
             }
             return;
-        } else if (event.type === "m.room.encryption" && context.rooms.remote) {
-            try {
-                await this.HandleEncryptionWarning(event.room_id);
-                return;
-            } catch (err) {
-                throw new Error(`Failed to handle encrypted room, ${err}`);
-            }
+        } else if (event.type === "m.room.encryption" && remoteRoom) {
+            await this.HandleEncryptionWarning(event.room_id);
+            return;
         }
-        log.verbose("Event not processed by bridge");
-        MetricPeg.get.requestOutcome(event.event_id, false, "dropped");
+        // throw new Unstable.EventUnknownError(`${event.event_id} not processed by bridge`);
+        log.verbose(`${event.event_id} not processed by bridge`);
     }
 
     public async HandleEncryptionWarning(roomId: string): Promise<void> {
-        const intent = this.bridge.getIntent();
         log.info(`User has turned on encryption in ${roomId}, so leaving.`);
         /* N.B 'status' is not specced but https://github.com/matrix-org/matrix-doc/pull/828
          has been open for over a year with no resolution. */
-        const sendPromise = intent.sendMessage(roomId, {
+        const sendPromise = this.bridge.botIntent.sendEvent(roomId, {
             body: "You have turned on encryption in this room, so the service will not bridge any new messages.",
             msgtype: "m.notice",
             status: "critical",
@@ -159,12 +167,21 @@ export class MatrixEventProcessor {
           "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
         );
         await sendPromise;
-        await intent.leave(roomId);
-        await this.bridge.getRoomStore().removeEntriesByMatrixRoomId(roomId);
+        await this.bridge.botIntent.underlyingClient.leaveRoom(roomId);
+        await this.store.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 
-    public async ProcessMsgEvent(event: IMatrixEvent, guildId: string, channelId: string) {
-        const mxClient = this.bridge.getClientFactory().getClientAs();
+    /**
+     * Processes a matrix event by sending it to Discord and marking the event as read.
+     *
+     * @param event The matrix m.room.message event to process.
+     * @param context Context of the bridge.
+     * @throws {Unstable.ForeignNetworkError}
+     */
+    public async ProcessMsgEvent(event: IMatrixEvent, room: RemoteStoreRoom): Promise<void> {
+        const guildId = room.data.discord_guild!;
+        const channelId = room.data.discord_channel!;
+        const mxClient = this.bridge.botClient;
         log.verbose(`Looking up ${guildId}_${channelId}`);
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
@@ -180,8 +197,9 @@ export class MatrixEventProcessor {
             embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
+        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
         await this.discord.send(embedSet, opts, roomLookup, event);
-        // Don't await this.
+
         this.sendReadReceipt(event).catch((ex) => {
             log.verbose("Failed to send read reciept for ", event.event_id, ex);
         });
@@ -197,7 +215,7 @@ export class MatrixEventProcessor {
             return;
         }
 
-        if (event.sender === this.bridge.getIntent().getClient().getUserId()) {
+        if (event.sender === this.bridge.botUserId) {
             log.verbose(`${event.event_id} ${event.type} is by our bot user, ignoring.`);
             return;
         }
@@ -212,9 +230,9 @@ export class MatrixEventProcessor {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
-            const intent = this.bridge.getIntent();
+            const client = this.bridge.botIntent.underlyingClient;
             const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
-                await intent.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+                await client.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
                 this.mxUserProfileCache.delete(event.sender);
@@ -251,7 +269,7 @@ export class MatrixEventProcessor {
     public async EventToEmbed(
         event: IMatrixEvent, channel: Discord.TextChannel, getReply: boolean = true,
     ): Promise<IMatrixEventProcessorResult> {
-        const mxClient = this.bridge.getClientFactory().getClientAs();
+        const mxClient = this.bridge.botIntent.underlyingClient;
         const profile = await this.GetUserProfileForRoom(event.room_id, event.sender);
         const params = {
             mxClient,
@@ -312,8 +330,8 @@ export class MatrixEventProcessor {
         }
 
         let size = event.content.info.size || 0;
-        const url = mxClient.mxcUrlToHttp(event.content.url);
         const name = this.GetFilenameForMediaEvent(event.content);
+        const url = this.bridge.botClient.mxcToHttp(event.content.url);
         if (size < MaxFileSize) {
             const attachment = await Util.DownloadFile(url);
             size = attachment.byteLength;
@@ -347,30 +365,31 @@ export class MatrixEventProcessor {
             return;
         }
 
-        const intent = this.bridge.getIntent();
+        const intent = this.bridge.botIntent;
         // Try to get the event.
         try {
-            const sourceEvent = await intent.getEvent(event.room_id, eventId);
-            sourceEvent.content.body = sourceEvent.content.body  || "Reply with unknown content";
+            const sourceEvent = (await intent.underlyingClient.getEvent(event.room_id, eventId)) as IMatrixEvent;
+            if (!sourceEvent || !sourceEvent.content || !sourceEvent.content.body) {
+                throw Error("No content could be found");
+            }
             const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
 
             // if we reply to a discord member, ping them!
-            if (this.bridge.getBot().isRemoteUser(sourceEvent.sender)) {
-                const uid = new MatrixUser(sourceEvent.sender.replace("@", "")).localpart.substring("_discord".length);
+            if (this.bridge.isNamespacedUser(sourceEvent.sender)) {
+                const uid = this.bridge.getSuffixForUserId(sourceEvent.sender);
                 replyEmbed.addField("ping", `<@${uid}>`);
             }
 
-            replyEmbed.setTimestamp(new Date(sourceEvent.origin_server_ts));
+            replyEmbed.setTimestamp(new Date(sourceEvent.origin_server_ts!));
 
             if (this.HasAttachment(sourceEvent)) {
-                const mxClient = this.bridge.getClientFactory().getClientAs();
-                const url = mxClient.mxcUrlToHttp(sourceEvent.content.url);
-                if (["m.image", "m.sticker"].includes(sourceEvent.content.msgtype as string)
+                const url = this.bridge.botClient.mxcToHttp(sourceEvent.content!.url!);
+                if (["m.image", "m.sticker"].includes(sourceEvent.content!.msgtype as string)
                     || sourceEvent.type === "m.sticker") {
                     // we have an image reply
                     replyEmbed.setImage(url);
                 } else {
-                    const name = this.GetFilenameForMediaEvent(sourceEvent.content);
+                    const name = this.GetFilenameForMediaEvent(sourceEvent.content!);
                     replyEmbed.description = `[${name}](${url})`;
                 }
             }
@@ -386,8 +405,7 @@ export class MatrixEventProcessor {
     }
 
     private async GetUserProfileForRoom(roomId: string, userId: string) {
-        const mxClient = this.bridge.getClientFactory().getClientAs();
-        const intent = this.bridge.getIntent();
+        const mxClient = this.bridge.botIntent.underlyingClient;
         let profile: {displayname: string, avatar_url: string|undefined} | undefined;
         try {
             // First try to pull out the room-specific profile from the cache.
@@ -398,7 +416,7 @@ export class MatrixEventProcessor {
             log.verbose(`Profile ${userId}:${roomId} not cached`);
 
             // Failing that, try fetching the state.
-            profile = await mxClient.getStateEvent(roomId, "m.room.member", userId);
+            profile = await mxClient.getRoomStateEvent(roomId, "m.room.member", userId);
             if (profile) {
                 this.mxUserProfileCache.set(`${roomId}:${userId}`, profile);
                 return profile;
@@ -412,7 +430,7 @@ export class MatrixEventProcessor {
 
             // Failing that, try fetching the profile.
             log.verbose(`Profile ${userId} not cached`);
-            profile = await intent.getProfileInfo(userId);
+            profile = await mxClient.getUserProfile(userId);
             if (profile) {
                 this.mxUserProfileCache.set(userId, profile);
                 return profile;
@@ -427,7 +445,7 @@ export class MatrixEventProcessor {
     private async sendReadReceipt(event: IMatrixEvent) {
         if (!this.config.bridge.disableReadReceipts) {
             try {
-                await this.bridge.getIntent().sendReadReceipt(event.room_id, event.event_id);
+                await this.bridge.botIntent.underlyingClient.sendReadReceipt(event.room_id, event.event_id);
             } catch (err) {
                 log.error(`Failed to send read receipt for ${event}. `, err);
             }
@@ -458,8 +476,8 @@ export class MatrixEventProcessor {
         let avatarUrl;
 
         // Are they a discord user.
-        if (this.bridge.getBot().isRemoteUser(sender)) {
-            const localpart = new MatrixUser(sender.replace("@", "")).localpart;
+        if (this.bridge.isNamespacedUser(sender)) {
+            const localpart = Util.ParseMxid(sender).localpart;
             const userOrMember = await this.discord.GetDiscordUserOrMember(localpart.substring("_discord".length));
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
@@ -485,8 +503,12 @@ export class MatrixEventProcessor {
             }
 
             if (profile.avatar_url) {
-                const mxClient = this.bridge.getClientFactory().getClientAs();
-                avatarUrl = mxClient.mxcUrlToHttp(profile.avatar_url, DISCORD_AVATAR_WIDTH, DISCORD_AVATAR_HEIGHT);
+                avatarUrl = this.bridge.botClient.mxcToHttpThumbnail(
+                    profile.avatar_url,
+                    DISCORD_AVATAR_WIDTH,
+                    DISCORD_AVATAR_HEIGHT,
+                    "scale",
+                );
             }
         }
         embed.setAuthor(
@@ -499,7 +521,7 @@ export class MatrixEventProcessor {
     private GetFilenameForMediaEvent(content: IMatrixEventContent): string {
         let ext = "";
         try {
-            ext = "." + mime.extension(content.info.mimetype);
+            ext = "." + mime.getExtension(content.info.mimetype);
         } catch (err) { } // pass, we don't have an extension
         if (content.body) {
             if (path.extname(content.body) !== "") {
@@ -509,4 +531,15 @@ export class MatrixEventProcessor {
         }
         return "matrix-media" + ext;
     }
+}
+
+/**
+ * Returns true if the given event is a bot command.
+ */
+function isBotCommand(event: IMatrixEvent): boolean {
+    return !!(
+        event.type === "m.room.message" &&
+        event.content!.body &&
+        event.content!.body!.startsWith("!discord")
+    );
 }
