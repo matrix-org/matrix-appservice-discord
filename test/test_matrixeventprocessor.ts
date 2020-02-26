@@ -158,6 +158,8 @@ function createMatrixEventProcessor(storeMockResults = 0) {
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
     KICKBAN_HANDLED = false;
+    MESSAGE_SENT = false;
+    MESSAGE_EDITED = false;
     const bridge = new AppserviceMock({
         botUserId: "@botuser:localhost",
         eventFetcher,
@@ -173,7 +175,6 @@ function createMatrixEventProcessor(storeMockResults = 0) {
     const config = new DiscordBridgeConfig();
 
     const store = {
-        removeEntriesByMatrixRoomId: () => Promise.resolve(),
         Get: (a, b) => {
             return {
                 DiscordId: "123456",
@@ -182,6 +183,7 @@ function createMatrixEventProcessor(storeMockResults = 0) {
                 Result: true,
             };
         },
+        removeEntriesByMatrixRoomId: () => Promise.resolve(),
     };
 
     const Util = Object.assign(require("../src/util").Util, {
@@ -267,8 +269,8 @@ describe("MatrixEventProcessor", () => {
                 };
             };
             const room = { data: {
-                discord_guild: "1234",
                 discord_channel: "1234",
+                discord_guild: "1234",
             }} as any;
             await processor.ProcessMsgEvent(event, room);
             expect(MESSAGE_SENT).to.be.true;
@@ -300,8 +302,8 @@ describe("MatrixEventProcessor", () => {
                 };
             };
             const room = { data: {
-                discord_guild: "1234",
                 discord_channel: "1234",
+                discord_guild: "1234",
             }} as any;
             await processor.ProcessMsgEvent(event, room);
             expect(MESSAGE_SENT).to.be.false;

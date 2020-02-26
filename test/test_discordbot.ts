@@ -106,36 +106,16 @@ describe("DiscordBot", () => {
         const channel = new Discord.TextChannel({} as any, {} as any);
         const msg = new MockMessage(channel);
         const author = new MockUser("11111");
-        let SENT_MESSAGE = false;
         let HANDLE_COMMAND = false;
-        let ATTACHMENT = {} as any;
-        let MSGTYPE = "";
-        let SENT_MSG_CONTENT = {} as any;
         function getDiscordBot() {
-            SENT_MESSAGE = false;
             HANDLE_COMMAND = false;
-            ATTACHMENT = {};
-            MSGTYPE = "";
-            SENT_MSG_CONTENT = {};
+            mockBridge.cleanup();
             const discord = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
                 {},
             );
             discord.bot = { user: { id: "654" } };
-            discord.GetIntentFromDiscordMember = (_) => {return {
-                sendMessage: async (room, msg) => {
-                    SENT_MESSAGE = true;
-                    if (msg.info) {
-                        ATTACHMENT = msg.info;
-                    }
-                    MSGTYPE = msg.msgtype;
-                    SENT_MSG_CONTENT = msg;
-                    return {
-                        event_id: "$fox:localhost",
-                    };
-                },
-            }; };
             discord.userSync = {
                 OnUpdateUser: async () => { },
             };
@@ -183,11 +163,22 @@ describe("DiscordBot", () => {
         });
         it("sends edit messages", async () => {
             discordBot = getDiscordBot();
-            const channel = new Discord.TextChannel({} as any, {} as any);
-            const msg = new MockMessage(channel) as any;
-            msg.content = "Foxies are amazing!";
+            msg.author = author;
+            msg.content = "Foxies are super amazing!";
             await discordBot.OnMessage(msg, "editevent");
-            expect(SENT_MSG_CONTENT["m.relates_to"].event_id).to.equal("editevent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true,  "!asdf:localhost", {
+                "body": "* Foxies are super amazing!",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "* Foxies are super amazing!",
+                "m.new_content": {
+                    body: "Foxies are super amazing!",
+                    format: "org.matrix.custom.html",
+                    formatted_body: "Foxies are super amazing!",
+                    msgtype: "m.text",
+                },
+                "m.relates_to": { event_id: "editevent", rel_type: "m.replace" },
+                "msgtype": "m.text",
+            });
         });
         it("uploads images", async () => {
             discordBot = getDiscordBot();

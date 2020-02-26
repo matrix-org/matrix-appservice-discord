@@ -943,7 +943,7 @@ export class DiscordBot {
                     });
                 });
             }
-            if (msg.content === null) {
+            if (!msg.content && msg.embeds.length === 0) {
                 return;
             }
             const result = await this.discordMsgProcessor.FormatMessage(msg);
@@ -971,7 +971,7 @@ export class DiscordBot {
                         rel_type: "m.replace",
                     };
                 }
-                const trySend = async () => intent.sendEvent(room, sendContent);
+                const trySend = async () =>  intent.sendEvent(room, sendContent);
                 const afterSend = async (eventId) => {
                     this.lastEventIds[room] = eventId;
                     const evt = new DbEvent();
