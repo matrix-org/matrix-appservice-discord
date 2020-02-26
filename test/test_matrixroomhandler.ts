@@ -14,18 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
 import { DiscordBridgeConfig } from "../src/config";
 import { MockChannel } from "./mocks/channel";
 import { MockMember } from "./mocks/member";
 import { MockGuild } from "./mocks/guild";
 import { Util } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
     "./util": {
@@ -41,50 +40,15 @@ const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
 })).MatrixRoomHandler;
 
 let USERSJOINED = 0;
-let USERSKICKED = 0;
-let USERSBANNED = 0;
-let USERSUNBANNED = 0;
-let MESSAGESENT: any = {};
-let USERSYNC_HANDLED = false;
-let KICKBAN_HANDLED = false;
-let MESSAGE_PROCCESS = "";
 
 function createRH(opts: any = {}) {
     USERSJOINED = 0;
-    USERSKICKED = 0;
-    USERSBANNED = 0;
-    USERSUNBANNED = 0;
-    MESSAGESENT = {};
-    USERSYNC_HANDLED = false;
-    KICKBAN_HANDLED = false;
-    MESSAGE_PROCCESS = "";
-    const bridge = {
-        getBot: () => {
-            return {
-                getJoinedRooms: () => ["!123:localhost"],
-                isRemoteUser: (id) => {
-                    return id !== undefined && id.startsWith("@_discord_");
-                },
-            };
-        },
-        getIntent: () => {
-            return {
-                ban: async () => { USERSBANNED++; },
-                getClient: () => mxClient,
-                getEvent: () => ({ content: { } }),
-                join: () => { USERSJOINED++; },
-                kick: async () => { USERSKICKED++; },
-                leave: () => { },
-                sendMessage: async (roomId, content) => { MESSAGESENT = content; return content; },
-                unban: async () => { USERSUNBANNED++; },
-            };
-        },
-    };
+    const bridge = new AppserviceMock({
+        joinedrooms: ["!123:localhost"],
+        userIdPrefix: "@_discord_",
+    });
     const us = {
         JoinRoom: async () => { USERSJOINED++; },
-        OnMemberState: async () => {
-            USERSYNC_HANDLED = true;
-        },
         OnUpdateUser: async () => { },
     };
     const cs = {
@@ -113,11 +77,11 @@ function createRH(opts: any = {}) {
             }
         },
         GetGuilds: () => [new MockGuild("123", [])],
-        GetIntentFromDiscordMember: () => {
-            return bridge.getIntent();
+        GetIntentFromDiscordMember: (member: {id: string}) => {
+            return bridge.getIntentForSuffix(member.id);
         },
         HandleMatrixKickBan: async () => {
-            KICKBAN_HANDLED = true;
+
         },
         LookupRoom: async (guildid, discordid) => {
             if (guildid !== "123") {
@@ -125,17 +89,8 @@ function createRH(opts: any = {}) {
             } else if (discordid !== "456") {
                 throw new Error("Channel not found");
             }
-            const channel = new MockChannel();
+            const channel = new MockChannel(discordid, new MockGuild(guildid));
             return {channel, botUser: true };
-        },
-        ProcessMatrixMsgEvent: async () => {
-            MESSAGE_PROCCESS = "processed";
-        },
-        ProcessMatrixRedact: async () => {
-            MESSAGE_PROCCESS = "redacted";
-        },
-        ProcessMatrixStateEvent: async () => {
-            MESSAGE_PROCCESS = "stateevent";
         },
         ThirdpartySearchForChannels: () => {
             return [];
@@ -143,23 +98,13 @@ function createRH(opts: any = {}) {
         UserSyncroniser: us,
     };
     const config = new DiscordBridgeConfig();
+    config.room.defaultVisibility = "public";
     config.limits.roomGhostJoinDelay = 0;
     if (opts.disableSS) {
         config.bridge.enableSelfServiceBridging = false;
     } else {
         config.bridge.enableSelfServiceBridging = true;
     }
-    const mxClient = {
-        getStateEvent: async () => {
-            return opts.powerLevels || {};
-        },
-        getUserId: () => "@user:localhost",
-        joinRoom: async () => {
-            USERSJOINED++;
-        },
-        sendReadReceipt: async () => { },
-        setRoomDirectoryVisibilityAppService: async () => { },
-    };
     const provisioner = {
         AskBridgePermission: async () => {
             if (opts.denyBridgePermission) {
@@ -192,23 +137,23 @@ function createRH(opts: any = {}) {
         },
     };
     const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any, store);
-    return handler;
+    return { handler, bridge };
 }
 
 describe("MatrixRoomHandler", () => {
     describe("OnAliasQueried", () => {
         it("should join successfully", async () => {
-            const handler = createRH();
+            const {handler} = createRH();
             await handler.OnAliasQueried("#accept:localhost", "!accept:localhost");
         });
         it("should join successfully and create ghosts", async () => {
             const EXPECTEDUSERS = 2;
-            const handler = createRH({createMembers: true});
+            const {handler} = createRH({createMembers: true});
             await handler.OnAliasQueried("#accept:localhost", "!accept:localhost");
             expect(USERSJOINED).to.equal(EXPECTEDUSERS);
         });
         it("should not join successfully", async () => {
-            const handler = createRH();
+            const {handler} = createRH();
             try {
                 await handler.OnAliasQueried("#reject:localhost", "!reject:localhost");
                 throw new Error("didn't fail");
@@ -219,123 +164,117 @@ describe("MatrixRoomHandler", () => {
     });
     describe("OnAliasQuery", () => {
         it("will create room", async () => {
-            const handler: any = createRH({});
-            handler.createMatrixRoom = () => true;
-            const ret = await handler.OnAliasQuery(
-                "_discord_123_456:localhost",
-                "_discord_123_456");
-            expect(ret).to.be.true;
+            const {handler} = createRH({});
+            const ret = await handler.OnAliasQuery("#_discord_123_456:localhost");
+            expect(ret).to.be.deep.equal({
+                    initial_state: [
+                    {
+                        content: {
+                            join_rule: "public",
+                        },
+                        state_key: "",
+                        type: "m.room.join_rules",
+                    },
+                ],
+                room_alias_name: "_discord_123_456",
+                visibility: "public",
+            });
         });
         it("will not create room if guild cannot be found", async () => {
-            const handler: any = createRH({});
+            const {handler} = createRH({});
             handler.createMatrixRoom = () => true;
             const ret = await handler.OnAliasQuery(
-                "_discord_111_456:localhost",
-                "_discord_111_456");
+                "#_discord_111_456:localhost");
             expect(ret).to.be.undefined;
         });
         it("will not create room if channel cannot be found", async () => {
-            const handler: any = createRH({});
+            const {handler} = createRH({});
             handler.createMatrixRoom = () => true;
             const ret = await handler.OnAliasQuery(
-                "_discord_123_444:localhost",
-                "_discord_123_444");
+                "#_discord_123_444:localhost");
             expect(ret).to.be.undefined;
         });
         it("will not create room if alias is wrong", async () => {
-            const handler: any = createRH({});
+            const {handler} = createRH({});
             handler.createMatrixRoom = () => true;
             const ret = await handler.OnAliasQuery(
-                "_discord_123:localhost",
-                "_discord_123");
+                "#_discord_123:localhost");
             expect(ret).to.be.undefined;
         });
     });
-    describe("tpGetProtocol", () => {
-       it("will return an object", async () => {
-           const handler: any = createRH({});
-           const protocol = await handler.tpGetProtocol("");
-           expect(protocol).to.not.be.null;
-           expect(protocol.instances[0].network_id).to.equal("123");
-           expect(protocol.instances[0].bot_user_id).to.equal("@botuser:localhost");
-           expect(protocol.instances[0].desc).to.equal("123");
-           expect(protocol.instances[0].network_id).to.equal("123");
-       });
-    });
-    describe("tpGetLocation", () => {
-        it("will return an array", async () => {
-            const handler: any = createRH({});
-            const channels = await handler.tpGetLocation("", {
-                channel_name: "",
-                guild_id: "",
-            });
-            expect(channels).to.be.a("array");
-        });
-    });
-    describe("tpParseLocation", () => {
-        it("will reject", async () => {
-            const handler: any = createRH({});
-            try {
-                await handler.tpParseLocation("alias");
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-            }
-        });
-    });
-    describe("tpGetUser", () => {
-        it("will reject", async () => {
-            const handler: any = createRH({});
-            try {
-                await handler.tpGetUser("", {});
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-            }
-        });
-    });
-    describe("tpParseUser", () => {
-        it("will reject", async () => {
-            const handler: any = createRH({});
-            try {
-                await handler.tpParseUser("alias");
-                throw new Error("didn't fail");
-            } catch (e) {
-                expect(e.message).to.not.equal("didn't fail");
-            }
-        });
-    });
+    // Currently not supported on matrix-js-bot-sdk
+    //
+    // describe("tpGetProtocol", () => {
+    //    it("will return an object", async () => {
+    //        const {handler} = createRH({});
+    //        const protocol = await handler.tpGetProtocol("");
+    //        expect(protocol).to.not.be.null;
+    //        expect(protocol.instances[0].network_id).to.equal("123");
+    //        expect(protocol.instances[0].bot_user_id).to.equal("@botuser:localhost");
+    //        expect(protocol.instances[0].desc).to.equal("123");
+    //        expect(protocol.instances[0].network_id).to.equal("123");
+    //    });
+    // });
+    // describe("tpGetLocation", () => {
+    //     it("will return an array", async () => {
+    //         const {handler} = createRH({});
+    //         const channels = await handler.tpGetLocation("", {
+    //             channel_name: "",
+    //             guild_id: "",
+    //         });
+    //         expect(channels).to.be.a("array");
+    //     });
+    // });
+    // describe("tpParseLocation", () => {
+    //     it("will reject", async () => {
+    //         const {handler} = createRH({});
+    //         try {
+    //             await handler.tpParseLocation("alias");
+    //             throw new Error("didn't fail");
+    //         } catch (e) {
+    //             expect(e.message).to.not.equal("didn't fail");
+    //         }
+    //     });
+    // });
+    // describe("tpGetUser", () => {
+    //     it("will reject", async () => {
+    //         const {handler} = createRH({});
+    //         try {
+    //             await handler.tpGetUser("", {});
+    //             throw new Error("didn't fail");
+    //         } catch (e) {
+    //             expect(e.message).to.not.equal("didn't fail");
+    //         }
+    //     });
+    // });
+    // describe("tpParseUser", () => {
+    //     it("will reject", async () => {
+    //         const {handler} = createRH({});
+    //         try {
+    //             await handler.tpParseUser("alias");
+    //             throw new Error("didn't fail");
+    //         } catch (e) {
+    //             expect(e.message).to.not.equal("didn't fail");
+    //         }
+    //     });
+    // });
     describe("joinRoom", () => {
         it("will join immediately", async () => {
-            const handler: any = createRH({});
-            const intent = {
-                getClient: () => {
-                    return {
-                        joinRoom: async () => { },
-                    };
-                },
-            };
-            const startTime = Date.now();
-            const MAXTIME = 1000;
+            const {handler, bridge} = createRH({});
+            const intent = bridge.botIntent;
             await handler.joinRoom(intent, "#test:localhost");
-            expect(1).to.satisfy(() => {
-                return (Date.now() - startTime) < MAXTIME;
-            });
+            intent.wasCalled("joinRoom", true, "#test:localhost");
         });
         it("will fail first, join after", async () => {
-            const handler: any = createRH({});
+            const {handler, bridge} = createRH({});
             let shouldFail = true;
             const intent = {
-                getClient: () => {
-                    return {
-                        getUserId: () => "@test:localhost",
-                        joinRoom: async () => {
-                            if (shouldFail) {
-                                shouldFail = false;
-                                throw new Error("Test failed first time");
-                            }
-                        },
-                    };
+                getUserId: () => "@test:localhost",
+                joinRoom: async () => {
+                    if (shouldFail) {
+                        shouldFail = false;
+                        throw new Error("Test failed first time");
+                    }
                 },
             };
             const startTime = Date.now();
@@ -349,10 +288,10 @@ describe("MatrixRoomHandler", () => {
     });
     describe("createMatrixRoom", () => {
         it("will return an object", async () => {
-            const handler: any = createRH({});
+            const {handler} = createRH({});
             const channel = new MockChannel("123", new MockGuild("456"));
             const roomOpts = await handler.createMatrixRoom(channel, "#test:localhost");
-            expect(roomOpts.creationOpts).to.exist;
+            expect(roomOpts).to.exist;
         });
     });
 });

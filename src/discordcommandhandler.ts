@@ -17,14 +17,14 @@ limitations under the License.
 import { DiscordBot } from "./bot";
 import * as Discord from "discord.js";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
-import { Bridge } from "matrix-appservice-bridge";
 import { Log } from "./log";
+import { Appservice } from "matrix-bot-sdk";
 
 const log = new Log("DiscordCommandHandler");
 
 export class DiscordCommandHandler {
     constructor(
-        private bridge: Bridge,
+        private bridge: Appservice,
         private discord: DiscordBot,
     ) { }
 
@@ -35,7 +35,7 @@ export class DiscordCommandHandler {
             return;
         }
 
-        const intent = this.bridge.getIntent();
+        const intent = this.bridge.botIntent;
 
         const actions: ICommandActions = {
             approve: {
@@ -125,9 +125,8 @@ export class DiscordCommandHandler {
             }));
             let errorMsg = "";
             await Promise.all(allChannelMxids.map(async (chanMxid) => {
-                const intent = this.bridge.getIntent();
                 try {
-                    await intent[funcKey](chanMxid, name);
+                    await this.bridge.botIntent.underlyingClient[funcKey + "User"](chanMxid, name);
                 } catch (e) {
                     // maybe we don't have permission to kick/ban/unban...?
                     errorMsg += `\nCouldn't ${funcKey} ${name} from ${chanMxid}`;

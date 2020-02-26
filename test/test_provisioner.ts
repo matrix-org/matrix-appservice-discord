@@ -14,15 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import { Provisioner } from "../src/provisioner";
 import { MockChannel } from "./mocks/channel";
 import { MockMember } from "./mocks/member";
 
 // we are a test file and thus need those
 /* tslint:disable:no-any */
-
-const expect = Chai.expect;
 
 const TIMEOUT_MS = 1000;
 

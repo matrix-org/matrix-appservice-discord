@@ -19,13 +19,8 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
-import { MatrixUser, RemoteUser, Bridge, Entry, Intent } from "matrix-appservice-bridge";
-import { Util } from "./util";
-import {
-    DiscordMessageProcessor,
-    DiscordMessageProcessorOpts,
-    DiscordMessageProcessorResult,
-} from "./discordmessageprocessor";
+import { DiscordMessageProcessor } from "./discordmessageprocessor";
+import { IDiscordMessageParserResult } from "matrix-discord-parser";
 import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
@@ -36,9 +31,11 @@ import { Log } from "./log";
 import * as Discord from "discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo } from "./matrixtypes";
+import { Appservice, Intent } from "matrix-bot-sdk";
 import { DiscordCommandHandler } from "./discordcommandhandler";
 import { MetricPeg } from "./metrics";
 import { Lock } from "./structures/lock";
+import { Util } from "./util";
 
 const log = new Log("DiscordBot");
 
@@ -59,7 +56,7 @@ interface IThirdPartyLookupField {
     guild_id: string;
 }
 
-interface IThirdPartyLookup {
+export interface IThirdPartyLookup {
     alias: string;
     fields: IThirdPartyLookupField;
     protocol: string;
@@ -86,23 +83,20 @@ export class DiscordBot {
     private discordMessageQueue: { [channelId: string]: Promise<void> };
     private channelLock: Lock<string>;
     constructor(
-        private botUserId: string,
         private config: DiscordBridgeConfig,
-        private bridge: Bridge,
+        private bridge: Appservice,
         private store: DiscordStore,
     ) {
 
         // create handlers
         this.clientFactory = new DiscordClientFactory(store, config.auth);
-        this.discordMsgProcessor = new DiscordMessageProcessor(
-            new DiscordMessageProcessorOpts(config.bridge.domain, this),
-        );
+        this.discordMsgProcessor = new DiscordMessageProcessor(config.bridge.domain, this);
         this.presenceHandler = new PresenceHandler(this);
         this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
-            new MatrixEventProcessorOpts(config, bridge, this),
+            new MatrixEventProcessorOpts(config, bridge, this, store),
         );
         this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
         // init vars
@@ -125,7 +119,7 @@ export class DiscordBot {
     }
 
     get BotUserId(): string {
-        return this.botUserId;
+        return this.bridge.botUserId;
     }
 
     get RoomHandler(): MatrixRoomHandler {
@@ -144,10 +138,10 @@ export class DiscordBot {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.User ? member.username : member.user.username;
-            const nameId = new MatrixUser(`@${name}`).localpart;
-            return this.bridge.getIntentFromLocalpart(`_discord_${webhookID}_${nameId}`);
+            // TODO: We need to sanitize name
+            return this.bridge.getIntentForSuffix(`${webhookID}_${Util.EscapeStringForUserId(name)}`);
         }
-        return this.bridge.getIntentFromLocalpart(`_discord_${member.id}`);
+        return this.bridge.getIntentForSuffix(member.id);
     }
 
     public async init(): Promise<void> {
@@ -394,6 +388,10 @@ export class DiscordBot {
         this.channelLock.release(channel.id);
     }
 
+    /**
+     * Sends an event to Discord.
+     * @throws {Unstable.ForeignNetworkError}
+     */
     public async send(
         embedSet: IMatrixEventProcessorResult,
         opts: Discord.MessageOptions,
@@ -418,7 +416,8 @@ export class DiscordBot {
                         "Matrix Bridge: Allow rich user messages");
                 }
             } catch (err) {
-                log.error("Unable to create \"_matrix\" webhook. ", err);
+               // throw wrapError(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
+               log.warn("Unable to create _matrix webook:", err);
             }
         }
         try {
@@ -485,9 +484,10 @@ export class DiscordBot {
             }).catch(() => {
                 log.warn("Failed to store sent message for ", event.event_id);
             });
-
         } catch (err) {
-            log.error("Couldn't send message. ", err);
+            // throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't send message");
+            log.warn(`Failed to send message ${event.event_id}`);
+            log.verbose(err);
         }
     }
 
@@ -579,8 +579,9 @@ export class DiscordBot {
         }
         if (!dbEmoji.Result) {
             const url = `https://cdn.discordapp.com/emojis/${id}${animated ? ".gif" : ".png"}`;
-            const intent = this.bridge.getIntent();
-            const mxcUrl = (await Util.UploadContentFromUrl(url, intent, name)).mxcUrl;
+            const intent = this.bridge.botIntent;
+            const content = await Util.DownloadFile(url);
+            const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, undefined, name);
             dbEmoji.EmojiId = id;
             dbEmoji.Name = name;
             dbEmoji.Animated = animated;
@@ -647,10 +648,10 @@ export class DiscordBot {
             return;
         }
         const tchan = (channel as Discord.TextChannel);
-        const kickeeUser = (await this.GetDiscordUserOrMember(
-            new MatrixUser(kickeeUserId.replace("@", "")).localpart.substring("_discord".length),
+        const kickeeUser = await this.GetDiscordUserOrMember(
+            kickeeUserId.substring("@_discord_".length, kickeeUserId.indexOf(":") - 1),
             tchan.guild.id,
-        ));
+        );
         if (!kickeeUser) {
             log.error("Could not find discord user for", kickeeUserId);
             return;
@@ -718,22 +719,22 @@ export class DiscordBot {
         return dbEmoji;
     }
 
-    private async SendMatrixMessage(matrixMsg: DiscordMessageProcessorResult, chan: Discord.Channel,
+    private async SendMatrixMessage(matrixMsg: IDiscordMessageParserResult, chan: Discord.Channel,
                                     guild: Discord.Guild, author: Discord.User,
                                     msgID: string): Promise<boolean> {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
         const intent = this.GetIntentFromDiscordMember(author);
 
-        await Util.AsyncForEach(rooms, async (room) => {
-            const res = await intent.sendMessage(room, {
+        await Util.AsyncForEach(rooms, async (roomId) => {
+            const eventId = await intent.sendEvent(roomId, {
                 body: matrixMsg.body,
                 format: "org.matrix.custom.html",
                 formatted_body: matrixMsg.formattedBody,
                 msgtype: "m.text",
             });
-            this.lastEventIds[room] = res.event_id;
+            this.lastEventIds[roomId] = eventId;
             const evt = new DbEvent();
-            evt.MatrixId = `${res.event_id};${room}`;
+            evt.MatrixId = `${eventId};${roomId}`;
             evt.DiscordId = msgID;
             evt.ChannelId = chan.id;
             evt.GuildId = guild.id;
@@ -748,8 +749,9 @@ export class DiscordBot {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(channel);
         try {
             const intent = this.GetIntentFromDiscordMember(user);
-            await Promise.all(rooms.map((room) => {
-                return intent.sendTyping(room, isTyping);
+            await intent.ensureRegistered();
+            await Promise.all(rooms.map( async (roomId) => {
+                return intent.underlyingClient.setTyping(roomId, isTyping);
             }));
         } catch (err) {
             log.warn("Failed to send typing indicator.", err);
@@ -767,6 +769,7 @@ export class DiscordBot {
         const chan = msg.channel as Discord.TextChannel;
         if (msg.author.id === this.bot.user.id) {
             // We don't support double bridging.
+            log.verbose("Not reflecting bot's own messages");
             MetricPeg.get.requestOutcome(msg.id, true, "dropped");
             return;
         }
@@ -775,6 +778,8 @@ export class DiscordBot {
             const webhook = (await chan.fetchWebhooks())
                             .filterArray((h) => h.name === "_matrix").pop();
             if (webhook && msg.webhookID === webhook.id) {
+                // Filter out our own webhook messages.
+                log.verbose("Not reflecting own webhook messages");
               // Filter out our own webhook messages.
                 MetricPeg.get.requestOutcome(msg.id, true, "dropped");
                 return;
@@ -789,7 +794,7 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        await this.userSync.OnUpdateUser(msg.author, msg.webhookID);
+        await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID));
         let rooms;
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
@@ -805,8 +810,13 @@ export class DiscordBot {
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
-                const content = await Util.UploadContentFromUrl(attachment.url, intent, attachment.filename);
-                const fileMime = mime.lookup(attachment.filename);
+                const content = await Util.DownloadFile(attachment.url);
+                const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(
+                    content,
+                    undefined,
+                    attachment.filename,
+                );
+                const fileMime = mime.getType(attachment.filename) || "application/octet-stream";
                 const type = fileMime.split("/")[0];
                 let msgtype = {
                     audio: "m.audio",
@@ -825,16 +835,16 @@ export class DiscordBot {
                     info.h = attachment.height;
                 }
                 await Util.AsyncForEach(rooms, async (room) => {
-                    const res = await intent.sendMessage(room, {
+                    const eventId = await intent.sendEvent(room, {
                         body: attachment.filename,
                         external_url: attachment.url,
                         info,
                         msgtype,
-                        url: content.mxcUrl,
+                        url: mxcUrl,
                     });
-                    this.lastEventIds[room] = res.event_id;
+                    this.lastEventIds[room] = eventId;
                     const evt = new DbEvent();
-                    evt.MatrixId = `${res.event_id};${room}`;
+                    evt.MatrixId = `${eventId};${room}`;
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
@@ -849,16 +859,16 @@ export class DiscordBot {
                 return;
             }
             await Util.AsyncForEach(rooms, async (room) => {
-                const trySend = async () => intent.sendMessage(room, {
+                const trySend = async () => intent.sendEvent(room, {
                     body: result.body,
                     format: "org.matrix.custom.html",
                     formatted_body: result.formattedBody,
                     msgtype: result.msgtype,
                 });
-                const afterSend = async (re) => {
-                    this.lastEventIds[room] = re.event_id;
+                const afterSend = async (eventId) => {
+                    this.lastEventIds[room] = eventId;
                     const evt = new DbEvent();
-                    evt.MatrixId = `${re.event_id};${room}`;
+                    evt.MatrixId = `${eventId};${room}`;
                     evt.DiscordId = msg.id;
                     evt.ChannelId = msg.channel.id;
                     evt.GuildId = msg.guild.id;
@@ -873,10 +883,10 @@ export class DiscordBot {
                         log.error("Failed to send message into room.", e);
                         return;
                     }
-                    if (msg.member) {
+                    if (msg.member && !msg.webhookID) {
                         await this.userSync.JoinRoom(msg.member, room);
                     } else {
-                        await this.userSync.JoinRoom(msg.author, room, msg.webhookID);
+                        await this.userSync.JoinRoom(msg.author, room, Boolean(msg.webhookID));
                     }
                     res = await trySend();
                     await afterSend(res);
@@ -929,13 +939,14 @@ export class DiscordBot {
         while (storeEvent.Next()) {
             log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
+            await intent.ensureRegistered();
             const matrixIds = storeEvent.MatrixId.split(";");
             try {
-                await intent.getClient().redactEvent(matrixIds[1], matrixIds[0]);
+                await intent.underlyingClient.redactEvent(matrixIds[1], matrixIds[0]);
             } catch (ex) {
                 log.warn(`Failed to delete ${storeEvent.DiscordId}, retrying as bot`);
                 try {
-                    await this.bridge.getIntent().getClient().redactEvent(matrixIds[1], matrixIds[0]);
+                    await this.bridge.botIntent.underlyingClient.redactEvent(matrixIds[1], matrixIds[0]);
                 } catch (ex) {
                     log.warn(`Failed to delete ${storeEvent.DiscordId}, giving up`);
                 }
