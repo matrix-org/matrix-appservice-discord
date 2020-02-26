@@ -55,6 +55,8 @@ class Entry implements IRoomStoreEntry {
 
 function CreateChannelSync(remoteChannels: any[] = []) {
     const bridge = new AppserviceMock({
+        aliasPrefix: "#_discord_",
+        homeserverName: "localhost",
         stateEventFetcher: async (roomId: string, type: string, key: string) => {
             if (roomId === "!valid:localhost" && type === "m.room.canonical_alias" && key === "") {
                 return { alias: "#alias:localhost"};
@@ -246,7 +248,7 @@ describe("ChannelSyncroniser", () => {
             expect(alias).to.equal("#alias:localhost");
         });
         it("Should prefer non-discord canonical aliases", async () => {
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = async (_) => {
                 return ["!discord:localhost", "!valid:localhost"];
             };
@@ -255,11 +257,14 @@ describe("ChannelSyncroniser", () => {
             expect(alias).to.equal("#alias:localhost");
         });
         it("Should use discord canonical alias if none other present", async () => {
-            const channelSync = CreateChannelSync();
+            const {channelSync} = CreateChannelSync();
             channelSync.GetRoomIdsFromChannel = async (_) => {
                 return ["!discord:localhost"];
             };
-            const alias = await channelSync.GetAliasFromChannel({} as any);
+            const alias = await channelSync.GetAliasFromChannel({
+                guild: { id: "123" },
+                id: "123",
+            } as any);
 
             expect(alias).to.equal("#_discord_123_123:localhost");
         });

@@ -10,7 +10,9 @@ interface IAppserviceMockOpts {
     profileFetcher?: (userId) => Promise<any>;
     botUserId?: string;
     userIdPrefix?: string;
+    aliasPrefix?: string;
     joinedrooms?: string[];
+    homeserverName?: string;
 }
 
 class AppserviceMockBase {
@@ -84,6 +86,14 @@ export class AppserviceMock extends AppserviceMockBase {
         throw Error("No prefix defined");
     }
 
+    public isNamespacedAlias(alias: string) {
+        this.funcCalled("isNamespacedAlias", alias);
+        if (this.opts.aliasPrefix) {
+            return alias.startsWith(this.opts.aliasPrefix);
+        }
+        throw Error("No prefix defined");
+    }
+
     public getIntent(userId: string) {
         this.funcCalled("getIntent", userId);
         if (!this.intents[userId]) {
@@ -98,6 +108,14 @@ export class AppserviceMock extends AppserviceMockBase {
             this.intents[suffix] = new IntentMock(this.opts, suffix);
         }
         return this.intents[suffix];
+    }
+
+    public getAliasForSuffix(suffix: string) {
+        this.funcCalled("getAliasForSuffix", suffix);
+        if (this.opts.aliasPrefix) {
+            return `${this.opts.aliasPrefix}${suffix}:${this.opts.homeserverName}`;
+        }
+        throw Error("No prefix defined");
     }
 
     public getIntentForUserId(userId: string) {

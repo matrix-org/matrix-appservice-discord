@@ -178,7 +178,7 @@ export class ChannelSyncroniser {
                     "")
                     ).alias;
                 if (al) {
-                    if (al.startsWith("#_discord_")) {
+                    if (this.bridge.isNamespacedAlias(al)) {
                         fallbackAlias = al;
                     } else {
                         return al; // we are done, we found an alias
@@ -194,7 +194,7 @@ export class ChannelSyncroniser {
             return null; // we didn't pass a guild, so we have no way of bridging this room, thus no alias
         }
         // at last, no known canonical aliases and we are a guild....so we know an alias!
-        return `#_discord_${guildChannel.guild.id}_${channel.id}:${this.config.bridge.domain}`;
+        return this.bridge.getAliasForSuffix(`${guildChannel.guild.id}_${channel.id}`);
     }
 
     public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
