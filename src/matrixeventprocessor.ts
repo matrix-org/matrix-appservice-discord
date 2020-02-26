@@ -23,7 +23,6 @@ import * as mime from "mime";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
-import { DiscordStore } from "./store";
 import { DbEvent } from "./db/dbdataevent";
 
 import { Log } from "./log";
@@ -68,7 +67,6 @@ export class MatrixEventProcessor {
     private matrixMsgProcessor: MatrixMessageProcessor;
     private mxCommandHandler: MatrixCommandHandler;
     private mxUserProfileCache: TimedCache<string, {displayname: string, avatar_url: string|undefined}>;
-    private store: DiscordStore;
 
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;

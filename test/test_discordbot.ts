@@ -106,11 +106,13 @@ describe("DiscordBot", () => {
         const channel = new Discord.TextChannel({} as any, {} as any);
         const msg = new MockMessage(channel);
         const author = new MockUser("11111");
+        let SENT_MESSAGE = false;
         let HANDLE_COMMAND = false;
         let ATTACHMENT = {} as any;
         let MSGTYPE = "";
         let SENT_MSG_CONTENT = {} as any;
         function getDiscordBot() {
+            SENT_MESSAGE = false;
             HANDLE_COMMAND = false;
             ATTACHMENT = {};
             MSGTYPE = "";
@@ -185,7 +187,7 @@ describe("DiscordBot", () => {
             const msg = new MockMessage(channel) as any;
             msg.content = "Foxies are amazing!";
             await discordBot.OnMessage(msg, "editevent");
-            Chai.assert.equal(SENT_MSG_CONTENT["m.relates_to"].event_id, "editevent");
+            expect(SENT_MSG_CONTENT["m.relates_to"].event_id).to.equal("editevent");
         });
         it("uploads images", async () => {
             discordBot = getDiscordBot();
@@ -348,8 +350,7 @@ describe("DiscordBot", () => {
             };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkEditEventSent, "editedid");
-            expect(checkMsgSent).to.be.true;
+            expect(checkEditEventSent).to.equal("editedid");
         });
         it("should send a new message if no store event found", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -393,9 +394,7 @@ describe("DiscordBot", () => {
             };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkEditEventSent, undefined);
-            expect(deletedMessage).to.be.true;
-            expect(sentMessage).to.be.true;
+            expect(checkEditEventSent).to.be.undefined;
         });
     });
     describe("event:message", () => {

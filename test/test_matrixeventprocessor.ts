@@ -154,7 +154,7 @@ let KICKBAN_HANDLED = false;
 let MESSAGE_SENT = false;
 let MESSAGE_EDITED = false;
 
-function createMatrixEventProcessor() {
+function createMatrixEventProcessor(storeMockResults = 0) {
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
     KICKBAN_HANDLED = false;
@@ -173,6 +173,7 @@ function createMatrixEventProcessor() {
     const config = new DiscordBridgeConfig();
 
     const store = {
+        removeEntriesByMatrixRoomId: () => Promise.resolve(),
         Get: (a, b) => {
             return {
                 DiscordId: "123456",
@@ -230,10 +231,6 @@ function createMatrixEventProcessor() {
         },
     });
 
-    const store = {
-        removeEntriesByMatrixRoomId: () => Promise.resolve(),
-    };
-
     const processor = new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
             Util,
@@ -253,7 +250,7 @@ mockChannel.members.set("12345", new MockMember("12345", "testuser2"));
 describe("MatrixEventProcessor", () => {
     describe("ProcessMsgEvent", () => {
         it("Should send messages", async () => {
-            const processor = createMatrixEventProcessor();
+            const { processor } = createMatrixEventProcessor();
             const event = {
                 content: {
                     body: "blah",
@@ -269,15 +266,16 @@ describe("MatrixEventProcessor", () => {
                     messageEmbed: new Discord.RichEmbed(),
                 };
             };
-            const context = { rooms: { remote: {
-                roomId: "_discord_1234_1234",
-            }}};
-            await processor.ProcessMsgEvent(event, context);
+            const room = { data: {
+                discord_guild: "1234",
+                discord_channel: "1234",
+            }} as any;
+            await processor.ProcessMsgEvent(event, room);
             expect(MESSAGE_SENT).to.be.true;
             expect(MESSAGE_EDITED).to.be.false;
         });
         it("Should eventually send edits", async () => {
-            const processor = createMatrixEventProcessor(1);
+            const { processor } = createMatrixEventProcessor(1);
             const event = {
                 content: {
                     "body": "* blah",
@@ -301,10 +299,11 @@ describe("MatrixEventProcessor", () => {
                     messageEmbed: new Discord.RichEmbed(),
                 };
             };
-            const context = { rooms: { remote: {
-                roomId: "_discord_1234_1234",
-            }}};
-            await processor.ProcessMsgEvent(event, context);
+            const room = { data: {
+                discord_guild: "1234",
+                discord_channel: "1234",
+            }} as any;
+            await processor.ProcessMsgEvent(event, room);
             expect(MESSAGE_SENT).to.be.false;
             expect(MESSAGE_EDITED).to.be.true;
         });

@@ -444,7 +444,9 @@ export class DiscordBot {
             embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
             await this.send(embedSet, opts, roomLookup, event);
         } catch (err) {
-            throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't edit message");
+            // throw wrapError(err, Unstable.ForeignNetworkError, "Couldn't edit message");
+            log.warn(`Failed to edit message ${event.event_id}`);
+            log.verbose(err);
         }
     }
 
@@ -949,12 +951,12 @@ export class DiscordBot {
                 return;
             }
             await Util.AsyncForEach(rooms, async (room) => {
-                const trySend = async () => intent.sendEvent(room, {
+                const sendContent: IMatrixMessage = {
                     body: result.body,
                     format: "org.matrix.custom.html",
                     formatted_body: result.formattedBody,
                     msgtype: result.msgtype,
-                });
+                };
                 if (editEventId) {
                     sendContent.body = `* ${result.body}`;
                     sendContent.formatted_body = `* ${result.formattedBody}`;
@@ -969,7 +971,7 @@ export class DiscordBot {
                         rel_type: "m.replace",
                     };
                 }
-                const trySend = async () => intent.sendMessage(room, sendContent);
+                const trySend = async () => intent.sendEvent(room, sendContent);
                 const afterSend = async (eventId) => {
                     this.lastEventIds[room] = eventId;
                     const evt = new DbEvent();
