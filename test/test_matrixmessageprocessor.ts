@@ -271,7 +271,7 @@ describe("MatrixMessageProcessor", () => {
             guild.emojis.set("123456", emoji);
             const msg = getHtmlMessage("<img alt=\"yay\" src=\"mxc://unreal_emote:localhost\">");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("[yay](mxc://unreal_emote:localhost)");
+            expect(result).is.equal("[yay mxc://unreal_emote:localhost ]");
         });
         it("ignores with no alt / title, too", async () => {
             const mp = new MatrixMessageProcessor(bot, config);
