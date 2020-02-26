@@ -1,9 +1,24 @@
+/*
+Copyright 2017, 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import * as readline from "readline";
-import * as Bluebird from "bluebird";
 import * as process from "process";
 
 import { DiscordClientFactory } from "../src/clientfactory";
@@ -93,7 +108,7 @@ Please enter your Discord Token
             });
         } else if (options.remove) {
             rl.close();
-            discordstore.delete_user_token(userid).then(() => {
+            discordstore.deleteUserToken(userid).then(() => {
                 log.info("Completed successfully");
                 process.exit(0);
             }).catch((err) => {
@@ -107,5 +122,5 @@ Please enter your Discord Token
 async function addUserToken(userid: string, token: string): Promise<void> {
     const clientFactory = new DiscordClientFactory(discordstore);
     const discordid = await clientFactory.getDiscordId(token);
-    await discordstore.add_user_token(userid, discordid, token);
+    await discordstore.addUserToken(userid, discordid, token);
 }

@@ -1,3 +1,19 @@
+/*
+Copyright 2017 - 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { DiscordStore } from "../store";
 import { IDbData } from "./dbdatainterface";
 import { ISqlCommandParameters } from "./connector";
@@ -26,8 +42,8 @@ export class DbEmoji implements IDbData {
                 id: params.emoji_id,
                 mxc: params.mxc_url,
             });
-        this.Result = row !== undefined;
-        if (this.Result) {
+        this.Result = Boolean(row); // check if row exists
+        if (this.Result && row) {
             this.EmojiId = row.emoji_id as string;
             this.Name = row.name as string;
             this.Animated = Boolean(row.animated);

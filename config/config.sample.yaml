@@ -24,8 +24,16 @@ bridge:
   # Enable users to bridge rooms using !discord commands. See
   # https://t2bot.io/discord for instructions.
   enableSelfServiceBridging: false
+  # Disable sending of read receipts for Matrix events which have been
+  # successfully bridged to Discord.
+  disableReadReceipts: false
+  # Disable Join Leave echos from matrix
+  disableJoinLeaveNotifications: false
+  # Auto-determine the language of code blocks (this can be CPU-intensive)
+  determineCodeLanguage: false
 # Authentication configuration for the discord bot.
 auth:
+  # This MUST be a string (wrapped in quotes)
   clientID: "12345"
   botToken: "foobar"
 logging:
@@ -43,8 +51,6 @@ logging:
       enable:
         - "DiscordBot"
 database:
-  userStorePath: "user-store.db"
-  roomStorePath: "room-store.db"
   # You may either use SQLite or Postgresql for the bridge database, which contains
   # important mappings for events and user puppeting configurations.
   # Use the filename option for SQLite, or connString for Postgresql.
@@ -80,7 +86,14 @@ channel:
 limits:
     # Delay in milliseconds between discord users joining a room.
     roomGhostJoinDelay: 6000
-    # Delay in milliseconds before sending messages to discord to avoid echos.
-    # (Copies of a sent message may arrive from discord before we've
+    # Lock timeout in milliseconds before seinding messages to discord to avoid
+    # echos. Default is rather high as the lock will most likely time out
+    # before anyways.
+    # echos = (Copies of a sent message may arrive from discord before we've
     # fininished handling it, causing us to echo it back to the room)
-    discordSendDelay: 750
+    discordSendDelay: 1500
+ghosts:
+    # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
+    nickPattern: ":nick"
+    # Pattern for the ghosts username, available is :username, :tag and :id
+    usernamePattern: ":username#:tag"

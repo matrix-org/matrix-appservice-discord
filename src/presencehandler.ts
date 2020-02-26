@@ -1,26 +1,40 @@
+/*
+Copyright 2017 - 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { User, Presence } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
+import { MetricPeg } from "./metrics";
 const log = new Log("PresenceHandler");
 
 export class PresenceHandlerStatus {
-    /* One of: ["online", "offline", "unavailable"] */
-    public Presence: string;
+    public Presence: "online"|"offline"|"unavailable";
     public StatusMsg: string;
     public ShouldDrop: boolean = false;
 }
 
 interface IMatrixPresence {
-    presence?: string;
+    presence?: "online"|"offline"|"unavailable";
     status_msg?: string;
 }
 
 export class PresenceHandler {
-    private readonly bot: DiscordBot;
     private presenceQueue: User[];
     private interval: NodeJS.Timeout | null;
-    constructor(bot: DiscordBot) {
-        this.bot = bot;
+    constructor(private bot: DiscordBot) {
         this.presenceQueue = [];
     }
 
@@ -50,8 +64,9 @@ export class PresenceHandler {
 
     public EnqueueUser(user: User) {
         if (user.id !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.id === user.id) === undefined) {
-            log.info(`Adding ${user.id} (${user.username}) to the presence queue`);
+            log.verbose(`Adding ${user.id} (${user.username}) to the presence queue`);
             this.presenceQueue.push(user);
+            MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         }
     }
 
@@ -61,6 +76,7 @@ export class PresenceHandler {
         });
         if (index !== -1) {
             this.presenceQueue.splice(index, 1);
+            MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         } else {
             log.warn(
                 `Tried to remove ${user.id} from the presence queue but it could not be found`,
@@ -81,7 +97,8 @@ export class PresenceHandler {
             if (!proccessed) {
                 this.presenceQueue.push(user);
             } else {
-                log.info(`Dropping ${user.id} from the presence queue.`);
+                log.verbose(`Dropping ${user.id} from the presence queue.`);
+                MetricPeg.get.setPresenceCount(this.presenceQueue.length);
             }
         }
     }
@@ -117,7 +134,8 @@ export class PresenceHandler {
             statusObj.status_msg = status.StatusMsg;
         }
         try {
-            await intent.getClient().setPresence(statusObj);
+            await intent.ensureRegistered();
+            await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg);
         } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);

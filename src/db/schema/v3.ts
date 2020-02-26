@@ -1,3 +1,19 @@
+/*
+Copyright 2017, 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 import {DiscordClientFactory} from "../../clientfactory";
@@ -8,13 +24,13 @@ const log = new Log("SchemaV3");
 export class Schema implements IDbSchema {
     public description = "user_tokens split into user_id_discord_id";
     public async run(store: DiscordStore): Promise<void> {
-        await Promise.all([store.create_table(`
+        await Promise.all([store.createTable(`
             CREATE TABLE user_id_discord_id (
                 discord_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 PRIMARY KEY(discord_id, user_id)
             );`, "user_id_discord_id"),
-            store.create_table(`
+            store.createTable(`
             CREATE TABLE discord_id_token (
                 discord_id TEXT UNIQUE NOT NULL,
                 token	TEXT NOT NULL,
@@ -23,7 +39,7 @@ export class Schema implements IDbSchema {
             )]);
 
         // Backup before moving data.
-        await store.backup_database();
+        await store.backupDatabase();
 
         // Move old data to new tables.
         await this.moveUserIds(store);
@@ -61,7 +77,8 @@ directory.`);
         for (const row of rows) {
             log.info("Moving ", row.userId);
             try {
-                const dId = clientFactory.getDiscordId(row.token);
+                const client = await clientFactory.getClient(row.token);
+                const dId = client.user.id;
                 if (dId === null) {
                     continue;
                 }

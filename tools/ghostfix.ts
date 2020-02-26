@@ -1,18 +1,25 @@
-import { AppServiceRegistration, ClientFactory, Bridge } from "matrix-appservice-bridge";
-import * as yaml from "js-yaml";
-import * as fs from "fs";
+/*
+Copyright 2018 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import * as Bluebird from "bluebird";
-import { ChannelSyncroniser } from "../src/channelsyncroniser";
-import { DiscordBridgeConfig } from "../src/config";
-import { DiscordBot } from "../src/bot";
-import { DiscordStore } from "../src/store";
-import { Provisioner } from "../src/provisioner";
-import { UserSyncroniser } from "../src/usersyncroniser";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
-import { TextChannel } from "discord.js";
+import { DiscordBot } from "../src/bot";
+import { ToolsHelper } from "./toolshelper";
 
 const log = new Log("GhostFix");
 
@@ -42,6 +49,14 @@ const optionDefinitions = [
         type: String,
         typeLabel: "<config.yaml>",
     },
+    {
+        alias: "r",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
+        type: String,
+        typeLabel: "<discord-registration.yaml>",
+    },
 ];
 
 const options = args(optionDefinitions);
@@ -62,54 +77,11 @@ if (options.help) {
     process.exit(0);
 }
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync("./discord-registration.yaml", "utf8"));
-const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config = new DiscordBridgeConfig();
-config.ApplyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
-
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
-const clientFactory = new ClientFactory({
-    appServiceUserId: botUserId,
-    token: registration.as_token,
-    url: config.bridge.homeserverUrl,
-});
-const provisioner = new Provisioner();
-const discordstore = new DiscordStore(config.database ? config.database.filename : "discord.db");
-const discordbot = new DiscordBot(config, discordstore, provisioner);
-
-const bridge = new Bridge({
-    clientFactory,
-    controller: {
-        onEvent: () => { },
-    },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
-    intentOptions: {
-        clients: {
-            dontJoin: true, // handled manually
-      },
-    },
-    registration,
-    roomStore: config.database.roomStorePath,
-    userStore: config.database.userStorePath,
-});
-
-provisioner.SetBridge(bridge);
-discordbot.setBridge(bridge);
-
 async function run() {
-    try {
-        await bridge.loadDatabases();
-    } catch (e) {
-        await discordstore.init();
-    }
-    const userSync = new UserSyncroniser(bridge, config, discordbot);
-    bridge._clientFactory = clientFactory;
-    await discordbot.ClientFactory.init();
+    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    await store!.init();
+    const discordbot = new DiscordBot(config, appservice, store!);
+    await discordbot.init();
     const client = await discordbot.ClientFactory.getClient();
 
     const promiseList: Promise<void>[] = [];
@@ -121,11 +93,11 @@ async function run() {
                     return;
                 }
                 promiseList.push((async () => {
-                    await Bluebird.delay(curDelay);
+                    await Util.DelayedPromise(curDelay);
                     let currentSchedule = JOIN_ROOM_SCHEDULE[0];
                     const doJoin = async () => {
                         await Util.DelayedPromise(currentSchedule);
-                        await userSync.OnUpdateGuildMember(member, true);
+                        await discordbot.UserSyncroniser.OnUpdateGuildMember(member, true, false);
                     };
                     const errorHandler = async (err) => {
                         log.error(`Error joining rooms for ${member.id}`);

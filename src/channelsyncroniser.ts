@@ -1,9 +1,26 @@
+/*
+Copyright 2018, 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as Discord from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
-import { DiscordBridgeConfig } from "./config";
-import { Bridge, RoomBridgeStore, Entry } from "matrix-appservice-bridge";
+import { DiscordBridgeConfig, DiscordBridgeConfigChannelDeleteOptions } from "./config";
 import { Log } from "./log";
+import { DbRoomStore, IRoomStoreEntry } from "./db/roomstore";
+import { Appservice } from "matrix-bot-sdk";
 
 const log = new Log("ChannelSync");
 
@@ -40,13 +57,13 @@ export interface IChannelState {
 }
 
 export class ChannelSyncroniser {
-
-    private roomStore: RoomBridgeStore;
     constructor(
-        private bridge: Bridge,
+        private bridge: Appservice,
         private config: DiscordBridgeConfig,
-        private bot: DiscordBot) {
-        this.roomStore = this.bridge.getRoomStore();
+        private bot: DiscordBot,
+        private roomStore: DbRoomStore,
+    ) {
+
     }
 
     public async OnUpdate(channel: Discord.Channel) {
@@ -88,6 +105,20 @@ export class ChannelSyncroniser {
         }
     }
 
+    public async OnUnbridge(channel: Discord.Channel, roomId: string) {
+        try {
+            const entry = (await this.roomStore.getEntriesByMatrixId(roomId))[0];
+            const opts = new DiscordBridgeConfigChannelDeleteOptions();
+            opts.namePrefix = null;
+            opts.topicPrefix = null;
+            opts.ghostsLeave = true;
+            await this.handleChannelDeletionForRoom(channel as Discord.TextChannel, roomId, entry);
+            log.info(`Channel ${channel.id} has been unbridged.`);
+        } catch (e) {
+            log.error(`Failed to unbridge channel from room: ${e}`);
+        }
+    }
+
     public async OnDelete(channel: Discord.Channel) {
         if (channel.type !== "text") {
             log.info(`Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
@@ -95,7 +126,7 @@ export class ChannelSyncroniser {
         }
         log.info(`Channel ${channel.id} has been deleted.`);
         let roomids;
-        let entries;
+        let entries: IRoomStoreEntry[];
         try {
             roomids = await this.GetRoomIdsFromChannel(channel);
             entries = await this.roomStore.getEntriesByMatrixIds(roomids);
@@ -123,9 +154,6 @@ export class ChannelSyncroniser {
     }
 
     public async GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
-        if (!this.roomStore) {
-            this.roomStore = this.bridge.getRoomStore();
-        }
         const rooms = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
         });
@@ -133,7 +161,32 @@ export class ChannelSyncroniser {
             log.verbose(`Couldn't find room(s) for channel ${channel.id}.`);
             return Promise.reject("Room(s) not found.");
         }
-        return rooms.map((room) => room.matrix.getId() as string);
+        return rooms.map((room) => room.matrix!.getId() as string);
+    }
+
+    public async GetAliasFromChannel(channel: Discord.Channel): Promise<string | null> {
+        let rooms: string[] = [];
+        try {
+            rooms = await this.GetRoomIdsFromChannel(channel);
+        } catch (err) { } // do nothing, our rooms array will just be empty
+        for (const room of rooms) {
+            try {
+                const al = (await this.bridge.botIntent.underlyingClient.getRoomStateEvent(
+                    room,
+                    "m.room.canonical_alias",
+                    "")
+                    ).alias;
+                if (al) {
+                    return al; // we are done, we found an alias
+                }
+            } catch (err) { } // do nothing, as if we error we just roll over to the next entry
+        }
+        const guildChannel = channel as Discord.TextChannel;
+        if (!guildChannel.guild) {
+            return null; // we didn't pass a guild, so we have no way of bridging this room, thus no alias
+        }
+        // at last, no known canonical aliases and we are a guild....so we know an alias!
+        return `#_discord_${guildChannel.guild.id}_${channel.id}:${this.config.bridge.domain}`;
     }
 
     public async GetChannelUpdateState(channel: Discord.TextChannel, forceUpdate = false): Promise<IChannelState> {
@@ -143,50 +196,45 @@ export class ChannelSyncroniser {
             mxChannels: [],
         });
 
-        if (!this.roomStore) {
-            this.roomStore = this.bridge.getRoomStore();
-        }
         const remoteRooms = await this.roomStore.getEntriesByRemoteRoomData({discord_channel: channel.id});
         if (remoteRooms.length === 0) {
             log.verbose(`Could not find any channels in room store.`);
             return channelState;
         }
 
-        const patternMap = {
+        const name: string = Util.ApplyPatternString(this.config.channel.namePattern, {
             guild: channel.guild.name,
             name: "#" + channel.name,
-        };
-        let name: string = this.config.channel.namePattern;
-        for (const p of Object.keys(patternMap)) {
-            name = name.replace(new RegExp(":" + p, "g"), patternMap[p]);
-        }
+        });
         const topic = channel.topic;
         const icon = channel.guild.icon;
         let iconUrl: string | null = null;
         if (icon) {
-            iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.png`;
+            // if discord prefixes their icon hashes with "a_" it means that they are animated
+            const animatedIcon = icon.startsWith("a_");
+            iconUrl = `https://cdn.discordapp.com/icons/${channel.guild.id}/${icon}.${animatedIcon ? "gif" : "png"}`;
         }
         remoteRooms.forEach((remoteRoom) => {
-            const mxid = remoteRoom.matrix.getId();
+            const mxid = remoteRoom.matrix!.getId();
             const singleChannelState: ISingleChannelState = Object.assign({}, DEFAULT_SINGLECHANNEL_STATE, {
                 mxid,
             });
 
-            const oldName = remoteRoom.remote.get("discord_name");
-            if (remoteRoom.remote.get("update_name") && (forceUpdate || oldName !== name)) {
+            const oldName = remoteRoom.remote!.get("discord_name");
+            if (remoteRoom.remote!.get("update_name") && (forceUpdate || oldName !== name)) {
                 log.verbose(`Channel ${mxid} name should be updated`);
                 singleChannelState.name = name;
             }
 
-            const oldTopic = remoteRoom.remote.get("discord_topic");
-            if (remoteRoom.remote.get("update_topic") && (forceUpdate || oldTopic !== topic)) {
+            const oldTopic = remoteRoom.remote!.get("discord_topic");
+            if (remoteRoom.remote!.get("update_topic") && (forceUpdate || oldTopic !== topic)) {
                 log.verbose(`Channel ${mxid} topic should be updated`);
                 singleChannelState.topic = topic;
             }
 
-            const oldIconUrl = remoteRoom.remote.get("discord_iconurl");
+            const oldIconUrl = remoteRoom.remote!.get("discord_iconurl");
             // no force on icon update as we don't want to duplicate ALL the icons
-            if (remoteRoom.remote.get("update_icon") && oldIconUrl !== iconUrl) {
+            if (remoteRoom.remote!.get("update_icon") && oldIconUrl !== iconUrl) {
                 log.verbose(`Channel ${mxid} icon should be updated`);
                 if (iconUrl !== null) {
                     singleChannelState.iconUrl = iconUrl;
@@ -207,20 +255,34 @@ export class ChannelSyncroniser {
     }
 
     private async ApplyStateToChannel(channelsState: IChannelState) {
-        const intent = this.bridge.getIntent();
+        const intent = this.bridge.botIntent;
         for (const channelState of channelsState.mxChannels) {
             let roomUpdated = false;
             const remoteRoom = (await this.roomStore.getEntriesByMatrixId(channelState.mxid))[0];
+            if (!remoteRoom.remote) {
+                log.warn("Remote room not set for this room");
+                return;
+            }
             if (channelState.name !== null) {
                 log.verbose(`Updating channelname for ${channelState.mxid} to "${channelState.name}"`);
-                await intent.setRoomName(channelState.mxid, channelState.name);
+                await intent.underlyingClient.sendStateEvent(
+                    channelState.mxid,
+                    "m.room.name",
+                    "",
+                    { name: channelState.name },
+                );
                 remoteRoom.remote.set("discord_name", channelState.name);
                 roomUpdated = true;
             }
 
             if (channelState.topic !== null) {
                 log.verbose(`Updating channeltopic for ${channelState.mxid} to "${channelState.topic}"`);
-                await intent.setRoomTopic(channelState.mxid, channelState.topic);
+                await intent.underlyingClient.sendStateEvent(
+                    channelState.mxid,
+                    "m.room.topic",
+                    "",
+                    { topic: channelState.topic },
+                );
                 remoteRoom.remote.set("discord_topic", channelState.topic);
                 roomUpdated = true;
             }
@@ -228,14 +290,20 @@ export class ChannelSyncroniser {
             if (channelState.iconUrl !== null && channelState.iconId !== null) {
                 log.verbose(`Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
                 if (channelsState.iconMxcUrl === null) {
-                    const iconMxc = await Util.UploadContentFromUrl(
-                        channelState.iconUrl,
-                        intent,
+                    const iconMxc = await this.bridge.botIntent.underlyingClient.uploadContent(
+                        await Util.DownloadFile(channelState.iconUrl),
+                        undefined,
                         channelState.iconId,
                     );
-                    channelsState.iconMxcUrl = iconMxc.mxcUrl;
+                    channelsState.iconMxcUrl = iconMxc;
                 }
-                await intent.setRoomAvatar(channelState.mxid, channelsState.iconMxcUrl);
+                await intent.underlyingClient.sendStateEvent(
+                    channelState.mxid,
+                    "m.room.avatar",
+                    "",
+                    // TODO: "info" object for avatar
+                    { avatar_url: channelsState.iconMxcUrl },
+                );
                 remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
                 remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
                 roomUpdated = true;
@@ -243,7 +311,12 @@ export class ChannelSyncroniser {
 
             if (channelState.removeIcon) {
                 log.verbose(`Clearing icon_url for ${channelState.mxid}`);
-                await intent.setRoomAvatar(channelState.mxid, null);
+                await intent.underlyingClient.sendStateEvent(
+                    channelState.mxid,
+                    "m.room.avatar",
+                    "",
+                    {  },
+                );
                 remoteRoom.remote.set("discord_iconurl", null);
                 remoteRoom.remote.set("discord_iconurl_mxc", null);
                 roomUpdated = true;
@@ -258,19 +331,21 @@ export class ChannelSyncroniser {
     private async handleChannelDeletionForRoom(
         channel: Discord.TextChannel,
         roomId: string,
-        entry: Entry): Promise<void> {
+        entry: IRoomStoreEntry,
+        overrideOptions?: DiscordBridgeConfigChannelDeleteOptions): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
-        const intent = await this.bridge.getIntent();
-        const options = this.config.channel.deleteOptions;
-        const plumbed = entry.remote.get("plumbed");
+        const intent = this.bridge.botIntent;
+        const client = this.bridge.botClient;
+        const options = overrideOptions || this.config.channel.deleteOptions;
+        const plumbed = entry.remote!.get("plumbed");
 
-        this.roomStore.upsertEntry(entry);
+        await this.roomStore.upsertEntry(entry);
         if (options.ghostsLeave) {
             for (const member of channel.members.array()) {
                 try {
-                    const mIntent = await this.bot.GetIntentFromDiscordMember(member);
-                    mIntent.leave(roomId);
-                    log.info(`${member.id} left ${roomId}.`);
+                    const mIntent = this.bot.GetIntentFromDiscordMember(member);
+                    await client.leaveRoom(roomId);
+                    log.verbose(`${member.id} left ${roomId}.`);
                 } catch (e) {
                     log.warn(`Failed to make ${member.id} leave `);
                 }
@@ -278,18 +353,28 @@ export class ChannelSyncroniser {
         }
         if (options.namePrefix) {
             try {
-                const name = await intent.getClient().getStateEvent(roomId, "m.room.name");
+                const name = await client.getRoomStateEvent(roomId, "m.room.name", "");
                 name.name = options.namePrefix + name.name;
-                await intent.getClient().setRoomName(roomId, name.name);
+                await client.sendStateEvent(
+                    roomId,
+                    "m.room.name",
+                    "",
+                    name,
+                );
             } catch (e) {
                 log.error(`Failed to set name of room ${roomId} ${e}`);
             }
         }
         if (options.topicPrefix) {
             try {
-                const topic = await intent.getClient().getStateEvent(roomId, "m.room.topic");
+                const topic = await client.getRoomStateEvent(roomId, "m.room.topic", "");
                 topic.topic = options.topicPrefix + topic.topic;
-                await intent.getClient().setRoomTopic(roomId, topic.topic);
+                await client.sendStateEvent(
+                    roomId,
+                    "m.room.topic",
+                    "",
+                    topic,
+                );
             } catch (e) {
                 log.error(`Failed to set topic of room ${roomId} ${e}`);
             }
@@ -298,12 +383,16 @@ export class ChannelSyncroniser {
         if (plumbed !== true) {
             if (options.unsetRoomAlias) {
                 try {
-                    const alias = `#_${entry.remote.roomId}:${this.config.bridge.domain}`;
-                    const canonicalAlias = await intent.getClient().getStateEvent(roomId, "m.room.canonical_alias");
+                    const alias = `#_${entry.remote!.roomId}:${this.config.bridge.domain}`;
+                    const canonicalAlias = await client.getRoomStateEvent(
+                        roomId,
+                        "m.room.canonical_alias",
+                        "",
+                    );
                     if (canonicalAlias.alias === alias) {
-                        await intent.getClient().sendStateEvent(roomId, "m.room.canonical_alias", {});
+                        await client.sendStateEvent(roomId, "m.room.canonical_alias", "", {});
                     }
-                    await intent.getClient().deleteAlias(alias);
+                    await client.deleteRoomAlias(alias);
                 } catch (e) {
                     log.error(`Couldn't remove alias of ${roomId} ${e}`);
                 }
@@ -311,7 +400,7 @@ export class ChannelSyncroniser {
 
             if (options.unlistFromDirectory) {
                 try {
-                    await intent.getClient().setRoomDirectoryVisibility(roomId, "private");
+                    await client.setDirectoryVisibility(roomId, "private");
                 } catch (e) {
                     log.error(`Couldn't remove ${roomId} from room directory ${e}`);
                 }
@@ -320,7 +409,12 @@ export class ChannelSyncroniser {
 
             if (options.setInviteOnly) {
                 try {
-                    await intent.getClient().sendStateEvent(roomId, "m.room.join_rules", {join_role: "invite"});
+                    await client.sendStateEvent(
+                        roomId,
+                        "m.room.join_rules",
+                        "",
+                        {join_role: "invite"},
+                    );
                 } catch (e) {
                     log.error(`Couldn't set ${roomId} to private ${e}`);
                 }
@@ -328,17 +422,15 @@ export class ChannelSyncroniser {
 
             if (options.disableMessaging) {
                 try {
-                    const state = await intent.getClient().getStateEvent(roomId, "m.room.power_levels");
+                    const state = await client.getRoomStateEvent(roomId, "m.room.power_levels", "");
                     state.events_default = POWER_LEVEL_MESSAGE_TALK;
-                    await intent.getClient().sendStateEvent(roomId, "m.room.power_levels", state);
+                    await client.sendStateEvent(roomId, "m.room.power_levels", "", state);
                 } catch (e) {
                     log.error(`Couldn't disable messaging for ${roomId} ${e}`);
                 }
             }
         }
-        // Unlist
 
-        // Remove entry
         await this.roomStore.removeEntriesByMatrixRoomId(roomId);
     }
 }

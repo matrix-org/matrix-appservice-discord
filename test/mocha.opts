@@ -1,3 +1,5 @@
 --reporter list
 --ui bdd
+--require ts-node/register
+--require source-map-support/register
 --recursive

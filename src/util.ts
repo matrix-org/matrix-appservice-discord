@@ -1,20 +1,39 @@
+/*
+Copyright 2018, 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import * as http from "http";
 import * as https from "https";
-import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
-import * as mime from "mime";
 import { Permissions } from "discord.js";
 import { DiscordBridgeConfig } from "./config";
+import { IMatrixEvent } from "./matrixtypes";
 
 const HTTP_OK = 200;
 
 import { Log } from "./log";
+import { Intent, MatrixClient } from "matrix-bot-sdk";
 const log = new Log("Util");
 
+type PERMISSIONTYPES = any | any[]; // tslint:disable-line no-any
+
 export interface ICommandAction {
-    params: string[];
     description?: string;
-    permission?: string;
+    help?: string;
+    params: string[];
+    permission?: PERMISSIONTYPES;
     run(params: any): Promise<any>; // tslint:disable-line no-any
 }
 
@@ -24,11 +43,17 @@ export interface ICommandActions {
 
 export interface ICommandParameter {
     description?: string;
-    get(param: string): Promise<any>; // tslint:disable-line no-any
+    get?(param: string): Promise<any>; // tslint:disable-line no-any
 }
 
 export interface ICommandParameters {
     [index: string]: ICommandParameter;
+}
+
+export type CommandPermissonCheck = (permission: PERMISSIONTYPES) => Promise<boolean | string>;
+
+export interface IPatternMap {
+    [index: string]: string;
 }
 
 export class Util {
@@ -62,65 +87,6 @@ export class Util {
                 reject(`Failed to download. ${err.code}`);
             });
         }) as Promise<Buffer>;
-    }
-    /**
-     * uploadContentFromUrl - Upload content from a given URL to the homeserver
-     * and return a MXC URL.
-     */
-    public static async UploadContentFromUrl(url: string, intent: Intent, name: string | null): Promise<IUploadResult> {
-        let contenttype;
-        name = name || null;
-        try {
-            const bufferRet = (await (new Promise((resolve, reject) => {
-                let ht;
-                if (url.startsWith("https")) {
-                    ht = https;
-                } else {
-                    ht = http;
-                }
-                const req = ht.get( url, (res) => {
-                    let buffer = Buffer.alloc(0);
-
-                    if (res.headers.hasOwnProperty("content-type")) {
-                        contenttype = res.headers["content-type"];
-                    } else {
-                        log.verbose("No content-type given by server, guessing based on file name.");
-                        contenttype = mime.lookup(url);
-                    }
-
-                    if (name === null) {
-                        const names = url.split("/");
-                        name = names[names.length - 1];
-                    }
-
-                    res.on("data", (d) => {
-                        buffer = Buffer.concat([buffer, d]);
-                    });
-
-                    res.on("end", () => {
-                        resolve(buffer);
-                    });
-                });
-                req.on("error", (err) => {
-                    reject(`Failed to download. ${err.code}`);
-                });
-            }))) as Buffer;
-            const size = bufferRet.length;
-            const contentUri = await intent.getClient().uploadContent(bufferRet, {
-                name,
-                onlyContentUri: true,
-                rawResponse: false,
-                type: contenttype,
-            });
-            log.verbose("Media uploaded to ", contentUri);
-            return {
-                mxcUrl: contentUri,
-                size,
-            };
-        } catch (reason) {
-            log.error("Failed to upload content:\n", reason);
-            throw reason;
-        }
     }
 
     /**
@@ -157,42 +123,30 @@ export class Util {
         if (name[0] === "@" && name.includes(":")) {
             return name;
         }
-        const client = intent.getClient();
+        const client = intent.underlyingClient;
+        await intent.ensureRegistered();
         const matrixUsers = {};
         let matches = 0;
-        await Promise.all(channelMxids.map((chan) => {
-            // we would use this.bridge.getBot().getJoinedMembers()
-            // but we also want to be able to search through banned members
-            // so we gotta roll our own thing
-            return client._http.authedRequestWithPrefix(
-                undefined,
-                "GET",
-                `/rooms/${encodeURIComponent(chan)}/members`,
-                undefined,
-                undefined,
-                "/_matrix/client/r0",
-            ).then((res) => {
-                res.chunk.forEach((member) => {
-                    if (member.membership !== "join" && member.membership !== "ban") {
-                        return;
-                    }
-                    const mxid = member.state_key;
-                    if (mxid.startsWith("@_discord_")) {
-                        return;
-                    }
-                    let displayName = member.content.displayname;
-                    if (!displayName && member.unsigned && member.unsigned.prev_content &&
-                        member.unsigned.prev_content.displayname) {
-                        displayName = member.unsigned.prev_content.displayname;
-                    }
-                    if (!displayName) {
-                        displayName = mxid.substring(1, mxid.indexOf(":"));
-                    }
-                    if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
-                        matrixUsers[mxid] = displayName;
-                        matches++;
-                    }
-                });
+        await Promise.all(channelMxids.map( async (chan) => {
+            (await client.getRoomMembers(chan, undefined, ["leave"])).forEach((member) => {
+                if (member.membership === "invite") {
+                    return;
+                }
+                const mxid = member.stateKey;
+                if (mxid.startsWith("@_discord_")) {
+                    return;
+                }
+                let displayName = member.content.displayname;
+                if (!displayName && member.previousContent.displayname) {
+                    displayName = member.previousContent.displayname;
+                }
+                if (!displayName) {
+                    displayName = mxid.substring(1, mxid.indexOf(":"));
+                }
+                if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
+                    matrixUsers[mxid] = displayName;
+                    matches++;
+                }
             });
         }));
         if (matches === 0) {
@@ -208,19 +162,118 @@ export class Util {
         return Object.keys(matrixUsers)[0];
     }
 
-    public static async ParseCommand(action: ICommandAction, parameters: ICommandParameters, args: string[]) {
+    public static async HandleHelpCommand(
+        prefix: string,
+        actions: ICommandActions,
+        parameters: ICommandParameters,
+        args: string[],
+        permissionCheck?: CommandPermissonCheck,
+    ): Promise<string> {
+        let reply = "";
+        if (args[0]) {
+            const actionKey = args[0];
+            const action = actions[actionKey];
+            if (!actions[actionKey]) {
+                return `**ERROR:** unknown command! Try \`${prefix} help\` to see all commands`;
+            }
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string") {
+                    return `**ERROR:** ${permCheck}`;
+                }
+                if (!permCheck) {
+                    return `**ERROR:** permission denied! Try \`${prefix} help\` to see all available commands`;
+                }
+            }
+            reply += `\`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+            if (action.help) {
+                reply += action.help;
+            }
+            return reply;
+        }
+        if (Object.keys(actions).length === 0) {
+            return "No commands found";
+        }
+        reply += "Available Commands:\n";
+        let commandsHavePermission = 0;
+        for (const actionKey of Object.keys(actions)) {
+            const action = actions[actionKey];
+            if (action.permission !== undefined && permissionCheck) {
+                const permCheck = await permissionCheck(action.permission);
+                if (typeof permCheck === "string" || !permCheck) {
+                    continue;
+                }
+            }
+            commandsHavePermission++;
+            reply += ` - \`${prefix} ${actionKey}`;
+            for (const param of action.params) {
+                reply += ` <${param}>`;
+            }
+            reply += `\`: ${action.description}\n`;
+        }
+        if (!commandsHavePermission) {
+            return "No commands found";
+        }
+        reply += "\nParameters:\n";
+        for (const parameterKey of Object.keys(parameters)) {
+            const parameter = parameters[parameterKey];
+            reply += ` - \`<${parameterKey}>\`: ${parameter.description}\n`;
+        }
+        return reply;
+    }
+
+    public static async ParseCommand(
+        prefix: string,
+        msg: string,
+        actions: ICommandActions,
+        parameters: ICommandParameters,
+        permissionCheck?: CommandPermissonCheck,
+    ): Promise<string> {
+        const {command, args} = Util.MsgToArgs(msg, prefix);
+        if (command === "help") {
+            return await Util.HandleHelpCommand(prefix, actions, parameters, args, permissionCheck);
+        }
+
+        if (!actions[command]) {
+            return `**ERROR:** unknown command. Try \`${prefix} help\` to see all commands`;
+        }
+        const action = actions[command];
+        if (action.permission !== undefined && permissionCheck) {
+            const permCheck = await permissionCheck(action.permission);
+            if (typeof permCheck === "string") {
+                return `**ERROR:** ${permCheck}`;
+            }
+            if (!permCheck) {
+                return `**ERROR:** insufficient permissions to use this command! ` +
+                    `Try \`${prefix} help\` to see all available commands`;
+            }
+        }
         if (action.params.length === 1) {
             args[0] = args.join(" ");
         }
-        const params = {};
-        let i = 0;
-        for (const param of action.params) {
-            params[param] = await parameters[param].get(args[i]);
-            i++;
-        }
+        try {
+            const params = {};
+            let i = 0;
+            for (const param of action.params) {
+                if (parameters[param].get !== undefined) {
+                    params[param] = await parameters[param].get!(args[i]);
+                } else {
+                    params[param] = args[i];
+                }
+                i++;
+            }
 
-        const retStr = await action.run(params);
-        return retStr;
+            const retStr = await action.run(params);
+            return retStr;
+        } catch (e) {
+            log.error("Error processing command");
+            log.error(e);
+            return `**ERROR:** ${e.message}`;
+        }
     }
 
     public static MsgToArgs(msg: string, prefix: string) {
@@ -258,9 +311,118 @@ export class Util {
         const htmlColor = pad.substring(0, pad.length - colorHex.length) + colorHex;
         return htmlColor;
     }
+
+    public static ApplyPatternString(str: string, patternMap: IPatternMap): string {
+        for (const p of Object.keys(patternMap)) {
+            str = str.replace(new RegExp(":" + p, "g"), patternMap[p]);
+        }
+        return str;
+    }
+
+    public static async CheckMatrixPermission(
+        mxClient: MatrixClient,
+        userId: string,
+        roomId: string,
+        defaultLevel: number,
+        cat: string,
+        subcat?: string,
+    ) {
+        const res: IMatrixEvent = await mxClient.getRoomStateEvent(roomId, "m.room.power_levels", "");
+        let requiredLevel = defaultLevel;
+        if (res && (res[cat] || !subcat)) {
+            if (subcat) {
+                if (res[cat][subcat] !== undefined) {
+                    requiredLevel = res[cat][subcat];
+                }
+            } else {
+                if (res[cat] !== undefined) {
+                    requiredLevel = res[cat];
+                }
+            }
+        }
+
+        let haveLevel = 0;
+        if (res && res.users_default) {
+            haveLevel = res.users_default;
+        }
+        if (res && res.users && res.users[userId] !== undefined) {
+            haveLevel = res.users[userId];
+        }
+        return haveLevel >= requiredLevel;
+    }
+
+    public static ParseMxid(unescapedMxid: string, escape: boolean = true) {
+        const RADIX = 16;
+        const parts = unescapedMxid.substr(1).split(":");
+        const domain = parts[1];
+        let localpart = parts[0];
+        if (escape) {
+            const badChars = new Set(localpart.replace(/([a-z0-9]|-|\.|=|_)+/g, ""));
+            badChars.forEach((c) => {
+                const hex = c.charCodeAt(0).toString(RADIX).toLowerCase();
+                localpart = localpart.replace(
+                    new RegExp(`\\${c}`, "g"),
+                    `=${hex}`,
+                );
+            });
+        }
+        return {
+            domain,
+            localpart,
+            mxid: `@${localpart}:${domain}`,
+        };
+    }
+
+    // Taken from https://github.com/matrix-org/matrix-appservice-bridge/blob/master/lib/models/users/matrix.js
+    public static EscapeStringForUserId(localpart: string) {
+        // NOTE: Currently Matrix accepts / in the userId, although going forward it will be removed.
+        const badChars = new Set(localpart.replace(/([a-z]|[0-9]|-|\.|=|_)+/g, ""));
+        let res = localpart;
+        badChars.forEach((c) => {
+            const hex = c.charCodeAt(0).toString(16).toLowerCase();
+            res = res.replace(
+                new RegExp(`\\x${hex}`, "g"),
+                `=${hex}`,
+            );
+        });
+        return res;
+    }
 }
 
-interface IUploadResult {
-    mxcUrl: string;
-    size: number;
+// Type type
+type Type = Function;  // tslint:disable-line ban-types
+
+/**
+ * Returns true if `obj` is subtype of at least one of the given types.
+ */
+export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
+    return types.some((type) => obj instanceof type);
+}
+
+/**
+ * Append the old error message to the new one and keep its stack trace.
+ *
+ * @example
+ * throw wrapError(e, HighLevelError, "This error is more specific");
+ *
+ * @param oldError The original error to wrap.
+ * @param newErrorType Type of the error returned by this function.
+ * @returns A new error of type `newErrorType` containing the information of
+ * the original error (stacktrace and error message).
+ */
+export function wrapError<T extends Error>(
+    oldError: object|Error,
+    newErrorType: new (...args: any[]) => T,  // tslint:disable-line no-any
+    ...args: any[]  // tslint:disable-line no-any trailing-comma
+): T {
+    const newError = new newErrorType(...args);
+    let appendMsg;
+    if (oldError instanceof Error) {
+        appendMsg = oldError.message;
+        newError.stack = oldError.stack;
+    } else {
+        appendMsg = oldError.toString();
+    }
+    newError.message += ":\n" + appendMsg;
+    return newError;
 }

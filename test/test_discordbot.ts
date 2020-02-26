@@ -1,51 +1,50 @@
-import * as Chai from "chai";
+/*
+Copyright 2017 - 2019 matrix-appservice-discord
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
 import * as Discord from "discord.js";
-import { Log } from "../src/log";
 
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
-import { DiscordBot } from "../src/bot";
 import { MockDiscordClient } from "./mocks/discordclient";
 import { MockMessage } from "./mocks/message";
+import { Util } from "../src/util";
+import { AppserviceMock } from "./mocks/appservicemock";
+import { MockUser } from "./mocks/user";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const expect = Chai.expect;
-
-const assert = Chai.assert;
-// const should = Chai.should as any;
-
-const mockBridge = {
-    getIntentFromLocalpart: (localpart: string) => {
-        return {
-            sendTyping: (room: string, isTyping: boolean) => {
-                return;
-            },
-        };
-    },
-    getRoomStore: () => {
-        return {
-            getEntriesByRemoteRoomData: async (data) => {
-                if (data.discord_channel === "321") {
-                    return [{
-                        matrix: {
-                            getId: () => "foobar:example.com",
-                        },
-                    }];
-                }
-                return [];
-            },
-        };
-    },
-    getUserStore: () => {
-        return {};
-    },
-};
+const mockBridge = new AppserviceMock({});
 
 const modDiscordBot = Proxyquire("../src/bot", {
     "./clientfactory": require("./mocks/discordclientfactory"),
+    "./util": {
+        Util: {
+            AsyncForEach: Util.AsyncForEach,
+            DelayedPromise: Util.DelayedPromise,
+            DownloadFile: async () => {
+                return Buffer.alloc(1000);
+            },
+            UploadContentFromUrl: async () => {
+                return {mxcUrl: "uploaded"};
+            },
+        },
+    },
 });
 describe("DiscordBot", () => {
     let discordBot;
@@ -65,9 +64,9 @@ describe("DiscordBot", () => {
         it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
-                null,
+                mockBridge,
+                {},
             );
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
         });
     });
@@ -76,9 +75,9 @@ describe("DiscordBot", () => {
         beforeEach( async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
-                null,
+                mockBridge,
+                {},
             );
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
         });
         it("should reject a missing guild.", async () => {
@@ -103,11 +102,167 @@ describe("DiscordBot", () => {
             await discordBot.LookupRoom("123", "321");
         });
     });
+    describe("OnMessage()", () => {
+        const channel = new Discord.TextChannel({} as any, {} as any);
+        const msg = new MockMessage(channel);
+        const author = new MockUser("11111");
+        let HANDLE_COMMAND = false;
+        function getDiscordBot() {
+            HANDLE_COMMAND = false;
+            const discord = new modDiscordBot.DiscordBot(
+                config,
+                mockBridge,
+                {},
+            );
+            discord.bot = { user: { id: "654" } };
+            discord.userSync = {
+                OnUpdateUser: async () => { },
+            };
+            discord.channelSync = {
+                GetRoomIdsFromChannel: async () => ["!asdf:localhost"],
+            };
+            discord.discordCommandHandler = {
+                Process: async () => { HANDLE_COMMAND = true; },
+            };
+            discord.store = {
+                Insert: async (_) => { },
+            };
+            return discord;
+        }
+        it("ignores own messages", async () => {
+            discordBot = getDiscordBot();
+            const guild: any = new MockGuild("123", []);
+            const ownAuthor = new MockUser("654", "TestUsername");
+            guild._mockAddMember(author);
+            msg.author = ownAuthor;
+            msg.content = "Hi!";
+            await discordBot.OnMessage(msg);
+            expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
+        });
+        it("Passes on !matrix commands", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.content = "!matrix test";
+            await discordBot.OnMessage(msg);
+            expect(HANDLE_COMMAND).to.be.true;
+        });
+        it("skips empty messages", async () => {
+            discordBot = getDiscordBot();
+            msg.content = "";
+            msg.author = author;
+            await discordBot.OnMessage(msg as any);
+            expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
+        });
+        it("sends normal messages", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.content = "Foxies are amazing!";
+            await discordBot.OnMessage(msg as any);
+            mockBridge.getIntent(author.id).wasCalled("sendEvent");
+        });
+        it("uploads images", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.attachments.set("1234", {
+                filename: "someimage.png",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "someimage.png",
+                external_url: "asdf",
+                info: {
+                    h: 0,
+                    mimetype: "image/png",
+                    size: 42,
+                    w: 0,
+                },
+                msgtype: "m.image",
+                url: "mxc://someimage.png",
+            });
+        });
+        it("uploads videos", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.attachments.set("1234", {
+                filename: "foxes.mov",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "foxes.mov",
+                external_url: "asdf",
+                info: {
+                    h: 0,
+                    mimetype: "video/quicktime",
+                    size: 42,
+                    w: 0,
+                },
+                msgtype: "m.video",
+                url: "mxc://foxes.mov",
+            });
+        });
+        it("uploads audio", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.attachments.set("1234", {
+                filename: "meow.mp3",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "meow.mp3",
+                external_url: "asdf",
+                info: {
+                    mimetype: "audio/mpeg",
+                    size: 42,
+                },
+                msgtype: "m.audio",
+                url: "mxc://meow.mp3",
+            });
+        });
+        it("uploads other files", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.attachments.set("1234", {
+                filename: "meow.zip",
+                filesize: 42,
+                height: 0,
+                url: "asdf",
+                width: 0,
+            });
+            await discordBot.OnMessage(msg);
+            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+                body: "meow.zip",
+                external_url: "asdf",
+                info: {
+                    mimetype: "application/zip",
+                    size: 42,
+                },
+                msgtype: "m.file",
+                url: "mxc://meow.zip",
+            });
+        });
+    });
     describe("OnMessageUpdate()", () => {
         it("should return on an unchanged message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
+                {},
             );
 
             const guild: any = new MockGuild("123", []);
@@ -127,12 +282,13 @@ describe("DiscordBot", () => {
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkMsgSent, false);
+            expect(checkMsgSent).to.be.false;
         });
         it("should send a matrix message on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
+                {},
             );
             discordBot.store.Get = (a, b) => null;
 
@@ -153,12 +309,13 @@ describe("DiscordBot", () => {
             discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(checkMsgSent, true);
+            expect(checkMsgSent).to.be.true;
         });
         it("should delete and re-send if it is the newest message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
+                {},
             );
             discordBot.store.Get = (a, b) => { return {
                 MatrixId: "$event:localhost;!room:localhost",
@@ -185,8 +342,8 @@ describe("DiscordBot", () => {
             discordBot.OnMessage = async (_) => { sentMessage = true; };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            Chai.assert.equal(deletedMessage, true);
-            Chai.assert.equal(sentMessage, true);
+            expect(deletedMessage).to.be.true;
+            expect(sentMessage).to.be.true;
         });
     });
     describe("event:message", () => {
@@ -194,20 +351,20 @@ describe("DiscordBot", () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
+                {},
             );
             let expected = 0;
             discordBot.OnMessage = async (msg: any) => {
-                assert.equal(msg.n, expected);
+                expect(msg.n).to.eq(expected);
                 expected++;
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
             const ITERATIONS = 25;
             const CHANID = 123;
             // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
             for (let i = 0; i < ITERATIONS; i++) {
-              await client.emit("message", { n: i, channel: { id: CHANID} });
+                await client.emit("message", { channel: { guild: { id: CHANID }, id: CHANID} });
             }
             await discordBot.discordMessageQueue[CHANID];
         });
@@ -215,11 +372,12 @@ describe("DiscordBot", () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
+                {},
             );
             let expected = 0;
             const THROW_EVERY = 5;
             discordBot.OnMessage = async (msg: any) => {
-                assert.equal(msg.n, expected);
+                expect(msg.n).to.eq(expected);
                 expected++;
                 if (expected % THROW_EVERY === 0) {
                     return Promise.reject("Deliberate throw in test");
@@ -227,45 +385,15 @@ describe("DiscordBot", () => {
                 return Promise.resolve();
             };
             const client: MockDiscordClient = (await discordBot.ClientFactory.getClient()) as MockDiscordClient;
-            discordBot.setBridge(mockBridge);
             await discordBot.run();
             const ITERATIONS = 25;
             const CHANID = 123;
             // Send delay of 50ms, 2 seconds / 50ms - 5 for safety.
             for (let n = 0; n < ITERATIONS; n++) {
-                await client.emit("message", { n, channel: { id: CHANID} });
+                await client.emit("message", { n, channel: { guild: { id: CHANID }, id: CHANID} });
             }
             await discordBot.discordMessageQueue[CHANID];
-            assert.equal(expected, ITERATIONS);
+            expect(expected).to.eq(ITERATIONS);
         });
     });
-  // });
-    // describe("ProcessMatrixMsgEvent()", () => {
-    //
-    // });
-    // describe("UpdateRoom()", () => {
-    //
-    // });
-    // describe("UpdateUser()", () => {
-    //
-    // });
-    // describe("UpdatePresence()", () => {
-    //
-    // });
-    // describe("OnTyping()", () => {
-    //   const discordBot = new modDiscordBot.DiscordBot(
-    //     config,
-    //   );
-    //   discordBot.setBridge(mockBridge);
-    //   discordBot.run();
-    //   it("should reject an unknown room.", () => {
-    //     return assert.isRejected(discordBot.OnTyping( {id: "512"}, {id: "12345"}, true));
-    //   });
-    //   it("should resolve a known room.", () => {
-    //     return assert.isFulfilled(discordBot.OnTyping( {id: "321"}, {id: "12345"}, true));
-    //   });
-    // });
-    // describe("OnMessage()", () => {
-    //
-    // });
 });

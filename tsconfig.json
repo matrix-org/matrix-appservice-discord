@@ -4,15 +4,19 @@
         "moduleResolution": "node",
         "target": "es2016",
         "noImplicitAny": false,
-        "sourceMap": false,
+        "inlineSourceMap": true,
         "outDir": "./build",
         "types": ["mocha", "node"],
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true
     },
     "compileOnSave": true,
     "include": [
         "src/**/*",
-        "test/**/*",
-        "tools/**/*"
+        "tools/**/*",
+        "test/config.ts",
+        "test/db/*",
+        "test/mocks/*",
+        "test/**/test_*",
     ]
 }
