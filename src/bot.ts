@@ -574,7 +574,7 @@ export class DiscordBot {
             const url = `https://cdn.discordapp.com/emojis/${id}${animated ? ".gif" : ".png"}`;
             const intent = this.bridge.botIntent;
             const content = await Util.DownloadFile(url);
-            const type = animated ? "image/gif" : "iamge/png"
+            const type = animated ? "image/gif" : "image/png"
             const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, type, name);
             dbEmoji.EmojiId = id;
             dbEmoji.Name = name;
