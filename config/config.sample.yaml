@@ -29,6 +29,8 @@ bridge:
   disableReadReceipts: false
   # Disable Join Leave echos from matrix
   disableJoinLeaveNotifications: false
+  # Disable Invite echos from matrix
+  disableInviteNotifications: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)
   determineCodeLanguage: false
 # Authentication configuration for the discord bot.
