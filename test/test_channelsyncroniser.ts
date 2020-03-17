@@ -36,7 +36,7 @@ const ChannelSync = (Proxyquire("../src/channelsyncroniser", {
     "./util": {
         Util: {
             ApplyPatternString: Util.ApplyPatternString,
-            DownloadFile: () => "afile",
+            DownloadFile: () => ({buffer: "afile"}),
         },
     },
 })).ChannelSyncroniser;

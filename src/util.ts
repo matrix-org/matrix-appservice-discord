@@ -52,6 +52,11 @@ export interface ICommandParameters {
 
 export type CommandPermissonCheck = (permission: PERMISSIONTYPES) => Promise<boolean | string>;
 
+export interface IDownloadedFile {
+    buffer: Buffer;
+    mimeType?: string;
+}
+
 export interface IPatternMap {
     [index: string]: string;
 }
@@ -61,7 +66,7 @@ export class Util {
      * downloadFile - This function will take a URL and store the resulting data into
      * a buffer.
      */
-    public static async DownloadFile(url: string): Promise<Buffer> {
+    public static async DownloadFile(url: string): Promise<IDownloadedFile> {
         return new Promise((resolve, reject) => {
             let get = http.get;
             if (url.startsWith("https")) {
@@ -78,13 +83,16 @@ export class Util {
                 });
 
                 res.on("end", () => {
-                    resolve(buffer);
+                    resolve({
+                        buffer,
+                        mimeType: res.headers["content-type"],
+                    });
                 });
             });
             req.on("error", (err) => {
                 reject(`Failed to download. ${err}`);
             });
-        }) as Promise<Buffer>;
+        }) as Promise<IDownloadedFile>;
     }
 
     /**

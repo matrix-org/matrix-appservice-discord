@@ -334,7 +334,7 @@ export class MatrixEventProcessor {
         const name = this.GetFilenameForMediaEvent(event.content);
         const url = this.bridge.botClient.mxcToHttp(event.content.url);
         if (size < MaxFileSize) {
-            const attachment = await Util.DownloadFile(url);
+            const attachment = (await Util.DownloadFile(url)).buffer;
             size = attachment.byteLength;
             if (size < MaxFileSize) {
                 return {
