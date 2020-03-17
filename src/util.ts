@@ -63,13 +63,11 @@ export class Util {
      */
     public static async DownloadFile(url: string): Promise<Buffer> {
         return new Promise((resolve, reject) => {
-            let ht;
+            let get = http.get;
             if (url.startsWith("https")) {
-                ht = https;
-            } else {
-                ht = http;
+                get = https.get;
             }
-            const req = ht.get((url), (res) => {
+            const req = get((url), (res) => {
                 let buffer = Buffer.alloc(0);
                 if (res.statusCode !== HTTP_OK) {
                     reject(`Non 200 status code (${res.statusCode})`);
@@ -84,7 +82,7 @@ export class Util {
                 });
             });
             req.on("error", (err) => {
-                reject(`Failed to download. ${err.code}`);
+                reject(`Failed to download. ${err}`);
             });
         }) as Promise<Buffer>;
     }
