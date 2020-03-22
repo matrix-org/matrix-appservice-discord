@@ -303,7 +303,7 @@ export class ChannelSyncroniser {
                     "m.room.avatar",
                     "",
                     // TODO: "info" object for avatar
-                    { avatar_url: channelsState.iconMxcUrl },
+                    { url: channelsState.iconMxcUrl },
                 );
                 remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
                 remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);
