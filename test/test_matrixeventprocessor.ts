@@ -189,7 +189,7 @@ function createMatrixEventProcessor(storeMockResults = 0) {
     const Util = Object.assign(require("../src/util").Util, {
         DownloadFile: (name: string) => {
             const size = parseInt(name.substring(name.lastIndexOf("/") + 1), undefined);
-            return Buffer.alloc(size);
+            return {buffer: Buffer.alloc(size)};
         },
     });
     const discordbot = {

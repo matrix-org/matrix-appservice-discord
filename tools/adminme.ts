@@ -100,9 +100,8 @@ const {appservice} = ToolsHelper.getToolDependencies(options.config, options.reg
 async function run() {
     try {
         const powerLevels = (await appservice.botIntent.underlyingClient.getRoomStateEvent(
-            options.roomId, "m.room.power_levels", "",
-        )).content;
-
+            options.roomid, "m.room.power_levels", "",
+        ));
         powerLevels.users[options.userid] = options.power;
 
         await appservice.botIntent.underlyingClient.sendStateEvent(

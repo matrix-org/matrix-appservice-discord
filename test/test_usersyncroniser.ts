@@ -45,7 +45,7 @@ const UserSync = (Proxyquire("../src/usersyncroniser", {
             AsyncForEach: Util.AsyncForEach,
             DownloadFile: async () => {
                 UTIL_UPLOADED_AVATAR = true;
-                return Buffer.from([]);
+                return {buffer: Buffer.from([])};
             },
             ParseMxid: Util.ParseMxid,
         },

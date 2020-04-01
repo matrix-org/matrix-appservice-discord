@@ -290,9 +290,10 @@ export class ChannelSyncroniser {
             if (channelState.iconUrl !== null && channelState.iconId !== null) {
                 log.verbose(`Updating icon_url for ${channelState.mxid} to "${channelState.iconUrl}"`);
                 if (channelsState.iconMxcUrl === null) {
+                    const file = await Util.DownloadFile(channelState.iconUrl);
                     const iconMxc = await this.bridge.botIntent.underlyingClient.uploadContent(
-                        await Util.DownloadFile(channelState.iconUrl),
-                        undefined,
+                        file.buffer,
+                        file.mimeType,
                         channelState.iconId,
                     );
                     channelsState.iconMxcUrl = iconMxc;
@@ -302,7 +303,7 @@ export class ChannelSyncroniser {
                     "m.room.avatar",
                     "",
                     // TODO: "info" object for avatar
-                    { avatar_url: channelsState.iconMxcUrl },
+                    { url: channelsState.iconMxcUrl },
                 );
                 remoteRoom.remote.set("discord_iconurl", channelState.iconUrl);
                 remoteRoom.remote.set("discord_iconurl_mxc", channelsState.iconMxcUrl);

@@ -22,6 +22,10 @@ properties:
             type: "boolean"
           disableReadReceipts:
             type: "boolean"
+          disableJoinLeaveNotifications:
+            type: "boolean"
+          disableInviteNotifications:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken", "clientID"]
