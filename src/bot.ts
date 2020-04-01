@@ -903,7 +903,8 @@ export class DiscordBot {
                 // an edit
                 await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                     const content = await Util.DownloadFile(attachment.url);
-                    const fileMime = content.mimeType || mime.getType(attachment.filename) || "application/octet-stream";
+                    const fileMime = content.mimeType || mime.getType(attachment.filename)
+                        || "application/octet-stream";
                     const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(
                         content.buffer,
                         fileMime,
