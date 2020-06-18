@@ -57,20 +57,18 @@ export class MetricPeg {
 }
 
 export class PrometheusBridgeMetrics implements IBridgeMetrics {
-    private matrixCallCounter: Counter;
-    private remoteCallCounter: Counter;
-    private storeCallCounter: Counter;
-    private presenceGauge: Gauge;
-    private remoteRequest: Histogram;
-    private matrixRequest: Histogram;
+    private matrixCallCounter: Counter<string>;
+    private remoteCallCounter: Counter<string>;
+    private storeCallCounter: Counter<string>;
+    private presenceGauge: Gauge<string>;
+    private remoteRequest: Histogram<string>;
+    private matrixRequest: Histogram<string>;
     private requestsInFlight: Map<string, number>;
     private matrixRequestStatus: Map<string, "success"|"failed">;
     private httpServer: http.Server;
 
     public init(as: Appservice, config: DiscordBridgeConfigMetrics) {
-        promClient.collectDefaultMetrics({
-            timeout: 15000,
-        });
+        promClient.collectDefaultMetrics();
         // TODO: Bind this for every user.
         this.httpServer = http.createServer((req, res) => {
             if (req.method !== "GET" || req.url !== "/metrics") {
