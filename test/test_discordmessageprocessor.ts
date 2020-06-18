@@ -190,8 +190,8 @@ describe("DiscordMessageProcessor", () => {
             msg.content = "Hello <:hello:3333333>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "Hello :hello:");
-            Chai.assert.equal(result.formattedBody, "Hello <img alt=\"hello\" ti" +
-                "tle=\"hello\" height=\"32\" src=\"mxc://image\" />");
+            Chai.assert.equal(result.formattedBody, "Hello <img alt=\":hello:\" ti" +
+                "tle=\":hello:\" height=\"32\" src=\"mxc://image\" />");
         });
     });
     describe("InsertChannelPills / HTML", () => {
