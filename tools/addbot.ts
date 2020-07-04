@@ -23,6 +23,7 @@ import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
 import { Util } from "../src/util";
+import { DiscordBridgeConfig } from "../src/config";
 
 const optionDefinitions = [
   {
@@ -59,9 +60,8 @@ if (options.help) {
 }
 
 const yamlConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
-if (yamlConfig === null) {
-  console.error("You have an error in your discord config.");
+if (yamlConfig === null || typeof yamlConfig !== "object") {
+  throw Error("You have an error in your discord config.");
 }
-
-const url = Util.GetBotLink(yamlConfig);
+const url = Util.GetBotLink(yamlConfig as DiscordBridgeConfig);
 console.log(`Go to ${url} to invite the bot into a guild.`);
