@@ -912,7 +912,7 @@ export class DiscordBot {
                     const content = await Util.DownloadFile(attachment.url);
                     const fileMime = content.mimeType || mime.getType(attachment.filename)
                         || "application/octet-stream";
-                    const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(
+                    const mxcUrl = await intent.underlyingClient.uploadContent(
                         content.buffer,
                         fileMime,
                         attachment.filename,
