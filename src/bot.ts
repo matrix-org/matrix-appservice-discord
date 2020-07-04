@@ -580,8 +580,9 @@ export class DiscordBot {
         if (!dbEmoji.Result) {
             const url = `https://cdn.discordapp.com/emojis/${id}${animated ? ".gif" : ".png"}`;
             const intent = this.bridge.botIntent;
-            const content = await Util.DownloadFile(url);
-            const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, undefined, name);
+            const content = (await Util.DownloadFile(url)).buffer;
+            const type = animated ? "image/gif" : "image/png";
+            const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, type, name);
             dbEmoji.EmojiId = id;
             dbEmoji.Name = name;
             dbEmoji.Animated = animated;
@@ -811,12 +812,12 @@ export class DiscordBot {
             // Check Attachements
             await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                 const content = await Util.DownloadFile(attachment.url);
+                const fileMime = content.mimeType || mime.getType(attachment.filename) || "application/octet-stream";
                 const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(
-                    content,
-                    undefined,
+                    content.buffer,
+                    fileMime,
                     attachment.filename,
                 );
-                const fileMime = mime.getType(attachment.filename) || "application/octet-stream";
                 const type = fileMime.split("/")[0];
                 let msgtype = {
                     audio: "m.audio",

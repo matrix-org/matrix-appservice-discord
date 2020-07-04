@@ -223,6 +223,7 @@ export class MatrixEventProcessor {
         let msg = `\`${event.sender}\` `;
 
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
+        const allowInvite = !this.config.bridge.disableInviteNotifications;
 
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
@@ -247,7 +248,7 @@ export class MatrixEventProcessor {
             }
             if (membership === "join" && isNewJoin && allowJoinLeave) {
                 msg += "joined the room";
-            } else if (membership === "invite") {
+            } else if (membership === "invite" && allowInvite) {
                 msg += `invited \`${event.state_key}\` to the room`;
             } else if (membership === "leave" && event.state_key !== event.sender) {
                 msg += `kicked \`${event.state_key}\` from the room`;
@@ -333,7 +334,7 @@ export class MatrixEventProcessor {
         const name = this.GetFilenameForMediaEvent(event.content);
         const url = this.bridge.botClient.mxcToHttp(event.content.url);
         if (size < MaxFileSize) {
-            const attachment = await Util.DownloadFile(url);
+            const attachment = (await Util.DownloadFile(url)).buffer;
             size = attachment.byteLength;
             if (size < MaxFileSize) {
                 return {
