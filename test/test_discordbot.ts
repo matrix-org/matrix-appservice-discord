@@ -191,8 +191,9 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "someimage.png",
                 external_url: "asdf",
                 info: {
@@ -216,8 +217,9 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "foxes.mov",
                 external_url: "asdf",
                 info: {
@@ -241,8 +243,9 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "meow.mp3",
                 external_url: "asdf",
                 info: {
@@ -264,8 +267,9 @@ describe("DiscordBot", () => {
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "meow.zip",
                 external_url: "asdf",
                 info: {
