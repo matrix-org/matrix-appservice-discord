@@ -23,6 +23,8 @@ import * as mime from "mime";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
+import { DbEvent } from "./db/dbdataevent";
+
 import { Log } from "./log";
 import { IRoomStoreEntry, RemoteStoreRoom } from "./db/roomstore";
 import { Appservice, MatrixClient } from "matrix-bot-sdk";
@@ -69,6 +71,7 @@ export class MatrixEventProcessor {
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
+        this.store = opts.store;
         this.discord = opts.discord;
         this.store = opts.store;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config);
@@ -186,6 +189,15 @@ export class MatrixEventProcessor {
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
 
+        let editEventId = "";
+        if (event.content && event.content["m.relates_to"] && event.content["m.relates_to"].rel_type === "m.replace") {
+            const editMatrixId = `${event.content["m.relates_to"].event_id};${event.room_id}`;
+            const storeEvent = await this.store.Get(DbEvent, {matrix_id: editMatrixId});
+            if (storeEvent && storeEvent.Result && storeEvent.Next()) {
+                editEventId = storeEvent.DiscordId;
+            }
+        }
+
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
         const file = await this.HandleAttachment(event, mxClient, roomLookup.canSendEmbeds);
@@ -197,9 +209,13 @@ export class MatrixEventProcessor {
             embedSet.imageEmbed = file as Discord.RichEmbed;
         }
 
-        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
-        await this.discord.send(embedSet, opts, roomLookup, event);
-
+    // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
+        if (editEventId) {
+            await this.discord.edit(embedSet, opts, roomLookup, event, editEventId);
+        } else {
+            await this.discord.send(embedSet, opts, roomLookup, event);
+        }
+        // Don't await this.
         this.sendReadReceipt(event).catch((ex) => {
             log.verbose("Failed to send read reciept for ", event.event_id, ex);
         });
@@ -283,7 +299,8 @@ export class MatrixEventProcessor {
 
         let body: string = "";
         if (event.type !== "m.sticker") {
-            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, params);
+            const content = event.content!["m.new_content"] ? event.content!["m.new_content"] : event.content;
+            body = await this.matrixMsgProcessor.FormatMessage(content as IMatrixMessage, channel.guild, params);
         }
 
         const messageEmbed = new Discord.RichEmbed();

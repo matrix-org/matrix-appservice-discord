@@ -151,11 +151,15 @@ const profileFetcher = async (userId) => {
 let STATE_EVENT_MSG = "";
 let MESSAGE_PROCCESS = "";
 let KICKBAN_HANDLED = false;
+let MESSAGE_SENT = false;
+let MESSAGE_EDITED = false;
 
-function createMatrixEventProcessor() {
+function createMatrixEventProcessor(storeMockResults = 0) {
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
     KICKBAN_HANDLED = false;
+    MESSAGE_SENT = false;
+    MESSAGE_EDITED = false;
     const bridge = new AppserviceMock({
         botUserId: "@botuser:localhost",
         eventFetcher,
@@ -169,6 +173,18 @@ function createMatrixEventProcessor() {
         OnUpdateUser: async () => { },
     };
     const config = new DiscordBridgeConfig();
+
+    const store = {
+        Get: (a, b) => {
+            return {
+                DiscordId: "123456",
+                MatrixId: "editedevent",
+                Next: () => storeMockResults--,
+                Result: true,
+            };
+        },
+        removeEntriesByMatrixRoomId: () => Promise.resolve(),
+    };
 
     const Util = Object.assign(require("../src/util").Util, {
         DownloadFile: (name: string) => {
@@ -187,10 +203,22 @@ function createMatrixEventProcessor() {
         HandleMatrixKickBan: () => {
             KICKBAN_HANDLED = true;
         },
+        LookupRoom: async (guildId, chanId) => {
+            return {
+                botUser: true,
+                canSendEmbeds: true,
+            };
+        },
         ProcessMatrixRedact: async (evt) => {
             MESSAGE_PROCCESS = "redacted";
         },
         UserSyncroniser: us,
+        edit: async (embedSet, opts, roomLookup, event) => {
+            MESSAGE_EDITED = true;
+        },
+        send: async (embedSet, opts, roomLookup, event) => {
+            MESSAGE_SENT = true;
+        },
         sendAsBot: async (msg, channel, event) => {
             STATE_EVENT_MSG = msg;
         },
@@ -204,10 +232,6 @@ function createMatrixEventProcessor() {
             MESSAGE_PROCCESS = "command_processed";
         },
     });
-
-    const store = {
-        removeEntriesByMatrixRoomId: () => Promise.resolve(),
-    };
 
     const processor = new (Proxyquire("../src/matrixeventprocessor", {
         "./util": {
@@ -226,6 +250,66 @@ const mockChannel = new MockChannel();
 mockChannel.members.set("12345", new MockMember("12345", "testuser2"));
 
 describe("MatrixEventProcessor", () => {
+    describe("ProcessMsgEvent", () => {
+        it("Should send messages", async () => {
+            const { processor } = createMatrixEventProcessor();
+            const event = {
+                content: {
+                    body: "blah",
+                    msgtype: "m.text",
+                },
+                room_id: "!someroom:localhost",
+                sender: "@user:localhost",
+                type: "m.room.message",
+            } as any;
+            processor.HandleAttachment = async () => "";
+            processor.EventToEmbed = async (evt, chan) => {
+                return {
+                    messageEmbed: new Discord.RichEmbed(),
+                };
+            };
+            const room = { data: {
+                discord_channel: "1234",
+                discord_guild: "1234",
+            }} as any;
+            await processor.ProcessMsgEvent(event, room);
+            expect(MESSAGE_SENT).to.be.true;
+            expect(MESSAGE_EDITED).to.be.false;
+        });
+        it("Should eventually send edits", async () => {
+            const { processor } = createMatrixEventProcessor(1);
+            const event = {
+                content: {
+                    "body": "* blah",
+                    "m.new_content": {
+                        body: "blah",
+                        msgtype: "m.text",
+                    },
+                    "m.relates_to": {
+                        event_id: "editedevent",
+                        rel_type: "m.replace",
+                    },
+                    "msgtype": "m.text",
+                },
+                room_id: "!someroom:localhost",
+                sender: "@user:localhost",
+                type: "m.room.message",
+            } as any;
+            processor.HandleAttachment = async () => "";
+            processor.EventToEmbed = async (evt, chan) => {
+                return {
+                    messageEmbed: new Discord.RichEmbed(),
+                };
+            };
+            const room = { data: {
+                discord_channel: "1234",
+                discord_guild: "1234",
+            }} as any;
+            await processor.ProcessMsgEvent(event, room);
+            expect(MESSAGE_SENT).to.be.false;
+            expect(MESSAGE_EDITED).to.be.true;
+        });
+    });
     describe("ProcessStateEvent", () => {
         it("Should ignore unhandled states", async () => {
             const {processor} =  createMatrixEventProcessor();

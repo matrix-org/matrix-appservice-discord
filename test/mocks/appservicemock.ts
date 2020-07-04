@@ -73,6 +73,10 @@ export class AppserviceMock extends AppserviceMockBase {
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
         opts.roommembers = opts.roommembers || [];
+        this.cleanup();
+    }
+
+    public cleanup() {
         this.intents = {};
         this.botIntent = new IntentMock(this.opts, "BOT");
         this.botClient = this.botIntent.underlyingClient;
@@ -163,8 +167,8 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("sendText", roomId, body);
     }
 
-    public sendEvent(roomId: string, body: string) {
-        this.funcCalled("sendEvent", roomId, body);
+    public sendEvent(roomId: string, content: any) {
+        this.funcCalled("sendEvent", roomId, content);
     }
 
     public async ensureRegistered(): Promise<void> {
