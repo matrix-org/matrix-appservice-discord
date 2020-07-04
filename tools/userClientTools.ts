@@ -71,7 +71,7 @@ if (options.help || (options.add && options.remove) || !(options.add || options.
     process.exit(0);
 }
 
-const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
+const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig;
 const discordstore = new DiscordStore(config.database ? config.database : "discord.db");
 discordstore.init().then(() => {
     log.info("Loaded database.");
