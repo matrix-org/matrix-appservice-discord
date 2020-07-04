@@ -134,7 +134,7 @@ export class UserSyncroniser {
         if (userState.avatarUrl !== null) {
             log.verbose(`Updating avatar_url for ${userState.mxUserId} to "${userState.avatarUrl}"`);
             const data = await Util.DownloadFile(userState.avatarUrl);
-            const avatarMxc = await this.bridge.botIntent.underlyingClient.uploadContent(
+            const avatarMxc = await intent.underlyingClient.uploadContent(
                 data.buffer,
                 data.mimeType,
                 userState.avatarId,
