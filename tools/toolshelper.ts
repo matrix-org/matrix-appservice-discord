@@ -24,7 +24,8 @@ export class ToolsHelper {
             homeserverName: config.bridge.domain,
             homeserverUrl: config.bridge.homeserverUrl,
             port: 0,
-            registration,
+            // We assume the registration is well formed
+            registration: registration as any,
         });
 
         const store = needsStore ? new DiscordStore(config.database ? config.database.filename : "discord.db") : null;

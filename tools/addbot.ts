@@ -62,6 +62,6 @@ const yamlConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
 if (yamlConfig === null) {
   console.error("You have an error in your discord config.");
 }
-
-const url = Util.GetBotLink(yamlConfig);
+// We assume the config is well formed in this script
+const url = Util.GetBotLink(yamlConfig as any);
 console.log(`Go to ${url} to invite the bot into a guild.`);
