@@ -28,7 +28,7 @@ import { UserSyncroniser } from "./usersyncroniser";
 import { ChannelSyncroniser } from "./channelsyncroniser";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
 import { Appservice, Intent } from "matrix-bot-sdk";

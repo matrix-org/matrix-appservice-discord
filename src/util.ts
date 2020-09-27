@@ -17,7 +17,7 @@ limitations under the License.
 import * as http from "http";
 import * as https from "https";
 import { Buffer } from "buffer";
-import { Permissions } from "discord.js";
+import { Permissions } from "better-discord.js";
 import { DiscordBridgeConfig } from "./config";
 import { IMatrixEvent } from "./matrixtypes";
 

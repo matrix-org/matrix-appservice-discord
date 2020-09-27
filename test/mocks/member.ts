@@ -17,7 +17,7 @@ limitations under the License.
 import {MockCollection} from "./collection";
 import {MockUser} from "./user";
 import {MockRole} from "./role";
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */

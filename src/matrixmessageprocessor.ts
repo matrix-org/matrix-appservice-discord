@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, GuildMember } from "discord.js";
+import { User, GuildMember } from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig } from "./config";
