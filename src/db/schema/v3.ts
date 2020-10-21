@@ -78,6 +78,9 @@ directory.`);
             log.info("Moving ", row.userId);
             try {
                 const client = await clientFactory.getClient(row.token);
+                if (!client.user) {
+                    continue;
+                }
                 const dId = client.user.id;
                 if (dId === null) {
                     continue;

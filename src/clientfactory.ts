@@ -42,7 +42,7 @@ export class DiscordClientFactory {
         this.botClient = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
-            sync: true,
+            // sync: true,
         });
 
         try {
@@ -58,16 +58,17 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
-            sync: false,
+            // sync: false,
         });
 
         await client.login(token);
+        if (!client.user) {
+            throw new Error("Not logged in");
+        }
         const id = client.user.id;
 
         // This can be done asynchronously, because we don't need to block to return the id.
-        client.destroy().catch((err) => {
-            log.warn("Failed to destroy client ", id);
-        });
+        client.destroy();
         return id;
     }
 
@@ -90,7 +91,7 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
-            sync: true,
+            // sync: true,
         });
 
         const jsLog = new Log("discord.js-ppt");

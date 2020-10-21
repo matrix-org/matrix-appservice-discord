@@ -43,7 +43,7 @@ export class DiscordCommandHandler {
                 params: [],
                 permission: "MANAGE_WEBHOOKS",
                 run: async () => {
-                    if (await this.discord.Provisioner.MarkApproved(chan, msg.member, true)) {
+                    if (msg.member && await this.discord.Provisioner.MarkApproved(chan, msg.member, true)) {
                         return "Thanks for your response! The matrix bridge has been approved";
                     } else {
                         return "Thanks for your response, however" +
@@ -62,7 +62,7 @@ export class DiscordCommandHandler {
                 params: [],
                 permission: "MANAGE_WEBHOOKS",
                 run: async () => {
-                    if (await this.discord.Provisioner.MarkApproved(chan, msg.member, false)) {
+                    if (msg.member && await this.discord.Provisioner.MarkApproved(chan, msg.member, false)) {
                         return "Thanks for your response! The matrix bridge has been declined";
                     } else {
                         return "Thanks for your response, however" +
@@ -94,7 +94,8 @@ export class DiscordCommandHandler {
             name: {
                 description: "The display name or mxid of a matrix user",
                 get: async (name) => {
-                    const channelMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(msg.channel);
+                    const channel = msg.channel as unknown as Discord.Channel;
+                    const channelMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(channel);
                     const mxUserId = await Util.GetMxidFromName(intent, name, channelMxids);
                     return mxUserId;
                 },
@@ -105,7 +106,7 @@ export class DiscordCommandHandler {
             if (!Array.isArray(permission)) {
                 permission = [permission];
             }
-            return permission.every((p) => msg.member.hasPermission(p as Discord.PermissionResolvable));
+            return permission.every((p) => !!msg.member && msg.member.hasPermission(p as Discord.PermissionResolvable));
         };
 
         const reply = await Util.ParseCommand("!matrix", msg.content, actions, parameters, permissionCheck);

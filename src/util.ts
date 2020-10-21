@@ -163,7 +163,7 @@ export class Util {
 
     public static GetBotLink(config: DiscordBridgeConfig): string {
         /* tslint:disable:no-bitwise */
-        const perms = Permissions.FLAGS.READ_MESSAGES! |
+        const perms = Permissions.FLAGS.VIEW_CHANNEL! |
             Permissions.FLAGS.SEND_MESSAGES! |
             Permissions.FLAGS.CHANGE_NICKNAME! |
             Permissions.FLAGS.CONNECT! |

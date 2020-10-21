@@ -114,7 +114,7 @@ export class MatrixRoomHandler {
         // Join a whole bunch of users.
         // We delay the joins to give some implementations a chance to breathe
         let delay = this.config.limits.roomGhostJoinDelay;
-        for (const member of (channel as Discord.TextChannel).members.array()) {
+        for (const member of (channel as unknown as Discord.TextChannel).members.array()) {
             if (member.id === this.discord.GetBotId()) {
               continue;
             }

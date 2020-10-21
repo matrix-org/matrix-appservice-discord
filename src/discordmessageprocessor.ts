@@ -221,7 +221,10 @@ export class DiscordMessageProcessor {
 
     public InsertUser(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
-        const member = msg.guild.members.get(id);
+        if (!msg.guild) {
+            return "";
+        }
+        const member = msg.guild.members.resolve(id);
         const memberId = `@_discord_${id}:${this.opts.domain}`;
         const memberName = member ? member.displayName : memberId;
         if (!html) {
@@ -239,7 +242,10 @@ export class DiscordMessageProcessor {
 
     public InsertRole(node: IDiscordNode, msg: Discord.Message, html: boolean = false): string {
         const id = node.id;
-        const role = msg.guild.roles.get(id);
+        if (!msg.guild) {
+            return "";
+        }
+        const role = msg.guild.roles.resolve(id);
         if (!role) {
             return html ? `&lt;@&amp;${id}&gt;` : `<@&${id}>`;
         }
@@ -278,8 +284,9 @@ export class DiscordMessageProcessor {
                     replace = `:${name}:`;
                 }
             } catch (ex) {
+                const guildId = msg.guild ? msg.guild.id : "<<unknown>>";
                 log.warn(
-                    `Could not insert emoji ${id} for msg ${msg.id} in guild ${msg.guild.id}: ${ex}`,
+                    `Could not insert emoji ${id} for msg ${msg.id} in guild ${guildId}: ${ex}`,
                 );
                 if (html) {
                     replace = `&lt;${animated ? "a" : ""}:${nameHtml}:${id}&gt;`;
@@ -298,7 +305,7 @@ export class DiscordMessageProcessor {
         while (results !== null) {
             const id = results[ID_CHANNEL_INSERT_REGEX];
             let replace = "";
-            const channel = msg.guild.channels.get(id);
+            const channel = msg.guild ? msg.guild.channels.resolve(id) : null;
             if (channel) {
                 const alias = await this.opts.bot!.ChannelSyncroniser.GetAliasFromChannel(channel);
                 if (alias) {

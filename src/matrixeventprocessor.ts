@@ -154,7 +154,7 @@ export class MatrixEventProcessor {
             status: "critical",
         });
         const channel = await this.discord.GetChannelFromRoomId(roomId);
-        await (channel as Discord.TextChannel).send(
+        await (channel as unknown as Discord.TextChannel).send(
           "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
         );
         await sendPromise;
@@ -174,7 +174,7 @@ export class MatrixEventProcessor {
         if (typeof(file) === "string") {
             embedSet.messageEmbed.description += " " + file;
         } else {
-            opts.file = file;
+            opts.files = [file];
         }
 
         await this.discord.send(embedSet, opts, roomLookup, event);
@@ -186,7 +186,7 @@ export class MatrixEventProcessor {
 
     public async ProcessStateEvent(event: IMatrixEvent) {
         log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as unknown as Discord.TextChannel;
 
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {

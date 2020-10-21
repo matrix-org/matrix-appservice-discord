@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, Presence } from "discord.js";
+import { User, Presence, ActivityType } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
@@ -107,10 +107,11 @@ export class PresenceHandler {
     private getUserPresence(presence: Presence): PresenceHandlerStatus {
         const status = new PresenceHandlerStatus();
 
-        if (presence.game) {
-            status.StatusMsg = `${presence.game.streaming ? "Streaming" : "Playing"} ${presence.game.name}`;
-            if (presence.game.url) {
-                status.StatusMsg += ` | ${presence.game.url}`;
+        const game = presence.activities.find((a) => a.type === "STREAMING" || a.type === "PLAYING");
+        if (game) {
+            status.StatusMsg = `${game.type === "STREAMING" ? "Streaming" : "Playing"} ${game.name}`;
+            if (game.url) {
+                status.StatusMsg += ` | ${game.url}`;
             }
         }
 

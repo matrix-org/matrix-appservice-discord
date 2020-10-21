@@ -66,7 +66,7 @@ export class ChannelSyncroniser {
 
     }
 
-    public async OnUpdate(channel: Discord.Channel) {
+    public async OnUpdate(channel: Discord.Channel | Discord.TextChannel) {
         if (channel.type !== "text") {
             return; // Not supported for now
         }
@@ -81,6 +81,7 @@ export class ChannelSyncroniser {
     public async OnGuildUpdate(guild: Discord.Guild, force = false) {
         log.verbose(`Got guild update for guild ${guild.id}`);
         const channelStates: IChannelState[] = [];
+        // TODO: Complex loop needs converting
         for (const [_, channel] of guild.channels) {
             if (channel.type !== "text") {
                 continue; // not supported for now
@@ -105,7 +106,7 @@ export class ChannelSyncroniser {
         }
     }
 
-    public async OnUnbridge(channel: Discord.Channel, roomId: string) {
+    public async OnUnbridge(channel: Discord.TextChannel | Discord.Channel, roomId: string) {
         try {
             const entry = (await this.roomStore.getEntriesByMatrixId(roomId))[0];
             const opts = new DiscordBridgeConfigChannelDeleteOptions();
@@ -119,7 +120,7 @@ export class ChannelSyncroniser {
         }
     }
 
-    public async OnDelete(channel: Discord.Channel) {
+    public async OnDelete(channel: Discord.Channel | Discord.TextChannel) {
         if (channel.type !== "text") {
             log.info(`Channel ${channel.id} was deleted but isn't a text channel, so ignoring.`);
             return;
@@ -128,7 +129,7 @@ export class ChannelSyncroniser {
         let roomids;
         let entries: IRoomStoreEntry[];
         try {
-            roomids = await this.GetRoomIdsFromChannel(channel);
+            roomids = await this.GetRoomIdsFromChannel(channel as Discord.Channel);
             entries = await this.roomStore.getEntriesByMatrixIds(roomids);
         } catch (e) {
             log.warn(`Couldn't find roomids for deleted channel ${channel.id}`);
@@ -144,6 +145,7 @@ export class ChannelSyncroniser {
     }
 
     public async OnGuildDelete(guild: Discord.Guild) {
+        // TODO: Complex loop needs converting
         for (const [_, channel] of guild.channels) {
             try {
                 await this.OnDelete(channel);
@@ -153,7 +155,7 @@ export class ChannelSyncroniser {
         }
     }
 
-    public async GetRoomIdsFromChannel(channel: Discord.Channel): Promise<string[]> {
+    public async GetRoomIdsFromChannel(channel: Discord.Channel | Discord.TextChannel): Promise<string[]> {
         const rooms = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
         });
@@ -164,10 +166,10 @@ export class ChannelSyncroniser {
         return rooms.map((room) => room.matrix!.getId() as string);
     }
 
-    public async GetAliasFromChannel(channel: Discord.Channel): Promise<string | null> {
+    public async GetAliasFromChannel(channel: Discord.Channel | Discord.TextChannel): Promise<string | null> {
         let rooms: string[] = [];
         try {
-            rooms = await this.GetRoomIdsFromChannel(channel);
+            rooms = await this.GetRoomIdsFromChannel(channel as Discord.Channel);
         } catch (err) { } // do nothing, our rooms array will just be empty
         for (const room of rooms) {
             try {

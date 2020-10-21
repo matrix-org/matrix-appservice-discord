@@ -139,7 +139,7 @@ export class MatrixMessageProcessor {
     private parseUser(id: string): string {
         const USER_REGEX = /^@_discord_([0-9]*)/;
         const match = id.match(USER_REGEX);
-        if (!match || !this.guild.members.get(match[1])) {
+        if (!match || !this.guild.members.resolve(match[1])) {
             return "";
         }
         return `<@${match[1]}>`;
@@ -148,7 +148,7 @@ export class MatrixMessageProcessor {
     private async parseChannel(id: string): Promise<string> {
         const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*):/;
         const match = id.match(CHANNEL_REGEX);
-        if (!match || !this.guild.channels.get(match[1])) {
+        if (!match || !this.guild.channels.resolve(match[1])) {
             /*
             This isn't formatted in #_discord_, so let's fetch the internal room ID
             and see if it is still a bridged room!
@@ -210,7 +210,7 @@ export class MatrixMessageProcessor {
             try {
                 const emojiDb = await this.bot.GetEmojiByMxc(attrs.src);
                 id = emojiDb.EmojiId;
-                emoji = this.guild.emojis.find((e) => e.id === id);
+                emoji = this.guild.emojis.resolve(id);
             } catch (e) {
                 emoji = null;
             }
@@ -221,7 +221,7 @@ export class MatrixMessageProcessor {
             let emojiName = "";
             if (match) {
                 emojiName = match[1];
-                emoji = this.guild.emojis.find((e) => e.name === emojiName);
+                emoji = this.guild.emojis.resolve(emojiName);
             }
         }
 

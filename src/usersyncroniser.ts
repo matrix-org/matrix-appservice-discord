@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, GuildMember } from "discord.js";
+import { User, GuildMember, PartialGuildMember } from "discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { Bridge, Intent, MatrixUser } from "matrix-appservice-bridge";
@@ -43,7 +43,7 @@ const DEFAULT_GUILD_STATE = {
 };
 
 export interface IUserState {
-    avatarId: string;
+    avatarId: string | null;
     avatarUrl: string | null;
     createUser: boolean;
     displayName: string | null;
@@ -251,7 +251,7 @@ export class UserSyncroniser {
             log.verbose(`Could not find user in remote user store.`);
             userState.createUser = true;
             userState.displayName = displayName;
-            userState.avatarUrl = discordUser.avatarURL;
+            userState.avatarUrl = discordUser.avatarURL();
             userState.avatarId = discordUser.avatar;
             return userState;
         }
@@ -263,10 +263,10 @@ export class UserSyncroniser {
         }
 
         const oldAvatarUrl = remoteUser.avatarurl;
-        if (oldAvatarUrl !== discordUser.avatarURL) {
+        if (oldAvatarUrl !== discordUser.avatarURL()) {
             log.verbose(`User ${discordUser.id} avatarurl should be updated`);
             if (discordUser.avatarURL !== null) {
-                userState.avatarUrl = discordUser.avatarURL;
+                userState.avatarUrl = discordUser.avatarURL();
                 userState.avatarId = discordUser.avatar;
             } else {
                 userState.removeAvatar = oldAvatarUrl !== null;
@@ -291,7 +291,7 @@ export class UserSyncroniser {
             displayName: name,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
-            roles: newMember.roles.map((role) => { return {
+            roles: newMember.roles.valueOf().mapValues((role) => { return {
                 color: role.color,
                 name: role.name,
                 position: role.position,
@@ -326,11 +326,11 @@ export class UserSyncroniser {
         await this.OnUpdateGuildMember(member, true, false);
     }
 
-    public async OnRemoveGuildMember(member: GuildMember) {
+    public async OnRemoveGuildMember(member: GuildMember | PartialGuildMember) {
         /* NOTE: This can be because of a kick, ban or the user just leaving. Discord doesn't tell us. */
         log.info(`Leaving ${member.id} to all rooms for guild ${member.guild.id}`);
         const rooms = await this.discord.GetRoomIdsFromGuild(member.guild, undefined, false);
-        const intent = this.discord.GetIntentFromDiscordMember(member);
+        const intent = this.discord.GetIntentFromDiscordMember(member as GuildMember);
         return Promise.all(
             rooms.map(
                 async (roomId) => this.leave(intent, roomId, false),
