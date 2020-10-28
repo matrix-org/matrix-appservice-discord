@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js"
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import { Util, wrapError } from "./util";
@@ -54,9 +54,9 @@ export class MatrixEventProcessorOpts {
 }
 
 export interface IMatrixEventProcessorResult {
-    messageEmbed: Discord.RichEmbed;
-    replyEmbed?: Discord.RichEmbed;
-    imageEmbed?: Discord.RichEmbed;
+    messageEmbed: Discord.MessageEmbed;
+    replyEmbed?: Discord.MessageEmbed;
+    imageEmbed?: Discord.MessageEmbed;
 }
 
 export class MatrixEventProcessor {
@@ -204,9 +204,9 @@ export class MatrixEventProcessor {
         if (typeof(file) === "string") {
             embedSet.messageEmbed.description += " " + file;
         } else if ((file as Discord.FileOptions).name && (file as Discord.FileOptions).attachment) {
-            opts.file = file as Discord.FileOptions;
+            opts.files = [file as Discord.FileOptions];
         } else {
-            embedSet.imageEmbed = file as Discord.RichEmbed;
+            embedSet.imageEmbed = file as Discord.MessageEmbed;
         }
 
     // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
@@ -303,7 +303,7 @@ export class MatrixEventProcessor {
             body = await this.matrixMsgProcessor.FormatMessage(content as IMatrixMessage, channel.guild, params);
         }
 
-        const messageEmbed = new Discord.RichEmbed();
+        const messageEmbed = new Discord.MessageEmbed();
         messageEmbed.setDescription(body);
         await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
         const replyEmbed = getReply ? (await this.GetEmbedForReply(event, channel)) : undefined;
@@ -327,7 +327,7 @@ export class MatrixEventProcessor {
         event: IMatrixEvent,
         mxClient: MatrixClient,
         sendEmbeds: boolean = false,
-    ): Promise<string|Discord.FileOptions|Discord.RichEmbed> {
+    ): Promise<string|Discord.FileOptions|Discord.MessageEmbed> {
         if (!this.HasAttachment(event)) {
             return "";
         }
@@ -361,7 +361,7 @@ export class MatrixEventProcessor {
             }
         }
         if (sendEmbeds && event.content.info.mimetype.split("/")[0] === "image") {
-            return new Discord.RichEmbed()
+            return new Discord.MessageEmbed()
                 .setImage(url);
         }
         return `[${name}](${url})`;
@@ -370,7 +370,7 @@ export class MatrixEventProcessor {
     public async GetEmbedForReply(
         event: IMatrixEvent,
         channel: Discord.TextChannel,
-    ): Promise<Discord.RichEmbed|undefined> {
+    ): Promise<Discord.MessageEmbed|undefined> {
         if (!event.content) {
             event.content = {};
         }
@@ -416,7 +416,7 @@ export class MatrixEventProcessor {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
         }
         // For some reason we failed to get the event, so using fallback.
-        const embed = new Discord.RichEmbed();
+        const embed = new Discord.MessageEmbed();
         embed.setDescription("Reply with unknown content");
         embed.setAuthor("Unknown");
         return embed;
@@ -487,7 +487,7 @@ export class MatrixEventProcessor {
         return hasAttachment;
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
+    private async SetEmbedAuthor(embed: Discord.MessageEmbed, sender: string, profile?: {
         displayname: string,
         avatar_url: string|undefined }) {
         let displayName = sender;
@@ -500,13 +500,13 @@ export class MatrixEventProcessor {
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
                     userOrMember.username,
-                    userOrMember.avatarURL,
+                    userOrMember.avatarURL() || undefined,
                 );
                 return;
             } else if (userOrMember instanceof Discord.GuildMember) {
                 embed.setAuthor(
                     userOrMember.displayName,
-                    userOrMember.user.avatarURL,
+                    userOrMember.user.avatarURL() || undefined,
                 );
                 return;
             }

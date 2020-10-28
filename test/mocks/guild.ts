@@ -17,7 +17,7 @@ limitations under the License.
 import {MockCollection} from "./collection";
 import {MockMember} from "./member";
 import {MockEmoji} from "./emoji";
-import {Channel} from "discord.js";
+import {Channel} from "better-discord.js"
 import {MockRole} from "./role";
 
 // we are a test file and thus need those
@@ -37,6 +37,14 @@ export class MockGuild {
         channels.forEach((item) => {
             this.channels.set(item.id, item);
         });
+    }
+
+    public get client() {
+        return {
+            options: { 
+                messageCacheMaxSize: -1,
+            }
+        };
     }
 
     public async fetchMember(id: string): Promise<MockMember|Error> {

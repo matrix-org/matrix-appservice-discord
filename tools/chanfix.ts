@@ -98,7 +98,7 @@ async function run() {
     const promiseList2: Promise<void>[] = [];
 
     let curDelay = config.limits.roomGhostJoinDelay; // we'll just re-use this
-    client.guilds.forEach((guild) => {
+    client.guilds.cache.forEach((guild) => {
         promiseList2.push((async () => {
             await Util.DelayedPromise(curDelay);
             try {

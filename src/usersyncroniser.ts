@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, GuildMember } from "discord.js";
+import { User, GuildMember } from "better-discord.js"
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig } from "./config";
@@ -256,8 +256,10 @@ export class UserSyncroniser {
             log.verbose(`Could not find user in remote user store.`);
             userState.createUser = true;
             userState.displayName = displayName;
-            userState.avatarUrl = discordUser.avatarURL;
-            userState.avatarId = discordUser.avatar;
+            if (discordUser.avatar) {
+                userState.avatarUrl = discordUser.avatarURL();
+                userState.avatarId = discordUser.avatar;
+            }
             return userState;
         }
 
@@ -268,13 +270,13 @@ export class UserSyncroniser {
         }
 
         const oldAvatarUrl = remoteUser.avatarurl;
-        if (oldAvatarUrl !== discordUser.avatarURL) {
+        if (oldAvatarUrl !== discordUser.avatarURL()) {
             log.verbose(`User ${discordUser.id} avatarurl should be updated`);
-            if (discordUser.avatarURL !== null) {
-                userState.avatarUrl = discordUser.avatarURL;
+            if (discordUser.avatar) {
+                userState.avatarUrl = discordUser.avatarURL();
                 userState.avatarId = discordUser.avatar;
             } else {
-                userState.removeAvatar = oldAvatarUrl !== null;
+                userState.removeAvatar = userState.avatarId === null;
             }
         }
 
@@ -296,7 +298,7 @@ export class UserSyncroniser {
             displayName: name,
             id: newMember.id,
             mxUserId: `@_discord_${newMember.id}:${this.config.bridge.domain}`,
-            roles: newMember.roles.map((role) => { return {
+            roles: newMember.roles.cache.map((role) => { return {
                 color: role.color,
                 name: role.name,
                 position: role.position,

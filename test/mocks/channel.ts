@@ -16,7 +16,8 @@ limitations under the License.
 
 import {MockMember} from "./member";
 import {MockCollection} from "./collection";
-import {Permissions, PermissionResolvable} from "discord.js";
+import {Permissions, PermissionResolvable, TextChannel} from "better-discord.js"
+import { MockGuild } from "./guild";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -38,5 +39,18 @@ export class MockChannel {
 
     public permissionsFor(member: MockMember) {
         return new Permissions(Permissions.FLAGS.MANAGE_WEBHOOKS as PermissionResolvable);
+    }
+}
+
+export class MockTextChannel extends TextChannel {
+    constructor(guild?: MockGuild, channelData: any = {}) {
+        // Mock the nessacery
+        super(guild || {
+            client: {
+                options: { 
+                    messageCacheMaxSize: -1,
+                }
+            }
+        } as any, channelData);
     }
 }

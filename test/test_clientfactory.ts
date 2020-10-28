@@ -22,7 +22,7 @@ import { DiscordBridgeConfigAuth } from "../src/config";
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 const DiscordClientFactory = Proxyquire("../src/clientfactory", {
-    "discord.js": { Client: require("./mocks/discordclient").MockDiscordClient },
+    "better-discord.js": { Client: require("./mocks/discordclient").MockDiscordClient },
 }).DiscordClientFactory;
 
 const STORE = {

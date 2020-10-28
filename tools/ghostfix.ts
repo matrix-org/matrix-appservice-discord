@@ -87,9 +87,9 @@ async function run() {
     const promiseList: Promise<void>[] = [];
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
-        client.guilds.forEach((guild) => {
-            guild.members.forEach((member) => {
-                if (member.id === client.user.id) {
+        client.guilds.cache.forEach((guild) => {
+            guild.members.cache.forEach((member) => {
+                if (member.id === client.user?.id) {
                     return;
                 }
                 promiseList.push((async () => {

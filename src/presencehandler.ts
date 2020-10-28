@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, Presence } from "discord.js";
+import { User, Presence } from "better-discord.js"
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
@@ -32,7 +32,7 @@ interface IMatrixPresence {
 }
 
 export class PresenceHandler {
-    private presenceQueue: User[];
+    private presenceQueue: Presence[];
     private interval: NodeJS.Timeout | null;
     constructor(private bot: DiscordBot) {
         this.presenceQueue = [];
@@ -62,17 +62,17 @@ export class PresenceHandler {
         this.interval = null;
     }
 
-    public EnqueueUser(user: User) {
-        if (user.id !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.id === user.id) === undefined) {
-            log.verbose(`Adding ${user.id} (${user.username}) to the presence queue`);
-            this.presenceQueue.push(user);
+    public EnqueueUser(presence: Presence) {
+        if (presence.userID !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.userID === presence.userID) === undefined) {
+            log.verbose(`Adding ${presence.userID} (${presence.user?.username}) to the presence queue`);
+            this.presenceQueue.push(presence);
             MetricPeg.get.setPresenceCount(this.presenceQueue.length);
         }
     }
 
     public DequeueUser(user: User) {
         const index = this.presenceQueue.findIndex((item) => {
-            return user.id === item.id;
+            return user.id === item.userID;
         });
         if (index !== -1) {
             this.presenceQueue.splice(index, 1);
@@ -84,20 +84,23 @@ export class PresenceHandler {
         }
     }
 
-    public async ProcessUser(user: User): Promise<boolean> {
-        const status = this.getUserPresence(user.presence);
-        await this.setMatrixPresence(user, status);
+    public async ProcessUser(presence: Presence): Promise<boolean> {
+        if (!presence.user) {
+            return true;
+        }
+        const status = this.getUserPresence(presence);
+        await this.setMatrixPresence(presence.user, status);
         return status.ShouldDrop;
     }
 
     private async processIntervalThread() {
-        const user = this.presenceQueue.shift();
-        if (user) {
-            const proccessed = await this.ProcessUser(user);
+        const presence = this.presenceQueue.shift();
+        if (presence) {
+            const proccessed = await this.ProcessUser(presence);
             if (!proccessed) {
-                this.presenceQueue.push(user);
+                this.presenceQueue.push(presence);
             } else {
-                log.verbose(`Dropping ${user.id} from the presence queue.`);
+                log.verbose(`Dropping ${presence.userID} from the presence queue.`);
                 MetricPeg.get.setPresenceCount(this.presenceQueue.length);
             }
         }
@@ -106,10 +109,13 @@ export class PresenceHandler {
     private getUserPresence(presence: Presence): PresenceHandlerStatus {
         const status = new PresenceHandlerStatus();
 
-        if (presence.game) {
-            status.StatusMsg = `${presence.game.streaming ? "Streaming" : "Playing"} ${presence.game.name}`;
-            if (presence.game.url) {
-                status.StatusMsg += ` | ${presence.game.url}`;
+        // How do we show multiple activities?
+        if (presence.activities[0]) {
+            const activity = presence.activities[0];
+            const type = activity.type[0] + activity.type.substring(1).toLowerCase(); // STREAMING -> Streaming;
+            status.StatusMsg = `${type} ${activity.name}`;
+            if (activity.url) {
+                status.StatusMsg += ` | ${activity.url}`;
             }
         }
 

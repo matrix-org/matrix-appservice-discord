@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { expect } from "chai";
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js"
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
@@ -95,9 +95,10 @@ describe("PresenceHandler", () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
-            member.MockSetPresence(new Discord.Presence({
+            member.MockSetPresence(new Discord.Presence({} as any, {
                 status: "online",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", undefined);
@@ -106,9 +107,10 @@ describe("PresenceHandler", () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
-            member.MockSetPresence(new Discord.Presence({
+            member.MockSetPresence(new Discord.Presence({} as any, {
                 status: "offline",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "offline", undefined);
@@ -117,9 +119,10 @@ describe("PresenceHandler", () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
-            member.MockSetPresence(new Discord.Presence({
+            member.MockSetPresence(new Discord.Presence({} as any, {
                 status: "idle",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "unavailable", undefined);
@@ -128,16 +131,18 @@ describe("PresenceHandler", () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
-            member.MockSetPresence(new Discord.Presence({
+            member.MockSetPresence(new Discord.Presence({} as any, {
                 status: "dnd",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb");
-            member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game"}, {} as any),
+            member.MockSetPresence(new Discord.Presence({} as any, {
+                activities: ({name: "Test Game", type: 'PLAYING'}),
                 status: "dnd",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb | Playing Test Game");
@@ -146,17 +151,19 @@ describe("PresenceHandler", () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
             const member = new MockUser("abc", "def") as any;
-            member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game"}, {} as any),
+            member.MockSetPresence(new Discord.Presence({} as any, {
+                activities: ({name: "Test Game", type: 'PLAYING'}),
                 status: "online",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Playing Test Game");
-            member.MockSetPresence(new Discord.Presence({
-                game: new Discord.Game({name: "Test Game", type: 1}, {} as any),
+            member.MockSetPresence(new Discord.Presence({} as any, {
+                activities: ({name: "Test Game", type: 'STREAMING'}),
                 status: "online",
-            }, {} as any));
+                user: member,
+            }));
             await handler.ProcessUser(member);
             appservice.getIntentForSuffix(member.id)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Streaming Test Game");

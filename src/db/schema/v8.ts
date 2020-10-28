@@ -17,8 +17,6 @@ limitations under the License.
 import {IDbSchema} from "./dbschema";
 import {DiscordStore} from "../../store";
 import { Log } from "../../log";
-import { RemoteStoreRoom, MatrixStoreRoom } from "../roomstore";
-const log = new Log("SchemaV8");
 
 export class Schema implements IDbSchema {
     public description = "create room store tables";

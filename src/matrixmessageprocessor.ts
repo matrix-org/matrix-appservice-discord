@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js"
 import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
@@ -86,7 +86,8 @@ export class MatrixMessageProcessor {
             getChannelId: async (mxid: string) => {
                 const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*):/;
                 const match = mxid.match(CHANNEL_REGEX);
-                if (!match || !guild.channels.get(match[1])) {
+                const channel = match && await guild.channels.resolve(match[1]);
+                if (!channel) {
                     /*
                     This isn't formatted in #_discord_, so let's fetch the internal room ID
                     and see if it is still a bridged room!
@@ -103,26 +104,27 @@ export class MatrixMessageProcessor {
                     }
                     return null;
                 }
-                return match[1];
+                return match && match[1] || null;
             },
             getEmoji: async (mxc: string, name: string) => {
-                let emoji: Discord.Emoji | null = null;
+                let emoji: {id: string, animated: boolean, name: string} | null = null;
                 try {
                     const emojiDb = await this.bot.GetEmojiByMxc(mxc);
                     const id = emojiDb.EmojiId;
-                    emoji = guild.emojis.find((e) => e.id === id);
+                    emoji = await guild.emojis.resolve(id);
                 } catch (e) {
                     emoji = null;
                 }
                 if (!emoji) {
-                    emoji = guild.emojis.find((e) => e.name === name);
+                    emoji = await guild.emojis.resolve(name);
                 }
                 return emoji;
             },
             getUserId: async (mxid: string) => {
                 const USER_REGEX = /^@_discord_([0-9]*)/;
                 const match = mxid.match(USER_REGEX);
-                if (!match || !guild.members.get(match[1])) {
+                const member = match && await guild.members.fetch(match[1]);
+                if (!match || member) {
                     return null;
                 }
                 return match[1];

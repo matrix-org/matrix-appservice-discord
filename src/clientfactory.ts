@@ -16,7 +16,7 @@ limitations under the License.
 
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient, TextChannel } from "discord.js";
+import { Client as DiscordClient, TextChannel } from "better-discord.js"
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
 
@@ -42,11 +42,10 @@ export class DiscordClientFactory {
         this.botClient = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
-            sync: true,
         });
 
         try {
-            await this.botClient.login(this.config.botToken);
+            await this.botClient.login(this.config.botToken, true);
         } catch (err) {
             log.error("Could not login as the bot user. This is bad!", err);
             throw err;
@@ -58,16 +57,14 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
-            sync: false,
         });
 
-        await client.login(token);
-        const id = client.user.id;
-
-        // This can be done asynchronously, because we don't need to block to return the id.
-        client.destroy().catch((err) => {
-            log.warn("Failed to destroy client ", id);
-        });
+        await client.login(token, false);
+        const id = client.user?.id;
+        client.destroy();
+        if (!id) {
+            throw Error('Client did not have a user object, cannot determine ID');
+        }
         return id;
     }
 
@@ -90,7 +87,6 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
-            sync: true,
         });
 
         const jsLog = new Log("discord.js-ppt");
@@ -99,7 +95,7 @@ export class DiscordClientFactory {
         client.on("warn", (msg) => { jsLog.warn(msg); });
 
         try {
-            await client.login(token);
+            await client.login(token, false);
             log.verbose("Logged in. Storing ", userId);
             this.clients.set(userId, client);
             return client;

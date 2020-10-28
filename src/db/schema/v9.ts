@@ -16,7 +16,6 @@ limitations under the License.
 
 import { IDbSchema } from "./dbschema";
 import { DiscordStore } from "../../store";
-import { Log } from "../../log";
 
 export class Schema implements IDbSchema {
     public description = "create user store tables";
