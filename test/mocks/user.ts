@@ -25,10 +25,14 @@ export class MockUser {
         public id: string,
         public username: string = "",
         public discriminator: string = "",
-        public avatarURL: string | null = "",
+        public avatarUrl: string | null = "",
         public avatar: string | null = "",
         public bot: boolean = false,
     ) { }
+
+    public avatarURL() {
+        return this.avatarUrl;
+    }
 
     public MockSetPresence(presence: Presence) {
         this.presence = presence;

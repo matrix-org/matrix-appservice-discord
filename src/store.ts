@@ -69,7 +69,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         }
         const BACKUP_NAME = this.config.filename + ".backup";
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             // Check to see if a backup file already exists.
             fs.access(BACKUP_NAME, (err) => {
                 return resolve(err === null);
@@ -103,7 +103,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         log.info(`Database schema version is ${version}, latest version is ${targetSchema}`);
         while (version < targetSchema) {
             version++;
-            const schemaClass = require(`./db/schema/v${version}.js`).Schema;
+            const schemaClass = require(`./db/schema/v${version}`).Schema;
             let schema: IDbSchema;
             schema = (new schemaClass() as IDbSchema);
             log.info(`Updating database to v${version}, "${schema.description}"`);

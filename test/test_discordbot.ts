@@ -16,7 +16,6 @@ limitations under the License.
 
 import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
-import * as Discord from "better-discord.js"
 
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";

@@ -63,11 +63,18 @@ export class PresenceHandler {
     }
 
     public EnqueueUser(presence: Presence) {
-        if (presence.userID !== this.bot.GetBotId() && this.presenceQueue.find((u) => u.userID === presence.userID) === undefined) {
-            log.verbose(`Adding ${presence.userID} (${presence.user?.username}) to the presence queue`);
-            this.presenceQueue.push(presence);
-            MetricPeg.get.setPresenceCount(this.presenceQueue.length);
+        if (presence.userID === this.bot.GetBotId()) {
+            return;
         }
+
+        // Delete stale presence
+        const indexOfPresence = this.presenceQueue.findIndex((u) => u.userID === presence.userID);
+        if (indexOfPresence !== -1) {
+            this.presenceQueue.splice(indexOfPresence, 1);
+        }
+        log.verbose(`Adding ${presence.userID} (${presence.user?.username}) to the presence queue`);
+        this.presenceQueue.push(presence);
+        MetricPeg.get.setPresenceCount(this.presenceQueue.length);
     }
 
     public DequeueUser(user: User) {
@@ -86,6 +93,7 @@ export class PresenceHandler {
 
     public async ProcessUser(presence: Presence): Promise<boolean> {
         if (!presence.user) {
+            console.log("No user in presence!");
             return true;
         }
         const status = this.getUserPresence(presence);
@@ -110,8 +118,8 @@ export class PresenceHandler {
         const status = new PresenceHandlerStatus();
 
         // How do we show multiple activities?
-        if (presence.activities[0]) {
-            const activity = presence.activities[0];
+        const activity = presence.activities[0];
+        if (activity) {
             const type = activity.type[0] + activity.type.substring(1).toLowerCase(); // STREAMING -> Streaming;
             status.StatusMsg = `${type} ${activity.name}`;
             if (activity.url) {
@@ -123,7 +131,7 @@ export class PresenceHandler {
             status.Presence = "online";
         } else if (presence.status === "dnd") {
             status.Presence = "online";
-            status.StatusMsg = status.StatusMsg ? "Do not disturb | " + status.StatusMsg : "Do not disturb";
+            status.StatusMsg = status.StatusMsg ? `Do not disturb | ${status.StatusMsg}` : "Do not disturb";
         } else if (presence.status === "offline") {
             status.Presence = "offline";
             status.ShouldDrop = true; // Drop until we recieve an update.
@@ -135,10 +143,6 @@ export class PresenceHandler {
 
     private async setMatrixPresence(user: User, status: PresenceHandlerStatus) {
         const intent = this.bot.GetIntentFromDiscordMember(user);
-        const statusObj: IMatrixPresence = {presence: status.Presence};
-        if (status.StatusMsg) {
-            statusObj.status_msg = status.StatusMsg;
-        }
         try {
             await intent.ensureRegistered();
             await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg);

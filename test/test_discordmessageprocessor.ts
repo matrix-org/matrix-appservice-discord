@@ -185,7 +185,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <:hello:3333333>";
@@ -201,7 +201,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#3333333>";
@@ -214,7 +214,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#456>";
@@ -228,7 +228,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             const channel = new MockTextChannel(guild, {id: "678", name: "TestChannel"});
-            guild.channels.set("678", channel);
+            guild.channels.cache.set("678", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#678>";

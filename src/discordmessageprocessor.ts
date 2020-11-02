@@ -77,7 +77,7 @@ export class DiscordMessageProcessor {
                 return null;
             },
             getUser: async (id: string) => {
-                const member = await msg.guild?.members.fetch(id);
+                const member = await msg.guild?.members.resolve(id);
                 const mxid = `@_discord_${id}:${this.domain}`;
                 const name = member ? member.displayName : mxid;
                 return {
