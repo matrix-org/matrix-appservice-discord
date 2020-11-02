@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, Presence } from "better-discord.js"
+import { User, Presence } from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
@@ -93,7 +93,6 @@ export class PresenceHandler {
 
     public async ProcessUser(presence: Presence): Promise<boolean> {
         if (!presence.user) {
-            console.log("No user in presence!");
             return true;
         }
         const status = this.getUserPresence(presence);

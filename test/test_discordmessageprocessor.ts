@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import * as Chai from "chai"; // TODO: Use expect
-import * as Discord from "better-discord.js"
+import * as Discord from "better-discord.js";
 import { DiscordMessageProcessor } from "../src/discordmessageprocessor";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
@@ -192,7 +192,7 @@ describe("DiscordMessageProcessor", () => {
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "Hello :hello:");
             Chai.assert.equal(result.formattedBody, "Hello <img alt=\":hello:\" ti" +
-                "tle=\":hello:\" height=\"32\" src=\"mxc://image\" />");
+                "tle=\":hello:\" height=\"32\" src=\"mxc://image\" data-mx-emoticon />");
         });
     });
     describe("InsertChannelPills / HTML", () => {

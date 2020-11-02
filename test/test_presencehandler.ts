@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { expect } from "chai";
-import * as Discord from "better-discord.js"
+import * as Discord from "better-discord.js";
 
 import { PresenceHandler } from "../src/presencehandler";
 import { DiscordBot } from "../src/bot";
@@ -123,7 +123,7 @@ describe("PresenceHandler", () => {
             await handler.ProcessUser(member as any);
             appservice.getIntentForSuffix(member.userID)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb");
-            const member2 = new MockPresence(new MockUser("abc", "alice"), "def", "dnd", [{name: "Test Game", type: 'PLAYING'}]);
+            const member2 = new MockPresence(new MockUser("abc", "alice"), "def", "dnd", [{name: "Test Game", type: "PLAYING"}]);
             await handler.ProcessUser(member2  as any);
             appservice.getIntentForSuffix(member.userID)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Do not disturb | Playing Test Game");
@@ -131,11 +131,11 @@ describe("PresenceHandler", () => {
         it("processes a user playing games", async () => {
             lastStatus = null;
             const handler = new PresenceHandler(bot as DiscordBot);
-            const member = new MockPresence(new MockUser("abc", "alice"), "def", "online", [{name: "Test Game", type: 'PLAYING'}]);
+            const member = new MockPresence(new MockUser("abc", "alice"), "def", "online", [{name: "Test Game", type: "PLAYING"}]);
             await handler.ProcessUser(member  as any);
             appservice.getIntentForSuffix(member.userID)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Playing Test Game");
-            const member2 = new MockPresence(new MockUser("abc", "alice"), "def", "online", [{name: "Test Game", type: 'STREAMING'}]);
+            const member2 = new MockPresence(new MockUser("abc", "alice"), "def", "online", [{name: "Test Game", type: "STREAMING"}]);
             await handler.ProcessUser(member2  as any);
             appservice.getIntentForSuffix(member.userID)
                 .underlyingClient.wasCalled("setPresenceStatus", true, "online", "Streaming Test Game");

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "better-discord.js"
+import * as Discord from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import { Util, wrapError } from "./util";
@@ -390,7 +390,7 @@ export class MatrixEventProcessor {
             if (!sourceEvent || !sourceEvent.content || !sourceEvent.content.body) {
                 throw Error("No content could be found");
             }
-            const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
+            const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, true)).messageEmbed;
 
             // if we reply to a discord member, ping them!
             if (this.bridge.isNamespacedUser(sourceEvent.sender)) {

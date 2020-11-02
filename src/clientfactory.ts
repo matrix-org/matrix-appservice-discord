@@ -16,7 +16,7 @@ limitations under the License.
 
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient, TextChannel } from "better-discord.js"
+import { Client as DiscordClient, TextChannel } from "better-discord.js";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
 
@@ -63,7 +63,7 @@ export class DiscordClientFactory {
         const id = client.user?.id;
         client.destroy();
         if (!id) {
-            throw Error('Client did not have a user object, cannot determine ID');
+            throw Error("Client did not have a user object, cannot determine ID");
         }
         return id;
     }

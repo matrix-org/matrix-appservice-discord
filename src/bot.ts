@@ -28,7 +28,7 @@ import { UserSyncroniser } from "./usersyncroniser";
 import { ChannelSyncroniser } from "./channelsyncroniser";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
-import * as Discord from "better-discord.js"
+import * as Discord from "better-discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
 import { Appservice, Intent } from "matrix-bot-sdk";
@@ -136,7 +136,8 @@ export class DiscordBot {
         return this.provisioner;
     }
 
-    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.PartialUser | Discord.User, webhookID: string|null = null): Intent {
+    public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.PartialUser | Discord.User,
+                                      webhookID: string|null = null): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.GuildMember ? member.user.username : member.username;
@@ -365,11 +366,11 @@ export class DiscordBot {
         const hasSender = sender !== null && sender !== undefined;
         try {
             const client = await this.clientFactory.getClient(sender);
-            const guild = await client.guilds.resolve(server);
+            const guild = client.guilds.resolve(server);
             if (!guild) {
                 throw new Error(`Guild "${server}" not found`);
             }
-            const channel = await guild.channels.resolve(room);
+            const channel = guild.channels.resolve(room);
             if (channel && channel.type === "text") {
                 if (hasSender) {
                     const permissions = guild.me && channel.permissionsFor(guild.me);
@@ -502,7 +503,7 @@ export class DiscordBot {
                         "_matrix",
                         {
                             avatar: MATRIX_ICON_URL,
-                            reason: "Matrix Bridge: Allow rich user messages"
+                            reason: "Matrix Bridge: Allow rich user messages",
                         });
                 }
             } catch (err) {
@@ -654,6 +655,7 @@ export class DiscordBot {
             guild: Discord.Guild, member?: Discord.GuildMember, useCache: boolean = true): Promise<string[]> {
         if (useCache) {
             const res = this.roomIdsForGuildCache.get(`${guild.id}:${member ? member.id : ""}`);
+
             if (res && res.ts > Date.now() - CACHE_LIFETIME) {
                 return res.roomIds;
             }
@@ -721,10 +723,10 @@ export class DiscordBot {
         if (restore) {
             await tchan.overwritePermissions([
                 {
+                    allow: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                     id: kickee.id,
-                    allow: ['SEND_MESSAGES', 'VIEW_CHANNEL']
                 }],
-                `Unbanned.`
+                `Unbanned.`,
             );
             this.channelLock.set(botChannel.id);
             res = await botChannel.send(
@@ -751,10 +753,10 @@ export class DiscordBot {
 
         await tchan.overwritePermissions([
             {
+                deny: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                 id: kickee.id,
-                deny: ['SEND_MESSAGES', 'VIEW_CHANNEL']
             }],
-            `Matrix user was ${word} by ${kicker}.`
+            `Matrix user was ${word} by ${kicker}.`,
         );
         if (kickban === "leave") {
             // Kicks will let the user back in after ~30 seconds.
@@ -762,10 +764,10 @@ export class DiscordBot {
                 log.info(`Kick was lifted for ${kickee.displayName}`);
                 await tchan.overwritePermissions([
                     {
+                        allow: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                         id: kickee.id,
-                        deny: ['SEND_MESSAGES', 'VIEW_CHANNEL']
                     }],
-                    `Lifting kick since duration expired.`
+                    `Lifting kick since duration expired.`,
                 );
             }, this.config.room.kickFor);
         }
@@ -876,7 +878,9 @@ export class DiscordBot {
                     clearTimeout(this.typingTimers[typingKey]);
                 }
                 this.typingTimers[typingKey] = setTimeout(async () => {
-                    this.OnTyping(channel, user, false);
+                    this.OnTyping(channel, user, false).catch((ex) => {
+                        log.error(`Failed to reset typing after ${TYPING_TIMEOUT_MS}ms for ${user.id}`);
+                    });
                     delete this.typingTimers[typingKey];
                 }, TYPING_TIMEOUT_MS);
             }

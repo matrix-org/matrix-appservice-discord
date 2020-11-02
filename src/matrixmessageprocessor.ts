@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "better-discord.js"
+import * as Discord from "better-discord.js";
 import { IMatrixMessage } from "./matrixtypes";
 import * as Parser from "node-html-parser";
 import { Util } from "./util";
@@ -86,7 +86,7 @@ export class MatrixMessageProcessor {
             getChannelId: async (mxid: string) => {
                 const CHANNEL_REGEX = /^#_discord_[0-9]*_([0-9]*):/;
                 const match = mxid.match(CHANNEL_REGEX);
-                const channel = match && await guild.channels.resolve(match[1]);
+                const channel = match && guild.channels.resolve(match[1]);
                 if (!channel) {
                     /*
                     This isn't formatted in #_discord_, so let's fetch the internal room ID
@@ -97,8 +97,8 @@ export class MatrixMessageProcessor {
                             const resp = await params.mxClient.lookupRoomAlias(mxid);
                             if (resp && resp.roomId) {
                                 const roomId = resp.roomId;
-                                const channel = await this.bot.GetChannelFromRoomId(roomId);
-                                return channel.id;
+                                const ch = await this.bot.GetChannelFromRoomId(roomId);
+                                return ch.id;
                             }
                         } catch (err) { } // ignore, room ID wasn't found
                     }
@@ -111,12 +111,12 @@ export class MatrixMessageProcessor {
                 try {
                     const emojiDb = await this.bot.GetEmojiByMxc(mxc);
                     const id = emojiDb.EmojiId;
-                    emoji = await guild.emojis.resolve(id);
+                    emoji = guild.emojis.resolve(id);
                 } catch (e) {
                     emoji = null;
                 }
                 if (!emoji) {
-                    emoji = await guild.emojis.resolve(name);
+                    emoji = guild.emojis.resolve(name);
                 }
                 return emoji;
             },

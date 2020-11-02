@@ -17,7 +17,7 @@ limitations under the License.
 import {MockCollectionManager} from "./collection";
 import {MockMember} from "./member";
 import {MockEmoji} from "./emoji";
-import {Channel} from "better-discord.js"
+import {Channel} from "better-discord.js";
 import {MockRole} from "./role";
 
 // we are a test file and thus need those
@@ -41,9 +41,9 @@ export class MockGuild {
 
     public get client() {
         return {
-            options: { 
+            options: {
                 messageCacheMaxSize: -1,
-            }
+            },
         };
     }
 

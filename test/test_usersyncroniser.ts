@@ -72,8 +72,8 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
         GetIntentFromDiscordMember: (member) => {
             return bridge.getIntentForSuffix(member.id);
         },
-        GetRoomIdsFromGuild: async (guild, member?) => {
-            if (member && member.roles.get("1234")) {
+        GetRoomIdsFromGuild: async (guild: MockGuild, member: MockMember) => {
+            if (member && member.roles.cache.get("1234")) {
                 return GUILD_ROOM_IDS_WITH_ROLE;
             }
             return GUILD_ROOM_IDS;
