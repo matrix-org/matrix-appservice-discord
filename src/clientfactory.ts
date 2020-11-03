@@ -16,7 +16,7 @@ limitations under the License.
 
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient, TextChannel } from "better-discord.js";
+import { Client as DiscordClient, Intents, TextChannel } from "better-discord.js";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
 
@@ -40,8 +40,11 @@ export class DiscordClientFactory {
         // We just need to make sure we have a bearer token.
         // Create a new Bot client.
         this.botClient = new DiscordClient({
-            fetchAllMembers: true,
+            fetchAllMembers: this.config.usePriviledgedIntents,
             messageCacheLifetime: 5,
+            ws: {
+                intents: this.config.usePriviledgedIntents ? Intents.PRIVILEGED : Intents.NON_PRIVILEGED,
+            }
         });
 
         const waitPromise = new Promise((resolve, reject) => {
@@ -65,6 +68,9 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
+            ws: {
+                intents: Intents.NON_PRIVILEGED,
+            }
         });
 
         await client.login(token, false);
@@ -95,6 +101,9 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: true,
             messageCacheLifetime: 5,
+            ws: {
+                intents: Intents.NON_PRIVILEGED,
+            }
         });
 
         const jsLog = new Log("discord.js-ppt");

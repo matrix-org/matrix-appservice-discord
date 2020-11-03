@@ -108,6 +108,7 @@ export class DiscordBridgeConfigDatabase {
 export class DiscordBridgeConfigAuth {
     public clientID: string;
     public botToken: string;
+    public usePriviledgedIntents: boolean;
 }
 
 export class DiscordBridgeConfigLogging {
