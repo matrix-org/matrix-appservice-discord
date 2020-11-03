@@ -44,8 +44,16 @@ export class DiscordClientFactory {
             messageCacheLifetime: 5,
         });
 
+        const waitPromise = new Promise((resolve, reject) => {
+            this.botClient.once("shardReady", resolve);
+            this.botClient.once("shardError", reject);
+        });
+
         try {
             await this.botClient.login(this.config.botToken, true);
+            log.info("Waiting for shardReady signal");
+            await waitPromise;
+            log.info("Got shardReady signal");
         } catch (err) {
             log.error("Could not login as the bot user. This is bad!", err);
             throw err;

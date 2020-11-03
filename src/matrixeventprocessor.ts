@@ -223,7 +223,6 @@ export class MatrixEventProcessor {
 
     public async ProcessStateEvent(event: IMatrixEvent) {
         log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
 
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
@@ -279,6 +278,7 @@ export class MatrixEventProcessor {
         }
 
         msg += " on Matrix.";
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
         await this.discord.sendAsBot(msg, channel, event);
         await this.sendReadReceipt(event);
     }

@@ -251,6 +251,7 @@ export class DiscordBot {
         });
         client.on("message", async (msg: Discord.Message) => {
             try {
+                log.verbose(`Got incoming msg i:${msg.id} c:${msg.channel.id} g:${msg.guild?.id}`);
                 MetricPeg.get.registerRequest(msg.id);
                 await this.channelLock.wait(msg.channel.id);
                 this.clientFactory.bindMetricsToChannel(msg.channel as Discord.TextChannel);
@@ -382,7 +383,7 @@ export class DiscordBot {
                 this.ClientFactory.bindMetricsToChannel(channel as Discord.TextChannel);
                 const lookupResult = new ChannelLookupResult();
                 lookupResult.channel = channel as Discord.TextChannel;
-                lookupResult.botUser = this.BotUserId === client.user?.id;
+                lookupResult.botUser = this.bot.user?.id === client.user?.id;
                 lookupResult.canSendEmbeds = client.user?.bot || false; // only bots can send embeds
                 return lookupResult;
             }
@@ -898,7 +899,7 @@ export class DiscordBot {
             return; // Skip *our* messages
         }
         const chan = msg.channel as Discord.TextChannel;
-        if (msg.author.id === this.BotUserId) {
+        if (msg.author.id === this.bot.user?.id) {
             // We don't support double bridging.
             log.verbose("Not reflecting bot's own messages");
             MetricPeg.get.requestOutcome(msg.id, true, "dropped");
