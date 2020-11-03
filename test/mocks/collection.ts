@@ -39,4 +39,8 @@ export class MockCollectionManager<T1, T2> {
     public resolve(id: T1) {
         return this.innerCache.get(id);
     }
+
+    public async fetch(id: T1) {
+        return this.innerCache.get(id);
+    }
 }

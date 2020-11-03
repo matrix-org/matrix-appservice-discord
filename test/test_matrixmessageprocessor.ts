@@ -253,7 +253,7 @@ describe("MatrixMessageProcessor", () => {
             guild.emojis.cache.set("123456", emoji);
             const msg = getHtmlMessage("<img alt=\"test_emoji\">");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("<:test_emoji:123456>");
+            expect(result).is.equal("test\\_emoji");
         });
         it("Inserts emojis by mxc url", async () => {
             const mp = new MatrixMessageProcessor(bot, config);
