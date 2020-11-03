@@ -6,7 +6,7 @@
   "scripts": {
     "test": "mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
     "lint": "tslint --project ./tsconfig.json -t stylish",
-    "coverage": "tsc && nyc mocha build/test/config.js build/test",
+    "coverage": "tsc && nyc mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
     "build": "tsc",
     "postinstall": "npm run build",
     "start": "npm run-script build && node ./build/src/discordas.js -p 9005 -c config.yaml",

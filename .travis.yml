@@ -1,6 +1,6 @@
 dist: xenial
 language: node_js
-install: npm ci
+install: npm i
 
 cache:
   directories:

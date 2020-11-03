@@ -14,9 +14,5 @@
     "include": [
         "src/**/*",
         "tools/**/*",
-        "test/config.ts",
-        "test/db/*",
-        "test/mocks/*",
-        "test/**/test_*",
     ]
 }
