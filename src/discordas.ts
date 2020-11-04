@@ -138,6 +138,7 @@ async function run() {
         throw Error("Config is not of type object");
     }
     config.applyConfig(readConfig);
+    config.applyEnvironmentOverrides(process.env);
     Log.Configure(config.logging);
     if (config.database.roomStorePath || config.database.userStorePath) {
         log.error("The keys 'roomStorePath' and/or 'userStorePath' is still defined in the config. " +
