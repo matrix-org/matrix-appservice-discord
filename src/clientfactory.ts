@@ -99,7 +99,7 @@ export class DiscordClientFactory {
         // TODO: Select a profile based on preference, not the first one.
         const token = await this.store.getToken(discordIds[0]);
         const client = new DiscordClient({
-            fetchAllMembers: true,
+            fetchAllMembers: false,
             messageCacheLifetime: 5,
             ws: {
                 intents: Intents.NON_PRIVILEGED,
