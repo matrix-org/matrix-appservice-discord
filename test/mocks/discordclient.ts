@@ -55,6 +55,14 @@ export class MockDiscordClient {
         this.testCallbacks.set(event, callback);
     }
 
+    public once(event: string, callback: (...data: any[]) => void) {
+        this.testCallbacks.set(event, () => {
+            this.testCallbacks.delete(event);
+            callback();
+        });
+    }
+
+
     public async emit(event: string, ...data: any[]) {
         return await this.testCallbacks.get(event)!.apply(this, data);
     }
@@ -66,6 +74,9 @@ export class MockDiscordClient {
         this.testLoggedIn = true;
         if (this.testCallbacks.has("ready")) {
             this.testCallbacks.get("ready")!();
+        }
+        if (this.testCallbacks.has("shardReady")) {
+            this.testCallbacks.get("shardReady")!();
         }
         return;
     }

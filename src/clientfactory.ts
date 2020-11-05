@@ -44,7 +44,7 @@ export class DiscordClientFactory {
             messageCacheLifetime: 5,
             ws: {
                 intents: this.config.usePriviledgedIntents ? Intents.PRIVILEGED : Intents.NON_PRIVILEGED,
-            }
+            },
         });
 
         const waitPromise = new Promise((resolve, reject) => {
@@ -70,7 +70,7 @@ export class DiscordClientFactory {
             messageCacheLifetime: 5,
             ws: {
                 intents: Intents.NON_PRIVILEGED,
-            }
+            },
         });
 
         await client.login(token, false);
@@ -103,7 +103,7 @@ export class DiscordClientFactory {
             messageCacheLifetime: 5,
             ws: {
                 intents: Intents.NON_PRIVILEGED,
-            }
+            },
         });
 
         const jsLog = new Log("discord.js-ppt");
