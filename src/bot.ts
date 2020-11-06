@@ -927,7 +927,7 @@ export class DiscordBot {
 
         // Update presence because sometimes discord misses people.
         await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID));
-        let rooms;
+        let rooms: string[];
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
             if (rooms === null) {
@@ -947,12 +947,12 @@ export class DiscordBot {
                 // an edit
                 await Util.AsyncForEach(msg.attachments.array(), async (attachment) => {
                     const content = await Util.DownloadFile(attachment.url);
-                    const fileMime = content.mimeType || mime.getType(attachment.filename)
+                    const fileMime = content.mimeType || mime.getType(attachment.name || "")
                         || "application/octet-stream";
                     const mxcUrl = await intent.underlyingClient.uploadContent(
                         content.buffer,
                         fileMime,
-                        attachment.filename,
+                        attachment.name || "",
                     );
                     const type = fileMime.split("/")[0];
                     let msgtype = {
@@ -965,15 +965,15 @@ export class DiscordBot {
                     }
                     const info = {
                         mimetype: fileMime,
-                        size: attachment.filesize,
+                        size: attachment.size,
                     } as IMatrixMediaInfo;
                     if (msgtype === "m.image" || msgtype === "m.video") {
-                        info.w = attachment.width;
-                        info.h = attachment.height;
+                        info.w = attachment.width!;
+                        info.h = attachment.height!;
                     }
                     await Util.AsyncForEach(rooms, async (room) => {
                         const eventId = await intent.sendEvent(room, {
-                            body: attachment.filename,
+                            body: attachment.name || "file",
                             external_url: attachment.url,
                             info,
                             msgtype,
