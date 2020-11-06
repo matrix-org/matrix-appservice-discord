@@ -400,9 +400,9 @@ export class UserSyncroniser {
         log.info(`Got update for ${id}.`);
 
         await Util.AsyncForEach(this.discord.GetGuilds(), async (guild) => {
-            if (guild.members.has(id)) {
+            if (guild.members.cache.has(id)) {
                 log.info(`Updating user ${id} in guild ${guild.id}.`);
-                const member = guild.members.get(id);
+                const member = guild.members.resolve(id);
                 try {
                     const state = await this.GetUserStateForGuildMember(member!);
                     const rooms = await this.discord.GetRoomIdsFromGuild(guild, member!);
