@@ -184,8 +184,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "someimage.png",
-                filesize: 42,
+                name: "someimage.png",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -210,8 +210,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "foxes.mov",
-                filesize: 42,
+                name: "foxes.mov",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -236,8 +236,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.mp3",
-                filesize: 42,
+                name: "meow.mp3",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -260,8 +260,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.zip",
-                filesize: 42,
+                name: "meow.zip",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
