@@ -10,14 +10,14 @@ jobs:
   include:
     - stage: lint
       script: yarn lint
-      node_js: "12"
+      node_js: "14"
     - stage: unit tests
-      script: yart test
-      node_js: "10"
-    - node_js: "12"
+      script: yarn test
+      node_js: "12"
+    - node_js: "14"
     - stage: coverage
       script: yarn coverage
-      node_js: "12"
+      node_js: "14"
 
 # NOTE: This is unused atm
 # notifications:
