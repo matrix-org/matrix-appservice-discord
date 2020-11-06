@@ -296,7 +296,7 @@ export class Util {
         return {command, args};
     }
 
-    public static async AsyncForEach<T>(arr: T[], callback: (item: T, i: number, a: T[]) => void) {
+    public static async AsyncForEach<T>(arr: T[], callback: (item: T, i: number, a: T[]) => Promise<void>) {
         for (let i = 0; i < arr.length; i++) {
             await callback(arr[i], i, arr);
         }
