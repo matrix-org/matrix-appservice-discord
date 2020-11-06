@@ -40,10 +40,10 @@ export class DiscordClientFactory {
         // We just need to make sure we have a bearer token.
         // Create a new Bot client.
         this.botClient = new DiscordClient({
-            fetchAllMembers: this.config.usePriviledgedIntents,
+            fetchAllMembers: this.config.usePrivilegedIntents,
             messageCacheLifetime: 5,
             ws: {
-                intents: this.config.usePriviledgedIntents ? Intents.PRIVILEGED : Intents.NON_PRIVILEGED,
+                intents: this.config.usePrivilegedIntents ? Intents.PRIVILEGED : Intents.NON_PRIVILEGED,
             },
         });
 

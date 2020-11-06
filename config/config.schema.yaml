@@ -34,7 +34,7 @@ properties:
             type: "string"
           botToken:
             type: "string"
-          usePriviledgedIntents:
+          usePrivilegedIntents:
             type: "boolean"
     logging:
         type: "object"
