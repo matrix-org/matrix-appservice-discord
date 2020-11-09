@@ -15,12 +15,13 @@ limitations under the License.
 */
 
 import * as Chai from "chai"; // TODO: Use expect
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { DiscordMessageProcessor } from "../src/discordmessageprocessor";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
+import { MockTextChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -128,7 +129,7 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {});
+            const channel = new MockTextChannel(guild);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "<@12345>";
@@ -142,7 +143,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {});
+            const channel = new MockTextChannel(guild);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "<@12345>";
@@ -156,7 +157,7 @@ describe("DiscordMessageProcessor", () => {
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername", null, "TestNickname"));
-            const channel = new Discord.TextChannel(guild, {});
+            const channel = new MockTextChannel(guild);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "<@12345>";
@@ -171,7 +172,7 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
+            const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <:hello:123456789>";
@@ -183,15 +184,15 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <:hello:3333333>";
             const result = await processor.FormatMessage(msg);
             Chai.assert.equal(result.body, "Hello :hello:");
             Chai.assert.equal(result.formattedBody, "Hello <img alt=\":hello:\" ti" +
-                "tle=\":hello:\" height=\"32\" src=\"mxc://image\" />");
+                "tle=\":hello:\" height=\"32\" src=\"mxc://image\" data-mx-emoticon />");
         });
     });
     describe("InsertChannelPills / HTML", () => {
@@ -199,8 +200,8 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#3333333>";
@@ -212,8 +213,8 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "456", name: "TestChannel"});
-            guild.channels.set("456", channel);
+            const channel = new MockTextChannel(guild, {id: "456", name: "TestChannel"});
+            guild.channels.cache.set("456", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#456>";
@@ -226,8 +227,8 @@ describe("DiscordMessageProcessor", () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
-            const channel = new Discord.TextChannel(guild, {id: "678", name: "TestChannel"});
-            guild.channels.set("678", channel);
+            const channel = new MockTextChannel(guild, {id: "678", name: "TestChannel"});
+            guild.channels.cache.set("678", channel);
             const msg = new MockMessage(channel) as any;
             msg.embeds = [];
             msg.content = "Hello <#678>";

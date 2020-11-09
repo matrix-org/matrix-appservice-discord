@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Database from "better-sqlite3";
+import * as BetterSQLite3 from "better-sqlite3";
 import { Log } from "../log";
 import { IDatabaseConnector, ISqlCommandParameters, ISqlRow } from "./connector";
 const log = new Log("SQLite3");
 
 export class SQLite3 implements IDatabaseConnector {
-    private db: Database;
+    private db: BetterSQLite3.Database;
     constructor(private filename: string) {
 
     }
 
     public async Open() {
         log.info(`Opening ${this.filename}`);
-        this.db = new Database(this.filename);
+        this.db = new BetterSQLite3(this.filename);
     }
 
     public async Get(sql: string, parameters?: ISqlCommandParameters): Promise<ISqlRow|null> {
@@ -42,7 +42,7 @@ export class SQLite3 implements IDatabaseConnector {
 
     public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {
         log.silly("Run:", sql);
-        return this.db.prepare(sql).run(parameters || []);
+        this.db.prepare(sql).run(parameters || []);
     }
 
     public async Close(): Promise<void> {
@@ -51,6 +51,6 @@ export class SQLite3 implements IDatabaseConnector {
 
     public async Exec(sql: string): Promise<void> {
         log.silly("Exec:", sql);
-        return this.db.exec(sql);
+        this.db.exec(sql);
     }
 }

@@ -59,9 +59,9 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
         GetChannelFromRoomId: (id) => {
             if (id === "!found:localhost") {
                 const guild = new MockGuild("666666");
-                guild.members.set("123456", new MockMember("123456", "fella", guild));
+                guild.members.cache.set("123456", new MockMember("123456", "fella", guild));
                 const chan = new MockChannel("543345", guild);
-                guild.channels.set("543345", chan as any);
+                guild.channels.cache.set("543345", chan as any);
                 return chan;
             }
             throw new Error("Channel not found");
@@ -72,8 +72,8 @@ function CreateUserSync(remoteUsers: RemoteUser[] = [], ghostConfig: any = {}) {
         GetIntentFromDiscordMember: (member) => {
             return bridge.getIntentForSuffix(member.id);
         },
-        GetRoomIdsFromGuild: async (guild, member?) => {
-            if (member && member.roles.get("1234")) {
+        GetRoomIdsFromGuild: async (guild: MockGuild, member: MockMember) => {
+            if (member && member.roles.cache.get("1234")) {
                 return GUILD_ROOM_IDS_WITH_ROLE;
             }
             return GUILD_ROOM_IDS;
@@ -526,7 +526,7 @@ describe("UserSyncroniser", () => {
             const TESTROLE_COLOR = 1337;
             const TESTROLE_POSITION = 42;
             const role = new MockRole("123", TESTROLE_NAME, TESTROLE_COLOR, TESTROLE_POSITION);
-            member.roles.set("123", role);
+            member.roles.cache.set("123", role);
             const state = await userSync.GetUserStateForGuildMember(member as any);
             expect(state.roles.length).to.be.equal(1);
             expect(state.roles[0].name).to.be.equal(TESTROLE_NAME);
@@ -607,7 +607,7 @@ describe("UserSyncroniser", () => {
                 "username",
                 guild,
                 "FiddleDee");
-            newMember.roles.set("1234", role);
+            newMember.roles.cache.set("1234", role);
             await userSync.OnUpdateGuildMember(newMember as any);
             expect(bridge.getIntentForUserId("@_discord_123456:localhost")
                 .underlyingClient.wasCalled("sendStateEvent")).to.equal(GUILD_ROOM_IDS_WITH_ROLE.length);

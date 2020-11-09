@@ -14,10 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Collection } from "discord.js";
-
-// we are a test file and thus need those
-/* tslint:disable:no-unused-expression max-file-line-count no-any */
+import { Collection } from "better-discord.js";
 
 export class MockCollection<T1, T2> extends Collection<T1, T2> {
     public array(): T2[] {
@@ -26,5 +23,24 @@ export class MockCollection<T1, T2> extends Collection<T1, T2> {
 
     public keyArray(): T1[] {
         return [...this.keys()];
+    }
+}
+
+export class MockCollectionManager<T1, T2> {
+    private innerCache = new MockCollection<T1, T2>();
+    public get cache() {
+        return this.innerCache;
+    }
+
+    public updateCache(c: MockCollection<T1, T2>) {
+        this.innerCache = c;
+    }
+
+    public resolve(id: T1) {
+        return this.innerCache.get(id);
+    }
+
+    public async fetch(id: T1) {
+        return this.innerCache.get(id);
     }
 }

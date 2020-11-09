@@ -16,7 +16,6 @@ limitations under the License.
 
 import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
-import * as Discord from "discord.js";
 
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
@@ -25,6 +24,7 @@ import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockUser } from "./mocks/user";
+import { MockTextChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -103,7 +103,7 @@ describe("DiscordBot", () => {
         });
     });
     describe("OnMessage()", () => {
-        const channel = new Discord.TextChannel({} as any, {} as any);
+        const channel = new MockTextChannel();
         const msg = new MockMessage(channel);
         const author = new MockUser("11111");
         let HANDLE_COMMAND = false;
@@ -184,8 +184,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "someimage.png",
-                filesize: 42,
+                name: "someimage.png",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -210,8 +210,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "foxes.mov",
-                filesize: 42,
+                name: "foxes.mov",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -236,8 +236,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.mp3",
-                filesize: 42,
+                name: "meow.mp3",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -260,8 +260,8 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.zip",
-                filesize: 42,
+                name: "meow.zip",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
@@ -291,7 +291,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
@@ -318,7 +318,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
@@ -362,7 +362,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild, {} as any);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];

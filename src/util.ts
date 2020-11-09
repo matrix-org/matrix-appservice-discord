@@ -17,7 +17,7 @@ limitations under the License.
 import * as http from "http";
 import * as https from "https";
 import { Buffer } from "buffer";
-import { Permissions } from "discord.js";
+import { Permissions } from "better-discord.js";
 import { DiscordBridgeConfig } from "./config";
 import { IMatrixEvent } from "./matrixtypes";
 
@@ -108,8 +108,7 @@ export class Util {
 
     public static GetBotLink(config: DiscordBridgeConfig): string {
         /* tslint:disable:no-bitwise */
-        const perms = Permissions.FLAGS.READ_MESSAGES! |
-            Permissions.FLAGS.SEND_MESSAGES! |
+        const perms = Permissions.FLAGS.SEND_MESSAGES! |
             Permissions.FLAGS.CHANGE_NICKNAME! |
             Permissions.FLAGS.CONNECT! |
             Permissions.FLAGS.SPEAK! |
@@ -297,7 +296,7 @@ export class Util {
         return {command, args};
     }
 
-    public static async AsyncForEach(arr, callback) {
+    public static async AsyncForEach<T>(arr: T[], callback: (item: T, i: number, a: T[]) => Promise<void>) {
         for (let i = 0; i < arr.length; i++) {
             await callback(arr[i], i, arr);
         }

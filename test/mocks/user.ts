@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Presence } from "discord.js";
+import { Presence } from "better-discord.js";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -25,10 +25,14 @@ export class MockUser {
         public id: string,
         public username: string = "",
         public discriminator: string = "",
-        public avatarURL: string | null = "",
+        public avatarUrl: string | null = "",
         public avatar: string | null = "",
         public bot: boolean = false,
     ) { }
+
+    public avatarURL() {
+        return this.avatarUrl;
+    }
 
     public MockSetPresence(presence: Presence) {
         this.presence = presence;

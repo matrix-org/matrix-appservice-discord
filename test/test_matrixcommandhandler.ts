@@ -112,8 +112,9 @@ describe("MatrixCommandHandler", () => {
             bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                 body: "**ERROR:** The owner of this bridge does not permit self-service bridging.",
                 format: "org.matrix.custom.html",
-                formatted_body: "<strong>ERROR:</strong> The owner of this bridge " +
-                    "does not permit self-service bridging.",
+                // tslint:disable prefer-template
+                formatted_body: `<p><strong>ERROR:</strong> The owner of this bridge` +
+` does not permit self-service bridging.</p>\n`,
                 msgtype: "m.notice",
             });
         });
@@ -122,8 +123,9 @@ describe("MatrixCommandHandler", () => {
             await handler.Process(createEvent("!discord bridge"), createContext());
             const expected = "**ERROR:** insufficient permissions to use this " +
             "command! Try `!discord help` to see all available commands";
-            const htmlExpected = "<strong>ERROR:</strong> insufficient permissions to use this command!" +
-            " Try <code>!discord help</code> to see all available commands";
+            // tslint:disable prefer-template
+            const htmlExpected = `<p><strong>ERROR:</strong> insufficient permissions to use this command!` +
+` Try <code>!discord help</code> to see all available commands</p>\n`;
             bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                 body: expected,
                 format: "org.matrix.custom.html",
@@ -136,10 +138,11 @@ describe("MatrixCommandHandler", () => {
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
                 const expected = "I have bridged this room to your channel";
+                const expectedHtml = "<p>I have bridged this room to your channel</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -149,10 +152,11 @@ describe("MatrixCommandHandler", () => {
                 });
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
                 const expected = "The bridge has been declined by the Discord guild";
+                const expectedHtml = "<p>The bridge has been declined by the Discord guild</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -162,10 +166,11 @@ describe("MatrixCommandHandler", () => {
                 });
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
                 const expected = "There was a problem bridging that channel - has the guild owner approved the bridge?";
+                const expectedHtml = "<p>There was a problem bridging that channel - has the guild owner approved the bridge?</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -173,10 +178,11 @@ describe("MatrixCommandHandler", () => {
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext(true));
                 const expected = "This room is already bridged to a Discord guild.";
+                const expectedHtml = "<p>This room is already bridged to a Discord guild.</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -184,7 +190,7 @@ describe("MatrixCommandHandler", () => {
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord bridge"), createContext());
                 const expected = "Invalid syntax. For more information try `!discord help bridge`";
-                const expectedHtml = "Invalid syntax. For more information try <code>!discord help bridge</code>";
+                const expectedHtml = "<p>Invalid syntax. For more information try <code>!discord help bridge</code></p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
@@ -198,10 +204,11 @@ describe("MatrixCommandHandler", () => {
                     }});
                 await handler.Process(createEvent("!discord bridge 123/456"), createContext());
                 const expected = "I have bridged this room to your channel";
+                const expectedHtml = "<p>I have bridged this room to your channel</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -209,6 +216,7 @@ describe("MatrixCommandHandler", () => {
         describe("!discord unbridge", () => {
             it("will unbridge", async () => {
                 const expected = "This room has been unbridged";
+                const expectedHtml = "<p>This room has been unbridged</p>\n";
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext(
                     {
@@ -222,23 +230,25 @@ describe("MatrixCommandHandler", () => {
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
             it("will not unbridge if a link does not exist", async () => {
                 const expected = "This room is not bridged.";
+                const expectedHtml = "<p>This room is not bridged.</p>\n";
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext());
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
             it("will not unbridge non-plumbed rooms", async () => {
                 const expected = "This room cannot be unbridged.";
+                const expectedHtml = "<p>This room cannot be unbridged.</p>\n";
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext(
                     {
@@ -252,13 +262,16 @@ describe("MatrixCommandHandler", () => {
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
             it("will show error if unbridge fails", async () => {
                 const expected = "There was an error unbridging this room. Please " +
                 "try again later or contact the bridge operator.";
+                // tslint:disable prefer-template
+                const expectedHtml = `<p>There was an error unbridging this room. Please` +
+` try again later or contact the bridge operator.</p>\n`;
                 const {handler, bridge} = createCH({
                     failUnbridge: true,
                 });
@@ -274,7 +287,7 @@ describe("MatrixCommandHandler", () => {
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",
-                    formatted_body: expected,
+                    formatted_body: expectedHtml,
                     msgtype: "m.notice",
                 });
             });
@@ -283,9 +296,7 @@ describe("MatrixCommandHandler", () => {
     describe("HandleInvite", () => {
         it("should accept invite for bot user", async () => {
             const { handler, bridge } = createCH();
-            let joinedRoom = false;
             handler.joinRoom = async () => {
-                joinedRoom = true;
             };
             await handler.HandleInvite({
                 state_key: "@botuser:localhost",

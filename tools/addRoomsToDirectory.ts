@@ -82,8 +82,8 @@ async function run() {
     log.info(`Got ${rooms.length} rooms to set`);
     try {
         await Util.AsyncForEach(rooms, async (room) => {
-            const guild = room.remote.get("discord_guild");
-            const roomId = room.matrix.getId();
+            const guild = room.remote!.get("discord_guild");
+            const roomId = room.matrix!.getId();
             try {
                 await appservice.botIntent.underlyingClient.setDirectoryVisibility(
                     roomId,

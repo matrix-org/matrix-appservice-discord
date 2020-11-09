@@ -160,7 +160,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const member = new MockMember("12345", "TestUsername", guild);
-            guild.members.set("12345", member);
+            guild.members.cache.set("12345", member);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_12345:localhost\">TestUsername</a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<@12345>");
@@ -169,7 +169,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const member = new MockMember("12345", "TestUsername", guild);
-            guild.members.set("12345", member);
+            guild.members.cache.set("12345", member);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_789:localhost\">TestUsername</a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("[TestUsername](https://matrix.to/#/@_discord_789:localhost)");
@@ -178,7 +178,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const channel = new MockChannel("12345", guild, "text", "SomeChannel");
-            guild.channels.set("12345", channel as any);
+            guild.channels.cache.set("12345", channel as any);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_12345:" +
                 "localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
@@ -188,7 +188,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const channel = new MockChannel("12345", guild, "text", "SomeChannel");
-            guild.channels.set("12345", channel as any);
+            guild.channels.cache.set("12345", channel as any);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/#_discord_1234_789:localhost\">#SomeChannel</a>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("[#SomeChannel](https://matrix.to/#/#_discord_1234_789:localhost)");
@@ -250,16 +250,16 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const emoji = new MockEmoji("123456", "test_emoji");
-            guild.emojis.set("123456", emoji);
+            guild.emojis.cache.set("123456", emoji);
             const msg = getHtmlMessage("<img alt=\"test_emoji\">");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("<:test_emoji:123456>");
+            expect(result).is.equal("test\\_emoji");
         });
         it("Inserts emojis by mxc url", async () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const emoji = new MockEmoji("123456", "test_emoji");
-            guild.emojis.set("123456", emoji);
+            guild.emojis.cache.set("123456", emoji);
             const msg = getHtmlMessage("<img src=\"mxc://real_emote:localhost\">");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<:test_emoji:123456>");
@@ -268,7 +268,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const emoji = new MockEmoji("123456", "test_emoji");
-            guild.emojis.set("123456", emoji);
+            guild.emojis.cache.set("123456", emoji);
             const msg = getHtmlMessage("<img alt=\"yay\" src=\"mxc://unreal_emote:localhost\">");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("[yay mxc://unreal_emote:localhost ]");
@@ -277,7 +277,7 @@ describe("MatrixMessageProcessor", () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const emoji = new MockEmoji("123456", "test_emoji");
-            guild.emojis.set("123456", emoji);
+            guild.emojis.cache.set("123456", emoji);
             const msg = getHtmlMessage("<img>");
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("");

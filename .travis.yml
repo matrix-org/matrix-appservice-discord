@@ -1,6 +1,6 @@
 dist: xenial
 language: node_js
-install: npm ci
+install: yarn
 
 cache:
   directories:
@@ -8,19 +8,16 @@ cache:
 
 jobs:
   include:
-      # Lint doesn't need to build
     - stage: lint
-      script: npm run lint
-      node_js: "12"
+      script: yarn lint
+      node_js: "14"
     - stage: unit tests
-      # Test already builds
-      script: npm run test
-      node_js: "10"
-    - node_js: "12"
-    - stage: coverage
-      # Coverage does NOT build
-      script: npm run build && npm run coverage
+      script: yarn test
       node_js: "12"
+    - node_js: "14"
+    - stage: coverage
+      script: yarn coverage
+      node_js: "14"
 
 # NOTE: This is unused atm
 # notifications:

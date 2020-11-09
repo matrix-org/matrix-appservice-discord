@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig, DiscordBridgeConfigChannelDeleteOptions } from "./config";
@@ -81,7 +81,7 @@ export class ChannelSyncroniser {
     public async OnGuildUpdate(guild: Discord.Guild, force = false) {
         log.verbose(`Got guild update for guild ${guild.id}`);
         const channelStates: IChannelState[] = [];
-        for (const [_, channel] of guild.channels) {
+        for (const [_, channel] of guild.channels.cache) {
             if (channel.type !== "text") {
                 continue; // not supported for now
             }
@@ -144,7 +144,7 @@ export class ChannelSyncroniser {
     }
 
     public async OnGuildDelete(guild: Discord.Guild) {
-        for (const [_, channel] of guild.channels) {
+        for (const [_, channel] of guild.channels.cache) {
             try {
                 await this.OnDelete(channel);
             } catch (e) {

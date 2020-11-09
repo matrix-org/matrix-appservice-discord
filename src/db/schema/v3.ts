@@ -78,8 +78,8 @@ directory.`);
             log.info("Moving ", row.userId);
             try {
                 const client = await clientFactory.getClient(row.token);
-                const dId = client.user.id;
-                if (dId === null) {
+                const dId = client.user?.id;
+                if (!dId) {
                     continue;
                 }
                 log.verbose("INSERT INTO discord_id_token.");
