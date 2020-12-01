@@ -1,6 +1,5 @@
 dist: xenial
 language: node_js
-install: yarn
 
 cache:
   directories:
@@ -9,14 +8,14 @@ cache:
 jobs:
   include:
     - stage: lint
-      script: yarn lint
+      script: npm run lint
       node_js: "14"
     - stage: unit tests
-      script: yarn test
+      script: npm test
       node_js: "12"
     - node_js: "14"
     - stage: coverage
-      script: yarn coverage
+      script: npm run coverage
       node_js: "14"
 
 # NOTE: This is unused atm
