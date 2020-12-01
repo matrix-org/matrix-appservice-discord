@@ -28,6 +28,7 @@ export class DiscordBridgeConfig {
     public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
     public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
     public ghosts: DiscordBridgeConfigGhosts = new DiscordBridgeConfigGhosts();
+    public metrics: DiscordBridgeConfigMetrics = new DiscordBridgeConfigMetrics();
 
     /**
      * Apply a set of keys and values over the default config.
@@ -80,6 +81,8 @@ export class DiscordBridgeConfig {
 class DiscordBridgeConfigBridge {
     public domain: string;
     public homeserverUrl: string;
+    public port: number;
+    public bindAddress: string;
     public presenceInterval: number = 500;
     public disablePresence: boolean;
     public disableTypingNotifications: boolean;
@@ -90,12 +93,14 @@ class DiscordBridgeConfigBridge {
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
-    public enableMetrics: boolean = false;
+    public disableInviteNotifications: boolean = false;
+    public determineCodeLanguage: boolean = false;
 }
 
 export class DiscordBridgeConfigDatabase {
     public connString: string;
     public filename: string;
+    // These parameters are legacy, and will stop the bridge if defined.
     public userStorePath: string;
     public roomStorePath: string;
 }
@@ -103,6 +108,7 @@ export class DiscordBridgeConfigDatabase {
 export class DiscordBridgeConfigAuth {
     public clientID: string;
     public botToken: string;
+    public usePrivilegedIntents: boolean;
 }
 
 export class DiscordBridgeConfigLogging {
@@ -133,7 +139,7 @@ export class DiscordBridgeConfigChannelDeleteOptions {
 
 class DiscordBridgeConfigLimits {
     public roomGhostJoinDelay: number = 6000;
-    public discordSendDelay: number = 750;
+    public discordSendDelay: number = 1500;
 }
 
 export class LoggingFile {
@@ -149,4 +155,10 @@ export class LoggingFile {
 class DiscordBridgeConfigGhosts {
     public nickPattern: string = ":nick";
     public usernamePattern: string = ":username#:tag";
+}
+
+export class DiscordBridgeConfigMetrics {
+    public enable: boolean;
+    public port: number = 9001;
+    public host: string = "127.0.0.1";
 }

@@ -14,29 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { PrometheusMetrics, Bridge } from "matrix-appservice-bridge";
-import { Gauge, Counter, Histogram } from "prom-client";
+import { Gauge, Counter, Histogram, default as promClient } from "prom-client";
 import { Log } from "./log";
+import { Appservice,
+    IMetricContext,
+    METRIC_MATRIX_CLIENT_FAILED_FUNCTION_CALL,
+    METRIC_MATRIX_CLIENT_SUCCESSFUL_FUNCTION_CALL,
+    FunctionCallContext,
+    METRIC_MATRIX_CLIENT_FUNCTION_CALL} from "matrix-bot-sdk";
+import { DiscordBridgeConfigMetrics } from "./config";
+import * as http from "http";
 
-const AgeCounters = PrometheusMetrics.AgeCounters;
 const log = new Log("BridgeMetrics");
 const REQUEST_EXPIRE_TIME_MS = 30000;
-
-interface IAgeCounter {
-    setGauge(gauge: Gauge, morelabels: string[]);
-    bump(age: number);
-}
-
-interface IBridgeGauges {
-    matrixRoomConfigs: number;
-    remoteRoomConfigs: number;
-    matrixGhosts: number;
-    remoteGhosts: number;
-    matrixRoomsByAge: IAgeCounter;
-    remoteRoomsByAge: IAgeCounter;
-    matrixUsersByAge: IAgeCounter;
-    remoteUsersByAge: IAgeCounter;
-}
 
 export interface IBridgeMetrics {
     registerRequest(id: string);
@@ -67,55 +57,71 @@ export class MetricPeg {
 }
 
 export class PrometheusBridgeMetrics implements IBridgeMetrics {
-    private metrics;
-    private remoteCallCounter: Counter;
-    private storeCallCounter: Counter;
-    private presenceGauge: Gauge;
-    private remoteRequest: Histogram;
-    private matrixRequest: Histogram;
+    private matrixCallCounter: Counter<string>;
+    private remoteCallCounter: Counter<string>;
+    private storeCallCounter: Counter<string>;
+    private presenceGauge: Gauge<string>;
+    private remoteRequest: Histogram<string>;
+    private matrixRequest: Histogram<string>;
     private requestsInFlight: Map<string, number>;
-    private bridgeGauges: IBridgeGauges = {
-        matrixGhosts: 0,
-        matrixRoomConfigs: 0,
-        matrixRoomsByAge: new AgeCounters(),
-        matrixUsersByAge: new AgeCounters(),
-        remoteGhosts: 0,
-        remoteRoomConfigs: 0,
-        remoteRoomsByAge: new AgeCounters(),
-        remoteUsersByAge: new AgeCounters(),
-    };
+    private matrixRequestStatus: Map<string, "success"|"failed">;
+    private httpServer: http.Server;
 
-    public init(bridge: Bridge) {
-        this.metrics = new PrometheusMetrics();
-        this.metrics.registerMatrixSdkMetrics();
-        this.metrics.registerBridgeGauges(() => this.bridgeGauges);
-        this.metrics.addAppServicePath(bridge);
-        this.remoteCallCounter = this.metrics.addCounter({
+    public init(as: Appservice, config: DiscordBridgeConfigMetrics) {
+        promClient.collectDefaultMetrics();
+        // TODO: Bind this for every user.
+        this.httpServer = http.createServer((req, res) => {
+            if (req.method !== "GET" || req.url !== "/metrics") {
+                // tslint:disable-next-line:no-magic-numbers
+                res.writeHead(404, "Not found");
+                res.end();
+            }
+            // tslint:disable-next-line:no-magic-numbers
+            res.writeHead(200, "OK", {"Content-Type": promClient.register.contentType});
+            res.write(promClient.register.metrics());
+            res.end();
+        });
+        this.matrixCallCounter = new Counter({
+            help: "Count of matrix API calls made",
+            labelNames: ["method", "result"],
+            name: "matrix_api_calls",
+        });
+        promClient.register.registerMetric(this.matrixCallCounter);
+
+        this.remoteCallCounter = new Counter({
             help: "Count of remote API calls made",
-            labels: ["method"],
+            labelNames: ["method"],
             name: "remote_api_calls",
         });
-        this.storeCallCounter = this.metrics.addCounter({
+        promClient.register.registerMetric(this.remoteCallCounter);
+
+        this.storeCallCounter = new Counter({
             help: "Count of store function calls made",
-            labels: ["method", "cached"],
+            labelNames: ["method", "cached"],
             name: "store_calls",
         });
-        this.presenceGauge = this.metrics.addGauge({
-            help: "Count of users in the presence queue",
-            labels: [],
+        promClient.register.registerMetric(this.storeCallCounter);
 
+        this.presenceGauge = new Gauge({
+            help: "Count of users in the presence queue",
             name: "active_presence_users",
         });
-        this.matrixRequest = this.metrics.addTimer({
+        promClient.register.registerMetric(this.presenceGauge);
+
+        this.matrixRequest = new Histogram({
             help: "Histogram of processing durations of received Matrix messages",
-            labels: ["outcome"],
+            labelNames: ["outcome"],
             name: "matrix_request_seconds",
         });
-        this.remoteRequest = this.metrics.addTimer({
+        promClient.register.registerMetric(this.matrixRequest);
+
+        this.remoteRequest = new Histogram({
             help: "Histogram of processing durations of received remote messages",
-            labels: ["outcome"],
+            labelNames: ["outcome"],
             name: "remote_request_seconds",
         });
+        promClient.register.registerMetric(this.remoteRequest);
+
         this.requestsInFlight = new Map();
         setInterval(() => {
             this.requestsInFlight.forEach((time, id) => {
@@ -124,6 +130,17 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
                 }
             });
         }, REQUEST_EXPIRE_TIME_MS);
+        this.httpServer.listen(config.port, config.host);
+
+        // Bind bot-sdk metrics
+        as.botClient.metrics.registerListener({
+            onDecrement: this.sdkDecrementMetric.bind(this),
+            onEndMetric: this.sdkEndMetric.bind(this),
+            onIncrement: this.sdkIncrementMetric.bind(this),
+            onReset: this.sdkResetMetric.bind(this),
+            onStartMetric: this.sdkStartMetric.bind(this),
+        });
+
         return this;
     }
 
@@ -151,5 +168,37 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
     public storeCall(method: string, cached: boolean) {
         this.storeCallCounter.inc({method, cached: cached ? "yes" : "no"});
+    }
+
+    private sdkStartMetric(metricName: string, context: IMetricContext) {
+        // We don't use this yet.
+    }
+
+    private sdkEndMetric(metricName: string, context: FunctionCallContext, timeMs: number) {
+        if (metricName !== METRIC_MATRIX_CLIENT_FUNCTION_CALL) {
+            return; // We don't handle any other type yet.
+        }
+        const successFail = this.matrixRequestStatus.get(context.uniqueId)!;
+        this.matrixRequestStatus.delete(context.uniqueId);
+        this.matrixRequest.observe({
+            method: context.functionName,
+            result: successFail,
+        }, timeMs);
+    }
+
+    private sdkResetMetric(metricName: string, context: IMetricContext) {
+        // We don't use this yet.
+    }
+
+    private sdkIncrementMetric(metricName: string, context: IMetricContext, amount: number) {
+        if (metricName === METRIC_MATRIX_CLIENT_SUCCESSFUL_FUNCTION_CALL) {
+            this.matrixRequestStatus.set(context.uniqueId, "success");
+        } else if (metricName === METRIC_MATRIX_CLIENT_FAILED_FUNCTION_CALL) {
+            this.matrixRequestStatus.set(context.uniqueId, "failed");
+        }
+    }
+
+    private sdkDecrementMetric(metricName: string, context: IMetricContext, amount: number) {
+        // We don't use this yet.
     }
 }

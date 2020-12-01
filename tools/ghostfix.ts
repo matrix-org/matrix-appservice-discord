@@ -14,16 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppServiceRegistration, ClientFactory, Bridge } from "matrix-appservice-bridge";
-import * as yaml from "js-yaml";
-import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import { DiscordBridgeConfig } from "../src/config";
 import { Log } from "../src/log";
 import { Util } from "../src/util";
 import { DiscordBot } from "../src/bot";
-import { DiscordStore } from "../src/store";
+import { ToolsHelper } from "./toolshelper";
 
 const log = new Log("GhostFix");
 
@@ -53,6 +49,14 @@ const optionDefinitions = [
         type: String,
         typeLabel: "<config.yaml>",
     },
+    {
+        alias: "r",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
+        type: String,
+        typeLabel: "<discord-registration.yaml>",
+    },
 ];
 
 const options = args(optionDefinitions);
@@ -73,55 +77,19 @@ if (options.help) {
     process.exit(0);
 }
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync("./discord-registration.yaml", "utf8"));
-const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config = new DiscordBridgeConfig();
-config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig);
-config.applyEnvironmentOverrides(process.env);
-
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const botUserId = `@${registration.sender_localpart}:${config.bridge.domain}`;
-const clientFactory = new ClientFactory({
-    appServiceUserId: botUserId,
-    token: registration.as_token,
-    url: config.bridge.homeserverUrl,
-});
-
-const bridge = new Bridge({
-    clientFactory,
-    controller: {
-        onEvent: () => { },
-    },
-    domain: config.bridge.domain,
-    homeserverUrl: config.bridge.homeserverUrl,
-    intentOptions: {
-        clients: {
-            dontJoin: true, // handled manually
-      },
-    },
-    registration,
-    roomStore: config.database.roomStorePath,
-    userStore: config.database.userStorePath,
-});
-
 async function run() {
-    await bridge.loadDatabases();
-    const store = new DiscordStore(config.database);
-    await store.init(undefined, bridge.getRoomStore());
-    const discordbot = new DiscordBot(botUserId, config, bridge, store);
+    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    await store!.init();
+    const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();
-    bridge._clientFactory = clientFactory;
     const client = await discordbot.ClientFactory.getClient();
 
     const promiseList: Promise<void>[] = [];
     let curDelay = config.limits.roomGhostJoinDelay;
     try {
-        client.guilds.forEach((guild) => {
-            guild.members.forEach((member) => {
-                if (member.id === client.user.id) {
+        client.guilds.cache.forEach((guild) => {
+            guild.members.cache.forEach((member) => {
+                if (member.id === client.user?.id) {
                     return;
                 }
                 promiseList.push((async () => {

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient, TextChannel } from "discord.js";
+import { Client as DiscordClient, Intents, TextChannel } from "better-discord.js";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
 
@@ -40,13 +40,23 @@ export class DiscordClientFactory {
         // We just need to make sure we have a bearer token.
         // Create a new Bot client.
         this.botClient = new DiscordClient({
-            fetchAllMembers: true,
+            fetchAllMembers: this.config.usePrivilegedIntents,
             messageCacheLifetime: 5,
-            sync: true,
+            ws: {
+                intents: this.config.usePrivilegedIntents ? Intents.PRIVILEGED : Intents.NON_PRIVILEGED,
+            },
+        });
+
+        const waitPromise = new Promise((resolve, reject) => {
+            this.botClient.once("shardReady", resolve);
+            this.botClient.once("shardError", reject);
         });
 
         try {
-            await this.botClient.login(this.config.botToken);
+            await this.botClient.login(this.config.botToken, true);
+            log.info("Waiting for shardReady signal");
+            await waitPromise;
+            log.info("Got shardReady signal");
         } catch (err) {
             log.error("Could not login as the bot user. This is bad!", err);
             throw err;
@@ -58,16 +68,17 @@ export class DiscordClientFactory {
         const client = new DiscordClient({
             fetchAllMembers: false,
             messageCacheLifetime: 5,
-            sync: false,
+            ws: {
+                intents: Intents.NON_PRIVILEGED,
+            },
         });
 
-        await client.login(token);
-        const id = client.user.id;
-
-        // This can be done asynchronously, because we don't need to block to return the id.
-        client.destroy().catch((err) => {
-            log.warn("Failed to destroy client ", id);
-        });
+        await client.login(token, false);
+        const id = client.user?.id;
+        client.destroy();
+        if (!id) {
+            throw Error("Client did not have a user object, cannot determine ID");
+        }
         return id;
     }
 
@@ -88,9 +99,11 @@ export class DiscordClientFactory {
         // TODO: Select a profile based on preference, not the first one.
         const token = await this.store.getToken(discordIds[0]);
         const client = new DiscordClient({
-            fetchAllMembers: true,
+            fetchAllMembers: false,
             messageCacheLifetime: 5,
-            sync: true,
+            ws: {
+                intents: Intents.NON_PRIVILEGED,
+            },
         });
 
         const jsLog = new Log("discord.js-ppt");
@@ -99,7 +112,7 @@ export class DiscordClientFactory {
         client.on("warn", (msg) => { jsLog.warn(msg); });
 
         try {
-            await client.login(token);
+            await client.login(token, false);
             log.verbose("Logged in. Storing ", userId);
             this.clients.set(userId, client);
             return client;

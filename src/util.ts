@@ -16,17 +16,15 @@ limitations under the License.
 
 import * as http from "http";
 import * as https from "https";
-import { Intent } from "matrix-appservice-bridge";
 import { Buffer } from "buffer";
-import * as mime from "mime";
-import { Permissions } from "discord.js";
+import { Permissions } from "better-discord.js";
 import { DiscordBridgeConfig } from "./config";
-import { Client as MatrixClient } from "matrix-js-sdk";
 import { IMatrixEvent } from "./matrixtypes";
 
 const HTTP_OK = 200;
 
 import { Log } from "./log";
+import { Intent, MatrixClient } from "matrix-bot-sdk";
 const log = new Log("Util");
 
 type PERMISSIONTYPES = any | any[]; // tslint:disable-line no-any
@@ -54,6 +52,11 @@ export interface ICommandParameters {
 
 export type CommandPermissonCheck = (permission: PERMISSIONTYPES) => Promise<boolean | string>;
 
+export interface IDownloadedFile {
+    buffer: Buffer;
+    mimeType?: string;
+}
+
 export interface IPatternMap {
     [index: string]: string;
 }
@@ -63,15 +66,13 @@ export class Util {
      * downloadFile - This function will take a URL and store the resulting data into
      * a buffer.
      */
-    public static async DownloadFile(url: string): Promise<Buffer> {
+    public static async DownloadFile(url: string): Promise<IDownloadedFile> {
         return new Promise((resolve, reject) => {
-            let ht;
+            let get = http.get;
             if (url.startsWith("https")) {
-                ht = https;
-            } else {
-                ht = http;
+                get = https.get;
             }
-            const req = ht.get((url), (res) => {
+            const req = get((url), (res) => {
                 let buffer = Buffer.alloc(0);
                 if (res.statusCode !== HTTP_OK) {
                     reject(`Non 200 status code (${res.statusCode})`);
@@ -82,72 +83,16 @@ export class Util {
                 });
 
                 res.on("end", () => {
-                    resolve(buffer);
+                    resolve({
+                        buffer,
+                        mimeType: res.headers["content-type"],
+                    });
                 });
             });
             req.on("error", (err) => {
-                reject(`Failed to download. ${err.code}`);
+                reject(`Failed to download. ${err}`);
             });
-        }) as Promise<Buffer>;
-    }
-    /**
-     * uploadContentFromUrl - Upload content from a given URL to the homeserver
-     * and return a MXC URL.
-     */
-    public static async UploadContentFromUrl(url: string, intent: Intent, name: string | null): Promise<IUploadResult> {
-        let contenttype;
-        name = name || null;
-        try {
-            const bufferRet = (await (new Promise((resolve, reject) => {
-                let ht;
-                if (url.startsWith("https")) {
-                    ht = https;
-                } else {
-                    ht = http;
-                }
-                const req = ht.get( url, (res) => {
-                    let buffer = Buffer.alloc(0);
-
-                    if (res.headers.hasOwnProperty("content-type")) {
-                        contenttype = res.headers["content-type"];
-                    } else {
-                        log.verbose("No content-type given by server, guessing based on file name.");
-                        contenttype = mime.lookup(url);
-                    }
-
-                    if (name === null) {
-                        const names = url.split("/");
-                        name = names[names.length - 1];
-                    }
-
-                    res.on("data", (d) => {
-                        buffer = Buffer.concat([buffer, d]);
-                    });
-
-                    res.on("end", () => {
-                        resolve(buffer);
-                    });
-                });
-                req.on("error", (err) => {
-                    reject(`Failed to download. ${err.code}`);
-                });
-            }))) as Buffer;
-            const size = bufferRet.length;
-            const contentUri = await intent.getClient().uploadContent(bufferRet, {
-                name,
-                onlyContentUri: true,
-                rawResponse: false,
-                type: contenttype,
-            });
-            log.verbose("Media uploaded to ", contentUri);
-            return {
-                mxcUrl: contentUri,
-                size,
-            };
-        } catch (reason) {
-            log.error("Failed to upload content:\n", reason);
-            throw reason;
-        }
+        }) as Promise<IDownloadedFile>;
     }
 
     /**
@@ -163,8 +108,7 @@ export class Util {
 
     public static GetBotLink(config: DiscordBridgeConfig): string {
         /* tslint:disable:no-bitwise */
-        const perms = Permissions.FLAGS.READ_MESSAGES! |
-            Permissions.FLAGS.SEND_MESSAGES! |
+        const perms = Permissions.FLAGS.SEND_MESSAGES! |
             Permissions.FLAGS.CHANGE_NICKNAME! |
             Permissions.FLAGS.CONNECT! |
             Permissions.FLAGS.SPEAK! |
@@ -184,42 +128,30 @@ export class Util {
         if (name[0] === "@" && name.includes(":")) {
             return name;
         }
-        const client = intent.getClient();
+        const client = intent.underlyingClient;
+        await intent.ensureRegistered();
         const matrixUsers = {};
         let matches = 0;
-        await Promise.all(channelMxids.map((chan) => {
-            // we would use this.bridge.getBot().getJoinedMembers()
-            // but we also want to be able to search through banned members
-            // so we gotta roll our own thing
-            return client._http.authedRequestWithPrefix(
-                undefined,
-                "GET",
-                `/rooms/${encodeURIComponent(chan)}/members`,
-                undefined,
-                undefined,
-                "/_matrix/client/r0",
-            ).then((res) => {
-                res.chunk.forEach((member) => {
-                    if (member.membership !== "join" && member.membership !== "ban") {
-                        return;
-                    }
-                    const mxid = member.state_key;
-                    if (mxid.startsWith("@_discord_")) {
-                        return;
-                    }
-                    let displayName = member.content.displayname;
-                    if (!displayName && member.unsigned && member.unsigned.prev_content &&
-                        member.unsigned.prev_content.displayname) {
-                        displayName = member.unsigned.prev_content.displayname;
-                    }
-                    if (!displayName) {
-                        displayName = mxid.substring(1, mxid.indexOf(":"));
-                    }
-                    if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
-                        matrixUsers[mxid] = displayName;
-                        matches++;
-                    }
-                });
+        await Promise.all(channelMxids.map( async (chan) => {
+            (await client.getRoomMembers(chan, undefined, ["leave"])).forEach((member) => {
+                if (member.membership === "invite") {
+                    return;
+                }
+                const mxid = member.stateKey;
+                if (mxid.startsWith("@_discord_")) {
+                    return;
+                }
+                let displayName = member.content.displayname;
+                if (!displayName && member.previousContent.displayname) {
+                    displayName = member.previousContent.displayname;
+                }
+                if (!displayName) {
+                    displayName = mxid.substring(1, mxid.indexOf(":"));
+                }
+                if (name.toLowerCase() === displayName.toLowerCase() || name === mxid) {
+                    matrixUsers[mxid] = displayName;
+                    matches++;
+                }
             });
         }));
         if (matches === 0) {
@@ -268,7 +200,11 @@ export class Util {
             }
             return reply;
         }
+        if (Object.keys(actions).length === 0) {
+            return "No commands found";
+        }
         reply += "Available Commands:\n";
+        let commandsHavePermission = 0;
         for (const actionKey of Object.keys(actions)) {
             const action = actions[actionKey];
             if (action.permission !== undefined && permissionCheck) {
@@ -277,11 +213,15 @@ export class Util {
                     continue;
                 }
             }
+            commandsHavePermission++;
             reply += ` - \`${prefix} ${actionKey}`;
             for (const param of action.params) {
                 reply += ` <${param}>`;
             }
             reply += `\`: ${action.description}\n`;
+        }
+        if (!commandsHavePermission) {
+            return "No commands found";
         }
         reply += "\nParameters:\n";
         for (const parameterKey of Object.keys(parameters)) {
@@ -313,7 +253,7 @@ export class Util {
                 return `**ERROR:** ${permCheck}`;
             }
             if (!permCheck) {
-                return `**ERROR:** insufficiant permissions to use this command! ` +
+                return `**ERROR:** insufficient permissions to use this command! ` +
                     `Try \`${prefix} help\` to see all available commands`;
             }
         }
@@ -356,7 +296,7 @@ export class Util {
         return {command, args};
     }
 
-    public static async AsyncForEach(arr, callback) {
+    public static async AsyncForEach<T>(arr: T[], callback: (item: T, i: number, a: T[]) => Promise<void>) {
         for (let i = 0; i < arr.length; i++) {
             await callback(arr[i], i, arr);
         }
@@ -392,7 +332,7 @@ export class Util {
         cat: string,
         subcat?: string,
     ) {
-        const res: IMatrixEvent = await mxClient.getStateEvent(roomId, "m.room.power_levels");
+        const res: IMatrixEvent = await mxClient.getRoomStateEvent(roomId, "m.room.power_levels", "");
         let requiredLevel = defaultLevel;
         if (res && (res[cat] || !subcat)) {
             if (subcat) {
@@ -415,9 +355,79 @@ export class Util {
         }
         return haveLevel >= requiredLevel;
     }
+
+    public static ParseMxid(unescapedMxid: string, escape: boolean = true) {
+        const RADIX = 16;
+        const parts = unescapedMxid.substr(1).split(":");
+        const domain = parts[1];
+        let localpart = parts[0];
+        if (escape) {
+            const badChars = new Set(localpart.replace(/([a-z0-9]|-|\.|=|_)+/g, ""));
+            badChars.forEach((c) => {
+                const hex = c.charCodeAt(0).toString(RADIX).toLowerCase();
+                localpart = localpart.replace(
+                    new RegExp(`\\${c}`, "g"),
+                    `=${hex}`,
+                );
+            });
+        }
+        return {
+            domain,
+            localpart,
+            mxid: `@${localpart}:${domain}`,
+        };
+    }
+
+    // Taken from https://github.com/matrix-org/matrix-appservice-bridge/blob/master/lib/models/users/matrix.js
+    public static EscapeStringForUserId(localpart: string) {
+        // NOTE: Currently Matrix accepts / in the userId, although going forward it will be removed.
+        const badChars = new Set(localpart.replace(/([a-z]|[0-9]|-|\.|=|_)+/g, ""));
+        let res = localpart;
+        badChars.forEach((c) => {
+            const hex = c.charCodeAt(0).toString(16).toLowerCase();
+            res = res.replace(
+                new RegExp(`\\x${hex}`, "g"),
+                `=${hex}`,
+            );
+        });
+        return res;
+    }
 }
 
-interface IUploadResult {
-    mxcUrl: string;
-    size: number;
+// Type type
+type Type = Function;  // tslint:disable-line ban-types
+
+/**
+ * Returns true if `obj` is subtype of at least one of the given types.
+ */
+export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
+    return types.some((type) => obj instanceof type);
+}
+
+/**
+ * Append the old error message to the new one and keep its stack trace.
+ *
+ * @example
+ * throw wrapError(e, HighLevelError, "This error is more specific");
+ *
+ * @param oldError The original error to wrap.
+ * @param newErrorType Type of the error returned by this function.
+ * @returns A new error of type `newErrorType` containing the information of
+ * the original error (stacktrace and error message).
+ */
+export function wrapError<T extends Error>(
+    oldError: object|Error,
+    newErrorType: new (...args: any[]) => T,  // tslint:disable-line no-any
+    ...args: any[]  // tslint:disable-line no-any trailing-comma
+): T {
+    const newError = new newErrorType(...args);
+    let appendMsg;
+    if (oldError instanceof Error) {
+        appendMsg = oldError.message;
+        newError.stack = oldError.stack;
+    } else {
+        appendMsg = oldError.toString();
+    }
+    newError.message += ":\n" + appendMsg;
+    return newError;
 }

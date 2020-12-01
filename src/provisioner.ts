@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { DbRoomStore, RemoteStoreRoom, MatrixStoreRoom } from "./db/roomstore";
 import { ChannelSyncroniser } from "./channelsyncroniser";
 import { Log } from "./log";
@@ -36,7 +36,6 @@ export class Provisioner {
             discord_type: "text",
             plumbed: true,
         });
-
         const local = new MatrixStoreRoom(roomId);
         return this.roomStore.linkRooms(local, remote);
     }

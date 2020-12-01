@@ -8,6 +8,8 @@ bridge:
   # This should be your publically facing URL because Discord may use it to
   # fetch media from the media store.
   homeserverUrl: "http://localhost:8008"
+  # The TCP port on which the appservice runs on.
+  port: 9005
   # Interval at which to process users in the 'presence queue'. If you have
   # 5 users, one user will be processed every 500 milliseconds according to the
   # value below. This has a minimum value of 250.
@@ -29,10 +31,18 @@ bridge:
   disableReadReceipts: false
   # Disable Join Leave echos from matrix
   disableJoinLeaveNotifications: false
+  # Disable Invite echos from matrix
+  disableInviteNotifications: false
+  # Auto-determine the language of code blocks (this can be CPU-intensive)
+  determineCodeLanguage: false
 # Authentication configuration for the discord bot.
 auth:
+  # This MUST be a string (wrapped in quotes)
   clientID: "12345"
   botToken: "foobar"
+  # You must enable "Privileged Gateway Intents" in your bot settings on discord.com (e.g.g https://discord.com/developers/applications/12345/bot)
+  # for this to work
+  usePrivilegedIntents: false
 logging:
   # What level should the logger output to the console at.
   console: "warn" #silly, verbose, info, http, warn, error, silent
@@ -48,8 +58,6 @@ logging:
       enable:
         - "DiscordBot"
 database:
-  userStorePath: "user-store.db"
-  roomStorePath: "room-store.db"
   # You may either use SQLite or Postgresql for the bridge database, which contains
   # important mappings for events and user puppeting configurations.
   # Use the filename option for SQLite, or connString for Postgresql.
@@ -85,10 +93,12 @@ channel:
 limits:
     # Delay in milliseconds between discord users joining a room.
     roomGhostJoinDelay: 6000
-    # Delay in milliseconds before sending messages to discord to avoid echos.
-    # (Copies of a sent message may arrive from discord before we've
+    # Lock timeout in milliseconds before seinding messages to discord to avoid
+    # echos. Default is rather high as the lock will most likely time out
+    # before anyways.
+    # echos = (Copies of a sent message may arrive from discord before we've
     # fininished handling it, causing us to echo it back to the room)
-    discordSendDelay: 750
+    discordSendDelay: 1500
 ghosts:
     # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
     nickPattern: ":nick"

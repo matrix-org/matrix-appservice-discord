@@ -16,15 +16,12 @@ limitations under the License.
 
 /* tslint:disable:no-console */
 /**
- * Allows you to become an admin for a room the bot is in control of.
+ * Allows you to become an admin for a room that the bot is in control of.
  */
 
-import { AppServiceRegistration, ClientFactory, Intent } from "matrix-appservice-bridge";
-import * as yaml from "js-yaml";
-import * as fs from "fs";
 import * as args from "command-line-args";
 import * as usage from "command-line-usage";
-import { DiscordBridgeConfig } from "../src/config";
+import { ToolsHelper } from "./toolshelper";
 
 const optionDefinitions = [
     {
@@ -43,6 +40,14 @@ const optionDefinitions = [
     },
     {
         alias: "r",
+        defaultValue: "discord-registration.yaml",
+        description: "The AS registration file.",
+        name: "registration",
+        type: String,
+        typeLabel: "<discord-registration.yaml>",
+    },
+    {
+        alias: "m",
         description: "The roomid to modify",
         name: "roomid",
         type: String,
@@ -90,25 +95,18 @@ if (!options.userid) {
     process.exit(1);
 }
 
-const yamlConfig = yaml.safeLoad(fs.readFileSync("discord-registration.yaml", "utf8"));
-const registration = AppServiceRegistration.fromObject(yamlConfig);
-const config: DiscordBridgeConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8")) as DiscordBridgeConfig;
-
-if (registration === null) {
-    throw new Error("Failed to parse registration file");
-}
-
-const clientFactory = new ClientFactory({
-    appServiceUserId: `@${registration.sender_localpart}:${config.bridge.domain}`,
-    token: registration.as_token,
-    url: config.bridge.homeserverUrl,
-});
-const client = clientFactory.getClientAs();
-const intent = new Intent(client, client, {registered: true});
+const {appservice} = ToolsHelper.getToolDependencies(options.config, options.reg, false);
 
 async function run() {
     try {
-        await intent.setPowerLevel(options.roomid, options.userid, options.power);
+        const powerLevels = (await appservice.botIntent.underlyingClient.getRoomStateEvent(
+            options.roomid, "m.room.power_levels", "",
+        ));
+        powerLevels.users[options.userid] = options.power;
+
+        await appservice.botIntent.underlyingClient.sendStateEvent(
+            options.roomid, "m.room.power_levels", "", powerLevels,
+        );
         console.log("Power levels set");
         process.exit(0);
     } catch (err) {

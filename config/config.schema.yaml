@@ -10,6 +10,8 @@ properties:
             type: "string"
           homeserverUrl:
             type: "string"
+          port:
+            type: "number"
           presenceInterval:
             type: "number"
           disablePresence:
@@ -22,6 +24,10 @@ properties:
             type: "boolean"
           disableReadReceipts:
             type: "boolean"
+          disableJoinLeaveNotifications:
+            type: "boolean"
+          disableInviteNotifications:
+            type: "boolean"
     auth:
         type: "object"
         required: ["botToken", "clientID"]
@@ -30,6 +36,8 @@ properties:
             type: "string"
           botToken:
             type: "string"
+          usePrivilegedIntents:
+            type: "boolean"
     logging:
         type: "object"
         properties:
