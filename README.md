@@ -29,7 +29,7 @@ that implements the [AS API](https://matrix.org/docs/spec/application_service/r0
 
 The bridge supports any version of Node.js >= v12.X, including all [current releases](https://nodejs.org/en/about/releases/).
 
-### Setup the bridge
+### Set up the bridge
 
 * Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
 * Run ``npm run build`` to build the typescript into javascript.
