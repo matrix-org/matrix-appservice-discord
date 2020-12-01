@@ -16,7 +16,6 @@ limitations under the License.
 
 import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
-import * as Discord from "discord.js";
 
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
@@ -25,6 +24,7 @@ import { MockMessage } from "./mocks/message";
 import { Util } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockUser } from "./mocks/user";
+import { MockTextChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -103,12 +103,13 @@ describe("DiscordBot", () => {
         });
     });
     describe("OnMessage()", () => {
-        const channel = new Discord.TextChannel({} as any, {} as any);
+        const channel = new MockTextChannel();
         const msg = new MockMessage(channel);
         const author = new MockUser("11111");
         let HANDLE_COMMAND = false;
         function getDiscordBot() {
             HANDLE_COMMAND = false;
+            mockBridge.cleanup();
             const discord = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
@@ -160,19 +161,39 @@ describe("DiscordBot", () => {
             await discordBot.OnMessage(msg as any);
             mockBridge.getIntent(author.id).wasCalled("sendEvent");
         });
+        it("sends edit messages", async () => {
+            discordBot = getDiscordBot();
+            msg.author = author;
+            msg.content = "Foxies are super amazing!";
+            await discordBot.OnMessage(msg, "editevent");
+            mockBridge.getIntent(author.id).wasCalled("sendEvent", true,  "!asdf:localhost", {
+                "body": "* Foxies are super amazing!",
+                "format": "org.matrix.custom.html",
+                "formatted_body": "* Foxies are super amazing!",
+                "m.new_content": {
+                    body: "Foxies are super amazing!",
+                    format: "org.matrix.custom.html",
+                    formatted_body: "Foxies are super amazing!",
+                    msgtype: "m.text",
+                },
+                "m.relates_to": { event_id: "editevent", rel_type: "m.replace" },
+                "msgtype": "m.text",
+            });
+        });
         it("uploads images", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "someimage.png",
-                filesize: 42,
+                name: "someimage.png",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "someimage.png",
                 external_url: "asdf",
                 info: {
@@ -189,15 +210,16 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "foxes.mov",
-                filesize: 42,
+                name: "foxes.mov",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "foxes.mov",
                 external_url: "asdf",
                 info: {
@@ -214,15 +236,16 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.mp3",
-                filesize: 42,
+                name: "meow.mp3",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "meow.mp3",
                 external_url: "asdf",
                 info: {
@@ -237,15 +260,16 @@ describe("DiscordBot", () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.attachments.set("1234", {
-                filename: "meow.zip",
-                filesize: 42,
+                name: "meow.zip",
+                size: 42,
                 height: 0,
                 url: "asdf",
                 width: 0,
             });
             await discordBot.OnMessage(msg);
-            mockBridge.botIntent.underlyingClient.wasCalled("uploadContent");
-            mockBridge.getIntent(author.id).wasCalled("sendEvent", true, "!asdf:localhost", {
+            const intent = mockBridge.getIntent(author.id);
+            intent.underlyingClient.wasCalled("uploadContent");
+            intent.wasCalled("sendEvent", true, "!asdf:localhost", {
                 body: "meow.zip",
                 external_url: "asdf",
                 info: {
@@ -267,7 +291,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
@@ -284,7 +308,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             expect(checkMsgSent).to.be.false;
         });
-        it("should send a matrix message on an edited discord message", async () => {
+        it("should send a matrix edit on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
@@ -294,7 +318,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
@@ -304,14 +328,26 @@ describe("DiscordBot", () => {
             oldMsg.content = "a";
             newMsg.content = "b";
 
-            // Mock the SendMatrixMessage method to check if it is called
-            let checkMsgSent = false;
-            discordBot.SendMatrixMessage = (...args) => checkMsgSent = true;
+            let storeMockResults = 1;
+            discordBot.store = {
+                Get: (a, b) => {
+                    return {
+                        MatrixId: "editedid",
+                        Next: () => storeMockResults--,
+                        Result: true,
+                    };
+                },
+            };
+
+            let checkEditEventSent = "";
+            discordBot.OnMessage = (str, event) => {
+                checkEditEventSent = event;
+            };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            expect(checkMsgSent).to.be.true;
+            expect(checkEditEventSent).to.equal("editedid");
         });
-        it("should delete and re-send if it is the newest message", async () => {
+        it("should send a new message if no store event found", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
                 mockBridge,
@@ -326,7 +362,7 @@ describe("DiscordBot", () => {
 
             const guild: any = new MockGuild("123", []);
             guild._mockAddMember(new MockMember("12345", "TestUsername"));
-            const channel = new Discord.TextChannel(guild, {} as any);
+            const channel = new MockTextChannel(guild, {} as any);
             const oldMsg = new MockMessage(channel) as any;
             const newMsg = new MockMessage(channel) as any;
             oldMsg.embeds = [];
@@ -336,14 +372,24 @@ describe("DiscordBot", () => {
             oldMsg.content = "a";
             newMsg.content = "b";
 
-            let deletedMessage = false;
-            discordBot.DeleteDiscordMessage = async (_) => { deletedMessage = true; };
-            let sentMessage = false;
-            discordBot.OnMessage = async (_) => { sentMessage = true; };
+            let storeMockResults = 0;
+            discordBot.store = {
+                Get: (a, b) => {
+                    return {
+                        MatrixId: "editedid",
+                        Next: () => storeMockResults--,
+                        Result: true,
+                    };
+                },
+            };
+
+            let checkEditEventSent = "wrong";
+            discordBot.OnMessage = (str, event) => {
+                checkEditEventSent = event;
+            };
 
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
-            expect(deletedMessage).to.be.true;
-            expect(sentMessage).to.be.true;
+            expect(checkEditEventSent).to.be.undefined;
         });
     });
     describe("event:message", () => {

@@ -129,12 +129,17 @@ async function run() {
     }
 
     const config = new DiscordBridgeConfig();
+    const readConfig = yaml.safeLoad(fs.readFileSync(configPath, "utf8"));
+    if (typeof readConfig !== "object") {
+        throw Error("Config is not of type object");
+    }
+    config.applyConfig(readConfig);
+    config.applyEnvironmentOverrides(process.env);
+    Log.Configure(config.logging);
     const port = opts.port || config.bridge.port;
     if (!port) {
         throw Error("Port not given in command line or config file");
     }
-    config.applyConfig(yaml.safeLoad(fs.readFileSync(configPath, "utf8")));
-    Log.Configure(config.logging);
     if (config.database.roomStorePath || config.database.userStorePath) {
         log.error("The keys 'roomStorePath' and/or 'userStorePath' is still defined in the config. " +
                   "Please see docs/bridge-migrations.md on " +

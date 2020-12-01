@@ -10,6 +10,8 @@ properties:
             type: "string"
           homeserverUrl:
             type: "string"
+          port:
+            type: "number"
           presenceInterval:
             type: "number"
           disablePresence:
@@ -34,6 +36,8 @@ properties:
             type: "string"
           botToken:
             type: "string"
+          usePrivilegedIntents:
+            type: "boolean"
     logging:
         type: "object"
         properties:

@@ -117,7 +117,7 @@ describe("TimedCache", () => {
             }
             i++;
         }
-        await Util.DelayedPromise(LIVE_FOR);
+        await Util.DelayedPromise(LIVE_FOR * 5);
         const vals = [...timedCache.entries()];
         expect(vals).to.be.empty;
     });

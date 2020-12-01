@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import { Util, wrapError } from "./util";
@@ -23,6 +23,8 @@ import * as mime from "mime";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
+import { DbEvent } from "./db/dbdataevent";
+
 import { Log } from "./log";
 import { IRoomStoreEntry, RemoteStoreRoom } from "./db/roomstore";
 import { Appservice, MatrixClient } from "matrix-bot-sdk";
@@ -52,9 +54,9 @@ export class MatrixEventProcessorOpts {
 }
 
 export interface IMatrixEventProcessorResult {
-    messageEmbed: Discord.RichEmbed;
-    replyEmbed?: Discord.RichEmbed;
-    imageEmbed?: Discord.RichEmbed;
+    messageEmbed: Discord.MessageEmbed;
+    replyEmbed?: Discord.MessageEmbed;
+    imageEmbed?: Discord.MessageEmbed;
 }
 
 export class MatrixEventProcessor {
@@ -69,6 +71,7 @@ export class MatrixEventProcessor {
     constructor(opts: MatrixEventProcessorOpts, cm?: MatrixCommandHandler) {
         this.config = opts.config;
         this.bridge = opts.bridge;
+        this.store = opts.store;
         this.discord = opts.discord;
         this.store = opts.store;
         this.matrixMsgProcessor = new MatrixMessageProcessor(this.discord, this.config);
@@ -186,20 +189,33 @@ export class MatrixEventProcessor {
         const roomLookup = await this.discord.LookupRoom(guildId, channelId, event.sender);
         const chan = roomLookup.channel;
 
+        let editEventId = "";
+        if (event.content && event.content["m.relates_to"] && event.content["m.relates_to"].rel_type === "m.replace") {
+            const editMatrixId = `${event.content["m.relates_to"].event_id};${event.room_id}`;
+            const storeEvent = await this.store.Get(DbEvent, {matrix_id: editMatrixId});
+            if (storeEvent && storeEvent.Result && storeEvent.Next()) {
+                editEventId = storeEvent.DiscordId;
+            }
+        }
+
         const embedSet = await this.EventToEmbed(event, chan);
         const opts: Discord.MessageOptions = {};
         const file = await this.HandleAttachment(event, mxClient, roomLookup.canSendEmbeds);
         if (typeof(file) === "string") {
             embedSet.messageEmbed.description += " " + file;
         } else if ((file as Discord.FileOptions).name && (file as Discord.FileOptions).attachment) {
-            opts.file = file as Discord.FileOptions;
+            opts.files = [file as Discord.FileOptions];
         } else {
-            embedSet.imageEmbed = file as Discord.RichEmbed;
+            embedSet.imageEmbed = file as Discord.MessageEmbed;
         }
 
-        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
-        await this.discord.send(embedSet, opts, roomLookup, event);
-
+    // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
+        if (editEventId) {
+            await this.discord.edit(embedSet, opts, roomLookup, event, editEventId);
+        } else {
+            await this.discord.send(embedSet, opts, roomLookup, event);
+        }
+        // Don't await this.
         this.sendReadReceipt(event).catch((ex) => {
             log.verbose("Failed to send read reciept for ", event.event_id, ex);
         });
@@ -207,7 +223,6 @@ export class MatrixEventProcessor {
 
     public async ProcessStateEvent(event: IMatrixEvent) {
         log.verbose(`Got state event from ${event.room_id} ${event.type}`);
-        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
 
         const SUPPORTED_EVENTS = ["m.room.member", "m.room.name", "m.room.topic"];
         if (!SUPPORTED_EVENTS.includes(event.type)) {
@@ -263,6 +278,7 @@ export class MatrixEventProcessor {
         }
 
         msg += " on Matrix.";
+        const channel = await this.discord.GetChannelFromRoomId(event.room_id) as Discord.TextChannel;
         await this.discord.sendAsBot(msg, channel, event);
         await this.sendReadReceipt(event);
     }
@@ -283,10 +299,11 @@ export class MatrixEventProcessor {
 
         let body: string = "";
         if (event.type !== "m.sticker") {
-            body = await this.matrixMsgProcessor.FormatMessage(event.content as IMatrixMessage, channel.guild, params);
+            const content = event.content!["m.new_content"] ? event.content!["m.new_content"] : event.content;
+            body = await this.matrixMsgProcessor.FormatMessage(content as IMatrixMessage, channel.guild, params);
         }
 
-        const messageEmbed = new Discord.RichEmbed();
+        const messageEmbed = new Discord.MessageEmbed();
         messageEmbed.setDescription(body);
         await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
         const replyEmbed = getReply ? (await this.GetEmbedForReply(event, channel)) : undefined;
@@ -310,7 +327,7 @@ export class MatrixEventProcessor {
         event: IMatrixEvent,
         mxClient: MatrixClient,
         sendEmbeds: boolean = false,
-    ): Promise<string|Discord.FileOptions|Discord.RichEmbed> {
+    ): Promise<string|Discord.FileOptions|Discord.MessageEmbed> {
         if (!this.HasAttachment(event)) {
             return "";
         }
@@ -344,7 +361,7 @@ export class MatrixEventProcessor {
             }
         }
         if (sendEmbeds && event.content.info.mimetype.split("/")[0] === "image") {
-            return new Discord.RichEmbed()
+            return new Discord.MessageEmbed()
                 .setImage(url);
         }
         return `[${name}](${url})`;
@@ -353,7 +370,7 @@ export class MatrixEventProcessor {
     public async GetEmbedForReply(
         event: IMatrixEvent,
         channel: Discord.TextChannel,
-    ): Promise<Discord.RichEmbed|undefined> {
+    ): Promise<Discord.MessageEmbed|undefined> {
         if (!event.content) {
             event.content = {};
         }
@@ -373,7 +390,7 @@ export class MatrixEventProcessor {
             if (!sourceEvent || !sourceEvent.content || !sourceEvent.content.body) {
                 throw Error("No content could be found");
             }
-            const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, false)).messageEmbed;
+            const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, true)).messageEmbed;
 
             // if we reply to a discord member, ping them!
             if (this.bridge.isNamespacedUser(sourceEvent.sender)) {
@@ -399,7 +416,7 @@ export class MatrixEventProcessor {
             log.warn("Failed to handle reply, showing a unknown embed:", ex);
         }
         // For some reason we failed to get the event, so using fallback.
-        const embed = new Discord.RichEmbed();
+        const embed = new Discord.MessageEmbed();
         embed.setDescription("Reply with unknown content");
         embed.setAuthor("Unknown");
         return embed;
@@ -470,7 +487,7 @@ export class MatrixEventProcessor {
         return hasAttachment;
     }
 
-    private async SetEmbedAuthor(embed: Discord.RichEmbed, sender: string, profile?: {
+    private async SetEmbedAuthor(embed: Discord.MessageEmbed, sender: string, profile?: {
         displayname: string,
         avatar_url: string|undefined }) {
         let displayName = sender;
@@ -483,13 +500,13 @@ export class MatrixEventProcessor {
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
                     userOrMember.username,
-                    userOrMember.avatarURL,
+                    userOrMember.avatarURL() || undefined,
                 );
                 return;
             } else if (userOrMember instanceof Discord.GuildMember) {
                 embed.setAuthor(
                     userOrMember.displayName,
-                    userOrMember.user.avatarURL,
+                    userOrMember.user.avatarURL() || undefined,
                 );
                 return;
             }

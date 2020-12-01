@@ -70,7 +70,7 @@ function createRH(opts: any = {}) {
                     chan.members.set("54321", new MockMember("54321", "testuser2"));
                     chan.members.set("bot12345", new MockMember("bot12345", "botuser"));
                 }
-                guild.members = chan.members;
+                guild.members.updateCache(chan.members);
                 return chan;
             } else {
                 throw new Error("Roomid not found");

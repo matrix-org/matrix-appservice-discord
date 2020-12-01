@@ -17,7 +17,7 @@ limitations under the License.
 import { DiscordBot, IThirdPartyLookup } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { Util } from "./util";
 import { Provisioner } from "./provisioner";
 import { Log } from "./log";

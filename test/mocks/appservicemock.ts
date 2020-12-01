@@ -10,7 +10,9 @@ interface IAppserviceMockOpts {
     profileFetcher?: (userId) => Promise<any>;
     botUserId?: string;
     userIdPrefix?: string;
+    aliasPrefix?: string;
     joinedrooms?: string[];
+    homeserverName?: string;
 }
 
 class AppserviceMockBase {
@@ -71,6 +73,10 @@ export class AppserviceMock extends AppserviceMockBase {
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
         opts.roommembers = opts.roommembers || [];
+        this.cleanup();
+    }
+
+    public cleanup() {
         this.intents = {};
         this.botIntent = new IntentMock(this.opts, "BOT");
         this.botClient = this.botIntent.underlyingClient;
@@ -80,6 +86,14 @@ export class AppserviceMock extends AppserviceMockBase {
         this.funcCalled("isNamespacedUser", userId);
         if (this.opts.userIdPrefix) {
             return userId.startsWith(this.opts.userIdPrefix);
+        }
+        throw Error("No prefix defined");
+    }
+
+    public isNamespacedAlias(alias: string) {
+        this.funcCalled("isNamespacedAlias", alias);
+        if (this.opts.aliasPrefix) {
+            return alias.startsWith(this.opts.aliasPrefix);
         }
         throw Error("No prefix defined");
     }
@@ -98,6 +112,14 @@ export class AppserviceMock extends AppserviceMockBase {
             this.intents[suffix] = new IntentMock(this.opts, suffix);
         }
         return this.intents[suffix];
+    }
+
+    public getAliasForSuffix(suffix: string) {
+        this.funcCalled("getAliasForSuffix", suffix);
+        if (this.opts.aliasPrefix) {
+            return `${this.opts.aliasPrefix}${suffix}:${this.opts.homeserverName}`;
+        }
+        throw Error("No prefix defined");
     }
 
     public getIntentForUserId(userId: string) {
@@ -145,8 +167,8 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("sendText", roomId, body);
     }
 
-    public sendEvent(roomId: string, body: string) {
-        this.funcCalled("sendEvent", roomId, body);
+    public sendEvent(roomId: string, content: any) {
+        this.funcCalled("sendEvent", roomId, content);
     }
 
     public async ensureRegistered(): Promise<void> {

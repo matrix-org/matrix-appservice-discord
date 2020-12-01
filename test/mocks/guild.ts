@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {MockCollection} from "./collection";
+import {MockCollectionManager} from "./collection";
 import {MockMember} from "./member";
 import {MockEmoji} from "./emoji";
-import {Channel} from "discord.js";
+import {Channel} from "better-discord.js";
 import {MockRole} from "./role";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 export class MockGuild {
-    public channels = new MockCollection<string, Channel>();
-    public members = new MockCollection<string, MockMember>();
-    public emojis = new MockCollection<string, MockEmoji>();
-    public roles = new MockCollection<string, MockRole>();
+    public channels = new MockCollectionManager<string, Channel>();
+    public members = new MockCollectionManager<string, MockMember>();
+    public emojis = new MockCollectionManager<string, MockEmoji>();
+    public roles = new MockCollectionManager<string, MockRole>();
     public id: string;
     public name: string;
     public icon: string;
@@ -35,18 +35,26 @@ export class MockGuild {
         this.id = id;
         this.name = name || id;
         channels.forEach((item) => {
-            this.channels.set(item.id, item);
+            this.channels.cache.set(item.id, item);
         });
     }
 
+    public get client() {
+        return {
+            options: {
+                messageCacheMaxSize: -1,
+            },
+        };
+    }
+
     public async fetchMember(id: string): Promise<MockMember|Error> {
-        if (this.members.has(id)) {
-            return this.members.get(id)!;
+        if (this.members.cache.has(id)) {
+            return this.members.cache.get(id)!;
         }
         throw new Error("Member not in this guild");
     }
 
     public _mockAddMember(member: MockMember) {
-        this.members.set(member.id, member);
+        this.members.cache.set(member.id, member);
     }
 }

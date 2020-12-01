@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {MockCollection} from "./collection";
+import {MockCollectionManager} from "./collection";
 import {MockGuild} from "./guild";
 import {MockUser} from "./user";
 
@@ -22,7 +22,7 @@ import {MockUser} from "./user";
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
 export class MockDiscordClient {
-    public guilds = new MockCollection<string, MockGuild>();
+    public guilds = new MockCollectionManager<string, MockGuild>();
     public user: MockUser;
     private testLoggedIn: boolean = false;
     private testCallbacks: Map<string, (...data: any[]) => void> = new Map();
@@ -45,15 +45,23 @@ export class MockDiscordClient {
                 type: "text",
             },
         ];
-        this.guilds.set("123", new MockGuild("MyGuild", channels));
-        this.guilds.set("456", new MockGuild("My Spaces Gui", channels));
-        this.guilds.set("789", new MockGuild("My Dash-Guild", channels));
+        this.guilds.cache.set("123", new MockGuild("MyGuild", channels));
+        this.guilds.cache.set("456", new MockGuild("My Spaces Gui", channels));
+        this.guilds.cache.set("789", new MockGuild("My Dash-Guild", channels));
         this.user = new MockUser("12345");
     }
 
     public on(event: string, callback: (...data: any[]) => void) {
         this.testCallbacks.set(event, callback);
     }
+
+    public once(event: string, callback: (...data: any[]) => void) {
+        this.testCallbacks.set(event, () => {
+            this.testCallbacks.delete(event);
+            callback();
+        });
+    }
+
 
     public async emit(event: string, ...data: any[]) {
         return await this.testCallbacks.get(event)!.apply(this, data);
@@ -66,6 +74,9 @@ export class MockDiscordClient {
         this.testLoggedIn = true;
         if (this.testCallbacks.has("ready")) {
             this.testCallbacks.get("ready")!();
+        }
+        if (this.testCallbacks.has("shardReady")) {
+            this.testCallbacks.get("shardReady")!();
         }
         return;
     }

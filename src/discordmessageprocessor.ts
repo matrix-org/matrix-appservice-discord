@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "discord.js";
+import * as Discord from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import {
@@ -54,7 +54,7 @@ export class DiscordMessageProcessor {
     private getParserCallbacks(msg: Discord.Message): IDiscordMessageParserCallbacks {
         return {
             getChannel: async (id: string) => {
-                const channel = msg.guild.channels.get(id);
+                const channel = msg.guild?.channels.resolve(id);
                 if (!channel) {
                     return null;
                 }
@@ -77,7 +77,7 @@ export class DiscordMessageProcessor {
                 return null;
             },
             getUser: async (id: string) => {
-                const member = msg.guild.members.get(id);
+                const member = msg.guild?.members.resolve(id);
                 const mxid = `@_discord_${id}:${this.domain}`;
                 const name = member ? member.displayName : mxid;
                 return {
