@@ -17,7 +17,7 @@ import { Log } from "../log";
 import { IDatabaseConnector } from "./connector";
 import { Util } from "../util";
 
-import * as uuid from "uuid/v4";
+import { v4 as uuid } from 'uuid';
 import { MetricPeg } from "../metrics";
 import { TimedCache } from "../structures/timedcache";
 
