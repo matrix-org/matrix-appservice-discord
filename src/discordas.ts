@@ -177,6 +177,11 @@ async function run() {
     const eventProcessor = discordbot.MxEventProcessor;
 
     // tslint:disable-next-line:no-any
+    appservice.expressAppInstance.get("/health", (_, res: any) => {
+        res.status(201).send("");
+    });
+
+    // tslint:disable-next-line:no-any
     appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
         try {
             const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
