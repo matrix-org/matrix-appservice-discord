@@ -173,7 +173,7 @@ export class DbRoomStore {
                     {remoteId},
                 );
                 if (row) {
-                    // tslint:disable-next-line no-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     remote = new RemoteStoreRoom(remoteId, row as any);
                 }
             }
@@ -209,7 +209,7 @@ export class DbRoomStore {
                     {rid: remoteId},
                 );
                 if (row) {
-                    // tslint:disable-next-line no-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     remote = new RemoteStoreRoom(remoteId, row as any);
                 }
             }
@@ -261,7 +261,7 @@ export class DbRoomStore {
         SELECT * FROM remote_room_data
         INNER JOIN room_entries ON remote_room_data.room_id = room_entries.remote_id
         WHERE ${whereClaues}`;
-        // tslint:disable-next-line no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (await this.db.All(sql, data as any)).map((row) => {
             const id = row.id as string;
             const matrixId = row.matrix_id;
@@ -269,7 +269,7 @@ export class DbRoomStore {
             return {
                 id,
                 matrix: matrixId ? new MatrixStoreRoom(matrixId as string) : null,
-                // tslint:disable-next-line no-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 remote: matrixId ? new RemoteStoreRoom(remoteId as string, row as any) : null,
             };
         });
@@ -338,7 +338,7 @@ export class DbRoomStore {
             `,
             {
                 id: room.roomId,
-                // tslint:disable-next-line no-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ...data as any,
             });
             return;
@@ -372,7 +372,7 @@ export class DbRoomStore {
             await this.db.Run(`UPDATE remote_room_data SET ${setStatement} WHERE room_id = $id`,
             {
                 id: room.roomId,
-                // tslint:disable-next-line no-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ...keysToUpdate as any,
             });
             log.verbose("Upserted room " + room.roomId);

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+/* eslint-disable max-classes-per-file, @typescript-eslint/no-empty-function */
 
 import { Gauge, Counter, Histogram, default as promClient } from "prom-client";
 import { Log } from "./log";

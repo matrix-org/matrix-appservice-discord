@@ -59,7 +59,7 @@ export class MatrixCommandHandler {
         const actions: ICommandActions = {
             bridge: {
                 description: "Bridges this room to a Discord channel",
-                // tslint:disable prefer-template
+                /* eslint-disable prefer-template */
                 help: "How to bridge a Discord guild:\n" +
                     "1. Invite the bot to your Discord guild using this link: " + Util.GetBotLink(this.config) + "\n" +
                     "2. Invite me to the matrix room you'd like to bridge\n" +
@@ -69,7 +69,7 @@ export class MatrixCommandHandler {
                     "   Note: The Guild ID and Channel ID can be retrieved from the URL in your web browser.\n" +
                     "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
                     "5. Enjoy your new bridge!",
-                // tslint:enable prefer-template
+                /* eslint-enable prefer-template */
                 params: ["guildId", "channelId"],
                 permission: {
                     cat: "events",
@@ -134,7 +134,7 @@ export class MatrixCommandHandler {
                         await this.provisioner.UnbridgeChannel(res.channel, event.room_id);
                         return "This room has been unbridged";
                     } catch (err) {
-                        log.error("Error while unbridging room " + event.room_id);
+                        log.error(`Error while unbridging room ${event.room_id}`);
                         log.error(err);
                         return "There was an error unbridging this room. " +
                             "Please try again later or contact the bridge operator.";

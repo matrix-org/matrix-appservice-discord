@@ -24,7 +24,7 @@ export class DbEvent implements IDbDataMany {
     public GuildId: string;
     public ChannelId: string;
     public Result: boolean;
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private rows: any[];
 
     get ResultCount(): number {
@@ -33,7 +33,7 @@ export class DbEvent implements IDbDataMany {
 
     public async RunQuery(store: DiscordStore, params: ISqlCommandParameters): Promise<void> {
         this.rows = [];
-        // tslint:disable-next-line no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let rowsM: any[] | null = null;
         if (params.matrix_id) {
             rowsM = await store.db.All(`
@@ -64,7 +64,7 @@ export class DbEvent implements IDbDataMany {
                     WHERE msg_id = $id`, {
                         id: rowM.discord_id,
             })) {
-                // tslint:disable-next-line no-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const insertRow: any = Object.assign({}, row);
                 insertRow.guild_id = rowD.guild_id;
                 insertRow.channel_id = rowD.channel_id;

@@ -38,11 +38,12 @@ const commandOptions = [
     { name: "help", alias: "h", type: Boolean },
 ];
 
-function generateRegistration(opts, registrationPath)  {
+function generateRegistration(opts, registrationPath: string): void {
     if (!opts.url) {
         throw Error("'url' not given in command line opts, cannot generate registration file");
     }
     const reg = {
+        /* eslint-disable @typescript-eslint/camelcase */
         as_token: uuid(),
         hs_token: uuid(),
         id: "discord-bridge",
@@ -65,14 +66,15 @@ function generateRegistration(opts, registrationPath)  {
         rate_limited: false,
         sender_localpart: "_discord_bot",
         url: opts.url,
+        /* eslint-enable @typescript-eslint/camelcase */
     } as IAppserviceRegistration;
     fs.writeFileSync(registrationPath, yaml.safeDump(reg));
 }
 
-function setupLogging() {
+function setupLogging(): void {
     const logMap = new Map<string, Log>();
-    // tslint:disable-next-line:no-any
-    const logFunc = (level: string, module: string, args: any[]) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logFunc = (level: string, module: string, args: any[]): void => {
         if (!Array.isArray(args)) {
             args = [args];
         }
@@ -80,7 +82,7 @@ function setupLogging() {
             // Spammy logs begon
             return;
         }
-        const mod = "bot-sdk" + module;
+        const mod = `bot-sdk${module}`;
         let logger = logMap.get(mod);
         if (!logger) {
             logger = new Log(mod);
@@ -90,18 +92,18 @@ function setupLogging() {
     };
 
     LogService.setLogger({
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         error: (mod: string, args: any[]) => logFunc("error", mod, args),
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         info: (mod: string, args: any[]) => logFunc("info", mod, args),
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
     });
 }
 
-async function run() {
+async function run(): Promise<void> {
     const opts = cliArgs(commandOptions);
     if (opts.help) {
         /* tslint:disable:no-console */
@@ -176,7 +178,7 @@ async function run() {
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
 
-    // tslint:disable-next-line:no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
         try {
             const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);

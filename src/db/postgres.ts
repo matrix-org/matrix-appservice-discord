@@ -30,7 +30,7 @@ export class Postgres implements IDatabaseConnector {
         });
     }
 
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private db: pgPromise.IDatabase<any>;
     constructor(private connectionString: string) {
 
