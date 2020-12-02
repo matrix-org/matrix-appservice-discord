@@ -24,7 +24,6 @@ import { ToolsHelper } from "./toolshelper";
 const log = new Log("GhostFix");
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
-/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
 const JOIN_ROOM_SCHEDULE = [
     0,              // Right away
     1000,           // 1 second
@@ -32,7 +31,6 @@ const JOIN_ROOM_SCHEDULE = [
     300000,         // 5 minutes
     900000,         // 15 minutes
 ];
-/* tslint:enable:no-magic-numbers */
 
 const optionDefinitions = [
     {

@@ -73,11 +73,9 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
         // TODO: Bind this for every user.
         this.httpServer = http.createServer((req, res) => {
             if (req.method !== "GET" || req.url !== "/metrics") {
-                // tslint:disable-next-line:no-magic-numbers
                 res.writeHead(404, "Not found");
                 res.end();
             }
-            // tslint:disable-next-line:no-magic-numbers
             res.writeHead(200, "OK", {"Content-Type": promClient.register.contentType});
             res.write(promClient.register.metrics());
             res.end();

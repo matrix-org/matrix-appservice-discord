@@ -26,7 +26,6 @@ import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
 import { Appservice, Intent, IApplicationServiceProtocol } from "matrix-bot-sdk";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
-/* tslint:disable:no-magic-numbers */
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
@@ -43,7 +42,6 @@ const JOIN_ROOM_SCHEDULE = [
     300000,         // 5 minutes
     900000,         // 15 minutes
 ];
-/* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
     private botUserId: string;

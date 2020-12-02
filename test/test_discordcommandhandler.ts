@@ -97,7 +97,6 @@ describe("DiscordCommandHandler", () => {
             member,
         };
         await handler.Process(message);
-        // tslint:disable-next-line:no-magic-numbers
         expect(bridge.botIntent.underlyingClient.wasCalled("kickUser")).to.equal(2);
     });
     it("will deny permission", async () => {

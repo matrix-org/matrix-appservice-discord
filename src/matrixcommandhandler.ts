@@ -26,11 +26,9 @@ import { IRoomStoreEntry } from "./db/roomstore";
 import * as markdown from "marked";
 const log = new Log("MatrixCommandHandler");
 
-/* tslint:disable:no-magic-numbers */
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
 const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
 const ROOM_CACHE_MAXAGE_MS = 15 * 60 * 1000;
-/* tslint:enable:no-magic-numbers */
 
 export class MatrixCommandHandler {
     private botJoinedRooms: Set<string> = new Set(); // roomids

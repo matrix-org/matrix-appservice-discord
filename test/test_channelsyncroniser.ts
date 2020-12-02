@@ -214,9 +214,7 @@ describe("ChannelSyncroniser", () => {
 
             const {channelSync} = CreateChannelSync(testStore);
             const chans = await channelSync.GetRoomIdsFromChannel(chan as any);
-            /* tslint:disable:no-magic-numbers */
             expect(chans.length).equals(2);
-            /* tslint:enable:no-magic-numbers */
             expect(chans[0]).equals("!1:localhost");
             expect(chans[1]).equals("!2:localhost");
         });
