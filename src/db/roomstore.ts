@@ -237,7 +237,7 @@ export class DbRoomStore {
 
         try {
             await this.db.Run(`INSERT INTO room_entries VALUES ($id, $matrix, $remote)`, values);
-            log.verbose(`Created new entry ${  values.id}`);
+            log.verbose(`Created new entry ${values.id}`);
         } catch (ex) {
             log.error("Failed to insert room entry", ex);
             throw Error("Failed to insert room entry");
