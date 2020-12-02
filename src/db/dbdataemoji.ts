@@ -39,9 +39,9 @@ export class DbEmoji implements IDbData {
                 WHERE mxc_url = $mxc`;
         }
         const row = await store.db.Get(query, {
-                id: params.emoji_id,
-                mxc: params.mxc_url,
-            });
+            id: params.emoji_id,
+            mxc: params.mxc_url,
+        });
         this.Result = Boolean(row); // check if row exists
         if (this.Result && row) {
             this.EmojiId = row.emoji_id as string;
@@ -60,12 +60,14 @@ export class DbEmoji implements IDbData {
             INSERT INTO emoji
             (emoji_id,name,animated,mxc_url,created_at,updated_at)
             VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
-                animated: Number(this.Animated),
-                created_at: this.CreatedAt,
-                emoji_id: this.EmojiId,
-                mxc_url: this.MxcUrl,
-                name: this.Name,
-                updated_at: this.UpdatedAt,
+            /* eslint-disable @typescript-eslint/camelcase */
+            animated: Number(this.Animated),
+            created_at: this.CreatedAt,
+            emoji_id: this.EmojiId,
+            mxc_url: this.MxcUrl,
+            name: this.Name,
+            updated_at: this.UpdatedAt,
+            /* eslint-enable @typescript-eslint/camelcase */
         });
     }
 
@@ -80,11 +82,13 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
-                animated: Number(this.Animated),
-                emoji_id: this.EmojiId,
-                mxc_url: this.MxcUrl,
-                name: this.Name,
-                updated_at: this.UpdatedAt,
+            /* eslint-disable @typescript-eslint/camelcase */
+            animated: Number(this.Animated),
+            emoji_id: this.EmojiId,
+            mxc_url: this.MxcUrl,
+            name: this.Name,
+            updated_at: this.UpdatedAt,
+            /* eslint-enable @typescript-eslint/camelcase */
         });
     }
 

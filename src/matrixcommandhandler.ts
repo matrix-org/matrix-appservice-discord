@@ -187,10 +187,12 @@ export class MatrixCommandHandler {
         const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
         const formattedReply = markdown(reply);
         await this.bridge.botClient.sendMessage(event.room_id, {
+            /* eslint-disable @typescript-eslint/camelcase */
             body: reply,
             format: "org.matrix.custom.html",
             formatted_body: formattedReply,
             msgtype: "m.notice",
+            /* eslint-enable @typescript-eslint/camelcase */
         });
     }
 
