@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/* tslint:disable:no-bitwise no-console no-var-requires */
+/* eslint-disable no-bitwise, no-console */
 /**
  * Generates a URL you can use to authorize a bot with a guild.
  */
@@ -26,42 +26,42 @@ import { Util } from "../src/util";
 import { DiscordBridgeConfig } from "../src/config";
 
 const optionDefinitions = [
-  {
-      alias: "h",
-      description: "Display this usage guide.",
-      name: "help",
-      type: Boolean,
-  },
-  {
-      alias: "c",
-      defaultValue: "config.yaml",
-      description: "The AS config file.",
-      name: "config",
-      type: String,
-      typeLabel: "<config.yaml>",
-  },
+    {
+        alias: "h",
+        description: "Display this usage guide.",
+        name: "help",
+        type: Boolean,
+    },
+    {
+        alias: "c",
+        defaultValue: "config.yaml",
+        description: "The AS config file.",
+        name: "config",
+        type: String,
+        typeLabel: "<config.yaml>",
+    },
 ];
 
 const options = args(optionDefinitions);
 
 if (options.help) {
-  /* tslint:disable:no-console */
-  console.log(usage([
-  {
-      content: "A tool to obtain the Discord bot invitation URL.",
-      header: "Add bot",
-  },
-  {
-      header: "Options",
-      optionList: optionDefinitions,
-  },
-  ]));
-  process.exit(0);
+    // eslint-disable-next-line no-console
+    console.log(usage([
+        {
+            content: "A tool to obtain the Discord bot invitation URL.",
+            header: "Add bot",
+        },
+        {
+            header: "Options",
+            optionList: optionDefinitions,
+        },
+    ]));
+    process.exit(0);
 }
 
 const yamlConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
 if (yamlConfig === null || typeof yamlConfig !== "object") {
-  throw Error("You have an error in your discord config.");
+    throw Error("You have an error in your discord config.");
 }
 const url = Util.GetBotLink(yamlConfig as DiscordBridgeConfig);
 console.log(`Go to ${url} to invite the bot into a guild.`);

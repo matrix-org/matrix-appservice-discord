@@ -106,7 +106,7 @@ function setupLogging(): void {
 async function run(): Promise<void> {
     const opts = cliArgs(commandOptions);
     if (opts.help) {
-        /* tslint:disable:no-console */
+        // eslint-disable-next-line no-console
         console.log(usage([
             {
                 content: "The matrix appservice for discord",

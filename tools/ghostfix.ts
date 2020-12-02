@@ -60,17 +60,17 @@ const optionDefinitions = [
 const options = args(optionDefinitions);
 
 if (options.help) {
-    /* tslint:disable:no-console */
+    /* eslint-disable no-console */
     console.log(usage([
-    {
-        content: "A tool to fix usernames of ghosts already in " +
-        "matrix rooms, to make sure they represent the correct discord usernames.",
-        header: "Fix usernames of joined ghosts",
-    },
-    {
-        header: "Options",
-        optionList: optionDefinitions,
-    },
+        {
+            content: "A tool to fix usernames of ghosts already in " +
+            "matrix rooms, to make sure they represent the correct discord usernames.",
+            header: "Fix usernames of joined ghosts",
+        },
+        {
+            header: "Options",
+            optionList: optionDefinitions,
+        },
     ]));
     process.exit(0);
 }
@@ -130,4 +130,4 @@ async function run() {
     process.exit(0);
 }
 
-run(); // tslint:disable-line no-floating-promises
+run(); // eslint-disable no-floating-promises

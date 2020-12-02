@@ -33,6 +33,7 @@
         "@typescript-eslint/array-type": "error",
         "@typescript-eslint/promise-function-async": "error",
         "no-bitwise": "error",
+        "no-console": "error",
         "no-debugger": "error",
         "prefer-template": "error",
         // Disable these as they were introduced by @typescript-eslint/recommended
