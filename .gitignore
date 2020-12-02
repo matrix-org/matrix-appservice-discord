@@ -49,3 +49,6 @@ build
 
 *.db
 *.db.backup
+
+# snap
+*.snap
