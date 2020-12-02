@@ -41,12 +41,12 @@ function createCH(opts: any = {}) {
     const discord = {
         ChannelSyncroniser: cs,
         Provisioner: {
-            HasPendingRequest: (chan) => true,
+            HasPendingRequest: (chan): boolean => true,
             MarkApproved: async (chan, member, approved) => {
                 MARKED = approved ? 1 : 0;
                 return approved;
             },
-            UnbridgeChannel: () => {
+            UnbridgeChannel: (): void => {
                 ROOMSUNBRIDGED++;
             },
         },
@@ -54,7 +54,7 @@ function createCH(opts: any = {}) {
     const discordCommandHndlr = (Proxyquire("../src/discordcommandhandler", {
         "./util": {
             Util: {
-                GetMxidFromName: () => {
+                GetMxidFromName: (): string => {
                     return "@123456:localhost";
                 },
                 ParseCommand: Util.ParseCommand,
@@ -71,7 +71,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -88,7 +88,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel, (new MockChannel("456"))]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -105,7 +105,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return false;
         };
         const message = {
@@ -122,7 +122,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -139,7 +139,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -151,12 +151,12 @@ describe("DiscordCommandHandler", () => {
         expect(bridge.botIntent.underlyingClient.wasCalled("unbanUser")).to.equal(1);
     });
     it("handles !matrix approve", async () => {
-        const {handler, bridge} = createCH();
+        const {handler} = createCH();
         const channel = new MockChannel("123");
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -173,7 +173,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {
@@ -190,7 +190,7 @@ describe("DiscordCommandHandler", () => {
         const guild = new MockGuild("456", [channel]);
         channel.guild = guild;
         const member: any = new MockMember("123456", "blah");
-        member.hasPermission = () => {
+        member.hasPermission = (): boolean => {
             return true;
         };
         const message = {

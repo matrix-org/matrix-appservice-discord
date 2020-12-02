@@ -26,7 +26,7 @@ let loggedMessages: any[] = [];
 const WinstonMock = {
     createLogger: (format, transports) => {
         return createdLogger = {
-            close: () => { },
+            close: (): void => { },
             format,
             log: (type, ...msg) => {
                 loggedMessages = loggedMessages.concat(msg);
