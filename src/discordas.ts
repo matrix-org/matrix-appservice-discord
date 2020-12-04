@@ -178,7 +178,7 @@ async function run() {
 
     // tslint:disable-next-line:no-any
     appservice.expressAppInstance.get("/health", (_, res: any) => {
-        res.status(201).send("");
+        res.status(200).send("");
     });
 
     // tslint:disable-next-line:no-any
