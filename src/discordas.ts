@@ -23,7 +23,7 @@ import { Log } from "./log";
 import "source-map-support/register";
 import * as cliArgs from "command-line-args";
 import * as usage from "command-line-usage";
-import * as uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { IMatrixEvent } from "./matrixtypes";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 
