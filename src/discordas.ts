@@ -183,7 +183,7 @@ async function run() {
     // and run yarn.
     // See https://github.com/DefinitelyTyped/DefinitelyTyped/issues/49595
     appservice.expressAppInstance.get("/health", (_, res: Response) => {
-        res.status(201).send("");
+        res.status(200).send("");
     });
 
     // tslint:disable-next-line:no-any
