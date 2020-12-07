@@ -124,3 +124,12 @@ properties:
                 type: "string"
             usernamePattern:
                 type: "string"
+    metrics:
+        type: "object"
+        properties:
+            enabled:
+                type: "boolean"
+            port:
+                type: "number"
+            host:
+                type: "string"
