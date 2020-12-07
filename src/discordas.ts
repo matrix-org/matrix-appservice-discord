@@ -26,6 +26,7 @@ import * as usage from "command-line-usage";
 import { v4 as uuid } from "uuid";
 import { IMatrixEvent } from "./matrixtypes";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
+import { Response } from "express";
 
 const log = new Log("DiscordAS");
 
@@ -175,6 +176,15 @@ async function run() {
     const discordbot = new DiscordBot(config, appservice, store);
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
+
+    // 2020-12-07: If this fails to build in TypeScript with
+    // "Namespace 'serveStatic' has no exported member 'RequestHandlerConstructor'.",
+    // remove @types/express-serve-static-core and @types/serve-static from yarn.lock
+    // and run yarn.
+    // See https://github.com/DefinitelyTyped/DefinitelyTyped/issues/49595
+    appservice.expressAppInstance.get("/health", (_, res: Response) => {
+        res.status(200).send("");
+    });
 
     // tslint:disable-next-line:no-any
     appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {

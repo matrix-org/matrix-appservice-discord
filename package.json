@@ -60,6 +60,7 @@
     "@types/better-sqlite3": "^5.4.1",
     "@types/chai": "^4.2.11",
     "@types/command-line-args": "^5.0.0",
+    "@types/express": "^4.17.9",
     "@types/js-yaml": "^3.12.4",
     "@types/marked": "^1.1.0",
     "@types/mime": "^2.0.2",
