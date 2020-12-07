@@ -108,4 +108,4 @@ ghosts:
 metrics:
     enabled: false
     port: 9001
-    host: "localhost"
+    host: "127.0.0.1"
