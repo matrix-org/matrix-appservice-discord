@@ -23,9 +23,10 @@ import { Log } from "./log";
 import "source-map-support/register";
 import * as cliArgs from "command-line-args";
 import * as usage from "command-line-usage";
-import * as uuid from "uuid/v4";
+import { v4 as uuid } from "uuid";
 import { IMatrixEvent } from "./matrixtypes";
 import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
+import { Response } from "express";
 
 const log = new Log("DiscordAS");
 
@@ -178,6 +179,15 @@ async function run(): Promise<void> {
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
 
+    // 2020-12-07: If this fails to build in TypeScript with
+    // "Namespace 'serveStatic' has no exported member 'RequestHandlerConstructor'.",
+    // remove @types/express-serve-static-core and @types/serve-static from yarn.lock
+    // and run yarn.
+    // See https://github.com/DefinitelyTyped/DefinitelyTyped/issues/49595
+    appservice.expressAppInstance.get("/health", (_, res: Response) => {
+        res.status(200).send("");
+    });
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
         try {
