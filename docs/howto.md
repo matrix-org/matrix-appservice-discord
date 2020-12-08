@@ -7,9 +7,9 @@ The default format for room aliases (which are automatically resolved, whether t
 
 You can find these on discord in the browser where:
 
-``https://discordapp.com/channels/282616294245662720/282616372591329281``
+``https://discord.com/channels/282616294245662720/282616372591329281``
 
-is formatted as https://discordapp.com/channels/``guildid``/``channelid``
+is formatted as https://discord.com/channels/``guildid``/``channelid``
 
 ### Set privileges on bridge managed rooms
 

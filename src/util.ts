@@ -121,7 +121,7 @@ export class Util {
 
         const clientId = config.auth.clientID;
 
-        return `https://discordapp.com/api/oauth2/authorize?client_id=${clientId}&scope=bot&permissions=${perms}`;
+        return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&scope=bot&permissions=${perms}`;
     }
 
     public static async GetMxidFromName(intent: Intent, name: string, channelMxids: string[]) {
