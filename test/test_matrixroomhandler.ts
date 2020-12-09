@@ -26,7 +26,7 @@ import { AppserviceMock } from "./mocks/appservicemock";
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
 
-const RoomHandler = (Proxyquire("../src/matrixroomhandler", {
+const MatrixRoomHandler = (Proxyquire("../src/matrixroomhandler", {
     "./util": {
         Util: {
             DelayedPromise: Util.DelayedPromise,
@@ -119,7 +119,7 @@ function createRH(opts: any = {}) {
 
         },
     };
-    const handler = new RoomHandler(bot as any, config, bridge as any, store);
+    const handler = new MatrixRoomHandler(bot as any, config, bridge as any, store);
     return { handler, bridge };
 }
 
