@@ -19,7 +19,6 @@ import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "better-discord.js";
 import { Util } from "./util";
-import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
@@ -47,16 +46,12 @@ const JOIN_ROOM_SCHEDULE = [
 
 export class MatrixRoomHandler {
     private botUserId: string;
-    private botJoinedRooms: Set<string>; // roomids
-    private botJoinedRoomsCacheUpdatedAt = 0;
     constructor(
         private discord: DiscordBot,
         private config: DiscordBridgeConfig,
-        private provisioner: Provisioner,
         private bridge: Appservice,
         private roomStore: DbRoomStore) {
         this.botUserId = this.discord.BotUserId;
-        this.botJoinedRooms = new Set();
     }
 
     public bindThirdparty() {

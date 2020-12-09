@@ -105,23 +105,6 @@ function createRH(opts: any = {}) {
     } else {
         config.bridge.enableSelfServiceBridging = true;
     }
-    const provisioner = {
-        AskBridgePermission: async () => {
-            if (opts.denyBridgePermission) {
-                throw new Error("The bridge has been declined by the Discord guild");
-            }
-        },
-        BridgeMatrixRoom: () => {
-            if (opts.failBridgeMatrix) {
-                throw new Error("Test failed matrix bridge");
-            }
-        },
-        UnbridgeRoom: async () => {
-            if (opts.failUnbridge) {
-                throw new Error("Test failed unbridge");
-            }
-        },
-    };
     const store = {
         getEntriesByMatrixId: (matrixId) => {
             return [{
@@ -136,7 +119,7 @@ function createRH(opts: any = {}) {
 
         },
     };
-    const handler = new RoomHandler(bot as any, config, provisioner as any, bridge as any, store);
+    const handler = new RoomHandler(bot as any, config, bridge as any, store);
     return { handler, bridge };
 }
 
