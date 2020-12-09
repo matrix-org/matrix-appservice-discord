@@ -47,7 +47,7 @@ export class Log {
     private static logger: Logger;
 
     private static isValidLevel(level: string) {
-        return ['silly', 'verbose', 'info', 'http', 'warn', 'error', 'silent'].includes(level);
+        return ["silly", "verbose", "info", "http", "warn", "error", "silent"].includes(level);
     }
 
     private static setupLogger() {
