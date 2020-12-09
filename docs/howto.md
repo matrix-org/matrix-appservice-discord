@@ -19,7 +19,7 @@ is formatted as https://discordapp.com/channels/``guildid``/``channelid``
   * Run ``npm run adminme -- -h`` for usage.
 
 Please note that `!AbcdefghijklmnopqR:example.com` is the internal room id and will always begin with `!`.
-You can find this internal id in the room settings in Riot.
+You can find this internal id in the room settings in Element.
 
 ### Migrate to postgres from sqlite
 * Stop the bridge.
