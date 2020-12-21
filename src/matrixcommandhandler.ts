@@ -75,7 +75,7 @@ export class MatrixCommandHandler {
                     cat: "events",
                     level: PROVISIONING_DEFAULT_POWER_LEVEL,
                     selfService: true,
-                    subcat: "m.room.power_levels",
+                    subcat: this.config.bridge.bridgingRequiresCanonicalAliasPermission ? "m.room.canonical_alias" : "m.room.power_levels",
                 },
                 run: async ({guildId, channelId}) => {
                     if (roomEntry && roomEntry.remote) {
