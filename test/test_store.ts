@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import { DiscordStore } from "../src/store";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { DbEvent } from "../src/db/dbdataevent";
@@ -57,14 +57,14 @@ describe("DiscordStore", () => {
             insertEmoji.MxcUrl = "TestUrl";
             await store.Insert(insertEmoji);
             const getEmoji = await store.Get(DbEmoji, {emoji_id: "123"});
-            Chai.assert.equal(getEmoji!.Name, "TestEmoji");
-            Chai.assert.equal(getEmoji!.MxcUrl, "TestUrl");
+            expect(getEmoji!.Name).to.equal("TestEmoji");
+            expect(getEmoji!.MxcUrl).to.equal("TestUrl");
         });
         it("should not return nonexistant emoji", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
             const getEmoji = await store.Get(DbEmoji, {emoji_id: "123"});
-            Chai.assert.isFalse(getEmoji!.Result);
+            expect(getEmoji!.Result).to.be.false;
         });
         it("should update successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -81,9 +81,9 @@ describe("DiscordStore", () => {
             insertEmoji.MxcUrl = "NewURL";
             await store.Update(insertEmoji);
             const getEmoji = await store.Get(DbEmoji, {emoji_id: "123"});
-            Chai.assert.equal(getEmoji!.Name, "TestEmoji2");
-            Chai.assert.equal(getEmoji!.MxcUrl, "NewURL");
-            Chai.assert.notEqual(getEmoji!.CreatedAt, getEmoji!.UpdatedAt);
+            expect(getEmoji!.Name).to.equal("TestEmoji2");
+            expect(getEmoji!.MxcUrl).to.equal("NewURL");
+            expect(getEmoji!.CreatedAt).to.not.equal(getEmoji!.UpdatedAt);
         });
     });
     describe("Get|Insert|Delete<DbEvent>", () => {
@@ -108,16 +108,16 @@ describe("DiscordStore", () => {
             await store.Insert(event);
             const getEventDiscord = await store.Get(DbEvent, {discord_id: "456"});
             getEventDiscord!.Next();
-            Chai.assert.equal(getEventDiscord!.MatrixId, "123");
-            Chai.assert.equal(getEventDiscord!.DiscordId, "456");
-            Chai.assert.equal(getEventDiscord!.GuildId, "123");
-            Chai.assert.equal(getEventDiscord!.ChannelId, "123");
+            expect(getEventDiscord!.MatrixId).to.equal("123");
+            expect(getEventDiscord!.DiscordId).to.equal("456");
+            expect(getEventDiscord!.GuildId).to.equal("123");
+            expect(getEventDiscord!.ChannelId).to.equal("123");
             const getEventMatrix = await store.Get(DbEvent, {matrix_id: "123"});
             getEventMatrix!.Next();
-            Chai.assert.equal(getEventMatrix!.MatrixId, "123");
-            Chai.assert.equal(getEventMatrix!.DiscordId, "456");
-            Chai.assert.equal(getEventMatrix!.GuildId, "123");
-            Chai.assert.equal(getEventMatrix!.ChannelId, "123");
+            expect(getEventMatrix!.MatrixId).to.equal("123");
+            expect(getEventMatrix!.DiscordId).to.equal("456");
+            expect(getEventMatrix!.GuildId).to.equal("123");
+            expect(getEventMatrix!.ChannelId).to.equal("123");
         });
         const MSG_COUNT = 5;
         it("should get multiple discord msgs successfully", async () => {
@@ -132,7 +132,7 @@ describe("DiscordStore", () => {
                 await store.Insert(event);
             }
             const getEventDiscord = await store.Get(DbEvent, {matrix_id: "123"});
-            Chai.assert.equal(getEventDiscord!.ResultCount, MSG_COUNT);
+            expect(getEventDiscord!.ResultCount).to.equal(MSG_COUNT);
         });
         it("should get multiple matrix msgs successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -146,13 +146,13 @@ describe("DiscordStore", () => {
                 await store.Insert(event);
             }
             const getEventMatrix = await store.Get(DbEvent, {discord_id: "456"});
-            Chai.assert.equal(getEventMatrix!.ResultCount, MSG_COUNT);
+            expect(getEventMatrix!.ResultCount).to.equal(MSG_COUNT);
         });
         it("should not return nonexistant event", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
             const getMessage = await store.Get(DbEvent, {matrix_id: "123"});
-            Chai.assert.isFalse(getMessage!.Result);
+            expect(getMessage!.Result).to.be.false;
         });
         it("should delete successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -166,7 +166,7 @@ describe("DiscordStore", () => {
             await store.Delete(event);
             const getEvent = await store.Get(DbEvent, {matrix_id: "123"});
             getEvent!.Next();
-            Chai.assert.isFalse(getEvent!.Result);
+            expect(getEvent!.Result).to.be.false;
         });
     });
 });
