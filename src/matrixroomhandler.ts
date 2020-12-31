@@ -27,12 +27,7 @@ import { Appservice, Intent, IApplicationServiceProtocol } from "matrix-bot-sdk"
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
 /* tslint:disable:no-magic-numbers */
-const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
-const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
-const PROVISIONING_DEFAULT_USER_POWER_LEVEL = 0;
-const USERSYNC_STATE_DELAY_MS = 5000;
-const ROOM_CACHE_MAXAGE_MS = 15 * 60 * 1000;
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
 // Disabled because it complains about the values in the array
@@ -47,8 +42,6 @@ const JOIN_ROOM_SCHEDULE = [
 
 export class MatrixRoomHandler {
     private botUserId: string;
-    private botJoinedRooms: Set<string>; // roomids
-    private botJoinedRoomsCacheUpdatedAt = 0;
     constructor(
         private discord: DiscordBot,
         private config: DiscordBridgeConfig,
@@ -56,7 +49,6 @@ export class MatrixRoomHandler {
         private bridge: Appservice,
         private roomStore: DbRoomStore) {
         this.botUserId = this.discord.BotUserId;
-        this.botJoinedRooms = new Set();
     }
 
     public bindThirdparty() {
