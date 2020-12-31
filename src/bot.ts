@@ -340,7 +340,7 @@ export class DiscordBot {
 
     public ThirdpartySearchForChannels(guildId: string, channelName: string): IThirdPartyLookup[] {
         if (channelName.startsWith("#")) {
-            channelName = channelName.substr(1);
+            channelName = channelName.substring(1);
         }
         if (this.bot.guilds.cache.has(guildId) ) {
             const guild = this.bot.guilds.cache.get(guildId);
