@@ -146,7 +146,7 @@ export class MatrixRoomHandler {
 
     // tslint:disable-next-line no-any
     public async OnAliasQuery(alias: string): Promise<any> {
-        const aliasLocalpart = alias.substring("#".length, alias.indexOf(":") - 1);
+        const aliasLocalpart = alias.substring("#".length, alias.indexOf(":"));
         log.info("Got request for #", aliasLocalpart);
         const srvChanPair = aliasLocalpart.substring("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
