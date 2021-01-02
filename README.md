@@ -4,7 +4,7 @@ A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.c
 Currently the bridge is in **Beta** and quite usable for everyday
 bridging, with one or two bugs cropping up.
 
-![Screenshot of Riot and Discord working together](screenshot.png)
+![Screenshot of Element and Discord working together](screenshot.png)
 
 
 ## Helping out
@@ -88,8 +88,8 @@ file. The metrics will be reported under the URL provided in the registration fi
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system
-used in clients like [Riot](https://riot.im). Any new servers/guilds you bridge
-should show up in the network list on Riot and other clients.
+used in clients like [Element](https://element.io). Any new servers/guilds you bridge
+should show up in the network list on Element and other clients.
 
 ### Setting up Discord
 
@@ -99,7 +99,7 @@ should show up in the network list on Riot and other clients.
 * Give this link to owners of the guilds you plan to bridge.
 * Finally, you can join a room with ``#_discord_guildid_channelid``
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
-  * Riot (and other clients with third party protocol support) users can directly join channels from the room directory.
+  * Element (and other clients with third party protocol support) users can directly join channels from the room directory.
 * You can use Webhooks to make messages relayed by the bridge not nested by the bot user. This will also display the avatar of the user speaking on matrix with their messages.
   * The bot should create this automatically, but if not perform the following:
     * Enable ``Manage Webhooks`` on the role added by the bot.
