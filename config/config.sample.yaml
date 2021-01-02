@@ -104,3 +104,8 @@ ghosts:
     nickPattern: ":nick"
     # Pattern for the ghosts username, available is :username, :tag and :id
     usernamePattern: ":username#:tag"
+# Prometheus-compatible metrics endpoint
+metrics:
+    enabled: false
+    port: 9001
+    host: "127.0.0.1"
