@@ -358,7 +358,7 @@ export class Util {
 
     public static ParseMxid(unescapedMxid: string, escape: boolean = true) {
         const RADIX = 16;
-        const parts = unescapedMxid.substr(1).split(":");
+        const parts = unescapedMxid.substring(1).split(":");
         const domain = parts[1];
         let localpart = parts[0];
         if (escape) {

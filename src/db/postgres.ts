@@ -26,7 +26,7 @@ const pgp: pgPromise.IMain = pgPromise({
 export class Postgres implements IDatabaseConnector {
     public static ParameterizeSql(sql: string): string {
         return sql.replace(/\$((\w|\d|_)+)+/g, (k) => {
-            return `\${${k.substr("$".length)}}`;
+            return `\${${k.substring("$".length)}}`;
         });
     }
 
@@ -37,7 +37,7 @@ export class Postgres implements IDatabaseConnector {
     }
     public Open() {
         // Hide username:password
-        const logConnString = this.connectionString.substr(
+        const logConnString = this.connectionString.substring(
             this.connectionString.indexOf("@") || 0,
         );
         log.info(`Opening ${logConnString}`);
