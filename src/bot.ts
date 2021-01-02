@@ -94,7 +94,7 @@ export class DiscordBot {
         this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(config.bridge.domain, this);
         this.presenceHandler = new PresenceHandler(this);
-        this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
+        this.roomHandler = new MatrixRoomHandler(this, config, bridge, store.roomStore);
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
