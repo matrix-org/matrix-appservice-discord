@@ -46,6 +46,10 @@ export class Log {
     private static config: DiscordBridgeConfigLogging;
     private static logger: Logger;
 
+    private static isValidLevel(level: string) {
+        return ["silly", "verbose", "info", "http", "warn", "error", "silent"].includes(level);
+    }
+
     private static setupLogger() {
         if (Log.logger) {
             Log.logger.close();
@@ -53,6 +57,9 @@ export class Log {
         const tsports: transports.StreamTransportInstance[] = Log.config.files.map((file) =>
             Log.setupFileTransport(file),
         );
+        if (Log.config.console && !Log.isValidLevel(Log.config.console)) {
+            new Log("Log").warn("Console log level is invalid. Please pick one of the case-sensitive levels provided in the sample config.");
+        }
         tsports.push(new transports.Console({
             level: Log.config.console,
         }));
@@ -79,6 +86,10 @@ export class Log {
             }
             return info;
         });
+
+        if (config.level && !Log.isValidLevel(config.level)) {
+            new Log("Log").warn(`Log level of ${config.file} is invalid. Please pick one of the case-sensitive levels provided in the sample config.`);
+        }
 
         const opts = {
             datePattern: config.datePattern,
