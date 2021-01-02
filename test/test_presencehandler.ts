@@ -98,7 +98,7 @@ describe("PresenceHandler", () => {
             const member = new MockPresence(new MockUser("ghi", "alice"), "def", "online");
             await handler.ProcessUser(member as any);
             appservice.getIntentForSuffix(member.userID)
-                .underlyingClient.wasCalled("setPresenceStatus", true, "online", undefined);
+                .underlyingClient.wasCalled("setPresenceStatus", true, "online", "");
         });
         it("processes an offline user", async () => {
             lastStatus = null;
@@ -106,7 +106,7 @@ describe("PresenceHandler", () => {
             const member = new MockPresence(new MockUser("abc", "alice"), "def", "offline");
             await handler.ProcessUser(member as any);
             appservice.getIntentForSuffix(member.userID)
-                .underlyingClient.wasCalled("setPresenceStatus", true, "offline", undefined);
+                .underlyingClient.wasCalled("setPresenceStatus", true, "offline", "");
         });
         it("processes an idle user", async () => {
             lastStatus = null;
@@ -114,7 +114,7 @@ describe("PresenceHandler", () => {
             const member = new MockPresence(new MockUser("abc", "alice"), "def", "idle");
             await handler.ProcessUser(member as any);
             appservice.getIntentForSuffix(member.userID)
-                .underlyingClient.wasCalled("setPresenceStatus", true, "unavailable", undefined);
+                .underlyingClient.wasCalled("setPresenceStatus", true, "unavailable", "");
         });
         it("processes an dnd user", async () => {
             lastStatus = null;
