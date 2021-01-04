@@ -19,7 +19,6 @@ import { DiscordBridgeConfig } from "./config";
 
 import * as Discord from "better-discord.js";
 import { Util } from "./util";
-import { Provisioner } from "./provisioner";
 import { Log } from "./log";
 const log = new Log("MatrixRoomHandler");
 import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
@@ -45,16 +44,12 @@ const JOIN_ROOM_SCHEDULE = [
 
 export class MatrixRoomHandler {
     private botUserId: string;
-    private botJoinedRooms: Set<string>; // roomids
-    private botJoinedRoomsCacheUpdatedAt = 0;
     constructor(
         private discord: DiscordBot,
         private config: DiscordBridgeConfig,
-        private provisioner: Provisioner,
         private bridge: Appservice,
         private roomStore: DbRoomStore) {
         this.botUserId = this.discord.BotUserId;
-        this.botJoinedRooms = new Set();
     }
 
     public bindThirdparty() {
@@ -145,9 +140,9 @@ export class MatrixRoomHandler {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public async OnAliasQuery(alias: string): Promise<any> {
-        const aliasLocalpart = alias.substr("#".length, alias.indexOf(":") - 1);
+        const aliasLocalpart = alias.substring("#".length, alias.indexOf(":"));
         log.info("Got request for #", aliasLocalpart);
-        const srvChanPair = aliasLocalpart.substr("_discord_".length).split("_", ROOM_NAME_PARTS);
+        const srvChanPair = aliasLocalpart.substring("_discord_".length).split("_", ROOM_NAME_PARTS);
         if (srvChanPair.length < ROOM_NAME_PARTS || srvChanPair[0] === "" || srvChanPair[1] === "") {
             log.warn(`Alias '${aliasLocalpart}' was missing a server and/or a channel`);
             return;

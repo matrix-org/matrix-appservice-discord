@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import * as Chai from "chai";
+import { expect } from "chai";
 import * as Proxyquire from "proxyquire";
 
 import { MockChannel } from "./mocks/channel";
@@ -24,8 +24,6 @@ import { AppserviceMock } from "./mocks/appservicemock";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
-
-const expect = Chai.expect;
 
 let ROOMSUNBRIDGED = 0;
 let MARKED = -1;

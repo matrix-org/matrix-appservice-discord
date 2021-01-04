@@ -15,16 +15,13 @@ limitations under the License.
 */
 /* eslint-disable @typescript-eslint/camelcase */
 
-import * as Chai from "chai";
+import { expect } from "chai";
 import { DiscordStore, CURRENT_SCHEMA } from "../../src/store";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
 
 // we are a test file and thus need those
 /* tslint:disable: no-any no-unused-expression */
 
-const expect = Chai.expect;
-
-// const assert = Chai.assert;
 let store: DiscordStore;
 describe("RoomStore", () => {
     before(async () => {
