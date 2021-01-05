@@ -5,8 +5,8 @@
   "main": "discordas.js",
   "scripts": {
     "test": "mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
-    "lint": "tslint --project ./tsconfig.json -t stylish",
-    "coverage": "nyc mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
+    "lint": "eslint -c .eslintrc --max-warnings 200 src/**/*.ts test/**/*.ts",
+    "coverage": "tsc && nyc mocha build/test/config.js build/test",
     "build": "tsc",
     "postinstall": "npm run build",
     "start": "npm run-script build && node ./build/src/discordas.js -c config.yaml",
@@ -57,6 +57,8 @@
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
+    "@typescript-eslint/eslint-plugin": "^2.14.0",
+    "@typescript-eslint/parser": "^2.14.0",
     "@types/better-sqlite3": "^5.4.1",
     "@types/chai": "^4.2.11",
     "@types/command-line-args": "^5.0.0",
@@ -72,8 +74,8 @@
     "proxyquire": "^1.7.11",
     "source-map-support": "^0.5.19",
     "ts-node": "^8.10.2",
-    "tslint": "^5.20.1",
     "typescript": "^3.9.5",
-    "why-is-node-running": "^2.2.0"
+    "why-is-node-running": "^2.2.0",
+    "eslint": "^7.4.0"
   }
 }
