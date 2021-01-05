@@ -240,7 +240,7 @@ class MatrixClientMock extends AppserviceMockBase {
 
     public async uploadContent(data: Buffer, contentType: string, filename: string = "noname") {
         this.funcCalled("uploadContent", data, contentType, filename);
-        return "mxc://" + filename;
+        return `mxc://${filename}`;
     }
 
     public mxcToHttp(mxcUrl: string) {

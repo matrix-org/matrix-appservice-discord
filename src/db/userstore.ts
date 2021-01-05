@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+/* eslint-disable max-classes-per-file */
 
 import { IDatabaseConnector } from "./connector";
 import { Log } from "../log";
@@ -81,9 +82,11 @@ export class DbUserStore {
             {remoteId},
         );
         if (nicks) {
+            /* eslint-disable @typescript-eslint/camelcase */
             nicks.forEach(({nick, guild_id}) => {
                 remoteUser.guildNicks.set(guild_id as string, nick as string);
             });
+            /* eslint-enable @typescript-eslint/camelcase */
         }
         this.remoteUserCache.set(remoteId, remoteUser);
         return remoteUser;
@@ -98,35 +101,39 @@ export class DbUserStore {
         );
         if (!existingData) {
             await this.db.Run(
-            `INSERT INTO remote_user_data VALUES (
-                $remote_id,
-                $displayname,
-                $avatarurl,
-                $avatarurl_mxc
-            )`,
-            {
-                avatarurl: user.avatarurl,
-                avatarurl_mxc: user.avatarurlMxc,
-                displayname: user.displayname,
-                remote_id: user.id,
-            });
+                `INSERT INTO remote_user_data VALUES (
+                    $remote_id,
+                    $displayname,
+                    $avatarurl,
+                    $avatarurl_mxc
+                )`,
+                {
+                    /* eslint-disable @typescript-eslint/camelcase */
+                    avatarurl: user.avatarurl,
+                    avatarurl_mxc: user.avatarurlMxc,
+                    displayname: user.displayname,
+                    remote_id: user.id,
+                    /* eslint-enable @typescript-eslint/camelcase */
+                });
         } else {
             await this.db.Run(
-`UPDATE remote_user_data SET displayname = $displayname,
+                `UPDATE remote_user_data SET displayname = $displayname,
 avatarurl = $avatarurl,
 avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
-            {
-                avatarurl: user.avatarurl,
-                avatarurl_mxc: user.avatarurlMxc,
-                displayname: user.displayname,
-                remote_id: user.id,
-            });
+                {
+                    /* eslint-disable @typescript-eslint/camelcase */
+                    avatarurl: user.avatarurl,
+                    avatarurl_mxc: user.avatarurlMxc,
+                    displayname: user.displayname,
+                    remote_id: user.id,
+                    /* eslint-enable @typescript-eslint/camelcase */
+                });
         }
         const existingNicks = {};
         (await this.db.All(
             "SELECT guild_id, nick FROM remote_user_guild_nicks WHERE remote_id = $remoteId",
             {remoteId: user.id},
-        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick);
+        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick); // eslint-disable-line @typescript-eslint/camelcase
         for (const guildId of user.guildNicks.keys()) {
             const nick = user.guildNicks.get(guildId) || null;
             if (existingData) {
@@ -134,28 +141,32 @@ avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
                     return;
                 } else if (existingNicks[guildId]) {
                     await this.db.Run(
-`UPDATE remote_user_guild_nicks SET nick = $nick
+                        `UPDATE remote_user_guild_nicks SET nick = $nick
 WHERE remote_id = $remote_id
 AND guild_id = $guild_id`,
-                    {
-                        guild_id: guildId,
-                        nick,
-                        remote_id: user.id,
-                    });
+                        {
+                            /* eslint-disable @typescript-eslint/camelcase */
+                            guild_id: guildId,
+                            nick,
+                            remote_id: user.id,
+                            /* eslint-enable @typescript-eslint/camelcase */
+                        });
                     return;
                 }
             }
             await this.db.Run(
-            `INSERT INTO remote_user_guild_nicks VALUES (
+                `INSERT INTO remote_user_guild_nicks VALUES (
                 $remote_id,
                 $guild_id,
                 $nick
             )`,
-            {
-                guild_id: guildId,
-                nick,
-                remote_id: user.id,
-            });
+                {
+                    /* eslint-disable @typescript-eslint/camelcase */
+                    guild_id: guildId,
+                    nick,
+                    remote_id: user.id,
+                    /* eslint-enable @typescript-eslint/camelcase */
+                });
         }
 
     }

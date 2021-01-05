@@ -249,7 +249,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         }
     }
 
-    // tslint:disable-next-line no-any callable-types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any callable-types
     public async Get<T extends IDbData>(dbType: {new(): T; }, params: any): Promise<T|null> {
         const dType = new dbType();
         log.silly(`get <${dType.constructor.name} with params ${params}>`);

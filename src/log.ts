@@ -24,21 +24,21 @@ const FORMAT_FUNC = format.printf((info) => {
 });
 
 export class Log {
-    public static get level() {
+    public static get level(): string {
         return this.logger.level;
     }
 
-    public static set level(level) {
+    public static set level(level: string) {
         this.logger.level = level;
     }
 
-    public static Configure(config: DiscordBridgeConfigLogging) {
+    public static Configure(config: DiscordBridgeConfigLogging): void {
         // Merge defaults.
         Log.config = Object.assign(new DiscordBridgeConfigLogging(), config);
         Log.setupLogger();
     }
 
-    public static ForceSilent() {
+    public static ForceSilent(): void {
         new Log("Log").warn("Log set to silent");
         Log.logger.silent = true;
     }
@@ -46,13 +46,20 @@ export class Log {
     private static config: DiscordBridgeConfigLogging;
     private static logger: Logger;
 
-    private static setupLogger() {
+    private static isValidLevel(level: string) {
+        return ["silly", "verbose", "info", "http", "warn", "error", "silent"].includes(level);
+    }
+
+    private static setupLogger(): void {
         if (Log.logger) {
             Log.logger.close();
         }
         const tsports: transports.StreamTransportInstance[] = Log.config.files.map((file) =>
             Log.setupFileTransport(file),
         );
+        if (Log.config.console && !Log.isValidLevel(Log.config.console)) {
+            new Log("Log").warn("Console log level is invalid. Please pick one of the case-sensitive levels provided in the sample config.");
+        }
         tsports.push(new transports.Console({
             level: Log.config.console,
         }));
@@ -80,6 +87,10 @@ export class Log {
             return info;
         });
 
+        if (config.level && !Log.isValidLevel(config.level)) {
+            new Log("Log").warn(`Log level of ${config.file} is invalid. Please pick one of the case-sensitive levels provided in the sample config.`);
+        }
+
         const opts = {
             datePattern: config.datePattern,
             filename: config.file,
@@ -92,41 +103,40 @@ export class Log {
             maxSize: config.maxSize,
         };
 
-        // tslint:disable-next-line no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return new (transports as any).DailyRotateFile(opts);
     }
 
-    public warning = this.warn;
-
     constructor(private module: string) { }
 
-    // tslint:disable-next-line no-any
-    public error(...msg: any[]) {
+    public error(...msg: unknown[]): void {
         this.log("error", msg);
     }
 
-    // tslint:disable-next-line no-any
-    public warn(...msg: any[]) {
+    public warn(...msg: unknown[]): void {
         this.log("warn", msg);
     }
 
-    // tslint:disable-next-line no-any
-    public info(...msg: any[]) {
+    public warning(...msg: unknown[]): void {
+        this.warn(...msg);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public info(...msg: unknown[]): void {
         this.log("info", msg);
     }
 
-    // tslint:disable-next-line no-any
-    public verbose(...msg: any[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public verbose(...msg: unknown[]): void {
         this.log("verbose", msg);
     }
 
-    // tslint:disable-next-line no-any
-    public silly(...msg: any[]) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public silly(...msg: unknown[]): void {
         this.log("silly", msg);
     }
 
-    // tslint:disable-next-line no-any
-    private log(level: string, msg: any[]) {
+    private log(level: string, msg: unknown[]): void {
         if (!Log.logger) {
             // We've not configured the logger yet, so create a basic one.
             Log.config = new DiscordBridgeConfigLogging();

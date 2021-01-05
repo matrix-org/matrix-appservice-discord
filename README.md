@@ -1,6 +1,6 @@
 # Matrix Discord Bridge
 
-A bridge between [Matrix](http://matrix.org/) and [Discord](https://discordapp.com/).
+A bridge between [Matrix](http://matrix.org/) and [Discord](https://discord.com/).
 Currently the bridge is in **Beta** and quite usable for everyday
 bridging, with one or two bugs cropping up.
 
@@ -29,7 +29,7 @@ that implements the [AS API](https://matrix.org/docs/spec/application_service/r0
 
 The bridge supports any version of Node.js >= v12.X, including all [current releases](https://nodejs.org/en/about/releases/).
 
-### Setup the bridge
+### Set up the bridge
 
 * Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
 * Run ``npm run build`` to build the typescript into javascript.
@@ -88,7 +88,7 @@ file. The metrics will be reported under the URL provided in the registration fi
 #### 3PID Protocol Support
 
 This bridge support searching for rooms within networks via the 3pid system
-used in clients like [Element](https://app.element.io/). Any new servers/guilds you bridge
+used in clients like [Element](https://element.io). Any new servers/guilds you bridge
 should show up in the network list on Element and other clients.
 
 ### Setting up Discord
