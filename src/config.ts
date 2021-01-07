@@ -141,6 +141,7 @@ export class DiscordBridgeConfigChannelDeleteOptions {
 class DiscordBridgeConfigLimits {
     public roomGhostJoinDelay: number = 6000;
     public discordSendDelay: number = 1500;
+    public roomCount: number = -1;
 }
 
 export class LoggingFile {

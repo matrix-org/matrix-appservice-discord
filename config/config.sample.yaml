@@ -102,6 +102,8 @@ limits:
     # echos = (Copies of a sent message may arrive from discord before we've
     # fininished handling it, causing us to echo it back to the room)
     discordSendDelay: 1500
+    # Set a maximum of rooms to be bridged.
+    # roomCount: 20
 ghosts:
     # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
     nickPattern: ":nick"
