@@ -25,7 +25,6 @@ import { DbRoomStore, MatrixStoreRoom, RemoteStoreRoom } from "./db/roomstore";
 import { Appservice, Intent, IApplicationServiceProtocol } from "matrix-bot-sdk";
 
 const ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
-/* tslint:disable:no-magic-numbers */
 const HTTP_UNSUPPORTED = 501;
 const ROOM_NAME_PARTS = 2;
 const PROVISIONING_DEFAULT_POWER_LEVEL = 50;
@@ -42,7 +41,6 @@ const JOIN_ROOM_SCHEDULE = [
     300000,         // 5 minutes
     900000,         // 15 minutes
 ];
-/* tslint:enable:no-magic-numbers */
 
 export class MatrixRoomHandler {
     private botUserId: string;
@@ -60,13 +58,14 @@ export class MatrixRoomHandler {
                 this.tpGetProtocol(protocol)
                     .then(cb)
                     .catch((err) => log.warn("Failed to get protocol", err));
-        });
+            }
+        );
 
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.bridge.on("thirdparty.location.remote", (protocol: string, fields: any, cb: (response: any) => void) => {
             this.tpGetLocation(protocol, fields)
-            .then(cb)
-            .catch((err) => log.warn("Failed to get remote locations", err));
+                .then(cb)
+                .catch((err) => log.warn("Failed to get remote locations", err));
         });
 
         // These are not supported.
@@ -81,7 +80,7 @@ export class MatrixRoomHandler {
         });
     }
 
-    public async OnAliasQueried(alias: string, roomId: string) {
+    public async OnAliasQueried(alias: string, roomId: string): Promise<void> {
         log.verbose(`Got OnAliasQueried for ${alias} ${roomId}`);
         let channel: Discord.GuildChannel;
         try {
@@ -119,9 +118,9 @@ export class MatrixRoomHandler {
         let delay = this.config.limits.roomGhostJoinDelay;
         for (const member of (channel as Discord.TextChannel).members.array()) {
             if (member.id === this.discord.GetBotId()) {
-              continue;
+                continue;
             }
-            promiseList.push((async () => {
+            promiseList.push((async (): Promise<void> => {
                 await Util.DelayedPromise(delay);
                 log.info(`UserSyncing ${member.id}`);
                 try {
@@ -139,7 +138,7 @@ export class MatrixRoomHandler {
         await Promise.all(promiseList);
     }
 
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public async OnAliasQuery(alias: string): Promise<any> {
         const aliasLocalpart = alias.substring("#".length, alias.indexOf(":"));
         log.info("Got request for #", aliasLocalpart);
@@ -161,6 +160,7 @@ export class MatrixRoomHandler {
         const instances = {};
         for (const guild of this.discord.GetGuilds()) {
             instances[guild.name] = {
+                /* eslint-disable @typescript-eslint/camelcase */
                 bot_user_id: this.botUserId,
                 desc: guild.name,
                 fields: {
@@ -168,9 +168,11 @@ export class MatrixRoomHandler {
                 },
                 icon: guild.iconURL || ICON_URL,
                 network_id: guild.id,
+                /* eslint-enable @typescript-eslint/camelcase */
             };
         }
         return {
+            /* eslint-disable @typescript-eslint/camelcase */
             field_types: {
                 // guild_name: {
                 //   regexp: "\S.{0,98}\S",
@@ -201,10 +203,11 @@ export class MatrixRoomHandler {
             instances,
             location_fields: ["guild_id", "channel_name"],
             user_fields: ["username", "discriminator"],
+            /* eslint-enable @typescript-eslint/camelcase */
         };
     }
 
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public async tpGetLocation(protocol: string, fields: any): Promise<IThirdPartyLookup[]> {
         log.info("Got location request ", protocol, fields);
         const chans = this.discord.ThirdpartySearchForChannels(fields.guild_id, fields.channel_name);
@@ -213,7 +216,7 @@ export class MatrixRoomHandler {
 
     private async joinRoom(intent: Intent, roomIdOrAlias: string, member?: Discord.GuildMember): Promise<void> {
         let currentSchedule = JOIN_ROOM_SCHEDULE[0];
-        const doJoin = async () => {
+        const doJoin = async (): Promise<void> => {
             await Util.DelayedPromise(currentSchedule);
             if (member) {
                 await this.discord.UserSyncroniser.JoinRoom(member, roomIdOrAlias);
@@ -221,7 +224,7 @@ export class MatrixRoomHandler {
                 await intent.joinRoom(roomIdOrAlias);
             }
         };
-        const errorHandler = async (err) => {
+        const errorHandler = async (err): Promise<void> => {
             log.error(`Error joining room ${roomIdOrAlias} as ${intent.userId}`);
             log.error(err);
             const idx = JOIN_ROOM_SCHEDULE.indexOf(currentSchedule);
@@ -245,17 +248,23 @@ export class MatrixRoomHandler {
         }
     }
 
-    private async createMatrixRoom(channel: Discord.TextChannel,
-                                   alias: string, aliasLocalpart: string) {
+    private async createMatrixRoom(
+        channel: Discord.TextChannel,
+        alias: string,
+        aliasLocalpart: string
+    ) {
         const remote = new RemoteStoreRoom(`discord_${channel.guild.id}_${channel.id}`, {
+            /* eslint-disable @typescript-eslint/camelcase */
             discord_channel: channel.id,
             discord_guild: channel.guild.id,
             discord_type: "text",
             update_icon: 1,
             update_name: 1,
             update_topic: 1,
+            /* eslint-enable @typescript-eslint/camelcase */
         });
         const creationOpts = {
+            /* eslint-disable @typescript-eslint/camelcase */
             initial_state: [
                 {
                     content: {
@@ -267,6 +276,7 @@ export class MatrixRoomHandler {
             ],
             room_alias_name: aliasLocalpart,
             visibility: this.config.room.defaultVisibility,
+            /* eslint-enable @typescript-eslint/camelcase */
         };
         // We need to tempoarily store this until we know the room_id.
         await this.roomStore.linkRooms(

@@ -29,7 +29,7 @@ that implements the [AS API](https://matrix.org/docs/spec/application_service/r0
 
 The bridge supports any version of Node.js >= v12.X, including all [current releases](https://nodejs.org/en/about/releases/).
 
-### Setup the bridge
+### Set up the bridge
 
 * Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
 * Run ``npm run build`` to build the typescript into javascript.
@@ -112,6 +112,23 @@ should show up in the network list on Element and other clients.
 * Particular configuration keys can be overridden by defining corresponding environment variables. For instance, `auth.botToken` can be set with `APPSERVICE_DISCORD_AUTH_BOT_TOKEN`.
 
 [Howto](./docs/howto.md)
+
+## End User Documentation
+
+### Bridging a Room
+
+You must get an authorization link from bridge owner. You must be a server admin or get
+help from server admin on Discord side.
+
+* Invite the Matrix side bot to your room and wait for it to join.
+* On Discord side use the authorization link to invite bot to Discord server.
+* Find out a serverid and channelid for your server/channel you want to bridge. Search the web for instructions.
+* In Matrix room give command ``!discord bridge ServerID ChannelID``
+* The bridge will ask for confirmation from the Discord server admins to complete the bridge. Once approved, you're all set.
+
+### Unbridging a Room
+
+* In Matrix room give command ``!discord unbridge``
 
 ## Features and Roadmap
 In a vague order of what is coming up next

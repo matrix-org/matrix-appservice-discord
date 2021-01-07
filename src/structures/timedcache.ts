@@ -1,3 +1,6 @@
+import { Log } from "../log";
+const log = new Log("Timedcache");
+
 interface ITimedValue<V> {
     value: V;
     ts: number;
@@ -20,7 +23,10 @@ export class TimedCache<K, V> implements Map<K, V> {
 
     public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void|Promise<void>): void {
         for (const item of this) {
-            callbackfn(item[1], item[0], this);
+            const potentialPromise = callbackfn(item[1], item[0], this);
+            if (potentialPromise) {
+                potentialPromise.catch(log.warn);
+            }
         }
     }
 
@@ -73,7 +79,7 @@ export class TimedCache<K, V> implements Map<K, V> {
                 }
                 if (item.done) {
                     // Typscript doesn't like us returning undefined for value, which is dumb.
-                    // tslint:disable-next-line: no-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     return {done: true, value: undefined} as any as IteratorResult<[K, V]>;
                 }
                 return {done: false, value: [item.value[0], filteredValue]} as IteratorResult<[K, V]>;
