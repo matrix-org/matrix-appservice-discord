@@ -46,7 +46,7 @@ export class Provisioner {
      * @returns Has the limit been reached?
      */
     public async RoomCountLimitReached(limit: number): Promise<boolean> {
-        return limit >= 0 && limit >= await this.roomStore.countEntries();
+        return limit >= 0 && await this.roomStore.countEntries() >= limit;
     }
 
     public async UnbridgeChannel(channel: Discord.TextChannel, rId?: string) {
