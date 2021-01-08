@@ -106,8 +106,6 @@ export class DbRoomStore {
     public async countEntries() {
         const row = (await this.db.Get("SELECT COUNT(*) AS count FROM room_entries WHERE matrix_id IS NOT NULL AND remote_id IS NOT NULL")) || {};
 
-        console.warn('abc', JSON.stringify(row), typeof row.count);
-
         if (typeof row.count !== "number") {
             log.error("Failed to count room entries");
             throw Error("Failed to count room entries");
