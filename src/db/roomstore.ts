@@ -106,7 +106,9 @@ export class DbRoomStore {
     public async countEntries(): Promise<number> {
         const row = (await this.db.Get("SELECT COUNT(*) AS count FROM room_entries WHERE matrix_id IS NOT NULL AND remote_id IS NOT NULL")) || {};
 
+        // Our Sqlite wrapper returns a number – which is what we want.
         let count = row.count;
+        // Our PostgreSQL wrapper returns a string.
         if (typeof count === 'string') {
             count = Number.parseInt(count);
         }
