@@ -103,15 +103,20 @@ export class DbRoomStore {
      * Matrix room and a remote room counts as one pair.
      * @returns {number} The amount of room pairs as an integer
      */
-    public async countEntries() {
+    public async countEntries(): Promise<number> {
         const row = (await this.db.Get("SELECT COUNT(*) AS count FROM room_entries WHERE matrix_id IS NOT NULL AND remote_id IS NOT NULL")) || {};
 
-        if (typeof row.count !== "number") {
-            log.error("Failed to count room entries");
-            throw Error("Failed to count room entries");
+        let count = row.count;
+        if (typeof count === 'string') {
+            count = Number.parseInt(count);
         }
 
-        return row.count;
+        if (typeof count !== "number") {
+            log.error("Failed to count room entries");
+            throw Error(`Failed to count room entries ${JSON.stringify(row)} AND ${typeof count}`);
+        }
+
+        return count;
     }
 
     public async upsertEntry(entry: IRoomStoreEntry) {
