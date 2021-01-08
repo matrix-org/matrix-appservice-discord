@@ -84,11 +84,7 @@ export class MatrixCommandHandler {
                     }
                     if (await this.provisioner.RoomCountLimitReached(this.config.limits.roomCount)) {
                         log.info(`Room count limit (value: ${this.config.limits.roomCount}) reached: Rejecting command to bridge new matrix room ${event.room_id} to ${guildId}/${channelId}`);
-                        await this.bridge.botIntent.sendText(
-                            event.room_id,
-                            `This bridge has reached its room limit of ${this.config.limits.roomCount}. Unbridge another room to allow for new connections.`,
-                            "m.notice",
-                        );
+                        return `This bridge has reached its room limit of ${this.config.limits.roomCount}. Unbridge another room to allow for new connections.`;
                     }
                     try {
                         const discordResult = await this.discord.LookupRoom(guildId, channelId);
