@@ -44,7 +44,7 @@
     "escape-string-regexp": "^4.0.0",
     "js-yaml": "^3.14.0",
     "marked": "^1.2.2",
-    "matrix-bot-sdk": "0.5.4",
+    "matrix-bot-sdk": "0.5.10",
     "matrix-discord-parser": "0.1.5",
     "mime": "^2.4.6",
     "node-html-parser": "^1.2.19",
