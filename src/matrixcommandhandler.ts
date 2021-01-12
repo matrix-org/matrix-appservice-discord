@@ -97,8 +97,8 @@ export class MatrixCommandHandler {
                         await this.provisioner.BridgeMatrixRoom(channel, event.room_id);
                         return "I have bridged this room to your channel";
                     } catch (err) {
-                        if (err.message === "Timed out waiting for a response from the Discord owners"
-                            || err.message === "The bridge has been declined by the Discord guild") {
+                        if (err.message === "Timed out waiting for a response from the Discord owners."
+                            || err.message === "The bridge has been declined by the Discord guild.") {
                             return err.message;
                         }
 

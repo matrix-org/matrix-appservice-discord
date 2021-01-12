@@ -40,7 +40,7 @@ function createCH(opts: any = {}, shouldBeJoined = true) {
     const provisioner = {
         AskBridgePermission: async () => {
             if (opts.denyBridgePermission) {
-                throw new Error("The bridge has been declined by the Discord guild");
+                throw new Error("The bridge has been declined by the Discord guild.");
             }
         },
         BridgeMatrixRoom: () => {
@@ -151,8 +151,8 @@ describe("MatrixCommandHandler", () => {
                     denyBridgePermission: true,
                 });
                 await handler.Process(createEvent("!discord bridge 123 456"), createContext());
-                const expected = "The bridge has been declined by the Discord guild";
-                const expectedHtml = "<p>The bridge has been declined by the Discord guild</p>\n";
+                const expected = "The bridge has been declined by the Discord guild.";
+                const expectedHtml = "<p>The bridge has been declined by the Discord guild.</p>\n";
                 bridge.botIntent.underlyingClient.wasCalled("sendMessage", true, "!123:localhost", {
                     body: expected,
                     format: "org.matrix.custom.html",

@@ -69,7 +69,7 @@ export class DiscordCommandHandler {
                 permission: "MANAGE_WEBHOOKS",
                 run: async () => {
                     if (await this.discord.Provisioner.MarkApproved(chan, discordMember, false)) {
-                        return "Thanks for your response! The matrix bridge has been declined";
+                        return "Thanks for your response! The matrix bridge has been declined.";
                     } else {
                         return "Thanks for your response, however" +
                             " the time for responses has expired - sorry!";

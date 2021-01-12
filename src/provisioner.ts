@@ -89,9 +89,9 @@ export class Provisioner {
                 resolve("Approved");
             } else {
                 if (expired) {
-                    reject(Error("Timed out waiting for a response from the Discord owners"));
+                    reject(Error("Timed out waiting for a response from the Discord owners."));
                 } else {
-                    reject(Error("The bridge has been declined by the Discord guild"));
+                    reject(Error("The bridge has been declined by the Discord guild."));
                 }
             }
         };
