@@ -53,7 +53,7 @@ export class DiscordCommandHandler {
                         return "Thanks for your response! The matrix bridge has been approved.";
                     } else {
                         return "Thanks for your response, however" +
-                            " the time for responses has expired - sorry!";
+                            " it has arrived after the deadline - sorry!";
                     }
                 },
             },
@@ -72,7 +72,7 @@ export class DiscordCommandHandler {
                         return "Thanks for your response! The matrix bridge has been declined.";
                     } else {
                         return "Thanks for your response, however" +
-                            " the time for responses has expired - sorry!";
+                            " it has arrived after the deadline - sorry!";
                     }
                 },
             },
