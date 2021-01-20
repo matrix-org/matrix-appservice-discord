@@ -76,7 +76,7 @@ if (options.help) {
 }
 
 async function run() {
-    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    const {appservice, config, store} = ToolsHelper.getToolDependencies(options.config, options.registration);
     await store!.init();
     const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();

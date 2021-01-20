@@ -67,7 +67,7 @@ if (options.help) {
     process.exit(0);
 }
 
-const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration);
+const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration, true);
 
 async function run(): Promise<void> {
     try {
