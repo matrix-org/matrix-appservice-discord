@@ -89,9 +89,9 @@ export class Provisioner {
                 resolve("Approved");
             } else {
                 if (expired) {
-                    reject(Error("Timed out waiting for a response from the Discord owners"));
+                    reject(Error("Timed out waiting for a response from the Discord owners."));
                 } else {
-                    reject(Error("The bridge has been declined by the Discord guild"));
+                    reject(Error("The bridge has been declined by the Discord guild."));
                 }
             }
         };
@@ -100,7 +100,7 @@ export class Provisioner {
         setTimeout(() => approveFn(false, true), timeout);
 
         await channel.send(`${requestor} on matrix would like to bridge this channel. Someone with permission` +
-            " to manage webhooks please reply with `!matrix approve` or `!matrix deny` in the next 5 minutes");
+            " to manage webhooks please reply with `!matrix approve` or `!matrix deny` in the next 5 minutes.");
         return await deferP;
 
     }
