@@ -28,7 +28,7 @@ export class ToolsHelper {
             registration: registration as IAppserviceRegistration,
         });
 
-        const store = needsStore ? new DiscordStore(config.database ? config.database.filename : "discord.db") : null;
+        const store = needsStore ? new DiscordStore(config.database) : null;
         return {
             appservice,
             config,

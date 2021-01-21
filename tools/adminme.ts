@@ -95,7 +95,7 @@ if (!options.userid) {
     process.exit(1);
 }
 
-const {appservice} = ToolsHelper.getToolDependencies(options.config, options.reg, false);
+const {appservice} = ToolsHelper.getToolDependencies(options.config, options.registration, false);
 
 async function run() {
     try {
