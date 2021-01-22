@@ -163,7 +163,7 @@ async function run(): Promise<void> {
         storage: store,
     });
 
-    if (config.metrics.enable) {
+    if (config.metrics.enabled) {
         log.info("Enabled metrics");
         MetricPeg.set(new PrometheusBridgeMetrics().init(appservice, config.metrics));
     }
