@@ -191,10 +191,14 @@ async function run(): Promise<void> {
     });
 
     if (config.bridge.disablePortalBridging !== true) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
+        appservice.on("query.room", async (roomAlias: string, createRoom: (opts: unknown) => Promise<void>) => {
             try {
                 const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
+                if (!createRoomOpts) {
+                    // This will tell the homeserver that the alias request failed.
+                    await createRoom(false);
+                    return;
+                }
                 await createRoom(createRoomOpts);
                 await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
             } catch (err) {
