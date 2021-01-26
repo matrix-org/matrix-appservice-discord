@@ -43,6 +43,7 @@ const JOIN_ROOM_SCHEDULE = [
 ];
 
 export interface ICreationOptions {
+    __roomId: string;
     initial_state: {
         content: {
             join_rule: string,
