@@ -24,7 +24,6 @@ import { ToolsHelper } from "./toolshelper";
 const log = new Log("GhostFix");
 
 // Note: The schedule must not have duplicate values to avoid problems in positioning.
-/* tslint:disable:no-magic-numbers */ // Disabled because it complains about the values in the array
 const JOIN_ROOM_SCHEDULE = [
     0,              // Right away
     1000,           // 1 second
@@ -32,7 +31,6 @@ const JOIN_ROOM_SCHEDULE = [
     300000,         // 5 minutes
     900000,         // 15 minutes
 ];
-/* tslint:enable:no-magic-numbers */
 
 const optionDefinitions = [
     {
@@ -62,23 +60,23 @@ const optionDefinitions = [
 const options = args(optionDefinitions);
 
 if (options.help) {
-    /* tslint:disable:no-console */
+    /* eslint-disable no-console */
     console.log(usage([
-    {
-        content: "A tool to fix usernames of ghosts already in " +
-        "matrix rooms, to make sure they represent the correct discord usernames.",
-        header: "Fix usernames of joined ghosts",
-    },
-    {
-        header: "Options",
-        optionList: optionDefinitions,
-    },
+        {
+            content: "A tool to fix usernames of ghosts already in " +
+            "matrix rooms, to make sure they represent the correct discord usernames.",
+            header: "Fix usernames of joined ghosts",
+        },
+        {
+            header: "Options",
+            optionList: optionDefinitions,
+        },
     ]));
     process.exit(0);
 }
 
 async function run() {
-    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    const {appservice, config, store} = ToolsHelper.getToolDependencies(options.config, options.registration);
     await store!.init();
     const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();
@@ -132,4 +130,4 @@ async function run() {
     process.exit(0);
 }
 
-run(); // tslint:disable-line no-floating-promises
+run(); // eslint-disable no-floating-promises

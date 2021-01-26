@@ -114,7 +114,7 @@ export class UserSyncroniser {
             log.info(`Creating new user ${userState.mxUserId}`);
             remoteUser = new RemoteUser(userState.id);
             await this.userStore.linkUsers(
-                userState.mxUserId.substr("@".length),
+                userState.mxUserId.substring("@".length),
                 userState.id,
             );
 

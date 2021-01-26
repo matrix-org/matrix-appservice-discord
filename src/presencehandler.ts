@@ -144,7 +144,7 @@ export class PresenceHandler {
         const intent = this.bot.GetIntentFromDiscordMember(user);
         try {
             await intent.ensureRegistered();
-            await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg);
+            await intent.underlyingClient.setPresenceStatus(status.Presence, status.StatusMsg || "");
         } catch (ex) {
             if (ex.errcode !== "M_FORBIDDEN") {
                 log.warn(`Could not update Matrix presence for ${user.id}`);

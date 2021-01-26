@@ -93,7 +93,7 @@ export class DiscordBot {
         this.clientFactory = new DiscordClientFactory(store, config.auth);
         this.discordMsgProcessor = new DiscordMessageProcessor(config.bridge.domain, this);
         this.presenceHandler = new PresenceHandler(this);
-        this.roomHandler = new MatrixRoomHandler(this, config, this.provisioner, bridge, store.roomStore);
+        this.roomHandler = new MatrixRoomHandler(this, config, bridge, store.roomStore);
         this.channelSync = new ChannelSyncroniser(bridge, config, this, store.roomStore);
         this.provisioner = new Provisioner(store.roomStore, this.channelSync);
         this.mxEventProcessor = new MatrixEventProcessor(
@@ -339,7 +339,7 @@ export class DiscordBot {
 
     public ThirdpartySearchForChannels(guildId: string, channelName: string): IThirdPartyLookup[] {
         if (channelName.startsWith("#")) {
-            channelName = channelName.substr(1);
+            channelName = channelName.substring(1);
         }
         if (this.bot.guilds.cache.has(guildId) ) {
             const guild = this.bot.guilds.cache.get(guildId);
@@ -466,7 +466,7 @@ export class DiscordBot {
                 });
                 return;
             }
-            const link = `https://discordapp.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
+            const link = `https://discord.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
             embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
             await this.send(embedSet, opts, roomLookup, event);
         } catch (err) {

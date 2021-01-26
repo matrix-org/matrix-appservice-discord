@@ -13,6 +13,7 @@
     "compileOnSave": true,
     "include": [
         "src/**/*",
+        "test/**/*",
         "tools/**/*",
     ]
 }

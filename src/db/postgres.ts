@@ -25,19 +25,20 @@ const pgp: pgPromise.IMain = pgPromise({
 
 export class Postgres implements IDatabaseConnector {
     public static ParameterizeSql(sql: string): string {
-        return sql.replace(/\$((\w|\d|_)+)+/g, (k) => {
-            return `\${${k.substr("$".length)}}`;
+        return sql.replace(/\$((\w|\d|_)+)+/g, (k: string) => {
+            return `\${${k.substring("$".length)}}`;
         });
     }
 
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private db: pgPromise.IDatabase<any>;
     constructor(private connectionString: string) {
 
     }
-    public Open() {
+
+    public Open(): void {
         // Hide username:password
-        const logConnString = this.connectionString.substr(
+        const logConnString = this.connectionString.substring(
             this.connectionString.indexOf("@") || 0,
         );
         log.info(`Opening ${logConnString}`);
@@ -63,7 +64,7 @@ export class Postgres implements IDatabaseConnector {
 
     public async Run(sql: string, parameters?: ISqlCommandParameters): Promise<void> {
         log.silly("Run:", sql);
-        return this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters).then(() => {});
+        await this.db.oneOrNone(Postgres.ParameterizeSql(sql), parameters);
     }
 
     public async Close(): Promise<void> {
@@ -73,6 +74,5 @@ export class Postgres implements IDatabaseConnector {
     public async Exec(sql: string): Promise<void> {
         log.silly("Exec:", sql);
         await this.db.none(sql);
-        return;
     }
 }

@@ -35,7 +35,7 @@ export class DiscordBridgeConfig {
      * @param newConfig Config keys
      * @param configLayer Private parameter
      */
-    // tslint:disable-next-line no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public applyConfig(newConfig: {[key: string]: any}, configLayer: {[key: string]: any} = this) {
           Object.keys(newConfig).forEach((key) => {
             if (configLayer[key] instanceof Object && !(configLayer[key] instanceof Array)) {
@@ -53,10 +53,10 @@ export class DiscordBridgeConfig {
      * @param configLayer private parameter: current layer of configuration to alter recursively
      */
     public applyEnvironmentOverrides(
-        // tslint:disable-next-line no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         environment: {[key: string]: any},
         path: string[] = [ENV_PREFIX],
-        // tslint:disable-next-line no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         configLayer: {[key: string]: any} = this,
     ) {
         Object.keys(configLayer).forEach((key) => {

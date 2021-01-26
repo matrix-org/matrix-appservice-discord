@@ -51,7 +51,7 @@ const optionDefinitions = [
 const options = args(optionDefinitions);
 
 if (options.help) {
-    /* tslint:disable:no-console */
+    /* eslint-disable no-console */
     console.log(usage([
     {
         content: "A tool to fix channels of rooms already bridged " +
@@ -67,7 +67,7 @@ if (options.help) {
 }
 
 async function run() {
-    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config);
+    const {store, appservice, config} = ToolsHelper.getToolDependencies(options.config, options.registration);
     await store!.init();
     const discordbot = new DiscordBot(config, appservice, store!);
     await discordbot.init();

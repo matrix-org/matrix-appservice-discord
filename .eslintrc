@@ -1,0 +1,57 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint"],
+    "parserOptions": {
+        "ecmaVersion": 9,
+        "ecmaFeatures": {
+            "jsx": false
+        },
+        "project": "tsconfig.json"
+    },
+    "env": {
+        "node": true,
+        "jasmine": true
+    },
+    "extends": ["plugin:@typescript-eslint/recommended"],
+    "rules": {
+        "ordered-imports": "off",
+        "no-trailing-spaces": "error",
+        "max-classes-per-file": ["warn", 1],
+        "object-literal-sort-keys": "off",
+        "@typescript-eslint/no-explicit-any": "error",
+        "@typescript-eslint/prefer-for-of": "error",
+        "@typescript-eslint/typedef": "warn",
+        "@typescript-eslint/no-floating-promises": "error",
+        "curly": "error",
+        "no-empty": "off",
+        "no-invalid-this": "error",
+        "@typescript-eslint/no-throw-literal": "warn",
+        "prefer-const": "error",
+        "indent": ["error", 4],
+        "max-lines": ["warn", 500],
+        "no-duplicate-imports": "error",
+        "@typescript-eslint/array-type": "error",
+        "@typescript-eslint/promise-function-async": "error",
+        "no-bitwise": "error",
+        "no-console": "error",
+        "no-debugger": "error",
+        "prefer-template": "error",
+        // Disable these as they were introduced by @typescript-eslint/recommended
+        "@typescript-eslint/no-use-before-define": "off",
+        "@typescript-eslint/no-inferrable-types": "off",
+        "@typescript-eslint/member-delimiter-style": "off",
+        "@typescript-eslint/no-unused-expressions": "off",
+        "@typescript-eslint/interface-name-prefix": "off"
+    },
+    "overrides": [
+        {
+            "files": [
+                "test/**/*"
+            ],
+            "rules": {
+                "@typescript-eslint/no-empty-function": "off",
+                "@typescript-eslint/no-explicit-any": "off"
+            }
+        }
+    ]
+}

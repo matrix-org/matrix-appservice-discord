@@ -37,7 +37,7 @@ describe("Provisioner", () => {
                 );
                 throw Error("Should have thrown an error");
             } catch (err) {
-                expect(err.message).to.eq("Timed out waiting for a response from the Discord owners");
+                expect(err.message).to.eq("Timed out waiting for a response from the Discord owners.");
                 const delay = Date.now() - startAt;
                 if (delay < TIMEOUT_MS) {
                     throw Error(`Should have waited for timeout before resolving, waited: ${delay}ms`);
@@ -56,7 +56,7 @@ describe("Provisioner", () => {
                 await promise;
                 throw Error("Should have thrown an error");
             } catch (err) {
-                expect(err.message).to.eq("The bridge has been declined by the Discord guild");
+                expect(err.message).to.eq("The bridge has been declined by the Discord guild.");
             }
 
         });

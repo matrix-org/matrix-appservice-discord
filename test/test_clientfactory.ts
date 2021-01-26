@@ -76,13 +76,13 @@ describe("ClientFactory", () => {
     describe("getDiscordId", () => {
         it("should fetch id successfully", async () => {
             const config = new DiscordBridgeConfigAuth();
-            const cf = new DiscordClientFactory(null);
+            const cf = new DiscordClientFactory(null, config);
             const discordId = await cf.getDiscordId("passme");
             expect(discordId).equals("12345");
         });
         it("should fail if the token is not recognised", async () => {
             const config = new DiscordBridgeConfigAuth();
-            const cf = new DiscordClientFactory(null);
+            const cf = new DiscordClientFactory(null, config);
             try {
                 await cf.getDiscordId("failme");
                 throw new Error("didn't fail");
@@ -102,7 +102,7 @@ describe("ClientFactory", () => {
         });
         it("should return cached client", async () => {
             const config = new DiscordBridgeConfigAuth();
-            const cf = new DiscordClientFactory(null);
+            const cf = new DiscordClientFactory(null, config);
             cf.clients.set("@user:localhost", "testclient");
             const client = await cf.getClient("@user:localhost");
             expect(client).equals("testclient");
@@ -116,14 +116,14 @@ describe("ClientFactory", () => {
         });
         it("should fetch user client if userid matches", async () => {
             const config = new DiscordBridgeConfigAuth();
-            const cf = new DiscordClientFactory(STORE);
+            const cf = new DiscordClientFactory(STORE, config);
             const client = await cf.getClient("@valid:localhost");
             expect(client).is.not.null;
             expect(cf.clients.has("@valid:localhost")).to.be.true;
         });
         it("should fail if the user client cannot log in", async () => {
             const config = new DiscordBridgeConfigAuth();
-            const cf = new DiscordClientFactory(STORE);
+            const cf = new DiscordClientFactory(STORE, config);
             cf.botClient = 1;
             const client = await cf.getClient("@invalid:localhost");
             expect(client).to.equal(cf.botClient);

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/* tslint:disable:no-console */
+/* eslint-disable no-console */
 /**
  * Allows you to become an admin for a room that the bot is in control of.
  */
@@ -71,7 +71,7 @@ const optionDefinitions = [
 const options = args(optionDefinitions);
 
 if (options.help) {
-    /* tslint:disable:no-console */
+    /* eslint-disable no-console */
     console.log(usage([
         {
             content: "A tool to give a user a power level in a bot user controlled room.",
@@ -95,7 +95,7 @@ if (!options.userid) {
     process.exit(1);
 }
 
-const {appservice} = ToolsHelper.getToolDependencies(options.config, options.reg, false);
+const {appservice} = ToolsHelper.getToolDependencies(options.config, options.registration, false);
 
 async function run() {
     try {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-/* tslint:disable:no-console */
+/* eslint-disable no-console */
 /**
  * Allows you to become an admin for a room the bot is in control of.
  */
@@ -53,30 +53,32 @@ const optionDefinitions = [
 const options = args(optionDefinitions);
 
 if (options.help) {
-    /* tslint:disable:no-console */
+    /* eslint-disable no-console */
     console.log(usage([
-    {
-        content: "A tool to set all the bridged rooms to visible in the directory.",
-        header: "Add rooms to directory",
-    },
-    {
-        header: "Options",
-        optionList: optionDefinitions,
-    },
+        {
+            content: "A tool to set all the bridged rooms to visible in the directory.",
+            header: "Add rooms to directory",
+        },
+        {
+            header: "Options",
+            optionList: optionDefinitions,
+        },
     ]));
     process.exit(0);
 }
 
-const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration);
+const {store, appservice} = ToolsHelper.getToolDependencies(options.config, options.registration, true);
 
-async function run() {
+async function run(): Promise<void> {
     try {
         await store!.init();
     } catch (e) {
         log.error(`Failed to load database`, e);
     }
     let rooms = await store!.roomStore.getEntriesByRemoteRoomData({
+        /* eslint-disable @typescript-eslint/camelcase */
         discord_type: "text",
+        /* eslint-disable @typescript-eslint/camelcase */
     });
     rooms = rooms.filter((r) => r.remote && r.remote.get("plumbed") !== true );
     log.info(`Got ${rooms.length} rooms to set`);

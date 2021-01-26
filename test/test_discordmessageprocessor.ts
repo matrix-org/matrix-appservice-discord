@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Chai from "chai"; // TODO: Use expect
+import { expect } from "chai";
 import { DiscordMessageProcessor } from "../src/discordmessageprocessor";
 import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
@@ -52,8 +52,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello World!";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello World!");
-            Chai.assert.equal(result.formattedBody, "Hello World!");
+            expect(result.body).to.equal("Hello World!");
+            expect(result.formattedBody).to.equal("Hello World!");
         });
         it("processes markdown messages correctly.", async () => {
             const processor = new DiscordMessageProcessor(
@@ -62,8 +62,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello *World*!";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello *World*!");
-            Chai.assert.equal(result.formattedBody, "Hello <em>World</em>!");
+            expect(result.body).to.equal("Hello *World*!");
+            expect(result.formattedBody).to.equal("Hello <em>World</em>!");
         });
         it("processes non-discord markdown correctly.", async () => {
             const processor = new DiscordMessageProcessor(
@@ -72,14 +72,14 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = ">inb4 tests";
             let result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, ">inb4 tests");
-            Chai.assert.equal(result.formattedBody, "&gt;inb4 tests");
+            expect(result.body).to.equal(">inb4 tests");
+            expect(result.formattedBody).to.equal("&gt;inb4 tests");
 
             msg.embeds = [];
             msg.content = "[test](http://example.com)";
             result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "[test](http://example.com)");
-            Chai.assert.equal(result.formattedBody,
+            expect(result.body).to.equal("[test](http://example.com)");
+            expect(result.formattedBody).to.equal(
                 "[test](<a href=\"http://example.com\">http://example.com</a>)");
         });
         it("processes discord-specific markdown correctly.", async () => {
@@ -89,8 +89,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "_ italic _";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "_ italic _");
-            Chai.assert.equal(result.formattedBody, "<em> italic </em>");
+            expect(result.body).to.equal("_ italic _");
+            expect(result.formattedBody).to.equal("<em> italic </em>");
         });
         it("replaces @everyone correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -99,13 +99,13 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "hey @everyone!";
             let result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "hey @everyone!");
-            Chai.assert.equal(result.formattedBody, "hey @everyone!");
+            expect(result.body).to.equal("hey @everyone!");
+            expect(result.formattedBody).to.equal("hey @everyone!");
 
             msg.mentions.everyone = true;
             result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "hey @room!");
-            Chai.assert.equal(result.formattedBody, "hey @room!");
+            expect(result.body).to.equal("hey @room!");
+            expect(result.formattedBody).to.equal("hey @room!");
         });
         it("replaces @here correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -114,13 +114,13 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "hey @here!";
             let result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "hey @here!");
-            Chai.assert.equal(result.formattedBody, "hey @here!");
+            expect(result.body).to.equal("hey @here!");
+            expect(result.formattedBody).to.equal("hey @here!");
 
             msg.mentions.everyone = true;
             result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "hey @room!");
-            Chai.assert.equal(result.formattedBody, "hey @room!");
+            expect(result.body).to.equal("hey @room!");
+            expect(result.formattedBody).to.equal("hey @room!");
         });
     });
     describe("InsertUser / HTML", () => {
@@ -133,8 +133,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "@_discord_12345:localhost");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_12345:l" +
+            expect(result.body).to.equal("@_discord_12345:localhost");
+            expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_discord_12345:l" +
                 "ocalhost\">@_discord_12345:localhost</a>");
         });
         it("processes members with usernames correctly", async () => {
@@ -147,8 +147,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "TestUsername");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_discord_123" +
+            expect(result.body).to.equal("TestUsername");
+            expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_discord_123" +
                 "45:localhost\">TestUsername</a>");
         });
         it("processes members with nickname correctly", async () => {
@@ -161,8 +161,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "TestNickname");
-            Chai.assert.equal(result.formattedBody, "<a href=\"https://matrix.to/#/@_disc" +
+            expect(result.body).to.equal("TestNickname");
+            expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_disc" +
                 "ord_12345:localhost\">TestNickname</a>");
         });
     });
@@ -176,8 +176,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello <:hello:123456789>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello <:hello:123456789>");
-            Chai.assert.equal(result.formattedBody, "Hello &lt;:hello:123456789&gt;");
+            expect(result.body).to.equal("Hello <:hello:123456789>");
+            expect(result.formattedBody).to.equal("Hello &lt;:hello:123456789&gt;");
         });
         it("processes emoji correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -189,8 +189,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello <:hello:3333333>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello :hello:");
-            Chai.assert.equal(result.formattedBody, "Hello <img alt=\":hello:\" ti" +
+            expect(result.body).to.equal("Hello :hello:");
+            expect(result.formattedBody).to.equal("Hello <img alt=\":hello:\" ti" +
                 "tle=\":hello:\" height=\"32\" src=\"mxc://image\" data-mx-emoticon />");
         });
     });
@@ -205,8 +205,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello <#3333333>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello <#3333333>");
-            Chai.assert.equal(result.formattedBody, "Hello &lt;#3333333&gt;");
+            expect(result.body).to.equal("Hello <#3333333>");
+            expect(result.formattedBody).to.equal("Hello &lt;#3333333&gt;");
         });
         it("processes channels correctly", async () => {
             const processor = new DiscordMessageProcessor(
@@ -218,8 +218,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello <#456>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello #TestChannel");
-            Chai.assert.equal(result.formattedBody, "Hello <a href=\"https://matrix.to/#/#_discord_123" +
+            expect(result.body).to.equal("Hello #TestChannel");
+            expect(result.formattedBody).to.equal("Hello <a href=\"https://matrix.to/#/#_discord_123" +
                 "_456:localhost\">#TestChannel</a>");
         });
         it("processes channels without alias correctly", async () => {
@@ -232,8 +232,8 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "Hello <#678>";
             const result = await processor.FormatMessage(msg);
-            Chai.assert.equal(result.body, "Hello <#678>");
-            Chai.assert.equal(result.formattedBody, "Hello &lt;#678&gt;");
+            expect(result.body).to.equal("Hello <#678>");
+            expect(result.formattedBody).to.equal("Hello &lt;#678&gt;");
         });
     });
 });

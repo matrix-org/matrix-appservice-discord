@@ -26,7 +26,7 @@ let loggedMessages: any[] = [];
 const WinstonMock = {
     createLogger: (format, transports) => {
         return createdLogger = {
-            close: () => { },
+            close: (): void => { },
             format,
             log: (type, ...msg) => {
                 loggedMessages = loggedMessages.concat(msg);
@@ -70,6 +70,24 @@ describe("Log", () => {
             });
             expect(Log.config.files).to.not.be.empty;
             expect(Log.config.files[0].file).to.equal("./logfile.log");
+        });
+        it("should warn if log level got misspelled", () => {
+            Log.Configure({
+                console: "WARNING",
+                lineDateFormat: "HH:mm:ss",
+            });
+            expect(loggedMessages).to.contain("Console log level is invalid. Please pick one of the case-sensitive levels provided in the sample config.");
+        });
+        it("should warn if log level for a file got misspelled", () => {
+            Log.Configure({
+                files: [
+                    {
+                        file: "./logfile.log",
+                        level: "WARNING",
+                    },
+                ],
+            });
+            expect(loggedMessages).to.contain("Log level of ./logfile.log is invalid. Please pick one of the case-sensitive levels provided in the sample config.");
         });
     });
     describe("ForceSilent", () => {
