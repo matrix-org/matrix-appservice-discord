@@ -35,7 +35,7 @@
         "no-bitwise": "error",
         "no-console": "error",
         "no-debugger": "error",
-        "prefer-template": "error",
+        "prefer-template": "off",
         // Disable these as they were introduced by @typescript-eslint/recommended
         "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-inferrable-types": "off",
