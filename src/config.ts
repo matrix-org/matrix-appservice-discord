@@ -158,7 +158,7 @@ class DiscordBridgeConfigGhosts {
 }
 
 export class DiscordBridgeConfigMetrics {
-    public enable: boolean;
+    public enable: boolean = false;
     public port: number = 9001;
     public host: string = "127.0.0.1";
 }

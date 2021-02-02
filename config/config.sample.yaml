@@ -106,6 +106,6 @@ ghosts:
     usernamePattern: ":username#:tag"
 # Prometheus-compatible metrics endpoint
 metrics:
-    enabled: false
+    enable: false
     port: 9001
     host: "127.0.0.1"
