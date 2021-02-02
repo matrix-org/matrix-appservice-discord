@@ -22,9 +22,6 @@ import { MockEmoji } from "./mocks/emoji";
 import { DbEmoji } from "../src/db/dbdataemoji";
 import { MatrixMessageProcessor } from "../src/matrixmessageprocessor";
 
-// we are a test file and thus need those
-/* tslint:disable:no-unused-expression max-file-line-count no-any */
-
 const bot = {
     GetChannelFromRoomId: async (roomId: string): Promise<MockChannel> => {
         if (roomId !== "!bridged:localhost") {

@@ -23,9 +23,6 @@ import { MockUser } from "./mocks/user";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockPresence } from "./mocks/presence";
 
-// we are a test file and thus need those
-/* tslint:disable:no-unused-expression max-file-line-count no-any */
-
 const INTERVAL = 250;
 let lastStatus = null;
 const appservice = new AppserviceMock();

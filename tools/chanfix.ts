@@ -117,4 +117,4 @@ async function run() {
     process.exit(0);
 }
 
-run(); // tslint:disable-line no-floating-promises
+run();

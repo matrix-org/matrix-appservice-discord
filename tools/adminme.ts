@@ -115,4 +115,4 @@ async function run() {
     }
 }
 
-run(); // tslint:disable-line no-floating-promises
+run();

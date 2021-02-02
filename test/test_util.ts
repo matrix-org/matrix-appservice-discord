@@ -19,9 +19,6 @@ import { expect } from "chai";
 import { Util, ICommandActions, ICommandParameters } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 
-// we are a test file and thus need those
-/* tslint:disable:no-unused-expression max-file-line-count no-any */
-
 function CreateMockIntent(members): any {
     const as = new AppserviceMock({
         roommembers: members.map((member) =>

@@ -1,8 +1,5 @@
 import { IMatrixEvent } from "../../src/matrixtypes";
 import { expect } from "chai";
-
-/* tslint:disable:no-unused-expression no-any */
-
 interface IAppserviceMockOpts {
     roommembers?: IMatrixEvent[];
     stateEventFetcher?: (roomId, stateType, stateKey) => Promise<any>;

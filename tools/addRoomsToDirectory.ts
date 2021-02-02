@@ -101,4 +101,4 @@ async function run(): Promise<void> {
     }
 }
 
-run(); // tslint:disable-line no-floating-promises
+run();
