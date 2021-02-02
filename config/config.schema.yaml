@@ -127,7 +127,7 @@ properties:
     metrics:
         type: "object"
         properties:
-            enabled:
+            enable:
                 type: "boolean"
             port:
                 type: "number"
