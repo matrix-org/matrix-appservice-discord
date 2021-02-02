@@ -82,6 +82,10 @@ export class MatrixCommandHandler {
                     if (!guildId || !channelId) {
                         return "Invalid syntax. For more information try `!discord help bridge`";
                     }
+                    if (await this.provisioner.RoomCountLimitReached(this.config.limits.roomCount)) {
+                        log.info(`Room count limit (value: ${this.config.limits.roomCount}) reached: Rejecting command to bridge new matrix room ${event.room_id} to ${guildId}/${channelId}`);
+                        return `This bridge has reached its room limit of ${this.config.limits.roomCount}. Unbridge another room to allow for new connections.`;
+                    }
                     try {
                         const discordResult = await this.discord.LookupRoom(guildId, channelId);
                         const channel = discordResult.channel as Discord.TextChannel;
