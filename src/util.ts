@@ -101,7 +101,7 @@ export class Util {
      * @returns {Promise<any>} The promise
      */
     public static async DelayedPromise(duration: number): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve) => {
             setTimeout(resolve, duration);
         });
     }
@@ -395,12 +395,13 @@ export class Util {
 }
 
 // Type type
+// eslint-disable-next-line @typescript-eslint/ban-types
 type Type = Function;
 
 /**
  * Returns true if `obj` is subtype of at least one of the given types.
  */
-export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
+export function isInstanceOfTypes(obj: Record<string, unknown>, types: Type[]): boolean {
     return types.some((type) => obj instanceof type);
 }
 
@@ -416,7 +417,7 @@ export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
  * the original error (stacktrace and error message).
  */
 export function wrapError<T extends Error>(
-    oldError: object|Error,
+    oldError: Record<string,unknown>|Error,
     newErrorType: new (...args: any[]) => T,
     ...args: any[]
 ): T {

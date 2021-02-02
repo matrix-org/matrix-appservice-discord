@@ -122,8 +122,6 @@ export class DbRoomStore {
     }
 
     public async upsertEntry(entry: IRoomStoreEntry) {
-        const promises: Promise<void>[] = [];
-
         const row = (await this.db.Get("SELECT * FROM room_entries WHERE id = $id", {id: entry.id})) || {};
 
         if (!row.id) {
@@ -267,6 +265,7 @@ export class DbRoomStore {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async setMatrixRoom(matrixRoom: MatrixStoreRoom) {
         // This no-ops, because we don't store anything interesting.
     }

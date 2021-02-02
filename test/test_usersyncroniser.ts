@@ -487,7 +487,7 @@ describe("UserSyncroniser", () => {
     });
     describe("GetUserStateForGuildMember", () => {
         it("Will apply a new nick", async () => {
-            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -499,7 +499,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("BestDog");
         });
         it("Will will obay nick pattern", async () => {
-            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
+            const {userSync} = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -511,7 +511,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("BestDog (Discord)");
         });
         it("Will correctly add roles", async () => {
-            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync} = CreateUserSync([new RemoteUser("123456")]);
             const guild = new MockGuild(
                 "654321");
             const member = new MockMember(
@@ -533,7 +533,7 @@ describe("UserSyncroniser", () => {
     });
     describe("GetUserStateForDiscordUser", () => {
         it("Will apply a new nick", async () => {
-            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync} = CreateUserSync([new RemoteUser("123456")]);
             const member = new MockUser(
                 "123456",
                 "username",
@@ -542,7 +542,7 @@ describe("UserSyncroniser", () => {
             expect(state.displayName).to.be.equal("username");
         });
         it("Will handle webhooks", async () => {
-            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
+            const {userSync} = CreateUserSync([new RemoteUser("123456")]);
             const member = new MockUser(
                 "123456",
                 "username",

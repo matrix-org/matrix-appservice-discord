@@ -17,7 +17,7 @@ limitations under the License.
 import * as Discord from "better-discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
-import { Util, wrapError } from "./util";
+import { Util } from "./util";
 import * as path from "path";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
@@ -38,7 +38,6 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
-const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 const PROFILE_CACHE_LIFETIME = 900000;
 

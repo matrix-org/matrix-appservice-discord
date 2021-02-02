@@ -123,7 +123,7 @@ export class DiscordClientFactory {
     }
 
     public bindMetricsToChannel(channel: TextChannel) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/ban-types
         const flexChan = channel as { _xmet_send?: Function };
         if (flexChan._xmet_send !== undefined) {
             return;

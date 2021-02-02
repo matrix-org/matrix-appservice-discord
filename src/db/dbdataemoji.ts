@@ -88,6 +88,7 @@ export class DbEmoji implements IDbData {
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async Delete(store: DiscordStore): Promise<void> {
         throw new Error("Delete is not implemented");
     }

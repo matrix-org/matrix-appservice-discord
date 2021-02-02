@@ -66,7 +66,6 @@ export interface IThirdPartyLookup {
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
     private bot: Discord.Client;
-    private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
@@ -581,6 +580,7 @@ export class DiscordBot {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public OnUserQuery(userId: string): boolean {
         return false;
     }
@@ -594,7 +594,7 @@ export class DiscordBot {
                 return await guild.members.fetch(userId);
             }
             return await this.bot.users.fetch(userId);
-        } catch (ex) {
+        } catch {
             log.warn(`Could not fetch user data for ${userId} (guild: ${guildId})`);
             return undefined;
         }
@@ -639,7 +639,6 @@ export class DiscordBot {
         }
         if (!dbEmoji.Result) {
             const url = `https://cdn.discordapp.com/emojis/${id}${animated ? ".gif" : ".png"}`;
-            const intent = this.bridge.botIntent;
             const content = (await Util.DownloadFile(url)).buffer;
             const type = animated ? "image/gif" : "image/png";
             const mxcUrl = await this.bridge.botIntent.underlyingClient.uploadContent(content, type, name);
@@ -879,7 +878,7 @@ export class DiscordBot {
                     clearTimeout(this.typingTimers[typingKey]);
                 }
                 this.typingTimers[typingKey] = setTimeout(async () => {
-                    this.OnTyping(channel, user, false).catch((ex) => {
+                    this.OnTyping(channel, user, false).catch(() => {
                         log.error(`Failed to reset typing after ${TYPING_TIMEOUT_MS}ms for ${user.id}`);
                     });
                     delete this.typingTimers[typingKey];
@@ -1088,11 +1087,11 @@ export class DiscordBot {
             const matrixIds = storeEvent.MatrixId.split(";");
             try {
                 await intent.underlyingClient.redactEvent(matrixIds[1], matrixIds[0]);
-            } catch (ex) {
+            } catch {
                 log.warn(`Failed to delete ${storeEvent.DiscordId}, retrying as bot`);
                 try {
                     await this.bridge.botIntent.underlyingClient.redactEvent(matrixIds[1], matrixIds[0]);
-                } catch (ex) {
+                } catch {
                     log.warn(`Failed to delete ${storeEvent.DiscordId}, giving up`);
                 }
             }

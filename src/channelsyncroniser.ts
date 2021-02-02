@@ -343,7 +343,6 @@ export class ChannelSyncroniser {
         entry: IRoomStoreEntry,
         overrideOptions?: DiscordBridgeConfigChannelDeleteOptions): Promise<void> {
         log.info(`Deleting ${channel.id} from ${roomId}.`);
-        const intent = this.bridge.botIntent;
         const client = this.bridge.botClient;
         const options = overrideOptions || this.config.channel.deleteOptions;
         const plumbed = entry.remote!.get("plumbed");
@@ -352,7 +351,6 @@ export class ChannelSyncroniser {
         if (options.ghostsLeave) {
             for (const member of channel.members.array()) {
                 try {
-                    const mIntent = this.bot.GetIntentFromDiscordMember(member);
                     await client.leaveRoom(roomId);
                     log.verbose(`${member.id} left ${roomId}.`);
                 } catch (e) {
