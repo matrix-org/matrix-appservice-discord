@@ -89,6 +89,7 @@ class DiscordBridgeConfigBridge {
     public disableDiscordMentions: boolean;
     public disableDeletionForwarding: boolean;
     public enableSelfServiceBridging: boolean;
+    public disablePortalBridging: boolean;
     public disableReadReceipts: boolean;
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
@@ -140,6 +141,7 @@ export class DiscordBridgeConfigChannelDeleteOptions {
 class DiscordBridgeConfigLimits {
     public roomGhostJoinDelay: number = 6000;
     public discordSendDelay: number = 1500;
+    public roomCount: number = -1;
 }
 
 export class LoggingFile {

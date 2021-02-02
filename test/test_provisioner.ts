@@ -71,4 +71,30 @@ describe("Provisioner", () => {
             expect(await promise).to.eq("Approved");
         });
     });
+    describe("RoomCountLimitReached", () => {
+        it("should return false if no limit is defined", async () => {
+            const p = new Provisioner({
+                countEntries: async () => 7,
+            } as any, {} as any);
+            expect(await p.RoomCountLimitReached(-1)).to.equal(false);
+        });
+        it("should return false if less rooms exist than the limit", async () => {
+            const p = new Provisioner({
+                countEntries: async () => 7,
+            } as any, {} as any);
+            expect(await p.RoomCountLimitReached(10)).to.equal(false);
+        });
+        it("should return true if more rooms exist than the limit", async () => {
+            const p = new Provisioner({
+                countEntries: async () => 7,
+            } as any, {} as any);
+            expect(await p.RoomCountLimitReached(5)).to.equal(true);
+        });
+        it("should return true if there are as many rooms as the limit allows", async () => {
+            const p = new Provisioner({
+                countEntries: async () => 7,
+            } as any, {} as any);
+            expect(await p.RoomCountLimitReached(7)).to.equal(true);
+        });
+    });
 });

@@ -20,6 +20,8 @@ properties:
             type: "boolean"
           disableDeletionForwarding:
             type: "boolean"
+          disablePortalBridging:
+            type: "boolean"
           enableSelfServiceBridging:
             type: "boolean"
           disableReadReceipts:
@@ -94,6 +96,8 @@ properties:
             roomGhostJoinDelay:
                 type: "number"
             discordSendDelay:
+                type: "number"
+            roomCount:
                 type: "number"
     channel:
         type: "object"

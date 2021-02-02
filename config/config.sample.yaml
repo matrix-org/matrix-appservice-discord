@@ -23,6 +23,9 @@ bridge:
   disableTypingNotifications: false
   # Disable deleting messages on Discord if a message is redacted on Matrix.
   disableDeletionForwarding: false
+  # Disable portal bridging, where Matrix users can search for unbridged Discord
+  # rooms on their Matrix server.
+  disablePortalBridging: false
   # Enable users to bridge rooms using !discord commands. See
   # https://t2bot.io/discord for instructions.
   enableSelfServiceBridging: false
@@ -99,6 +102,8 @@ limits:
     # echos = (Copies of a sent message may arrive from discord before we've
     # fininished handling it, causing us to echo it back to the room)
     discordSendDelay: 1500
+    # Set a maximum of rooms to be bridged.
+    # roomCount: 20
 ghosts:
     # Pattern for the ghosts nick, available is :nick, :username, :tag and :id
     nickPattern: ":nick"

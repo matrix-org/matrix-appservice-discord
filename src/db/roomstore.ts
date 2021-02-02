@@ -98,6 +98,29 @@ export class DbRoomStore {
         this.entriesMatrixIdCache = new TimedCache(ENTRY_CACHE_LIMETIME);
     }
 
+    /**
+     * Returns the number of bridged room pairs. Every connection between a
+     * Matrix room and a remote room counts as one pair.
+     * @returns {number} The amount of room pairs as an integer
+     */
+    public async countEntries(): Promise<number> {
+        const row = (await this.db.Get("SELECT COUNT(*) AS count FROM room_entries WHERE matrix_id IS NOT NULL AND remote_id IS NOT NULL")) || {};
+
+        // Our Sqlite wrapper returns a number – which is what we want.
+        let count = row.count;
+        // Our PostgreSQL wrapper returns a string.
+        if (typeof count === 'string') {
+            count = Number.parseInt(count);
+        }
+
+        if (typeof count !== "number") {
+            log.error("Failed to count room entries");
+            throw Error(`Failed to count room entries ${JSON.stringify(row)} AND ${typeof count}`);
+        }
+
+        return count;
+    }
+
     public async upsertEntry(entry: IRoomStoreEntry) {
         const promises: Promise<void>[] = [];
 
