@@ -129,4 +129,4 @@ async function run() {
     process.exit(0);
 }
 
-run(); // eslint-disable no-floating-promises
+void run();
