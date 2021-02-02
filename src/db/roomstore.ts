@@ -246,7 +246,7 @@ export class DbRoomStore {
         return res;
     }
 
-    public async linkRooms(matrixRoom: MatrixStoreRoom, remoteRoom: RemoteStoreRoom) {
+    public async linkRooms(matrixRoom: MatrixStoreRoom, remoteRoom: RemoteStoreRoom): Promise<void> {
         MetricPeg.get.storeCall("RoomStore.linkRooms", false);
         await this.upsertRoom(remoteRoom);
 
@@ -266,7 +266,7 @@ export class DbRoomStore {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public async setMatrixRoom(matrixRoom: MatrixStoreRoom) {
+    public async setMatrixRoom(matrixRoom: MatrixStoreRoom): Promise<void> {
         // This no-ops, because we don't store anything interesting.
     }
 
@@ -303,7 +303,7 @@ export class DbRoomStore {
         await this.db.Run(`DELETE FROM remote_room_data WHERE room_id = $remoteId`, {remoteId});
     }
 
-    public async removeEntriesByMatrixRoomId(matrixId: string) {
+    public async removeEntriesByMatrixRoomId(matrixId: string): Promise<void> {
         MetricPeg.get.storeCall("RoomStore.removeEntriesByMatrixRoomId", false);
         const entries = (await this.db.All(`SELECT * FROM room_entries WHERE matrix_id = $matrixId`, {matrixId})) || [];
         await Util.AsyncForEach(entries, async (entry) => {
@@ -315,7 +315,7 @@ export class DbRoomStore {
         });
     }
 
-    private async upsertRoom(room: RemoteStoreRoom) {
+    private async upsertRoom(room: RemoteStoreRoom): Promise<void> {
         MetricPeg.get.storeCall("RoomStore.upsertRoom", false);
         if (!room.data) {
             throw new Error("Tried to upsert a room with undefined data");
