@@ -74,9 +74,7 @@ async function run(): Promise<void> {
         log.error(`Failed to load database`, e);
     }
     let rooms = await store!.roomStore.getEntriesByRemoteRoomData({
-        /* eslint-disable @typescript-eslint/camelcase */
         discord_type: "text",
-        /* eslint-disable @typescript-eslint/camelcase */
     });
     rooms = rooms.filter((r) => r.remote && r.remote.get("plumbed") !== true );
     log.info(`Got ${rooms.length} rooms to set`);
