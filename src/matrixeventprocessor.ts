@@ -48,7 +48,7 @@ export class MatrixEventProcessorOpts {
         readonly bridge: Appservice,
         readonly discord: DiscordBot,
         readonly store: DiscordStore,
-        ) {
+    ) {
 
     }
 }
@@ -167,7 +167,7 @@ export class MatrixEventProcessor {
         });
         const channel = await this.discord.GetChannelFromRoomId(roomId);
         await (channel as Discord.TextChannel).send(
-          "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
+            "Someone on Matrix has turned on encryption in this room, so the service will not bridge any new messages",
         );
         await sendPromise;
         await this.bridge.botIntent.underlyingClient.leaveRoom(roomId);
@@ -209,7 +209,7 @@ export class MatrixEventProcessor {
             embedSet.imageEmbed = file as Discord.MessageEmbed;
         }
 
-    // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
+        // Throws an `Unstable.ForeignNetworkError` when sending the message fails.
         if (editEventId) {
             await this.discord.edit(embedSet, opts, roomLookup, event, editEventId);
         } else {

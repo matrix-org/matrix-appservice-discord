@@ -38,7 +38,7 @@ const bot: any = {
 describe("PresenceHandler", () => {
     describe("init", () => {
         it("constructor", () => {
-           new PresenceHandler(bot as DiscordBot);
+            new PresenceHandler(bot as DiscordBot);
         });
     });
     describe("Stop", () => {

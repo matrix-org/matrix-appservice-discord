@@ -526,9 +526,10 @@ describe("ChannelSyncroniser", () => {
                 topic: "newTopic",
             });
             bridge.botIntent.underlyingClient.wasCalled("sendStateEvent", true, "!1:localhost", "m.room.avatar", "",
-            {
-                url: "mxc://new_icon",
-            });
+                {
+                    url: "mxc://new_icon",
+                }
+            );
             expect(REMOTECHANNEL_SET).is.true;
         });
     });

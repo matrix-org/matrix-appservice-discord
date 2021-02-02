@@ -153,21 +153,17 @@ export class DiscordStore implements IAppserviceStorageProvider {
         try {
             await Promise.all([
                 this.db.Run(
-                  `
-                  INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);
-                  `
-                , {
-                    discordId,
-                    userId,
-                }),
+                    `INSERT INTO user_id_discord_id (discord_id,user_id) VALUES ($discordId,$userId);`
+                    , {
+                        discordId,
+                        userId,
+                    }),
                 this.db.Run(
-                  `
-                  INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);
-                  `
-                , {
-                    discordId,
-                    token,
-                }),
+                    `INSERT INTO discord_id_token (discord_id,token) VALUES ($discordId,$token);`
+                    , {
+                        discordId,
+                        token,
+                    }),
             ]);
         } catch (err) {
             log.error("Error storing user token ", err);
@@ -187,19 +183,15 @@ export class DiscordStore implements IAppserviceStorageProvider {
         try {
             await Promise.all([
                 this.db.Run(
-                    `
-                    DELETE FROM user_id_discord_id WHERE discord_id = $id
-                    `
-                , {
-                    id: discordId,
-                }),
+                    `DELETE FROM user_id_discord_id WHERE discord_id = $id`
+                    , {
+                        id: discordId,
+                    }),
                 this.db.Run(
-                    `
-                    DELETE FROM discord_id_token WHERE discord_id = $id
-                    `
-                , {
-                    id: discordId,
-                }),
+                    `DELETE FROM discord_id_token WHERE discord_id = $id`
+                    , {
+                        id: discordId,
+                    }),
             ]);
         } catch (err) {
             log.error("Error deleting user token ", err);
@@ -216,9 +208,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
                 FROM user_id_discord_id
                 WHERE user_id = $userId;
                 `
-            , {
-                userId,
-            });
+                , {
+                    userId,
+                });
             if (rows != null) {
                 return rows.map((row) => row.discord_id as string);
             } else {
@@ -239,9 +231,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
                 FROM discord_id_token
                 WHERE discord_id = $discordId
                 `
-            , {
-                discordId,
-            });
+                , {
+                    discordId,
+                });
             return row ? row.token as string : "";
         } catch (err) {
             log.error("Error getting discord ids ", err.Error);

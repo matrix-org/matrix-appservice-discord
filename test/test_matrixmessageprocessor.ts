@@ -205,12 +205,11 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any, {
                 mxClient: {
                     lookupRoomAlias: async () => ({
-                            residentServers: [],
-                            roomId: "!bridged:localhost",
-                        }),
-                    } as any,
-                },
-            );
+                        residentServers: [],
+                        roomId: "!bridged:localhost",
+                    }),
+                } as any,
+            });
             expect(result).is.equal("<#1234>");
         });
         it("Ignores links without href", async () => {

@@ -27,7 +27,7 @@
         "no-invalid-this": "error",
         "@typescript-eslint/no-throw-literal": "warn",
         "prefer-const": "error",
-        "indent": ["error", 4],
+        "indent": ["error", 4, {"SwitchCase": 1}],
         "max-lines": ["warn", 500],
         "no-duplicate-imports": "error",
         "@typescript-eslint/array-type": "error",

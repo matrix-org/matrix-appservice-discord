@@ -198,8 +198,8 @@ describe("MatrixCommandHandler", () => {
             });
             it("will bridge with x/y syntax", async () => {
                 const {handler, bridge} = createCH({powerLevels: {
-                        users_default: 100,
-                    }});
+                    users_default: 100,
+                }});
                 await handler.Process(createEvent("!discord bridge 123/456"), createContext());
                 const expected = "I have bridged this room to your channel";
                 const expectedHtml = "<p>I have bridged this room to your channel</p>\n";

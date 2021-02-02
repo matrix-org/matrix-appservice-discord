@@ -147,7 +147,7 @@ describe("MatrixRoomHandler", () => {
             const {handler} = createRH({});
             const ret = await handler.OnAliasQuery("#_discord_123_456:localhost");
             expect(ret).to.be.deep.equal({
-                    initial_state: [
+                initial_state: [
                     {
                         content: {
                             join_rule: "public",

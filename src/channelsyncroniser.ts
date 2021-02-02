@@ -176,7 +176,7 @@ export class ChannelSyncroniser {
                     room,
                     "m.room.canonical_alias",
                     "")
-                    ).alias;
+                ).alias;
                 if (al) {
                     if (this.bridge.isNamespacedAlias(al)) {
                         fallbackAlias = al;
