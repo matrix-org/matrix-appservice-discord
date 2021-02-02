@@ -26,9 +26,6 @@ import { AppserviceMock } from "./mocks/appservicemock";
 import { Appservice } from "matrix-bot-sdk";
 import { RemoteStoreRoom } from "../src/db/roomstore";
 
-// we are a test file and thus need those
-/* tslint:disable:no-unused-expression max-file-line-count no-any */
-
 const TEST_TIMESTAMP = 1337;
 
 function buildRequest(eventData): IMatrixEvent {
