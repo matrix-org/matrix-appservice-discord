@@ -58,7 +58,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         return this.pUserStore;
     }
 
-    public async backupDatabase(): Promise<void|{}> {
+    public async backupDatabase(): Promise<void|true> {
         if (this.config.filename == null) {
             log.warn("Backups not supported on non-sqlite connector");
             return;
@@ -75,7 +75,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
                 return resolve(err === null);
             });
         }).then(async (result) => {
-            return new Promise<void|{}>((resolve, reject) => {
+            return new Promise<void|true>((resolve, reject) => {
                 if (!result) {
                     log.warn("NOT backing up database while a file already exists");
                     resolve(true);

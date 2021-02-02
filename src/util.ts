@@ -418,7 +418,7 @@ export function isInstanceOfTypes(obj: object, types: Type[]): boolean {
 export function wrapError<T extends Error>(
     oldError: object|Error,
     newErrorType: new (...args: any[]) => T, 
-    ...args: any[]  trailing-comma
+    ...args: any[]
 ): T {
     const newError = new newErrorType(...args);
     let appendMsg;

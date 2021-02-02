@@ -71,7 +71,7 @@ describe("Util", () => {
         };
         describe("HandleHelpCommand", () => {
             it("handles empty commands", async () => {
-                const {command, args} = Util.MsgToArgs("!fox help", "!fox");
+                const {args} = Util.MsgToArgs("!fox help", "!fox");
                 const retStr = await Util.HandleHelpCommand(
                     "!fox",
                     {} as any,
@@ -81,7 +81,7 @@ describe("Util", () => {
                 expect(retStr).to.equal("No commands found");
             });
             it("parses general help message", async () => {
-                const {command, args} = Util.MsgToArgs("!fox help", "!fox");
+                const {args} = Util.MsgToArgs("!fox help", "!fox");
                 const retStr = await Util.HandleHelpCommand(
                     "!fox",
                     actions,
@@ -98,7 +98,7 @@ Parameters:
 `);
             });
             it("parses specific help message", async () => {
-                const {command, args} = Util.MsgToArgs("!fox help action", "!fox");
+                const {args} = Util.MsgToArgs("!fox help action", "!fox");
                 const retStr = await Util.HandleHelpCommand(
                     "!fox",
                     actions,
