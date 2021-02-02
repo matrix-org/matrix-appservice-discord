@@ -35,6 +35,14 @@
         "no-bitwise": "error",
         "no-console": "error",
         "no-debugger": "error",
+        "@typescript-eslint/naming-convention": ["error",
+            {
+                "selector": "default",
+                "format": ["camelCase", "PascalCase", "snake_case", "UPPER_CASE"],
+                "leadingUnderscore": "allow",
+                "trailingUnderscore": "forbid",
+            },
+        ],
         "prefer-template": "off",
         // Disable these as they were introduced by @typescript-eslint/recommended
         "@typescript-eslint/no-use-before-define": "off",
