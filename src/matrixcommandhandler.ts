@@ -73,7 +73,7 @@ export class MatrixCommandHandler {
                     cat: "events",
                     level: PROVISIONING_DEFAULT_POWER_LEVEL,
                     selfService: true,
-                    subcat: "m.room.power_levels",
+                    subcat: this.config.bridge.bridgingRequiresPermission,
                 },
                 run: async ({guildId, channelId}) => {
                     if (roomEntry && roomEntry.remote) {
@@ -119,7 +119,7 @@ export class MatrixCommandHandler {
                     cat: "events",
                     level: PROVISIONING_DEFAULT_POWER_LEVEL,
                     selfService: true,
-                    subcat: "m.room.power_levels",
+                    subcat: this.config.bridge.bridgingRequiresPermission,
                 },
                 run: async () => {
                     if (!roomEntry || !roomEntry.remote) {

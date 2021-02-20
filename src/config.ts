@@ -96,6 +96,7 @@ class DiscordBridgeConfigBridge {
     public disableJoinLeaveNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
     public determineCodeLanguage: boolean = false;
+    public bridgingRequiresPermission: string = "uk.half-shot.bridge";
 }
 
 export class DiscordBridgeConfigDatabase {

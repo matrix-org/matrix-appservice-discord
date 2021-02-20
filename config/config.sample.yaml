@@ -38,6 +38,10 @@ bridge:
   disableInviteNotifications: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)
   determineCodeLanguage: false
+  # Define room permission that user must have. Default is "uk.half-shot.bridge" but 
+  # you might want to use "m.room.power_levels" (old default) or "m.room.canonical_alias" (to allow bridging
+  # with PL50 on IRC portal rooms)
+  bridgingRequiresPermission: "uk.half-shot.bridge"
 # Authentication configuration for the discord bot.
 auth:
   # This MUST be a string (wrapped in quotes)
