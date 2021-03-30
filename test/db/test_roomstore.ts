@@ -24,7 +24,7 @@ import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
 
 let store: DiscordStore;
 describe("RoomStore", () => {
-    before(async () => {
+    beforeEach(async () => {
         store = new DiscordStore(":memory:");
         await store.init();
     });
@@ -187,6 +187,57 @@ describe("RoomStore", () => {
             await store.roomStore.removeEntriesByRemoteRoomId("test8_m");
             const entries = await store.roomStore.getEntriesByMatrixId("test8_r");
             expect(entries).to.be.empty;
+        });
+    });
+    describe("countEntries", () => {
+        it("returns 0 when no entry has been upserted", async () => {
+            expect(await store.roomStore.countEntries()).to.equal(0);
+        });
+        it("returns 1 when one entry has been upserted", async () => {
+            await store.roomStore.upsertEntry({
+                id: "test",
+                matrix: new MatrixStoreRoom("test_m"),
+                remote: new RemoteStoreRoom("test_r", { discord_guild: "find", discord_channel: "this" }),
+            });
+            expect(await store.roomStore.countEntries()).to.equal(1);
+        });
+        it("returns 2 when two entries have been upserted", async () => {
+            await store.roomStore.upsertEntry({
+                id: "test1",
+                matrix: new MatrixStoreRoom("test1_m"),
+                remote: new RemoteStoreRoom("test1_r", { discord_guild: "find", discord_channel: "this" }),
+            });
+            await store.roomStore.upsertEntry({
+                id: "test2",
+                matrix: new MatrixStoreRoom("test2_m"),
+                remote: new RemoteStoreRoom("test2_r", { discord_guild: "find", discord_channel: "this" }),
+            });
+            expect(await store.roomStore.countEntries()).to.equal(2);
+        });
+        it("does not count entries with no matrix_id", async () => {
+            await store.roomStore.upsertEntry({
+                id: "test",
+                matrix: null,
+                remote: new RemoteStoreRoom("test_r", { discord_guild: "find", discord_channel: "this" }),
+            });
+            expect(await store.roomStore.countEntries()).to.equal(0);
+        });
+        it("does not count entries with no remote_id", async () => {
+            await store.roomStore.upsertEntry({
+                id: "test",
+                matrix: new MatrixStoreRoom("test_m"),
+                remote: null,
+            });
+            expect(await store.roomStore.countEntries()).to.equal(0);
+        });
+        it("returns 0 when one entry has been upserted and removed", async () => {
+            await store.roomStore.upsertEntry({
+                id: "test",
+                matrix: new MatrixStoreRoom("test_m"),
+                remote: new RemoteStoreRoom("test_r", { discord_guild: "find", discord_channel: "this" }),
+            });
+            await store.roomStore.removeEntriesByRemoteRoomId("test_r");
+            expect(await store.roomStore.countEntries()).to.equal(0);
         });
     });
 });

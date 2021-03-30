@@ -187,17 +187,19 @@ async function run(): Promise<void> {
     appservice.expressAppInstance.get("/health", (_, res: Response) => {
         res.status(200).send("");
     });
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
-        try {
-            const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
-            await createRoom(createRoomOpts);
-            await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
-        } catch (err) {
-            log.error("Exception thrown while handling \"query.room\" event", err);
-        }
-    });
+
+    if (config.bridge.disablePortalBridging !== true) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
+            try {
+                const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
+                await createRoom(createRoomOpts);
+                await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
+            } catch (err) {
+                log.error("Exception thrown while handling \"query.room\" event", err);
+            }
+        });
+    }
 
     appservice.on("room.event", async (roomId: string, event: IMatrixEvent) => {
         try {
