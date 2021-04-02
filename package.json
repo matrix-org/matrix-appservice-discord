@@ -4,8 +4,8 @@
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
   "scripts": {
-    "test": "mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
-    "lint": "eslint -c .eslintrc --max-warnings 200 src/**/*.ts test/**/*.ts",
+    "test": "mocha -r ts-node/register test/config.ts 'test/**/test_*.ts'",
+    "lint": "eslint -c .eslintrc --max-warnings 200 'src/**/*.ts' 'test/**/*.ts'",
     "coverage": "tsc && nyc mocha build/test/config.js build/test",
     "build": "tsc",
     "postinstall": "npm run build",
