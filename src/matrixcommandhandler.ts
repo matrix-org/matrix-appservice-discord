@@ -65,7 +65,7 @@ export class MatrixCommandHandler {
                     "4. In the matrix room, send the message `!discord bridge <guild id> <channel id>` " +
                     "(without the backticks)\n" +
                     "   Note: The Guild ID and Channel ID can be retrieved from the URL in your web browser.\n" +
-                    "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
+                    "   The URL is formatted as https://discord.com/channels/GUILD_ID/CHANNEL_ID\n" +
                     "5. Enjoy your new bridge!",
                 /* eslint-enable prefer-template */
                 params: ["guildId", "channelId"],
