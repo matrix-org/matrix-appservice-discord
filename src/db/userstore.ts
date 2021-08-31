@@ -82,11 +82,11 @@ export class DbUserStore {
             {remoteId},
         );
         if (nicks) {
-            /* eslint-disable @typescript-eslint/camelcase */
+            /* eslint-disable @typescript-eslint/naming-convention */
             nicks.forEach(({nick, guild_id}) => {
                 remoteUser.guildNicks.set(guild_id as string, nick as string);
             });
-            /* eslint-enable @typescript-eslint/camelcase */
+            /* eslint-enable @typescript-eslint/naming-convention */
         }
         this.remoteUserCache.set(remoteId, remoteUser);
         return remoteUser;
@@ -108,12 +108,12 @@ export class DbUserStore {
                     $avatarurl_mxc
                 )`,
                 {
-                    /* eslint-disable @typescript-eslint/camelcase */
+                    /* eslint-disable @typescript-eslint/naming-convention */
                     avatarurl: user.avatarurl,
                     avatarurl_mxc: user.avatarurlMxc,
                     displayname: user.displayname,
                     remote_id: user.id,
-                    /* eslint-enable @typescript-eslint/camelcase */
+                    /* eslint-enable @typescript-eslint/naming-convention */
                 });
         } else {
             await this.db.Run(
@@ -121,19 +121,19 @@ export class DbUserStore {
 avatarurl = $avatarurl,
 avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
                 {
-                    /* eslint-disable @typescript-eslint/camelcase */
+                    /* eslint-disable @typescript-eslint/naming-convention */
                     avatarurl: user.avatarurl,
                     avatarurl_mxc: user.avatarurlMxc,
                     displayname: user.displayname,
                     remote_id: user.id,
-                    /* eslint-enable @typescript-eslint/camelcase */
+                    /* eslint-enable @typescript-eslint/naming-convention */
                 });
         }
         const existingNicks = {};
         (await this.db.All(
             "SELECT guild_id, nick FROM remote_user_guild_nicks WHERE remote_id = $remoteId",
             {remoteId: user.id},
-        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick); // eslint-disable-line @typescript-eslint/camelcase
+        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick); // eslint-disable-line @typescript-eslint/naming-convention
         for (const guildId of user.guildNicks.keys()) {
             const nick = user.guildNicks.get(guildId) || null;
             if (existingData) {
@@ -145,11 +145,11 @@ avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
 WHERE remote_id = $remote_id
 AND guild_id = $guild_id`,
                         {
-                            /* eslint-disable @typescript-eslint/camelcase */
+                            /* eslint-disable @typescript-eslint/naming-convention */
                             guild_id: guildId,
                             nick,
                             remote_id: user.id,
-                            /* eslint-enable @typescript-eslint/camelcase */
+                            /* eslint-enable @typescript-eslint/naming-convention */
                         });
                     return;
                 }
@@ -161,11 +161,11 @@ AND guild_id = $guild_id`,
                 $nick
             )`,
                 {
-                    /* eslint-disable @typescript-eslint/camelcase */
+                    /* eslint-disable @typescript-eslint/naming-convention */
                     guild_id: guildId,
                     nick,
                     remote_id: user.id,
-                    /* eslint-enable @typescript-eslint/camelcase */
+                    /* eslint-enable @typescript-eslint/naming-convention */
                 });
         }
 

@@ -36,6 +36,7 @@
         "no-console": "error",
         "no-debugger": "error",
         "prefer-template": "error",
+        "@typescript-eslint/ban-types": "off",
         // Disable these as they were introduced by @typescript-eslint/recommended
         "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-inferrable-types": "off",
