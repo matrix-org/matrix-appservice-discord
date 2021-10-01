@@ -90,6 +90,7 @@ export class DiscordBridgeConfigBridge {
     public disableTypingNotifications: boolean;
     public disableDiscordMentions: boolean;
     public disableDeletionForwarding: boolean;
+    public defaultRoomVersion: string|undefined;
     public enableSelfServiceBridging: boolean;
     public disablePortalBridging: boolean;
     public disableReadReceipts: boolean;

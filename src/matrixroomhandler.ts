@@ -271,9 +271,10 @@ export class MatrixRoomHandler {
             ],
             room_alias_name: aliasLocalpart,
             visibility: this.config.room.defaultVisibility,
+            room_version: this.config.bridge.defaultRoomVersion,
             /* eslint-enable @typescript-eslint/naming-convention */
         };
-        // We need to tempoarily store this until we know the room_id.
+        // We need to temporarily store this until we know the room_id.
         await this.roomStore.linkRooms(
             new MatrixStoreRoom(alias),
             remote,

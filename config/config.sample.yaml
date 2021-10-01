@@ -26,6 +26,10 @@ bridge:
   # Disable portal bridging, where Matrix users can search for unbridged Discord
   # rooms on their Matrix server.
   disablePortalBridging: false
+  # Room version to use for portal rooms created by the bridge.
+  # If unspecified, will use the default room version set by the server.
+  # Set this to "9" or higher to get rooms that can be (manually) set as space-restricted.
+  # defaultRoomVersion: "9"
   # Enable users to bridge rooms using !discord commands. See
   # https://t2bot.io/discord for instructions.
   enableSelfServiceBridging: false
