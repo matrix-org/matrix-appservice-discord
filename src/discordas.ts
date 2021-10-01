@@ -228,6 +228,22 @@ async function run(): Promise<void> {
     await appservice.begin();
     log.info(`Started listening on port ${port}`);
 
+    const client = appservice.botIntent.underlyingClient;
+    for (const roomId of await client.getJoinedRooms()) {
+        for (const userId of await client.getJoinedRoomMembers(roomId)) {
+            let customPL;
+            if (!appservice.isNamespacedUser(userId) &&
+                (customPL = config.bridge.GetCustomPowerLevelForUser(userId)) !== undefined) {
+                // TODO allSettled
+                try {
+                    await client.setUserPowerLevel(userId, roomId, customPL);
+                    log.verbose(`Set power level of ${customPL} for user ${userId} in room ${roomId}`);
+                } catch (err) {
+                    log.warn(`Cannot set custom power level of ${customPL} for user ${userId} in room ${roomId}: ${err}`);
+                }
+            }
+        }
+    }
 }
 
 run().catch((err) => {
