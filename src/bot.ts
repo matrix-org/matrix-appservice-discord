@@ -709,7 +709,7 @@ export class DiscordBot {
         }
 
         if (entries.length === 0) {
-            log.verbose(`Couldn"t find channel for roomId ${roomId}.`);
+            log.verbose(`Couldn't find channel for roomId ${roomId}.`);
             throw Error("Room(s) not found.");
         }
         const entry = entries[0];
@@ -801,7 +801,7 @@ export class DiscordBot {
         try {
             channel = await this.GetChannelFromRoomId(roomId, client);
         } catch (ex) {
-            log.error("Failed to get channel for ", roomId, ex);
+            log.warn(`Failed to get channel for ${roomId}, so it must not have been bridged`);
             return;
         }
         if (channel.type !== "text") {
