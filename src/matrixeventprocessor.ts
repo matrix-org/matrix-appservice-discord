@@ -82,6 +82,10 @@ export class MatrixEventProcessor {
         }
     }
 
+    public OnCreate(roomId: string) {
+        this.mxCommandHandler.HandleCreate(roomId)
+    }
+
     /**
      * Callback which is called when the HS notifies the bridge of a new event.
      *
