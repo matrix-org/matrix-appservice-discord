@@ -53,7 +53,6 @@ export class Provisioner {
         const roomsRes = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
             discord_guild: channel.guild.id,
-            plumbed: true,
         });
         if (roomsRes.length === 0) {
             throw Error("Channel is not bridged");

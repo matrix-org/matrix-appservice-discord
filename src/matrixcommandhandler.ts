@@ -124,9 +124,6 @@ export class MatrixCommandHandler {
                     if (!roomEntry || !roomEntry.remote) {
                         return "This room is not bridged.";
                     }
-                    if (!roomEntry.remote.data.plumbed) {
-                        return "This room cannot be unbridged.";
-                    }
                     const res = await this.discord.LookupRoom(
                         roomEntry.remote.data.discord_guild!,
                         roomEntry.remote.data.discord_channel!,
