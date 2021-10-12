@@ -36,6 +36,7 @@ import { DiscordCommandHandler } from "./discordcommandhandler";
 import { MetricPeg } from "./metrics";
 import { Lock } from "./structures/lock";
 import { Util } from "./util";
+import { BridgeBlocker, UserActivityState, UserActivityTracker } from "matrix-appservice-bridge";
 
 const log = new Log("DiscordBot");
 
@@ -63,9 +64,32 @@ export interface IThirdPartyLookup {
     protocol: string;
 }
 
+class DiscordBridgeBlocker extends BridgeBlocker {
+    constructor(userLimit: number, private bridge: DiscordBot) {
+        super(userLimit);
+    }
+
+    async checkLimits(users: number) {
+        await super.checkLimits(users);
+        MetricPeg.get.setBridgeBlocked(this.isBlocked);
+    }
+
+    async blockBridge() {
+        log.info("Blocking the bridge");
+        await this.bridge.stop();
+        await super.blockBridge();
+    }
+
+    async unblockBridge() {
+        log.info("Unblocking the bridge");
+        await super.unblockBridge();
+        await this.bridge.run();
+    }
+}
+
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
-    private bot: Discord.Client;
+    private _bot: Discord.Client|undefined;
     private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
@@ -84,6 +108,22 @@ export class DiscordBot {
     private discordMessageQueue: { [channelId: string]: Promise<void> };
     private channelLock: Lock<string>;
     private typingTimers: Record<string, NodeJS.Timeout> = {}; // DiscordUser+channel -> Timeout
+
+    private userActivity: UserActivityTracker;
+    private bridgeBlocker?: DiscordBridgeBlocker;
+
+    private get bot(): Discord.Client {
+        if (!this._bot) {
+            let bridgeBlocked = '';
+            if (this.bridgeBlocker?.isBlocked) {
+                bridgeBlocked = ' (bridge is blocked)';
+            }
+            throw new Error(`Bot is not connected to Discord${bridgeBlocked}`);
+        }
+
+        return this._bot!;
+    }
+
     constructor(
         private config: DiscordBridgeConfig,
         private bridge: Appservice,
@@ -138,6 +178,8 @@ export class DiscordBot {
 
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.PartialUser | Discord.User,
                                       webhookID: string|null = null): Intent {
+        let intent: Intent;
+
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.GuildMember ? member.user.username : member.username;
@@ -146,18 +188,40 @@ export class DiscordBot {
                 throw Error("Couldn't get intent for Discord member, name was null");
             }
             // TODO: We need to sanitize name
-            return this.bridge.getIntentForSuffix(`${webhookID}_${Util.EscapeStringForUserId(name)}`);
+            intent = this.bridge.getIntentForSuffix(`${webhookID}_${Util.EscapeStringForUserId(name)}`);
+        } else {
+            intent = this.bridge.getIntentForSuffix(member.id);
         }
-        return this.bridge.getIntentForSuffix(member.id);
+
+        this.userActivity.updateUserActivity(intent.userId);
+        return intent;
     }
 
     public async init(): Promise<void> {
         await this.clientFactory.init();
         // This immediately pokes UserStore, so it must be created after the bridge has started.
         this.userSync = new UserSyncroniser(this.bridge, this.config, this, this.store.userStore);
+
+        this.userActivity = new UserActivityTracker(
+            this.config.bridge.activityTracker,
+            await this.store.getUserActivity(),
+            async changes => this.onUserActivityChanged(changes),
+        );
+        const activeUsers = this.userActivity.countActiveUsers().allUsers;
+        MetricPeg.get.setRemoteMonthlyActiveUsers(activeUsers);
+
+        if (this.config.bridge.userLimit !== null) {
+            log.info(`Bridge blocker is enabled with a user limit of ${this.config.bridge.userLimit}`);
+            this.bridgeBlocker = new DiscordBridgeBlocker(this.config.bridge.userLimit, this);
+            this.bridgeBlocker?.checkLimits(activeUsers);
+        }
     }
 
     public async run(): Promise<void> {
+        if (this.bridgeBlocker?.isBlocked) {
+            log.warn('Bridge is blocked, run() aborted');
+            return;
+        }
         const client = await this.clientFactory.getClient();
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (channel, user) => {
@@ -310,7 +374,7 @@ export class DiscordBot {
         client.on("error", (msg) => { jsLog.error(msg); });
         client.on("warn", (msg) => { jsLog.warn(msg); });
         log.info("Discord bot client logged in.");
-        this.bot = client;
+        this._bot = client;
 
         if (!this.config.bridge.disablePresence) {
             if (!this.config.bridge.presenceInterval) {
@@ -327,6 +391,10 @@ export class DiscordBot {
                 Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
             );
         }
+    }
+
+    public async stop(): Promise<void> {
+        this._bot = undefined;
     }
 
     public GetBotId(): string {
@@ -1125,5 +1193,14 @@ export class DiscordBot {
                 log.error(`Failed to insert sent event (${event.event_id};${event.room_id}) into store`, err);
             }
         });
+    }
+
+    private async onUserActivityChanged(state: UserActivityState) {
+        for (const userId of state.changed) {
+            await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
+        }
+        log.info(`Checking bridge limits (${state.activeUsers} active users)`);
+        this.bridgeBlocker?.checkLimits(state.activeUsers);
+        MetricPeg.get.setRemoteMonthlyActiveUsers(state.activeUsers);
     }
 }

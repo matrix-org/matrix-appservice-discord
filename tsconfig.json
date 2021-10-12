@@ -8,7 +8,8 @@
         "outDir": "./build",
         "types": ["mocha", "node"],
         "strictNullChecks": true,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "skipLibCheck": true, /* matrix-bot-sdk throws up errors */
     },
     "compileOnSave": true,
     "include": [

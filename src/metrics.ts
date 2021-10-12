@@ -35,6 +35,8 @@ export interface IBridgeMetrics {
     remoteCall(method: string);
     setPresenceCount(count: number);
     storeCall(method: string, cached: boolean);
+    setRemoteMonthlyActiveUsers(rmau: number);
+    setBridgeBlocked(isBlocked: boolean);
 }
 
 export class DummyBridgeMetrics implements IBridgeMetrics {
@@ -43,6 +45,8 @@ export class DummyBridgeMetrics implements IBridgeMetrics {
     public remoteCall() {}
     public setPresenceCount() {}
     public storeCall() {}
+    public setRemoteMonthlyActiveUsers() {}
+    public setBridgeBlocked() {}
 }
 
 export class MetricPeg {
@@ -67,6 +71,8 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
     private requestsInFlight: Map<string, number>;
     private matrixRequestStatus: Map<string, "success"|"failed">;
     private httpServer: http.Server;
+    private remoteMonthlyActiveUsers: Gauge<string>;
+    private bridgeBlocked: Gauge<string>;
 
     public init(as: Appservice, config: DiscordBridgeConfigMetrics) {
         collectDefaultMetrics();
@@ -132,6 +138,18 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
         }, REQUEST_EXPIRE_TIME_MS);
         this.httpServer.listen(config.port, config.host);
 
+        this.remoteMonthlyActiveUsers = new Gauge({
+            help: "Current count of remote users active this month",
+            name: "remote_monthly_active_users",
+        });
+        register.registerMetric(this.remoteMonthlyActiveUsers);
+
+        this.bridgeBlocked = new Gauge({
+            name: "blocked",
+            help: "Is the bridge currently blocking messages",
+        });
+        register.registerMetric(this.bridgeBlocked);
+
         // Bind bot-sdk metrics
         as.botClient.metrics.registerListener({
             onDecrement: this.sdkDecrementMetric.bind(this),
@@ -168,6 +186,14 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
     public storeCall(method: string, cached: boolean) {
         this.storeCallCounter.inc({method, cached: cached ? "yes" : "no"});
+    }
+
+    public setRemoteMonthlyActiveUsers(rmau: number) {
+        this.remoteMonthlyActiveUsers.set(rmau);
+    }
+
+    public setBridgeBlocked(isBlocked: boolean) {
+        this.bridgeBlocked.set(isBlocked ? 1 : 0);
     }
 
     private sdkStartMetric(metricName: string, context: IMetricContext) {
