@@ -1197,7 +1197,7 @@ export class DiscordBot {
         for (const userId of state.changed) {
             await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
         }
-        log.info(`Checking bridge limits (${state.activeUsers} active users)`);
+        log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
         this.bridgeBlocker?.checkLimits(state.activeUsers);
         MetricPeg.get.setRemoteMonthlyActiveUsers(state.activeUsers);
     }
