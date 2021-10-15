@@ -140,12 +140,12 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
         this.remoteMonthlyActiveUsers = new Gauge({
             help: "Current count of remote users active this month",
-            name: "remote_monthly_active_users",
+            name: "bridge_remote_monthly_active_users",
         });
         register.registerMetric(this.remoteMonthlyActiveUsers);
 
         this.bridgeBlocked = new Gauge({
-            name: "blocked",
+            name: "bridge_blocked",
             help: "Is the bridge currently blocking messages",
         });
         register.registerMetric(this.bridgeBlocked);
