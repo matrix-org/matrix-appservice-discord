@@ -906,7 +906,6 @@ export class DiscordBot {
                                     msgID: string): Promise<boolean> {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
         const intent = this.GetIntentFromDiscordMember(author);
-        this.userActivity.updateUserActivity(intent.userId);
 
         await Util.AsyncForEach(rooms, async (roomId) => {
             const eventId = await intent.sendEvent(roomId, {
@@ -922,6 +921,7 @@ export class DiscordBot {
             evt.ChannelId = chan.id;
             evt.GuildId = guild.id;
             await this.store.Insert(evt);
+            this.userActivity.updateUserActivity(intent.userId);
         });
 
         // Sending was a success
@@ -1004,7 +1004,6 @@ export class DiscordBot {
         }
         try {
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
-            this.userActivity.updateUserActivity(intent.userId);
             // Check Attachements
             if (!editEventId) {
                 // on discord you can't edit in images, you can only edit text
@@ -1053,6 +1052,7 @@ export class DiscordBot {
                             evt.GuildId = msg.guild.id;
                         }
                         await this.store.Insert(evt);
+                        this.userActivity.updateUserActivity(intent.userId);
                     });
                 });
             }
@@ -1095,6 +1095,7 @@ export class DiscordBot {
                         evt.GuildId = msg.guild.id;
                     }
                     await this.store.Insert(evt);
+                    this.userActivity.updateUserActivity(intent.userId);
                 };
                 let res;
                 try {
