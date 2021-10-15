@@ -303,7 +303,11 @@ export class DiscordStore implements IAppserviceStorageProvider {
         const rows = await this.db.All('SELECT * FROM user_activity');
         const users: {[mxid: string]: any} = {};
         for (const row of rows) {
-            users[row.user_id as string] = JSON.parse(row.data as any);
+            let data = row.data as any;
+            if (typeof data === 'string') { // sqlite has no first-class JSON
+                data = JSON.parse(data);
+            }
+            users[row.user_id as string] = data;
         }
         return { users };
     }
