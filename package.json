@@ -44,7 +44,7 @@
     "escape-string-regexp": "^4.0.0",
     "js-yaml": "^3.14.0",
     "marked": "^1.2.2",
-    "matrix-bot-sdk": "0.5.11",
+    "matrix-appservice-bridge": "^3.1.0",
     "matrix-discord-parser": "0.1.5",
     "mime": "^2.4.6",
     "node-html-parser": "^1.2.19",
@@ -75,7 +75,7 @@
     "proxyquire": "^1.7.11",
     "source-map-support": "^0.5.19",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.5",
+    "typescript": "^4.2.3",
     "why-is-node-running": "^2.2.0"
   }
 }

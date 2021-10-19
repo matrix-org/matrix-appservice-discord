@@ -18,6 +18,8 @@ const ENV_PREFIX = "APPSERVICE_DISCORD";
 const ENV_KEY_SEPARATOR = "_";
 const ENV_VAL_SEPARATOR = ",";
 
+import { UserActivityTrackerConfig } from 'matrix-appservice-bridge';
+
 /** Type annotations for config/config.schema.yaml */
 export class DiscordBridgeConfig {
     public bridge: DiscordBridgeConfigBridge = new DiscordBridgeConfigBridge();
@@ -96,6 +98,8 @@ class DiscordBridgeConfigBridge {
     public disableJoinLeaveNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
     public determineCodeLanguage: boolean = false;
+    public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
+    public userLimit: number|null = null;
 }
 
 export class DiscordBridgeConfigDatabase {

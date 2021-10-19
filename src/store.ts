@@ -25,8 +25,9 @@ import { IDatabaseConnector } from "./db/connector";
 import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
 import { IAppserviceStorageProvider } from "matrix-bot-sdk";
+import { UserActivitySet, UserActivity } from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
-export const CURRENT_SCHEMA = 11;
+export const CURRENT_SCHEMA = 12;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
@@ -296,6 +297,26 @@ export class DiscordStore implements IAppserviceStorageProvider {
     }
     public isTransactionCompleted(transactionId: string): boolean {
         return this.asTxns.has(transactionId);
+    }
+
+    public async getUserActivity(): Promise<UserActivitySet> {
+        const rows = await this.db.All('SELECT * FROM user_activity');
+        const users: {[mxid: string]: any} = {};
+        for (const row of rows) {
+            let data = row.data as any;
+            if (typeof data === 'string') { // sqlite has no first-class JSON
+                data = JSON.parse(data);
+            }
+            users[row.user_id as string] = data;
+        }
+        return { users };
+    }
+
+    public async storeUserActivity(userId: string, activity: UserActivity): Promise<void> {
+        return this.db.Run(
+            'INSERT INTO user_activity VALUES($id, $activity) ON CONFLICT (user_id) DO UPDATE SET data = $activity',
+            { id: userId, activity: JSON.stringify(activity) }
+        );
     }
 
     private async getSchemaVersion( ): Promise<number> {
