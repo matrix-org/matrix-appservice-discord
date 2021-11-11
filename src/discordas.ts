@@ -214,19 +214,33 @@ async function run(): Promise<void> {
 
     roomhandler.bindThirdparty();
 
-    await appservice.begin();
-    log.info(`Started listening on port ${port}`);
-
     try {
-        await discordbot.init();
-        await discordbot.run();
+        await startDiscordBot(discordbot);
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
         log.error("Failure during startup. Exiting");
         process.exit(1);
     }
+
+    await appservice.begin();
+    log.info(`Started listening on port ${port}`);
+
 }
+
+async function startDiscordBot(discordbot: DiscordBot, falloffSeconds = 5) {
+    try {
+        await discordbot.init();
+        await discordbot.run();
+    } catch (err) {
+        // no more than 5 minutes
+        const newFalloffSeconds = Math.min(falloffSeconds * 2, 5 * 60);
+        log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
+        await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
+        return startDiscordBot(discordbot, newFalloffSeconds);
+    }
+}
+
 
 run().catch((err) => {
     log.error("A fatal error occurred during startup:", err);
