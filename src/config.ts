@@ -100,6 +100,7 @@ class DiscordBridgeConfigBridge {
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
     public userLimit: number|null = null;
+    public adminMxid: string|null = null;
 }
 
 export class DiscordBridgeConfigDatabase {

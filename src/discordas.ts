@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, LogService, MatrixClient } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -29,6 +29,8 @@ import { MetricPeg, PrometheusBridgeMetrics } from "./metrics";
 import { Response } from "express";
 
 const log = new Log("DiscordAS");
+
+const ADMIN_ROOMS_KEY = 'uk.half-shot.discord.admin-rooms';
 
 const commandOptions = [
     { name: "config", alias: "c", type: String },
@@ -215,7 +217,7 @@ async function run(): Promise<void> {
     roomhandler.bindThirdparty();
 
     try {
-        await startDiscordBot(discordbot);
+        await startDiscordBot(discordbot, appservice.botClient, config.bridge.adminMxid);
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
@@ -228,16 +230,49 @@ async function run(): Promise<void> {
 
 }
 
-async function startDiscordBot(discordbot: DiscordBot, falloffSeconds = 5) {
+interface AdminRooms {
+    [mxid: string]: string;
+}
+
+async function notifyBridgeAdmin(client: MatrixClient, adminMxid: string, message: string) {
+    log.verbose(`Looking up admin room for ${adminMxid}`);
+    let adminRooms = await client.getAccountData<AdminRooms>(ADMIN_ROOMS_KEY).catch(() => null) || {};
+    if (!adminRooms[adminMxid]) {
+        log.verbose(`Creating an admin room for ${adminMxid}`);
+        adminRooms[adminMxid] = await client.createRoom();
+        await client.inviteUser(adminMxid, adminRooms[adminMxid]);
+        await client.setAccountData(ADMIN_ROOMS_KEY, adminRooms);
+    }
+    await client.sendText(adminRooms[adminMxid], message)
+}
+
+let adminNotified = false;
+
+async function startDiscordBot(
+    discordbot: DiscordBot,
+    client: MatrixClient,
+    adminMxid: string|null,
+    falloffSeconds = 5
+) {
     try {
         await discordbot.init();
         await discordbot.run();
     } catch (err) {
+        if (err.code === 'TOKEN_INVALID' && adminMxid && !adminNotified) {
+            await notifyBridgeAdmin(client, adminMxid, `Your Discord bot token seems to be invalid, and the bridge cannot function. Please update it in your bridge settings and restart the bridge`);
+            adminNotified = true;
+        }
+
         // no more than 5 minutes
         const newFalloffSeconds = Math.min(falloffSeconds * 2, 5 * 60);
         log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
         await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
-        return startDiscordBot(discordbot, newFalloffSeconds);
+        return startDiscordBot(discordbot, client, adminMxid, newFalloffSeconds);
+    }
+
+    if (adminMxid && adminNotified) {
+        await notifyBridgeAdmin(client, adminMxid, `The token situation is now resolved and the bridge is running correctly`);
+        adminNotified = false;
     }
 }
 
