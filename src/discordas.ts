@@ -215,7 +215,7 @@ async function run(): Promise<void> {
     roomhandler.bindThirdparty();
 
     try {
-        await startDiscordBot(discordbot, appservice.botClient, config.bridge.adminMxid);
+        await startDiscordBot(discordbot, appservice.botClient, config);
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
@@ -271,17 +271,19 @@ async function notifyBridgeAdmin(client: MatrixClient, adminMxid: string, messag
 let adminNotified = false;
 
 async function startDiscordBot(
-    discordbot: DiscordBot,
-    client: MatrixClient,
-    adminMxid: string|null,
+    discordbot:    DiscordBot,
+    client:        MatrixClient,
+    config:        DiscordBridgeConfig,
     falloffSeconds = 5
 ) {
+    const adminMxid = config.bridge.adminMxid;
+
     try {
         await discordbot.init();
         await discordbot.run();
     } catch (err) {
         if (err.code === 'TOKEN_INVALID' && adminMxid && !adminNotified) {
-            await notifyBridgeAdmin(client, adminMxid, `Your Discord bot token seems to be invalid, and the bridge cannot function. Please update it in your bridge settings and restart the bridge`);
+            await notifyBridgeAdmin(client, adminMxid, config.bridge.invalidTokenMessage);
             adminNotified = true;
         }
 
@@ -289,7 +291,7 @@ async function startDiscordBot(
         const newFalloffSeconds = Math.min(falloffSeconds * 2, 5 * 60);
         log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
         await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
-        return startDiscordBot(discordbot, client, adminMxid, newFalloffSeconds);
+        return startDiscordBot(discordbot, client, config, newFalloffSeconds);
     }
 
     if (adminMxid && adminNotified) {
