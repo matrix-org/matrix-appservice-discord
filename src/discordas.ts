@@ -30,8 +30,6 @@ import { Response } from "express";
 
 const log = new Log("DiscordAS");
 
-const ADMIN_ROOMS_KEY = 'uk.half-shot.discord.admin-rooms';
-
 const commandOptions = [
     { name: "config", alias: "c", type: String },
     { name: "url", alias: "u", type: String },
@@ -230,20 +228,44 @@ async function run(): Promise<void> {
 
 }
 
-interface AdminRooms {
-    [mxid: string]: string;
+async function findDMRoom(client: MatrixClient, targetMxid: string): Promise<string|undefined> {
+    const rooms = await client.getJoinedRooms();
+    const roomsWithMembers = await Promise.all(rooms.map(async (id) => {
+        return {
+            id,
+            memberships: await client.getRoomMembers(id, undefined, ['join', 'invite']),
+        }
+    }));
+
+    return roomsWithMembers.find(
+        room => room.memberships.length == 2
+             && !!room.memberships.find(member => member.stateKey === targetMxid)
+    )?.id;
+}
+
+async function ensureDMRoom(client: MatrixClient, mxid: string): Promise<string> {
+    const existing = await findDMRoom(client, mxid);
+    if (existing) {
+        log.verbose(`Found existing DM room with ${mxid}: ${existing}`);
+        return existing;
+    }
+
+    const roomId = await client.createRoom();
+    try {
+        await client.inviteUser(mxid, roomId);
+    } catch (err) {
+        log.verbose(`Failed to invite ${mxid} to ${roomId}, cleaning up`);
+        client.leaveRoom(roomId); // no point awaiting it, nothing we can do if we fail
+        throw err;
+    }
+
+    log.verbose(`Created ${roomId} to DM with ${mxid}`);
+    return roomId;
 }
 
 async function notifyBridgeAdmin(client: MatrixClient, adminMxid: string, message: string) {
-    log.verbose(`Looking up admin room for ${adminMxid}`);
-    let adminRooms = await client.getAccountData<AdminRooms>(ADMIN_ROOMS_KEY).catch(() => null) || {};
-    if (!adminRooms[adminMxid]) {
-        log.verbose(`Creating an admin room for ${adminMxid}`);
-        adminRooms[adminMxid] = await client.createRoom();
-        await client.inviteUser(adminMxid, adminRooms[adminMxid]);
-        await client.setAccountData(ADMIN_ROOMS_KEY, adminRooms);
-    }
-    await client.sendText(adminRooms[adminMxid], message)
+    const roomId = await ensureDMRoom(client, adminMxid);
+    await client.sendText(roomId, message)
 }
 
 let adminNotified = false;
