@@ -271,9 +271,9 @@ async function notifyBridgeAdmin(client: MatrixClient, adminMxid: string, messag
 let adminNotified = false;
 
 async function startDiscordBot(
-    discordbot:    DiscordBot,
-    client:        MatrixClient,
-    config:        DiscordBridgeConfig,
+    discordbot: DiscordBot,
+    client: MatrixClient,
+    config: DiscordBridgeConfig,
     falloffSeconds = 5
 ) {
     const adminMxid = config.bridge.adminMxid;
