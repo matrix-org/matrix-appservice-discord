@@ -215,7 +215,7 @@ async function run(): Promise<void> {
     roomhandler.bindThirdparty();
 
     try {
-        await startDiscordBot(discordbot, appservice.botClient, config);
+        await discordbot.start();
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
@@ -227,79 +227,6 @@ async function run(): Promise<void> {
     log.info(`Started listening on port ${port}`);
 
 }
-
-async function findDMRoom(client: MatrixClient, targetMxid: string): Promise<string|undefined> {
-    const rooms = await client.getJoinedRooms();
-    const roomsWithMembers = await Promise.all(rooms.map(async (id) => {
-        return {
-            id,
-            memberships: await client.getRoomMembers(id, undefined, ['join', 'invite']),
-        }
-    }));
-
-    return roomsWithMembers.find(
-        room => room.memberships.length == 2
-             && !!room.memberships.find(member => member.stateKey === targetMxid)
-    )?.id;
-}
-
-async function ensureDMRoom(client: MatrixClient, mxid: string): Promise<string> {
-    const existing = await findDMRoom(client, mxid);
-    if (existing) {
-        log.verbose(`Found existing DM room with ${mxid}: ${existing}`);
-        return existing;
-    }
-
-    const roomId = await client.createRoom();
-    try {
-        await client.inviteUser(mxid, roomId);
-    } catch (err) {
-        log.verbose(`Failed to invite ${mxid} to ${roomId}, cleaning up`);
-        client.leaveRoom(roomId); // no point awaiting it, nothing we can do if we fail
-        throw err;
-    }
-
-    log.verbose(`Created ${roomId} to DM with ${mxid}`);
-    return roomId;
-}
-
-async function notifyBridgeAdmin(client: MatrixClient, adminMxid: string, message: string) {
-    const roomId = await ensureDMRoom(client, adminMxid);
-    await client.sendText(roomId, message)
-}
-
-let adminNotified = false;
-
-async function startDiscordBot(
-    discordbot: DiscordBot,
-    client: MatrixClient,
-    config: DiscordBridgeConfig,
-    falloffSeconds = 5
-) {
-    const adminMxid = config.bridge.adminMxid;
-
-    try {
-        await discordbot.init();
-        await discordbot.run();
-    } catch (err) {
-        if (err.code === 'TOKEN_INVALID' && adminMxid && !adminNotified) {
-            await notifyBridgeAdmin(client, adminMxid, config.bridge.invalidTokenMessage);
-            adminNotified = true;
-        }
-
-        // no more than 5 minutes
-        const newFalloffSeconds = Math.min(falloffSeconds * 2, 5 * 60);
-        log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
-        await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
-        return startDiscordBot(discordbot, client, config, newFalloffSeconds);
-    }
-
-    if (adminMxid && adminNotified) {
-        await notifyBridgeAdmin(client, adminMxid, `The token situation is now resolved and the bridge is running correctly`);
-        adminNotified = false;
-    }
-}
-
 
 run().catch((err) => {
     log.error("A fatal error occurred during startup:", err);

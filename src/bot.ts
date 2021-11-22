@@ -31,7 +31,7 @@ import { Log } from "./log";
 import * as Discord from "better-discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
-import { Appservice, Intent } from "matrix-bot-sdk";
+import { Appservice, Intent, MatrixClient } from "matrix-bot-sdk";
 import { DiscordCommandHandler } from "./discordcommandhandler";
 import { MetricPeg } from "./metrics";
 import { Lock } from "./structures/lock";
@@ -43,6 +43,10 @@ const log = new Log("DiscordBot");
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 const TYPING_TIMEOUT_MS = 30 * 1000;
 const CACHE_LIFETIME = 90000;
+
+// how often do we retry to connect on startup
+const INITIAL_FALLOFF_SECONDS = 5;
+const MAX_FALLOFF_SECONDS = 5 * 60; // 5 minutes
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
@@ -128,6 +132,7 @@ export class DiscordBot {
         private config: DiscordBridgeConfig,
         private bridge: Appservice,
         private store: DiscordStore,
+        private adminNotifier?: AdminNotifier,
     ) {
 
         // create handlers
@@ -146,6 +151,12 @@ export class DiscordBot {
         this.discordMessageQueue = {};
         this.channelLock = new Lock(this.config.limits.discordSendDelay);
         this.lastEventIds = {};
+
+        if (!this.adminNotifier && config.bridge.adminMxid) {
+            this.adminNotifier = new AdminNotifier(
+                this.bridge.botClient, config.bridge.adminMxid
+            );
+        }
     }
 
     get ClientFactory(): DiscordClientFactory {
@@ -384,6 +395,31 @@ export class DiscordBot {
             await this.presenceHandler.Start(
                 Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
             );
+        }
+    }
+
+    public async start(): Promise<void> {
+        return this._start(INITIAL_FALLOFF_SECONDS);
+    }
+
+    private async _start(falloffSeconds: number, isRetry = false): Promise<void> {
+        try {
+            await this.init();
+            await this.run();
+        } catch (err) {
+            if (err.code === 'TOKEN_INVALID' && !isRetry) {
+                await this.adminNotifier?.notify(this.config.bridge.invalidTokenMessage);
+            }
+
+            // no more than 5 minutes
+            const newFalloffSeconds = Math.min(falloffSeconds * 2, MAX_FALLOFF_SECONDS);
+            log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
+            await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
+            return this._start(newFalloffSeconds, true);
+        }
+
+        if (isRetry) {
+            await this.adminNotifier?.notify(`The token situation is now resolved and the bridge is running correctly`);
         }
     }
 
@@ -1201,5 +1237,52 @@ export class DiscordBot {
         log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
         this.bridgeBlocker?.checkLimits(state.activeUsers);
         MetricPeg.get.setRemoteMonthlyActiveUsers(state.activeUsers);
+    }
+}
+
+class AdminNotifier {
+    constructor(
+        private client:    MatrixClient,
+        private adminMxid: string,
+    ) {}
+
+    public async notify(message: string) {
+        const roomId = await this.ensureDMRoom(this.adminMxid);
+        await this.client.sendText(roomId, message)
+    }
+
+    private async findDMRoom(targetMxid: string): Promise<string|undefined> {
+        const rooms = await this.client.getJoinedRooms();
+        const roomsWithMembers = await Promise.all(rooms.map(async (id) => {
+            return {
+                id,
+                memberships: await this.client.getRoomMembers(id, undefined, ['join', 'invite']),
+            }
+        }));
+
+        return roomsWithMembers.find(
+            room => room.memberships.length == 2
+                 && !!room.memberships.find(member => member.stateKey === targetMxid)
+        )?.id;
+    }
+
+    private async ensureDMRoom(mxid: string): Promise<string> {
+        const existing = await this.findDMRoom(mxid);
+        if (existing) {
+            log.verbose(`Found existing DM room with ${mxid}: ${existing}`);
+            return existing;
+        }
+
+        const roomId = await this.client.createRoom();
+        try {
+            await this.client.inviteUser(mxid, roomId);
+        } catch (err) {
+            log.verbose(`Failed to invite ${mxid} to ${roomId}, cleaning up`);
+            this.client.leaveRoom(roomId); // no point awaiting it, nothing we can do if we fail
+            throw err;
+        }
+
+        log.verbose(`Created ${roomId} to DM with ${mxid}`);
+        return roomId;
     }
 }
