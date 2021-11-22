@@ -129,7 +129,7 @@ export class DiscordClientFactory {
             return;
         }
         // Prefix the real functions with _xmet_
-        // eslint-disable-next-line @typescript-eslint/camelcase
+        // eslint-disable-next-line @typescript-eslint/naming-convention
         flexChan._xmet_send = channel.send;
         channel.send = (...rest) => {
             MetricPeg.get.remoteCall("channel.send");

@@ -44,7 +44,7 @@ function generateRegistration(opts, registrationPath: string): void {
         throw Error("'url' not given in command line opts, cannot generate registration file");
     }
     const reg = {
-        /* eslint-disable @typescript-eslint/camelcase */
+        /* eslint-disable @typescript-eslint/naming-convention */
         as_token: uuid(),
         hs_token: uuid(),
         id: "discord-bridge",
@@ -67,7 +67,7 @@ function generateRegistration(opts, registrationPath: string): void {
         rate_limited: false,
         sender_localpart: "_discord_bot",
         url: opts.url,
-        /* eslint-enable @typescript-eslint/camelcase */
+        /* eslint-enable @typescript-eslint/naming-convention */
     } as IAppserviceRegistration;
     fs.writeFileSync(registrationPath, yaml.safeDump(reg));
 }

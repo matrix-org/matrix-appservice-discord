@@ -328,7 +328,7 @@ export class DbRoomStore {
         );
 
         const data = {
-            /* eslint-disable @typescript-eslint/camelcase */
+            /* eslint-disable @typescript-eslint/naming-convention */
             discord_channel:     room.data.discord_channel,
             discord_guild:       room.data.discord_guild,
             discord_iconurl:     room.data.discord_iconurl,
@@ -340,7 +340,7 @@ export class DbRoomStore {
             update_icon:         Number(room.data.update_icon || 0),
             update_name:         Number(room.data.update_name || 0),
             update_topic:        Number(room.data.update_topic || 0),
-            /* eslint-enable @typescript-eslint/camelcase */
+            /* eslint-enable @typescript-eslint/naming-convention */
         } as IRemoteRoomData;
 
         if (!existingRow) {
