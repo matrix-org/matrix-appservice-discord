@@ -30,6 +30,16 @@ properties:
             type: "boolean"
           disableInviteNotifications:
             type: "boolean"
+          userActivity:
+            type: "object"
+            required: ["minUserActiveDays", "inactiveAfterDays"]
+            properties:
+              minUserActiveDays:
+                type: "number"
+              inactiveAfterDays:
+                type: "number"
+          userLimit:
+            type: "number"
     auth:
         type: "object"
         required: ["botToken", "clientID"]

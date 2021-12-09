@@ -94,13 +94,15 @@ function setupLogging(): void {
 
     LogService.setLogger({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
+        trace: (mod: string, ...args: any[]) => logFunc("silly", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        error: (mod: string, args: any[]) => logFunc("error", mod, args),
+        debug: (mod: string, ...args: any[]) => logFunc("silly", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        info: (mod: string, args: any[]) => logFunc("info", mod, args),
+        error: (mod: string, ...args: any[]) => logFunc("error", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
+        info: (mod: string, ...args: any[]) => logFunc("info", mod, args),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        warn: (mod: string, ...args: any[]) => logFunc("warn", mod, args),
     });
 }
 
