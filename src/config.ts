@@ -100,6 +100,8 @@ class DiscordBridgeConfigBridge {
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
     public userLimit: number|null = null;
+    public adminMxid: string|null = null;
+    public invalidTokenMessage: string = 'Your Discord token is invalid';
 }
 
 export class DiscordBridgeConfigDatabase {

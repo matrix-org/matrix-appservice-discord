@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, LogService, MatrixClient } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -214,18 +214,18 @@ async function run(): Promise<void> {
 
     roomhandler.bindThirdparty();
 
-    await appservice.begin();
-    log.info(`Started listening on port ${port}`);
-
     try {
-        await discordbot.init();
-        await discordbot.run();
+        await discordbot.start();
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
         log.error("Failure during startup. Exiting");
         process.exit(1);
     }
+
+    await appservice.begin();
+    log.info(`Started listening on port ${port}`);
+
 }
 
 run().catch((err) => {
