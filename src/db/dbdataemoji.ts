@@ -60,14 +60,14 @@ export class DbEmoji implements IDbData {
             INSERT INTO emoji
             (emoji_id,name,animated,mxc_url,created_at,updated_at)
             VALUES ($emoji_id,$name,$animated,$mxc_url,$created_at,$updated_at);`, {
-            /* eslint-disable @typescript-eslint/camelcase */
+            /* eslint-disable @typescript-eslint/naming-convention */
             animated: Number(this.Animated),
             created_at: this.CreatedAt,
             emoji_id: this.EmojiId,
             mxc_url: this.MxcUrl,
             name: this.Name,
             updated_at: this.UpdatedAt,
-            /* eslint-enable @typescript-eslint/camelcase */
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
     }
 
@@ -82,13 +82,13 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
-            /* eslint-disable @typescript-eslint/camelcase */
+            /* eslint-disable @typescript-eslint/naming-convention */
             animated: Number(this.Animated),
             emoji_id: this.EmojiId,
             mxc_url: this.MxcUrl,
             name: this.Name,
             updated_at: this.UpdatedAt,
-            /* eslint-enable @typescript-eslint/camelcase */
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
     }
 
