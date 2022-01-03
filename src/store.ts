@@ -276,8 +276,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         await data.Delete(this);
     }
 
-    public addRegisteredUser(userId: string) {
-        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId})
+    public async addRegisteredUser(userId: string): Promise<unknown> {
+        return this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId})
             .then(() => this.registeredUsers.set(userId, true))
             .catch((err) => {
                 log.warn("Failed to insert registered user", err);
@@ -298,8 +298,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         return registered;
     }
 
-    public setTransactionCompleted(transactionId: string) {
-        this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId})
+    public async setTransactionCompleted(transactionId: string): Promise<unknown> {
+        return this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId})
             .then(() => this.asTxns.set(transactionId, true))
             .catch((err) => {
                 log.warn("Failed to insert txn", err);
