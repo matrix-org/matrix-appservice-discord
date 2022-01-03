@@ -287,7 +287,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
     public async isUserRegistered(userId: string): Promise<boolean> {
         let registered = this.registeredUsers.get(userId);
         if(registered !== undefined) {
-            return Promise.resolve(registered);
+            return registered;
         }
         const row = await this.db.Get("SELECT FROM registered_users WHERE user_id = $userId;", {userId})
             .catch((err) => {
@@ -310,7 +310,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         // If txId exists in cache return with status
         let completed = this.asTxns.get(transactionId);
         if(completed !== undefined) {
-            return Promise.resolve(completed);
+            return completed;
         }
         const row = await this.db.Get("SELECT FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
             .catch((err) => {
