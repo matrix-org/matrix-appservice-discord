@@ -26,7 +26,12 @@ import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
 import { IAppserviceStorageProvider } from "matrix-bot-sdk";
 import { UserActivitySet, UserActivity } from "matrix-appservice-bridge";
+import {TimedCache} from "./structures/timedcache";
 const log = new Log("DiscordStore");
+
+const REGISTERED_USERS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
+const TX_IDS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
+
 export const CURRENT_SCHEMA = 12;
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -37,8 +42,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
 
-    private registeredUsers: Set<string>;
-    private asTxns: Set<string>;
+    private registeredUsers: TimedCache<string, boolean>; // value = is registered
+    private asTxns: TimedCache<string, boolean>; // value = is transaction completed
 
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
@@ -47,8 +52,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         } else {
             this.config = configOrFile;
         }
-        this.registeredUsers = new Set();
-        this.asTxns = new Set();
+        this.registeredUsers = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS);
+        this.asTxns = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS);
     }
 
     get roomStore() {
@@ -126,14 +131,6 @@ export class DiscordStore implements IAppserviceStorageProvider {
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
-        // We need to prepopulate some sets
-        for (const row of await this.db.All("SELECT * FROM registered_users")) {
-            this.registeredUsers.add(row.user_id as string);
-        }
-
-        for (const row of await this.db.All("SELECT * FROM as_txns")) {
-            this.asTxns.add(row.txn_id as string);
-        }
     }
 
     public async close() {
@@ -280,23 +277,48 @@ export class DiscordStore implements IAppserviceStorageProvider {
     }
 
     public addRegisteredUser(userId: string) {
-        this.registeredUsers.add(userId);
-        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId}).catch((err) => {
-            log.warn("Failed to insert registered user", err);
-        });
+        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId})
+            .then(() => this.registeredUsers.set(userId, true))
+            .catch((err) => {
+                log.warn("Failed to insert registered user", err);
+            });
     }
-    public isUserRegistered(userId: string): boolean {
-        return this.registeredUsers.has(userId);
+
+    public async isUserRegistered(userId: string): Promise<boolean> {
+        let registered = this.registeredUsers.get(userId);
+        if(registered !== undefined) {
+            return Promise.resolve(registered);
+        }
+        const row = await this.db.Get("SELECT FROM registered_users WHERE user_id = $userId;", {userId})
+            .catch((err) => {
+                log.warn("Failed to get registered user", err);
+            });
+        registered = row != null && row.user_id === userId;
+        this.registeredUsers.set(userId, registered);
+        return registered;
     }
 
     public setTransactionCompleted(transactionId: string) {
-        this.asTxns.add(transactionId);
-        this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId}).catch((err) => {
-            log.warn("Failed to insert txn", err);
-        });
+        this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId})
+            .then(() => this.asTxns.set(transactionId, true))
+            .catch((err) => {
+                log.warn("Failed to insert txn", err);
+            });
     }
-    public isTransactionCompleted(transactionId: string): boolean {
-        return this.asTxns.has(transactionId);
+
+    public async isTransactionCompleted(transactionId: string): Promise<boolean> {
+        // If txId exists in cache return with status
+        let completed = this.asTxns.get(transactionId);
+        if(completed !== undefined) {
+            return Promise.resolve(completed);
+        }
+        const row = await this.db.Get("SELECT FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
+            .catch((err) => {
+                log.warn("Failed to get registered user", err);
+            });
+        completed = row != null && row.txn_id === transactionId;
+        this.asTxns.set(transactionId, completed);
+        return completed;
     }
 
     public async getUserActivity(): Promise<UserActivitySet> {
