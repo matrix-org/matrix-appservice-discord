@@ -31,6 +31,7 @@ const log = new Log("DiscordStore");
 
 const REGISTERED_USERS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
 const TX_IDS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
+const CACHE_CLEANUP_MILLIS = 30 * 1000; // 30 seconds
 
 export const CURRENT_SCHEMA = 12;
 /**
@@ -131,6 +132,11 @@ export class DiscordStore implements IAppserviceStorageProvider {
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
+
+        setInterval(() => {
+            this.asTxns.cleanUp();
+            this.registeredUsers.cleanUp();
+        }, CACHE_CLEANUP_MILLIS);
     }
 
     public async close() {

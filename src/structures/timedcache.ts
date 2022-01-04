@@ -7,7 +7,7 @@ interface ITimedValue<V> {
 }
 
 export class TimedCache<K, V> implements Map<K, V> {
-    private readonly  map: Map<K, ITimedValue<V>>;
+    private readonly map: Map<K, ITimedValue<V>>;
 
     public constructor(private readonly liveFor: number) {
         this.map = new Map();
@@ -15,6 +15,17 @@ export class TimedCache<K, V> implements Map<K, V> {
 
     public clear(): void {
         this.map.clear();
+    }
+
+    /**
+     * Removes invalid elements from a cache
+     */
+    public cleanUp(): void {
+        for (const [key, value] of this.map) {
+            if(this.filterV(value) === undefined) {
+                this.map.delete(key);
+            }
+        }
     }
 
     public delete(key: K): boolean {
