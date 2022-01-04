@@ -299,6 +299,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
             .catch((err) => {
                 log.warn("Failed to get registered user", err);
             });
+        // user in db = registered
         registered = row != null && row.user_id === userId;
         this.registeredUsersCache.set(userId, registered);
         return registered;
@@ -322,6 +323,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
             .catch((err) => {
                 log.warn("Failed to get registered user", err);
             });
+        // tx in db = completed
         completed = row != null && row.txn_id === transactionId;
         this.asTxnsCache.set(transactionId, completed);
         return completed;
