@@ -43,8 +43,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
 
-    private registeredUsers: TimedCache<string, boolean>; // value = is registered
-    private asTxns: TimedCache<string, boolean>; // value = is transaction completed
+    private registeredUsersCache: TimedCache<string, boolean>; // value = is registered
+    private asTxnsCache: TimedCache<string, boolean>; // value = is transaction completed
 
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
@@ -53,8 +53,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         } else {
             this.config = configOrFile;
         }
-        this.registeredUsers = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS);
-        this.asTxns = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS);
+        this.registeredUsersCache = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS);
+        this.asTxnsCache = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS);
     }
 
     get roomStore() {
@@ -134,8 +134,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         log.info("Updated database to the latest schema");
 
         setInterval(() => {
-            this.asTxns.cleanUp();
-            this.registeredUsers.cleanUp();
+            this.asTxnsCache.cleanUp();
+            this.registeredUsersCache.cleanUp();
         }, CACHE_CLEANUP_MILLIS);
     }
 
@@ -284,14 +284,14 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public async addRegisteredUser(userId: string): Promise<unknown> {
         return this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId})
-            .then(() => this.registeredUsers.set(userId, true))
+            .then(() => this.registeredUsersCache.set(userId, true))
             .catch((err) => {
                 log.warn("Failed to insert registered user", err);
             });
     }
 
     public async isUserRegistered(userId: string): Promise<boolean> {
-        let registered = this.registeredUsers.get(userId);
+        let registered = this.registeredUsersCache.get(userId);
         if(registered !== undefined) {
             return registered;
         }
@@ -300,13 +300,13 @@ export class DiscordStore implements IAppserviceStorageProvider {
                 log.warn("Failed to get registered user", err);
             });
         registered = row != null && row.user_id === userId;
-        this.registeredUsers.set(userId, registered);
+        this.registeredUsersCache.set(userId, registered);
         return registered;
     }
 
     public async setTransactionCompleted(transactionId: string): Promise<unknown> {
         return this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId})
-            .then(() => this.asTxns.set(transactionId, true))
+            .then(() => this.asTxnsCache.set(transactionId, true))
             .catch((err) => {
                 log.warn("Failed to insert txn", err);
             });
@@ -314,7 +314,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public async isTransactionCompleted(transactionId: string): Promise<boolean> {
         // If txId exists in cache return with status
-        let completed = this.asTxns.get(transactionId);
+        let completed = this.asTxnsCache.get(transactionId);
         if(completed !== undefined) {
             return completed;
         }
@@ -323,7 +323,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
                 log.warn("Failed to get registered user", err);
             });
         completed = row != null && row.txn_id === transactionId;
-        this.asTxns.set(transactionId, completed);
+        this.asTxnsCache.set(transactionId, completed);
         return completed;
     }
 
