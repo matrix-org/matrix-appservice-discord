@@ -20,6 +20,7 @@ import { DiscordBridgeConfig } from "./config";
 import { Util, wrapError } from "./util";
 import * as path from "path";
 import * as mime from "mime";
+import * as HtmlEntities from "html-entities";
 import { IMatrixEvent, IMatrixEventContent, IMatrixMessage } from "./matrixtypes";
 import { MatrixMessageProcessor, IMatrixMessageProcessorParams } from "./matrixmessageprocessor";
 import { MatrixCommandHandler } from "./matrixcommandhandler";
@@ -304,7 +305,7 @@ export class MatrixEventProcessor {
         }
 
         const messageEmbed = new Discord.MessageEmbed();
-        messageEmbed.setDescription(body);
+        messageEmbed.setDescription(HtmlEntities.decode(body));
         await this.SetEmbedAuthor(messageEmbed, event.sender, profile);
         const replyEmbed = getReply ? (await this.GetEmbedForReply(event, channel)) : undefined;
         if (replyEmbed && replyEmbed.fields) {

@@ -581,6 +581,16 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mockChannel as any);
             expect(embeds.messageEmbed.description).to.equal("Bunnies\n(<@1234>)");
         });
+        it("should decode html entities in the body", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "I&#x27;ll test this real quick.",
+                },
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            expect(embeds.messageEmbed.description).to.equal("I'll test this real quick.");
+        })
     });
     describe("HandleAttachment", () => {
         const SMALL_FILE = 200;
