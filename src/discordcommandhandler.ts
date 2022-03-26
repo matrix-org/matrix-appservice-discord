@@ -19,6 +19,8 @@ import * as Discord from "better-discord.js";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import { Log } from "./log";
 import { Appservice } from "matrix-bot-sdk";
+import { DbRoomStore } from "./db/roomstore";
+import { DiscordBridgeConfig } from "./config";
 
 const log = new Log("DiscordCommandHandler");
 
@@ -26,6 +28,8 @@ export class DiscordCommandHandler {
     constructor(
         private bridge: Appservice,
         private discord: DiscordBot,
+        private roomStore: DbRoomStore,
+        private config:DiscordBridgeConfig
     ) { }
 
     public async Process(msg: Discord.Message) {
@@ -94,6 +98,12 @@ export class DiscordCommandHandler {
                 permission: ["MANAGE_WEBHOOKS", "MANAGE_CHANNELS"],
                 run: async () => this.UnbridgeChannel(chan),
             },
+            bridge: {
+                description:"Bridges this room to a Matrix channel",
+                params:["roomid"],
+                permission:["MANAGE_WEBHOOKS", "MANAGE_CHANNELS"],
+                run: async ({roomid}) => this.BridgeChannel(roomid,chan),
+            }
         };
 
         const parameters: ICommandParameters = {
@@ -105,6 +115,12 @@ export class DiscordCommandHandler {
                     return mxUserId;
                 },
             },
+            roomid: {
+                description:"The roomid of matrix room",
+                get: async (roomid) => {
+                    return roomid;
+                }
+            }
         };
 
         const permissionCheck: CommandPermissonCheck = async (permission: string|string[]) => {
@@ -162,6 +178,48 @@ export class DiscordCommandHandler {
             log.error(err);
             return "There was an error unbridging this room. " +
                 "Please try again later or contact the bridge operator.";
+        }
+    }
+
+    private async BridgeChannel(roomid:string,channel: Discord.TextChannel): Promise<string> {
+        try {
+            const roomRes = await this.roomStore.getEntriesByRemoteRoomData({
+                discord_channel: channel.id,
+                discord_guild: channel.guild.id,
+                plumbed: true,
+            });
+            if(!roomid){
+                return ""
+            }
+            if(roomRes.length > 0){
+                return "This guild has already been bridged to a matrix room";
+            }
+            if (await this.discord.Provisioner.RoomCountLimitReached(this.config.limits.roomCount)) {
+                log.info(`Room count limit (value: ${this.config.limits.roomCount}) reached: Rejecting command to bridge new matrix room ${roomid} to ${channel.guild.id}/${channel.id}`);
+                return `This bridge has reached its room limit of ${this.config.limits.roomCount}. Unbridge another room to allow for new connections.`;
+            }
+            try {
+
+                log.info(`Bridging discord room ${channel.guild.id}/${channel.id} to ${roomid}`);
+                await channel.send(
+                    "I'm asking permission from the channel administrators to make this bridge."
+                );
+
+                await this.discord.Provisioner.AskMatrixPermission(this.bridge,channel,roomid);
+                await this.discord.Provisioner.BridgeMatrixRoom(channel, roomid);
+                return "I have bridged this room to your channel";
+            } catch (err) {
+                if (err.message === "Timed out waiting for a response from the Matrix owners."
+                    || err.message === "The bridge has been declined by the matrix channel.") {
+                    return err.message;
+                }
+
+                log.error(`Error bridging ${roomid} to ${channel.guild.id}/${channel.id}`);
+                log.error(err);
+                return "There was a problem bridging that channel - has the guild owner approved the bridge?";
+            }
+        } catch (err) {
+           return ""
         }
     }
 }

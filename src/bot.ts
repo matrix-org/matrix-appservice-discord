@@ -145,7 +145,7 @@ export class DiscordBot {
         this.mxEventProcessor = new MatrixEventProcessor(
             new MatrixEventProcessorOpts(config, bridge, this, store),
         );
-        this.discordCommandHandler = new DiscordCommandHandler(bridge, this);
+        this.discordCommandHandler = new DiscordCommandHandler(bridge, this, store.roomStore, config);
         // init vars
         this.sentMessages = [];
         this.discordMessageQueue = {};
