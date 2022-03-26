@@ -188,7 +188,7 @@ export class DiscordBot {
     }
 
     public GetIntentFromDiscordMember(member: Discord.GuildMember | Discord.PartialUser | Discord.User,
-                                      webhookID: string|null = null): Intent {
+        webhookID: string|null = null): Intent {
         if (webhookID) {
             // webhookID and user IDs are the same, they are unique, so no need to prefix _webhook_
             const name = member instanceof Discord.GuildMember ? member.user.username : member.username;
@@ -606,8 +606,8 @@ export class DiscordBot {
                         });
                 }
             } catch (err) {
-               // throw wrapError(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
-               log.warn("Unable to create _matrix webook:", err);
+                // throw wrapError(err, Unstable.ForeignNetworkError, "Unable to create \"_matrix\" webhook");
+                log.warn("Unable to create _matrix webook:", err);
             }
         }
         try {
@@ -751,7 +751,7 @@ export class DiscordBot {
     }
 
     public async GetRoomIdsFromGuild(
-            guild: Discord.Guild, member?: Discord.GuildMember, useCache: boolean = true): Promise<string[]> {
+        guild: Discord.Guild, member?: Discord.GuildMember, useCache: boolean = true): Promise<string[]> {
         if (useCache) {
             const res = this.roomIdsForGuildCache.get(`${guild.id}:${member ? member.id : ""}`);
 
@@ -825,7 +825,7 @@ export class DiscordBot {
                     allow: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                     id: kickee.id,
                 }],
-                `Unbanned.`,
+            `Unbanned.`,
             );
             this.channelLock.set(botChannel.id);
             res = await botChannel.send(
@@ -843,8 +843,8 @@ export class DiscordBot {
         const word = `${kickban === "ban" ? "banned" : "kicked"}`;
         this.channelLock.set(botChannel.id);
         res = await botChannel.send(
-            `${kickee} was ${word} from this channel by ${kicker}.`
-            + (reason ? ` Reason: ${reason}` : ""),
+            `${kickee} was ${word} from this channel by ${kicker}.${
+                reason ? ` Reason: ${reason}` : ""}`,
         ) as Discord.Message;
         this.sentMessages.push(res.id);
         this.channelLock.release(botChannel.id);
@@ -855,7 +855,7 @@ export class DiscordBot {
                 deny: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                 id: kickee.id,
             }],
-            `Matrix user was ${word} by ${kicker}.`,
+        `Matrix user was ${word} by ${kicker}.`,
         );
         if (kickban === "leave") {
             // Kicks will let the user back in after ~30 seconds.
@@ -866,7 +866,7 @@ export class DiscordBot {
                         allow: ["SEND_MESSAGES", "VIEW_CHANNEL"],
                         id: kickee.id,
                     }],
-                    `Lifting kick since duration expired.`,
+                `Lifting kick since duration expired.`,
                 );
             }, this.config.room.kickFor);
         }
@@ -885,7 +885,7 @@ export class DiscordBot {
         let addText = "";
         if (embedSet.replyEmbed) {
             for (const line of embedSet.replyEmbed.description!.split("\n")) {
-                addText += "\n> " + line;
+                addText += `\n> ${  line}`;
             }
         }
         return embed.description += addText;
@@ -938,8 +938,8 @@ export class DiscordBot {
     }
 
     private async SendMatrixMessage(matrixMsg: IDiscordMessageParserResult, chan: Discord.Channel,
-                                    guild: Discord.Guild, author: Discord.User,
-                                    msgID: string): Promise<boolean> {
+        guild: Discord.Guild, author: Discord.User,
+        msgID: string): Promise<boolean> {
         const rooms = await this.channelSync.GetRoomIdsFromChannel(chan);
         const intent = this.GetIntentFromDiscordMember(author);
 
@@ -1008,11 +1008,11 @@ export class DiscordBot {
         // Test for webhooks
         if (msg.webhookID) {
             const webhook = (await chan.fetchWebhooks())
-                            .filter((h) => h.name === "_matrix").first();
+                .filter((h) => h.name === "_matrix").first();
             if (webhook && msg.webhookID === webhook.id) {
                 // Filter out our own webhook messages.
                 log.verbose("Not reflecting own webhook messages");
-              // Filter out our own webhook messages.
+                // Filter out our own webhook messages.
                 MetricPeg.get.requestOutcome(msg.id, true, "dropped");
                 return;
             }
