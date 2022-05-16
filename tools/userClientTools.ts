@@ -26,7 +26,7 @@ import { DiscordBridgeConfig } from "../src/config";
 import { DiscordStore } from "../src/store";
 import { Log } from "../src/log";
 const log = new Log("UserClientTools");
-const PUPPETING_DOC_URL = "https://github.com/Half-Shot/matrix-appservice-discord/blob/develop/docs/puppeting.md";
+const PUPPETING_DOC_URL = "https://github.com/matrix-org/matrix-appservice-discord/blob/develop/docs/puppeting.md";
 
 const optionDefinitions = [
     {
