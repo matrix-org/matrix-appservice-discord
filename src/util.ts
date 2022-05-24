@@ -378,19 +378,8 @@ export class Util {
         };
     }
 
-    // Taken from https://github.com/matrix-org/matrix-appservice-bridge/blob/master/lib/models/users/matrix.js
     public static EscapeStringForUserId(localpart: string) {
-        // NOTE: Currently Matrix accepts / in the userId, although going forward it will be removed.
-        const badChars = new Set(localpart.replace(/([a-z]|[0-9]|-|\.|=|_)+/g, ""));
-        let res = localpart;
-        badChars.forEach((c) => {
-            const hex = c.charCodeAt(0).toString(16).toLowerCase();
-            res = res.replace(
-                new RegExp(`\\x${hex}`, "g"),
-                `=${hex}`,
-            );
-        });
-        return res;
+        return localpart.replace(/[^a-z0-9-._]/g, a => `=${a.codePointAt(0)!.toString(16).toLowerCase()}`);
     }
 }
 
