@@ -1,0 +1,30 @@
+[tool.towncrier]
+    # The name of your Python package
+    filename = "CHANGELOG.md"
+    directory = "changelog.d"
+    issue_format = "[\\#{issue}](https://github.com/matrix-org/matrix-appservice-discord/issues/{issue})"
+
+    [[tool.towncrier.type]]
+        directory = "feature"
+        name = "Features"
+        showcontent = true
+
+    [[tool.towncrier.type]]
+        directory = "bugfix"
+        name = "Bugfixes"
+        showcontent = true
+
+    [[tool.towncrier.type]]
+        directory = "doc"
+        name = "Improved Documentation"
+        showcontent = true
+
+    [[tool.towncrier.type]]
+        directory = "removal"
+        name = "Deprecations and Removals"
+        showcontent = true
+
+    [[tool.towncrier.type]]
+        directory = "misc"
+        name = "Internal Changes"
+        showcontent = true
