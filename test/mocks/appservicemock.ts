@@ -167,7 +167,7 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("sendText", roomId, body);
     }
 
-    public sendEvent(roomId: string, content: any) {
+    public sendEvent(roomId: string, content: Record<string, unknown>) {
         this.funcCalled("sendEvent", roomId, content);
     }
 
@@ -218,7 +218,7 @@ class MatrixClientMock extends AppserviceMockBase {
         this.funcCalled("kickUser", roomId, userId);
     }
 
-    public sendStateEvent(roomId: string, type: string, stateKey: string, content: {}) {
+    public sendStateEvent(roomId: string, type: string, stateKey: string, content: Record<string, unknown>) {
         this.funcCalled("sendStateEvent", roomId, type, stateKey, content);
     }
 
