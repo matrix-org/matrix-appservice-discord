@@ -16,7 +16,7 @@ pr="$PULL_REQUEST_NUMBER"
 
 # Print a link to the contributing guide if the user makes a mistake
 CONTRIBUTING_GUIDE_TEXT="!! Please see the contributing guide for help writing your changelog entry:
-https://github.com/matrix-org/matrix-appservice-irc/blob/develop/CONTRIBUTING.md#making-pull-requests"
+https://github.com/matrix-org/matrix-appservice-bridge/blob/develop/CONTRIBUTING.md#%EF%B8%8F-pull-requests"
 
 # If check-newsfragment returns a non-zero exit code, print the contributing guide and exit
 python3 -m towncrier.check --compare-with=origin/develop || (echo -e "$CONTRIBUTING_GUIDE_TEXT" >&2 && exit 1)
@@ -26,7 +26,7 @@ echo "--------------------------"
 echo
 
 matched=0
-for f in $(git diff --diff-filter=d --name-only FETCH_HEAD... -- changelog.d); do
+for f in $(git diff --diff-filter=d --name-only FETCH_HEAD... -- changelog.d | grep -xv changelog.d/git.keep); do
     # check that any added newsfiles on this branch end with a full stop.
     lastchar=$(tr -d '\n' < "$f" | tail -c 1)
     if [ "$lastchar" != '.' ] && [ "$lastchar" != '!' ]; then
