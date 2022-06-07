@@ -814,9 +814,9 @@ bcrypt-pbkdf@^1.0.0:
   dependencies:
     tweetnacl "^0.14.3"
 
-"better-discord.js@git://github.com/Sorunome/better-discord.js.git#b5a28499899fe2d9e6aa1aa3b3c5d693ae672117":
+"better-discord.js@git+https://github.com/Sorunome/better-discord.js.git#b5a28499899fe2d9e6aa1aa3b3c5d693ae672117":
   version "12.3.1"
-  resolved "git://github.com/Sorunome/better-discord.js.git#b5a28499899fe2d9e6aa1aa3b3c5d693ae672117"
+  resolved "git+https://github.com/Sorunome/better-discord.js.git#b5a28499899fe2d9e6aa1aa3b3c5d693ae672117"
   dependencies:
     "@discordjs/collection" "^0.1.6"
     "@discordjs/form-data" "^3.0.1"
@@ -1393,9 +1393,9 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-"discord-markdown@git://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2":
+"discord-markdown@git+https://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2":
   version "2.3.1"
-  resolved "git://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2"
+  resolved "git+https://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2"
   dependencies:
     highlight.js "^9.18.1"
     node-emoji "^1.10.0"
@@ -2792,7 +2792,7 @@ matrix-discord-parser@0.1.5:
   resolved "https://registry.yarnpkg.com/matrix-discord-parser/-/matrix-discord-parser-0.1.5.tgz#dd6a481a569567e8e30d70599d4dcb173261504c"
   integrity sha512-SilBNcNeJCrL6XEHVfbOhupNJICFdyFWfwv85Wtyh1Xxc0XPv4zK/gpEPogVeuKJD3TE0KT4iHq0nLgUJ8GBiQ==
   dependencies:
-    discord-markdown "git://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2"
+    discord-markdown "git+https://github.com/Sorunome/discord-markdown.git#7958a03a952ed02cbd588b09eb04bc070b3a11f2"
     escape-html "^1.0.3"
     got "^11.6.0"
     highlight.js "^9.18.1"

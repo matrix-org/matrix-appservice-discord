@@ -26,7 +26,7 @@ describe("DiscordStore", () => {
     describe("init", () => {
         it("can create a db", async () => {
             const store = new DiscordStore(":memory:");
-            return store.init();
+            await store.init();
         });
     });
     describe("addUserToken", () => {
