@@ -1,0 +1,1 @@
+Recommend using `yarn` instead of `npm` for package management, and use it in package scripts.

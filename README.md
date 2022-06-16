@@ -31,8 +31,7 @@ The bridge supports any version of Node.js >= v12.X, including all [current rele
 
 ### Set up the bridge
 
-* Run ``npm install`` to grab the dependencies. `npm` may complain about peer dependencies, but you can safely ignore these.
-* Run ``npm run build`` to build the typescript into javascript.
+* Run ``yarn`` to grab the dependencies.
 * Copy ``config/config.sample.yaml`` to ``config.yaml`` and edit it to reflect your setup.
   * Note that you are expected to set ``domain`` and ``homeserverURL`` to your **public** host name.
   While localhost would work, it does not resolve correctly with Webhooks/Avatars.
@@ -95,7 +94,7 @@ should show up in the network list on Element and other clients.
 
 * Create a new application via https://discordapp.com/developers/applications
 * Make sure to create a bot user. Fill in ``config.yaml``
-* Run ``npm run addbot`` to get a authorisation link.
+* Run ``yarn addbot`` to get a authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
 * Finally, you can join a room with ``#_discord_guildid_channelid``
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
@@ -108,7 +107,7 @@ should show up in the network list on Element and other clients.
 ### Running the Bridge
 
 * For the bot to appear online on Discord you need to run the bridge itself.
-* ``npm start``
+* ``yarn start``
 * Particular configuration keys can be overridden by defining corresponding environment variables. For instance, `auth.botToken` can be set with `APPSERVICE_DISCORD_AUTH_BOT_TOKEN`.
 
 [Howto](./docs/howto.md)
