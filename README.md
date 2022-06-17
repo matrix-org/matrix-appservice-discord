@@ -27,7 +27,13 @@ Please also be aware that this is an unoffical project worked on in our spare ti
 The bridge has been tested against the [Synapse](https://github.com/matrix-org/synapse) homeserver, although any homeserver
 that implements the [AS API](https://matrix.org/docs/spec/application_service/r0.1.0.html) should work with this bridge.
 
-The bridge supports any version of Node.js >= v12.X, including all [current releases](https://nodejs.org/en/about/releases/).
+The bridge supports any version of Node.js v12.X - v16.X. View the [releases](https://nodejs.org/en/about/releases/) for more details.
+
+The bridge uses Yarn for dependency management and package scripts.
+For the time being, **only Yarn Classic / v1 is supported.** To install it, follow [these instructions](https://classic.yarnpkg.com/en/docs/install).
+
+To update to the latest version of Yarn that the bridge supports, run ``yarn getyarn``.
+(This will only set the Yarn version used by the bridge, and will leave any global/system-wide install of Yarn unaffected.)
 
 ### Set up the bridge
 

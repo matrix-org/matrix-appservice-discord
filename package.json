@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "A bridge between Matrix and Discord",
   "main": "discordas.js",
+  "engines": {
+    "npm": "please-use-yarn",
+    "yarn": "^1.22.0",
+    "node": "12.x - 16.x"
+  },
   "scripts": {
+    "getyarn": "yarn set version 1.22",
     "test": "mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
     "lint": "eslint -c .eslintrc --max-warnings 200 src/**/*.ts test/**/*.ts",
     "coverage": "tsc && nyc mocha build/test/config.js build/test",

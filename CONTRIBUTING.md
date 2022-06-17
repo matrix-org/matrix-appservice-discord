@@ -23,7 +23,7 @@ inside the `MatrixEventProcessor` class.
 
 * You will need to [setup the bridge](https://github.com/Half-Shot/matrix-appservice-discord/tree/develop#setup-the-bridge) similarly to how we describe,
   but you should setup a homeserver locally on your development machine. We would recommend [Synapse](https://github.com/matrix-org/synapse).
-* We recommend using `yarn` for dependency management (v1 / Classic for the time being).
+* The bridge uses `yarn` for dependency management and package scripts instead of `npm`.
   For details, view the full setup instructions in the [README](README.md#set-up-the-bridge).
 
 ## Testing
