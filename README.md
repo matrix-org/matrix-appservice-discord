@@ -32,8 +32,8 @@ The bridge supports any version of Node.js v12.X - v16.X. View the [releases](ht
 The bridge uses Yarn for dependency management and package scripts.
 For the time being, **only Yarn Classic / v1 is supported.** To install it, follow [these instructions](https://classic.yarnpkg.com/en/docs/install).
 
-To update to the latest version of Yarn that the bridge supports, run ``yarn getyarn``.
-(This will only set the Yarn version used by the bridge, and will leave any global/system-wide install of Yarn unaffected.)
+If you already have Yarn 2+ installed, you may configure just this project to use Yarn Classic
+by running ``yarn set version classic`` in the directory where you cloned this repository.
 
 ### Set up the bridge
 
