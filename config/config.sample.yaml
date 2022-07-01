@@ -113,6 +113,14 @@ ghosts:
     nickPattern: ":nick"
     # Pattern for the ghosts username, available is :username, :tag and :id
     usernamePattern: ":username#:tag"
+discordProxy:
+    # Pattern for the Matrix sender name in Discord messages.
+    # Available is :nick, :username, :displayname (the latter is :nick if the user has a nick, and the username if they don't).
+    namePattern: ":displayname"
+    # Fallback name pattern, if namePattern would be too long to set as a name.
+    # If this also ends up being too long, it's truncated.
+    # See namePattern for tags.
+    fallbackNamePattern: ":username"
 # Prometheus-compatible metrics endpoint
 metrics:
     enable: false

@@ -138,6 +138,13 @@ properties:
                 type: "string"
             usernamePattern:
                 type: "string"
+    discordProxy:
+      type: "object"
+      properties:
+        namePattern:
+          type: "string"
+        fallbackNamePattern:
+          type: "string"
     metrics:
         type: "object"
         properties:

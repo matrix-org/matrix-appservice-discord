@@ -30,6 +30,7 @@ export class DiscordBridgeConfig {
     public channel: DiscordBridgeConfigChannel = new DiscordBridgeConfigChannel();
     public limits: DiscordBridgeConfigLimits = new DiscordBridgeConfigLimits();
     public ghosts: DiscordBridgeConfigGhosts = new DiscordBridgeConfigGhosts();
+    public discordProxy: DiscordBridgeConfigDiscordProxy = new DiscordBridgeConfigDiscordProxy();
     public metrics: DiscordBridgeConfigMetrics = new DiscordBridgeConfigMetrics();
 
     /**
@@ -163,6 +164,11 @@ export class LoggingFile {
 class DiscordBridgeConfigGhosts {
     public nickPattern: string = ":nick";
     public usernamePattern: string = ":username#:tag";
+}
+
+class DiscordBridgeConfigDiscordProxy {
+    public namePattern: string = ":displayname";
+    public fallbackNamePattern: string = ":username";
 }
 
 export class DiscordBridgeConfigMetrics {
