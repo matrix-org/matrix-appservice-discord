@@ -514,10 +514,10 @@ export class MatrixEventProcessor {
             // Let it fall through.
         }
 
+        let profileName = "";
         if (profile) {
-            if (profile.displayname &&
-                profile.displayname.length >= MIN_NAME_LENGTH &&
-                profile.displayname.length <= MAX_NAME_LENGTH) {
+            if (profile.displayname) {
+                profileName = profile.displayname;
                 displayName = profile.displayname;
             }
 
@@ -530,8 +530,24 @@ export class MatrixEventProcessor {
                 );
             }
         }
+
+        // Try to set the display name from the pattern; if it doesn't turn out to be too long:
+        let author = Util.ApplyPatternString(this.config.discordProxy.namePattern, {
+            nick: profileName,
+            displayname: displayName,
+            username: sender,
+        });
+        if (author.length >= MAX_NAME_LENGTH) {
+            // Otherwise fall back to fallback name pattern and truncate.
+            author = Util.ApplyPatternString(this.config.discordProxy.fallbackNamePattern, {
+                nick: profileName,
+                displayname: displayName,
+                username: sender,
+            }).substring(0, MAX_NAME_LENGTH)
+        }
+
         embed.setAuthor(
-            displayName.substring(0, MAX_NAME_LENGTH),
+            author,
             avatarUrl,
             `https://matrix.to/#/${sender}`,
         );

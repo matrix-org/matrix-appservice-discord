@@ -496,7 +496,7 @@ describe("MatrixEventProcessor", () => {
             expect(author!.url).to.equal("https://matrix.to/#/@test:localhost");
         });
 
-        it("Should contain the users displayname if it exists.", async () => {
+        it("Should (by default) contain the users displayname if it exists.", async () => {
             const {processor} =  createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -510,7 +510,7 @@ describe("MatrixEventProcessor", () => {
             expect(author!.url).to.equal("https://matrix.to/#/@test:localhost");
         });
 
-        it("Should contain the users userid if the displayname is not set", async () => {
+        it("Should (by default) contain the users userid if the displayname is not set", async () => {
             const {processor} =  createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -524,19 +524,7 @@ describe("MatrixEventProcessor", () => {
             expect(author!.url).to.equal("https://matrix.to/#/@test_nonexistant:localhost");
         });
 
-        it("Should use the userid when the displayname is too short", async () => {
-            const {processor} =  createMatrixEventProcessor();
-            const embeds = await processor.EventToEmbed({
-                content: {
-                    body: "testcontent",
-                },
-                sender: "@test_short:localhost",
-            } as IMatrixEvent, mockChannel as any);
-            const author = embeds.messageEmbed.author;
-            expect(author!.name).to.equal("@test_short:localhost");
-        });
-
-        it("Should use the userid when displayname is too long", async () => {
+        it("Should (by default) use the userid when displayname is too long", async () => {
             const {processor} =  createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -548,7 +536,7 @@ describe("MatrixEventProcessor", () => {
             expect(author!.name).to.equal("@test_long:localhost");
         });
 
-        it("Should cap the sender name if it is too long", async () => {
+        it("Should (by default) cap the sender name if it is too long", async () => {
             const {processor} =  createMatrixEventProcessor();
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -558,6 +546,87 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mockChannel as any);
             const author = embeds.messageEmbed.author;
             expect(author!.name).to.equal("@testwithalottosayaboutitselftha");
+        });
+
+        it("Should use the namePattern for the sender name.", async () => {
+            const config = new DiscordBridgeConfig();
+            config.discordProxy.namePattern = ":nick -- :username";
+
+            const {processor} =  createMatrixEventProcessor(0, config);
+
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "testcontent",
+                },
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            const author = embeds.messageEmbed.author;
+            expect(author!.name).to.equal("Test User -- @test:localhost");
+        });
+
+        it("Should use the truncated fallbackNamePattern for the sender name if namePattern would be too long.", async () => {
+            const config = new DiscordBridgeConfig();
+            config.discordProxy.namePattern = ":nick -------------- :username";
+            config.discordProxy.fallbackNamePattern = "fallback :nick :username.";
+
+            const {processor} =  createMatrixEventProcessor(0, config);
+
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "testcontent",
+                },
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            const author = embeds.messageEmbed.author;
+            expect(author!.name).to.equal("fallback Test User @test:localho");
+        });
+
+        it("Should use the empty string for the sender name pattern :nick if no display name is defined", async () => {
+            const config = new DiscordBridgeConfig();
+            config.discordProxy.namePattern = ":nick -- :username";
+
+            const {processor} =  createMatrixEventProcessor(0, config);
+
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "testcontent",
+                },
+                sender: "@test_nonexistant:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            const author = embeds.messageEmbed.author;
+            expect(author!.name).to.equal(" -- @test_nonexistant:localhost");
+        });
+
+        it("Should use the display name for :displayname in the sender name if the user has a display name set", async () => {
+            const config = new DiscordBridgeConfig();
+            config.discordProxy.namePattern = ":displayname";
+
+            const {processor} =  createMatrixEventProcessor(0, config);
+
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "testcontent",
+                },
+                sender: "@test:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            const author = embeds.messageEmbed.author;
+            expect(author!.name).to.equal("Test User");
+        });
+
+        it("Should use the user name for :displayname in the sender name if the user does not have a display name set", async () => {
+            const config = new DiscordBridgeConfig();
+            config.discordProxy.namePattern = ":displayname";
+
+            const {processor} =  createMatrixEventProcessor(0, config);
+
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "testcontent",
+                },
+                sender: "@test_nonexistant:localhost",
+            } as IMatrixEvent, mockChannel as any);
+            const author = embeds.messageEmbed.author;
+            expect(author!.name).to.equal("@test_nonexistant:localhost");
         });
 
         it("Should contain the users avatar if it exists.", async () => {
