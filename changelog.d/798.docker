@@ -1,1 +1,1 @@
-Update Dockerfile to allow building for ARM arches.
+Update Dockerfile to specifically use Python 3.
