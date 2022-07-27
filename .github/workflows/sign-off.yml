@@ -1,0 +1,10 @@
+name: Contribution requirements
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  signoff:
+    uses: matrix-org/backend-meta/.github/workflows/sign-off.yml@v1.4.0
+          
