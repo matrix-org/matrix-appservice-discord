@@ -40,8 +40,8 @@ bridge:
   disableRoomTopicNotifications: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)
   determineCodeLanguage: false
-  # Which users whose messages not to bridge
-  # userBlacklist: []
+  # Which users whose messages not to bridge (supports regexes)
+  userBlacklist: []
   # MXID of an admin user that will be PMd if the bridge experiences problems. Optional
   adminMxid: '@admin:localhost'
   # The message to send to the bridge admin if the Discord token is not valid
