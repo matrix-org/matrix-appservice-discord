@@ -101,12 +101,12 @@ export class DiscordBridgeConfigBridge {
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
     public userLimit: number|null = null;
-    public userBlacklist: string[] = [];
+    public userBlacklist: RegExp[] = [];
     public adminMxid: string|null = null;
     public invalidTokenMessage: string = 'Your Discord token is invalid';
 
     public IsUserBlacklisted(userId: string): boolean {
-        return !!userId && this.userBlacklist.some((regex) => RegExp(`^${regex}$`).test(userId));
+        return !!userId && this.userBlacklist.some((regex) => RegExp(regex).test(userId));
     }
 }
 

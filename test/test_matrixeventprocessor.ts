@@ -186,7 +186,7 @@ function createMatrixEventProcessor(storeMockResults = 0, configBridge = new Dis
     config.bridge = configBridge;
     config.applyConfig({
         bridge: {
-            userBlacklist: ["@test_blacklisted_user:localhost", ".*:blacklisted_server", "o"],
+            userBlacklist: ["^@test_blacklisted_user:localhost$", ".*:blacklisted_server"],
         },
     });
 
