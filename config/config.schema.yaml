@@ -42,6 +42,10 @@ properties:
                 type: "number"
           userLimit:
             type: "number"
+          userBlacklist:
+            type: "array"
+            items:
+              type: "string"
     auth:
         type: "object"
         required: ["botToken", "clientID"]
