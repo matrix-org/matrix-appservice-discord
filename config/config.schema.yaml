@@ -42,7 +42,7 @@ properties:
                 type: "number"
           userLimit:
             type: "number"
-          userBlacklist:
+          userDenylist:
             type: "array"
             items:
               type: "string"

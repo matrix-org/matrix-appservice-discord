@@ -71,15 +71,15 @@ const stateEventFetcher = async (_, stateType, stateKey) => {
                     avatar_url: "mxc://localhost/avatarurl",
                     displayname: "this is a very very long displayname that should be capped",
                 };
-            case "@test_blacklisted_user:localhost":
+            case "@test_denied_user:localhost":
                 return {
                     avatar_url: "mxc://localhost/avatarurl",
-                    displayname: "Blacklisted User",
+                    displayname: "Denied User",
                 };
-            case "@test:blacklisted_server":
+            case "@test:denied_server":
                 return {
                     avatar_url: "mxc://localhost/avatarurl",
-                    displayname: "User on Blacklisted Server",
+                    displayname: "User on Denied Server",
                 };
         }
     }
@@ -186,7 +186,7 @@ function createMatrixEventProcessor(storeMockResults = 0, configBridge = new Dis
     config.bridge = configBridge;
     config.applyConfig({
         bridge: {
-            userBlacklist: ["^@test_blacklisted_user:localhost$", ".*:blacklisted_server"],
+            userDenylist: ["^@test_denied_user:localhost$", ".*:denied_server"],
         },
     });
 
@@ -346,19 +346,19 @@ describe("MatrixEventProcessor", () => {
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("");
         });
-        it("Should ignore blacklisted user states", async () => {
+        it("Should ignore denied user states", async () => {
             const {processor} =  createMatrixEventProcessor();
             const event = {
-                sender: "@test_blacklisted_user:localhost",
+                sender: "@test_denied_user:localhost",
                 type: "m.room.member",
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("");
         });
-        it("Should ignore regex-blacklisted user states", async () => {
+        it("Should ignore regex-denied user states", async () => {
             const {processor} =  createMatrixEventProcessor();
             const event = {
-                sender: "@test:blacklisted_server",
+                sender: "@test:denied_server",
                 type: "m.room.member",
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
@@ -1071,7 +1071,7 @@ This is the reply`,
                 }]);
             expect(MESSAGE_PROCCESS).equals("redacted");
         });
-        it("should ignore redactions made by a blacklisted user", async () => {
+        it("should ignore redactions made by a denied user", async () => {
             const {processor} =  createMatrixEventProcessor();
             const context = {
                 rooms: {
@@ -1079,7 +1079,7 @@ This is the reply`,
                 },
             };
             await processor.OnEvent(buildRequest({
-                sender: "@test_blacklisted_user:localhost",
+                sender: "@test_denied_user:localhost",
                 type: "m.room.redaction"}), [ {
                     id: "foo",
                     matrix: { } as any,
@@ -1116,7 +1116,7 @@ This is the reply`,
             expect(MESSAGE_PROCCESS).to.equal("");
             expect(processed).to.be.true;
         });
-        it("should ignore regular messages sent by blacklisted user", async () => {
+        it("should ignore regular messages sent by denied user", async () => {
             const {processor} =  createMatrixEventProcessor();
             const context = [
                 {
@@ -1133,7 +1133,7 @@ This is the reply`,
             };
             await processor.OnEvent(buildRequest({
                 content: {body: "abc"},
-                sender: "@test_blacklisted_user:localhost",
+                sender: "@test_denied_user:localhost",
                 type: "m.room.message",
             }), context);
             expect(MESSAGE_PROCCESS).to.equal("");
@@ -1168,11 +1168,11 @@ This is the reply`,
             }), []);
             expect(MESSAGE_PROCCESS).to.equal("command_processed");
         });
-        it("should ignore !discord commands sent by blacklisted user", async () => {
+        it("should ignore !discord commands sent by denied user", async () => {
             const {processor} =  createMatrixEventProcessor();
             await processor.OnEvent(buildRequest({
                 content: {body: "!discord cmd"},
-                sender: "@test_blacklisted_user:localhost",
+                sender: "@test_denied_user:localhost",
                 type: "m.room.message",
             }), []);
             expect(MESSAGE_PROCCESS).to.equal("");

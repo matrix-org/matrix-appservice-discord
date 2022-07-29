@@ -130,11 +130,11 @@ export class MatrixEventProcessor {
         } else if (event.type === "m.room.encryption" && remoteRoom) {
             await this.HandleEncryptionWarning(event.room_id);
             return;
-        } else if (this.config.bridge.IsUserBlacklisted(event.sender)) {
-            log.verbose(`${event.event_id} ${event.type} is by blacklisted user ${event.sender}, ignoring.`);
+        } else if (this.config.bridge.IsUserDenied(event.sender)) {
+            log.verbose(`${event.event_id} ${event.type} is by denied user ${event.sender}, ignoring.`);
             return;
-        } else if (this.config.bridge.IsUserBlacklisted(event.state_key)) {
-            log.verbose(`${event.event_id} ${event.type} pertains to blacklisted user ${event.state_key}, ignoring.`);
+        } else if (this.config.bridge.IsUserDenied(event.state_key)) {
+            log.verbose(`${event.event_id} ${event.type} pertains to denied user ${event.state_key}, ignoring.`);
             return;
         } else if (["m.room.member", "m.room.name", "m.room.topic"].includes(event.type)) {
             await this.ProcessStateEvent(event);
@@ -185,8 +185,8 @@ export class MatrixEventProcessor {
      * @throws {Unstable.ForeignNetworkError}
      */
     public async ProcessMsgEvent(event: IMatrixEvent, room: RemoteStoreRoom): Promise<void> {
-        if (this.config.bridge.IsUserBlacklisted(event.sender)) {
-            log.verbose(`Message ${event.event_id} is by blacklisted user ${event.sender}, ignoring.`);
+        if (this.config.bridge.IsUserDenied(event.sender)) {
+            log.verbose(`Message ${event.event_id} is by denied user ${event.sender}, ignoring.`);
             return;
         }
 
@@ -242,12 +242,12 @@ export class MatrixEventProcessor {
             log.verbose(`${event.event_id} ${event.type} is by our bot user, ignoring.`);
             return;
         }
-        if (this.config.bridge.IsUserBlacklisted(event.sender)) {
-            log.verbose(`${event.event_id} ${event.type} is by blacklisted user ${event.sender}, ignoring.`);
+        if (this.config.bridge.IsUserDenied(event.sender)) {
+            log.verbose(`${event.event_id} ${event.type} is by denied user ${event.sender}, ignoring.`);
             return;
         }
-        if (this.config.bridge.IsUserBlacklisted(event.state_key)) {
-            log.verbose(`${event.event_id} ${event.type} pertains to blacklisted user ${event.state_key}, ignoring.`);
+        if (this.config.bridge.IsUserDenied(event.state_key)) {
+            log.verbose(`${event.event_id} ${event.type} pertains to denied user ${event.state_key}, ignoring.`);
             return;
         }
 
