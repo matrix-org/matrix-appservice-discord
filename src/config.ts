@@ -106,7 +106,7 @@ export class DiscordBridgeConfigBridge {
     public invalidTokenMessage: string = 'Your Discord token is invalid';
 
     public IsUserBlacklisted(userId: string): boolean {
-        return !!userId && this.userBlacklist.some((regex) => userId.match(`^${regex}$`));
+        return !!userId && this.userBlacklist.some((regex) => RegExp(`^${regex}$`).test(userId));
     }
 }
 
