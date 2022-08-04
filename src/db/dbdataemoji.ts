@@ -82,11 +82,13 @@ export class DbEmoji implements IDbData {
             updated_at = $updated_at
             WHERE
             emoji_id = $emoji_id`, {
+            /* eslint-disable @typescript-eslint/naming-convention */
             animated: Number(this.Animated),
             emoji_id: this.EmojiId,
             mxc_url: this.MxcUrl,
             name: this.Name,
             updated_at: this.UpdatedAt,
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
     }
 

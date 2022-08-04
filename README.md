@@ -98,7 +98,7 @@ should show up in the network list on Element and other clients.
 
 ### Setting up Discord
 
-* Create a new application via https://discordapp.com/developers/applications
+* Create a new application via https://discord.com/developers/applications
 * Make sure to create a bot user. Fill in ``config.yaml``
 * Run ``yarn addbot`` to get a authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
