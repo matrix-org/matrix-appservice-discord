@@ -164,7 +164,7 @@ class IntentMock extends AppserviceMockBase {
         this.funcCalled("sendText", roomId, body);
     }
 
-    public sendEvent(roomId: string, content: any): void {
+    public sendEvent(roomId: string, content: Record<string, unknown>): void {
         this.funcCalled("sendEvent", roomId, content);
     }
 

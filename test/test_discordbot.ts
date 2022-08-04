@@ -112,7 +112,7 @@ describe("DiscordBot", () => {
                 mockBridge,
                 {},
             );
-            discord.bot = { user: { id: "654" } };
+            discord._bot = { user: { id: "654" } };
             discord.userSync = {
                 OnUpdateUser: async () => { },
             };
