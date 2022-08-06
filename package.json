@@ -48,7 +48,7 @@
     "escape-string-regexp": "^4.0.0",
     "js-yaml": "^3.14.0",
     "marked": "^1.2.2",
-    "matrix-appservice-bridge": "^3.1.0",
+    "matrix-appservice-bridge": "^4.0.1",
     "matrix-discord-parser": "0.1.5",
     "mime": "^2.4.6",
     "node-html-parser": "^1.2.19",

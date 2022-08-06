@@ -423,7 +423,9 @@ export class DiscordBot {
         }
     }
 
-    public async stop(): Promise<void> {
+    public stop(): void {
+        this.presenceHandler.Stop();
+        this._bot?.destroy();
         this._bot = undefined;
     }
 

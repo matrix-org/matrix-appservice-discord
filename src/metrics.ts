@@ -16,17 +16,16 @@ limitations under the License.
 /* eslint-disable max-classes-per-file, @typescript-eslint/no-empty-function */
 
 import { Gauge, Counter, Histogram, collectDefaultMetrics, register } from "prom-client";
-import { Log } from "./log";
 import { Appservice,
     IMetricContext,
     METRIC_MATRIX_CLIENT_FAILED_FUNCTION_CALL,
     METRIC_MATRIX_CLIENT_SUCCESSFUL_FUNCTION_CALL,
     FunctionCallContext,
-    METRIC_MATRIX_CLIENT_FUNCTION_CALL} from "matrix-bot-sdk";
+    METRIC_MATRIX_CLIENT_FUNCTION_CALL,
+} from "matrix-bot-sdk";
 import { DiscordBridgeConfigMetrics } from "./config";
 import * as http from "http";
 
-const log = new Log("BridgeMetrics");
 const REQUEST_EXPIRE_TIME_MS = 30000;
 
 export interface IBridgeMetrics {
@@ -37,6 +36,7 @@ export interface IBridgeMetrics {
     storeCall(method: string, cached: boolean);
     setRemoteMonthlyActiveUsers(rmau: number);
     setBridgeBlocked(isBlocked: boolean);
+    stop();
 }
 
 export class DummyBridgeMetrics implements IBridgeMetrics {
@@ -47,6 +47,7 @@ export class DummyBridgeMetrics implements IBridgeMetrics {
     public storeCall() {}
     public setRemoteMonthlyActiveUsers() {}
     public setBridgeBlocked() {}
+    public stop() {}
 }
 
 export class MetricPeg {
@@ -63,36 +64,44 @@ export class MetricPeg {
 
 export class PrometheusBridgeMetrics implements IBridgeMetrics {
     private matrixCallCounter: Counter<string>;
+    private matrixFailedCallCounter: Counter<string>;
     private remoteCallCounter: Counter<string>;
     private storeCallCounter: Counter<string>;
     private presenceGauge: Gauge<string>;
     private remoteRequest: Histogram<string>;
     private matrixRequest: Histogram<string>;
-    private requestsInFlight: Map<string, number>;
-    private matrixRequestStatus: Map<string, "success"|"failed">;
+    private requestsInFlight = new Map<string, number>();
     private httpServer: http.Server;
     private remoteMonthlyActiveUsers: Gauge<string>;
     private bridgeBlocked: Gauge<string>;
 
     public init(as: Appservice, config: DiscordBridgeConfigMetrics) {
         collectDefaultMetrics();
-        // TODO: Bind this for every user.
+
         this.httpServer = http.createServer((req, res) => {
             if (req.method !== "GET" || req.url !== "/metrics") {
                 res.writeHead(404, "Not found");
                 res.end();
                 return;
             }
+            // eslint-disable-next-line @typescript-eslint/naming-convention
             res.writeHead(200, "OK", {"Content-Type": register.contentType});
             res.write(register.metrics());
             res.end();
         });
+
         this.matrixCallCounter = new Counter({
             help: "Count of matrix API calls made",
             labelNames: ["method", "result"],
             name: "matrix_api_calls",
         });
+        this.matrixFailedCallCounter = new Counter({
+            help: "Count of failed matrix API calls made",
+            labelNames: ["method", "result"],
+            name: "matrix_api_calls_failed",
+        });
         register.registerMetric(this.matrixCallCounter);
+        register.registerMetric(this.matrixFailedCallCounter);
 
         this.remoteCallCounter = new Counter({
             help: "Count of remote API calls made",
@@ -136,7 +145,6 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
                 }
             });
         }, REQUEST_EXPIRE_TIME_MS);
-        this.httpServer.listen(config.port, config.host);
 
         this.remoteMonthlyActiveUsers = new Gauge({
             help: "Current count of remote users active this month",
@@ -159,6 +167,7 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
             onStartMetric: this.sdkStartMetric.bind(this),
         });
 
+        this.httpServer.listen(config.port, config.host);
         return this;
     }
 
@@ -196,35 +205,40 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
         this.bridgeBlocked.set(isBlocked ? 1 : 0);
     }
 
-    private sdkStartMetric(metricName: string, context: IMetricContext) {
-        // We don't use this yet.
-    }
-
     private sdkEndMetric(metricName: string, context: FunctionCallContext, timeMs: number) {
         if (metricName !== METRIC_MATRIX_CLIENT_FUNCTION_CALL) {
             return; // We don't handle any other type yet.
         }
-        const successFail = this.matrixRequestStatus.get(context.uniqueId)!;
-        this.matrixRequestStatus.delete(context.uniqueId);
+        const ctx = context as FunctionCallContext;
         this.matrixRequest.observe({
-            method: context.functionName,
-            result: successFail,
+            method: ctx.functionName,
         }, timeMs);
-    }
-
-    private sdkResetMetric(metricName: string, context: IMetricContext) {
-        // We don't use this yet.
     }
 
     private sdkIncrementMetric(metricName: string, context: IMetricContext, amount: number) {
         if (metricName === METRIC_MATRIX_CLIENT_SUCCESSFUL_FUNCTION_CALL) {
-            this.matrixRequestStatus.set(context.uniqueId, "success");
-        } else if (metricName === METRIC_MATRIX_CLIENT_FAILED_FUNCTION_CALL) {
-            this.matrixRequestStatus.set(context.uniqueId, "failed");
+            const ctx = context as FunctionCallContext;
+            this.matrixCallCounter.inc({method: ctx.functionName}, amount);
+        }
+        if (metricName === METRIC_MATRIX_CLIENT_FAILED_FUNCTION_CALL) {
+            const ctx = context as FunctionCallContext;
+            this.matrixFailedCallCounter.inc({method: ctx.functionName}, amount);
         }
     }
 
-    private sdkDecrementMetric(metricName: string, context: IMetricContext, amount: number) {
-        // We don't use this yet.
+    private sdkResetMetric() {
+        // Bot SDK doesn't use this yet.
+    }
+
+    private sdkDecrementMetric() {
+        // Bot SDK doesn't use this yet.
+    }
+
+    private sdkStartMetric() {
+        // We don't use this.
+    }
+
+    public stop() {
+        this.httpServer.close();
     }
 }

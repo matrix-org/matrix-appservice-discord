@@ -1,5 +1,5 @@
 /*
-Copyright 2017 - 2019 matrix-appservice-discord
+Copyright 2017 - 2019 matrix-appservice-discord, 2022 (C) The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Appservice, IAppserviceRegistration, LogService, MatrixClient } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -148,7 +148,7 @@ async function run(): Promise<void> {
     if (config.database.roomStorePath || config.database.userStorePath) {
         log.error("The keys 'roomStorePath' and/or 'userStorePath' is still defined in the config. " +
                   "Please see docs/bridge-migrations.md on " +
-                  "https://github.com/Half-Shot/matrix-appservice-discord/");
+                  "https://github.com/matrix-org/matrix-appservice-discord/");
         throw Error("Bridge has legacy configuration options and is unable to start");
     }
     const registration = yaml.safeLoad(fs.readFileSync(registrationPath, "utf8")) as IAppserviceRegistration;
@@ -180,6 +180,16 @@ async function run(): Promise<void> {
     const discordbot = new DiscordBot(config, appservice, store);
     const roomhandler = discordbot.RoomHandler;
     const eventProcessor = discordbot.MxEventProcessor;
+
+
+    process.once("SIGINT", () => {
+        log.info("Got signal to stop application..");
+        appservice.stop();
+        MetricPeg.get.stop();
+        discordbot.stop();
+        process.exit(0);
+    });
+
 
     // 2020-12-07: If this fails to build in TypeScript with
     // "Namespace 'serveStatic' has no exported member 'RequestHandlerConstructor'.",
@@ -225,7 +235,6 @@ async function run(): Promise<void> {
 
     await appservice.begin();
     log.info(`Started listening on port ${port}`);
-
 }
 
 run().catch((err) => {
