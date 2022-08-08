@@ -11,6 +11,8 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 16
+    # Workaround for https://github.com/matrix-org/matrix-appservice-discord/issues/803
+    - run: git config --global url.https://github.com/.insteadOf git://github.com/
     - run: yarn
     - run: yarn lint
   test:
@@ -24,5 +26,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node_version }}
+      # Workaround for https://github.com/matrix-org/matrix-appservice-discord/issues/803
+      - run: git config --global url.https://github.com/.insteadOf git://github.com/
       - run: yarn
       - run: yarn test
