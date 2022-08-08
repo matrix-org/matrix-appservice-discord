@@ -1,1 +1,1 @@
-Update yarn.lock and fix Docker builds.
+Require Node.js 16, 17 or 18 to run. Update yarn.lock and fix Docker builds.
