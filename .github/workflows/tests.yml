@@ -11,18 +11,22 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 16
+    # Workaround for https://github.com/matrix-org/matrix-appservice-discord/issues/803
+    - run: git config --global url.https://github.com/.insteadOf git://github.com/
     - run: yarn
     - run: yarn lint
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: [14, 16, 18]
+        node_version: [16, 18]
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node_version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node_version }}
+      # Workaround for https://github.com/matrix-org/matrix-appservice-discord/issues/803
+      - run: git config --global url.https://github.com/.insteadOf git://github.com/
       - run: yarn
       - run: yarn test
