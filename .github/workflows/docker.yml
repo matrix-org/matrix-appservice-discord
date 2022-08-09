@@ -2,10 +2,10 @@ name: Container Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ develop ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ develop ]
 
 env:
   IMAGE_NAME: ${{ github.repository }}
@@ -34,8 +34,6 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          flavor: |
-            latest=true
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
