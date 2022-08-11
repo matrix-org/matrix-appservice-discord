@@ -48,6 +48,9 @@ function createCH(opts: any = {}, shouldBeJoined = true) {
                 throw new Error("Test failed matrix bridge");
             }
         },
+        RoomCountLimitReached: async () => {
+            return !!opts.roomCountLimitReached;
+        },
         UnbridgeChannel: async () => {
             if (opts.failUnbridge) {
                 throw new Error("Test failed unbridge");

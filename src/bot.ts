@@ -20,7 +20,7 @@ import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { DiscordMessageProcessor } from "./discordmessageprocessor";
-import { IDiscordMessageParserResult } from "matrix-discord-parser";
+import { IDiscordMessageParserResult } from "@mx-puppet/matrix-discord-parser";
 import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
@@ -31,17 +31,22 @@ import { Log } from "./log";
 import * as Discord from "better-discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
-import { Appservice, Intent } from "matrix-bot-sdk";
+import { Appservice, Intent, MatrixClient } from "matrix-bot-sdk";
 import { DiscordCommandHandler } from "./discordcommandhandler";
 import { MetricPeg } from "./metrics";
 import { Lock } from "./structures/lock";
 import { Util } from "./util";
+import { BridgeBlocker, UserActivityState, UserActivityTracker } from "matrix-appservice-bridge";
 
 const log = new Log("DiscordBot");
 
 const MIN_PRESENCE_UPDATE_DELAY = 250;
 const TYPING_TIMEOUT_MS = 30 * 1000;
 const CACHE_LIFETIME = 90000;
+
+// how often do we retry to connect on startup
+const INITIAL_FALLOFF_SECONDS = 5;
+const MAX_FALLOFF_SECONDS = 5 * 60; // 5 minutes
 
 // TODO: This is bad. We should be serving the icon from the own homeserver.
 const MATRIX_ICON_URL = "https://matrix.org/_matrix/media/r0/download/matrix.org/mlxoESwIsTbJrfXyAAogrNxA";
@@ -63,9 +68,32 @@ export interface IThirdPartyLookup {
     protocol: string;
 }
 
+class DiscordBridgeBlocker extends BridgeBlocker {
+    constructor(userLimit: number, private bridge: DiscordBot) {
+        super(userLimit);
+    }
+
+    async checkLimits(users: number) {
+        await super.checkLimits(users);
+        MetricPeg.get.setBridgeBlocked(this.isBlocked);
+    }
+
+    async blockBridge() {
+        log.info("Blocking the bridge");
+        await this.bridge.stop();
+        await super.blockBridge();
+    }
+
+    async unblockBridge() {
+        log.info("Unblocking the bridge");
+        await super.unblockBridge();
+        await this.bridge.run();
+    }
+}
+
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
-    private bot: Discord.Client;
+    private _bot: Discord.Client|undefined;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
@@ -83,10 +111,27 @@ export class DiscordBot {
     private discordMessageQueue: { [channelId: string]: Promise<void> };
     private channelLock: Lock<string>;
     private typingTimers: Record<string, NodeJS.Timeout> = {}; // DiscordUser+channel -> Timeout
+
+    private userActivity: UserActivityTracker;
+    private bridgeBlocker?: DiscordBridgeBlocker;
+
+    private get bot(): Discord.Client {
+        if (!this._bot) {
+            let bridgeBlocked = '';
+            if (this.bridgeBlocker?.isBlocked) {
+                bridgeBlocked = ' (bridge is blocked)';
+            }
+            throw new Error(`Bot is not connected to Discord${bridgeBlocked}`);
+        }
+
+        return this._bot!;
+    }
+
     constructor(
         private config: DiscordBridgeConfig,
         private bridge: Appservice,
         private store: DiscordStore,
+        private adminNotifier?: AdminNotifier,
     ) {
 
         // create handlers
@@ -105,6 +150,12 @@ export class DiscordBot {
         this.discordMessageQueue = {};
         this.channelLock = new Lock(this.config.limits.discordSendDelay);
         this.lastEventIds = {};
+
+        if (!this.adminNotifier && config.bridge.adminMxid) {
+            this.adminNotifier = new AdminNotifier(
+                this.bridge.botClient, config.bridge.adminMxid
+            );
+        }
     }
 
     get ClientFactory(): DiscordClientFactory {
@@ -154,9 +205,29 @@ export class DiscordBot {
         await this.clientFactory.init();
         // This immediately pokes UserStore, so it must be created after the bridge has started.
         this.userSync = new UserSyncroniser(this.bridge, this.config, this, this.store.userStore);
+
+        this.userActivity = new UserActivityTracker(
+            this.config.bridge.activityTracker,
+            await this.store.getUserActivity(),
+            async changes => this.onUserActivityChanged(changes),
+        );
+        const activeUsers = this.userActivity.countActiveUsers().allUsers;
+        MetricPeg.get.setRemoteMonthlyActiveUsers(activeUsers);
+
+        if (this.config.bridge.userLimit !== null) {
+            log.info(`Bridge blocker is enabled with a user limit of ${this.config.bridge.userLimit}`);
+            this.bridgeBlocker = new DiscordBridgeBlocker(this.config.bridge.userLimit, this);
+            this.bridgeBlocker?.checkLimits(activeUsers).catch(err => {
+                log.error(`Failed to check bridge limits: ${err}`);
+            });
+        }
     }
 
     public async run(): Promise<void> {
+        if (this.bridgeBlocker?.isBlocked) {
+            log.warn('Bridge is blocked, run() aborted');
+            return;
+        }
         const client = await this.clientFactory.getClient();
         if (!this.config.bridge.disableTypingNotifications) {
             client.on("typingStart", async (channel, user) => {
@@ -309,7 +380,7 @@ export class DiscordBot {
         client.on("error", (msg) => { jsLog.error(msg); });
         client.on("warn", (msg) => { jsLog.warn(msg); });
         log.info("Discord bot client logged in.");
-        this.bot = client;
+        this._bot = client;
 
         if (!this.config.bridge.disablePresence) {
             if (!this.config.bridge.presenceInterval) {
@@ -326,6 +397,35 @@ export class DiscordBot {
                 Math.max(this.config.bridge.presenceInterval, MIN_PRESENCE_UPDATE_DELAY),
             );
         }
+    }
+
+    public async start(): Promise<void> {
+        return this._start(INITIAL_FALLOFF_SECONDS);
+    }
+
+    private async _start(falloffSeconds: number, isRetry = false): Promise<void> {
+        try {
+            await this.init();
+            await this.run();
+        } catch (err) {
+            if (err.code === 'TOKEN_INVALID' && !isRetry) {
+                await this.adminNotifier?.notify(this.config.bridge.invalidTokenMessage);
+            }
+
+            // no more than 5 minutes
+            const newFalloffSeconds = Math.min(falloffSeconds * 2, MAX_FALLOFF_SECONDS);
+            log.error(`Failed do start Discordbot: ${err.code}. Will try again in ${newFalloffSeconds} seconds`);
+            await new Promise((r, _) => setTimeout(r, newFalloffSeconds * 1000));
+            return this._start(newFalloffSeconds, true);
+        }
+
+        if (isRetry) {
+            await this.adminNotifier?.notify(`The token situation is now resolved and the bridge is running correctly`);
+        }
+    }
+
+    public async stop(): Promise<void> {
+        this._bot = undefined;
     }
 
     public GetBotId(): string {
@@ -858,6 +958,7 @@ export class DiscordBot {
             evt.ChannelId = chan.id;
             evt.GuildId = guild.id;
             await this.store.Insert(evt);
+            this.userActivity.updateUserActivity(intent.userId);
         });
 
         // Sending was a success
@@ -869,6 +970,7 @@ export class DiscordBot {
         try {
             const intent = this.GetIntentFromDiscordMember(user);
             await intent.ensureRegistered();
+            this.userActivity.updateUserActivity(intent.userId);
             await Promise.all(rooms.map( async (roomId) => {
                 return intent.underlyingClient.setTyping(roomId, isTyping);
             }));
@@ -987,6 +1089,7 @@ export class DiscordBot {
                             evt.GuildId = msg.guild.id;
                         }
                         await this.store.Insert(evt);
+                        this.userActivity.updateUserActivity(intent.userId);
                     });
                 });
             }
@@ -1029,6 +1132,7 @@ export class DiscordBot {
                         evt.GuildId = msg.guild.id;
                     }
                     await this.store.Insert(evt);
+                    this.userActivity.updateUserActivity(intent.userId);
                 };
                 let res;
                 try {
@@ -1084,6 +1188,7 @@ export class DiscordBot {
             log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
             const intent = this.GetIntentFromDiscordMember(msg.author, msg.webhookID);
             await intent.ensureRegistered();
+            this.userActivity.updateUserActivity(intent.userId);
             const matrixIds = storeEvent.MatrixId.split(";");
             try {
                 await intent.underlyingClient.redactEvent(matrixIds[1], matrixIds[0]);
@@ -1124,5 +1229,65 @@ export class DiscordBot {
                 log.error(`Failed to insert sent event (${event.event_id};${event.room_id}) into store`, err);
             }
         });
+    }
+
+    private async onUserActivityChanged(state: UserActivityState) {
+        for (const userId of state.changed) {
+            await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
+        }
+        log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
+        this.bridgeBlocker?.checkLimits(state.activeUsers).catch(err => {
+            log.error(`Failed to check bridge limits: ${err}`);
+        });;
+        MetricPeg.get.setRemoteMonthlyActiveUsers(state.activeUsers);
+    }
+}
+
+class AdminNotifier {
+    constructor(
+        private client:    MatrixClient,
+        private adminMxid: string,
+    ) {}
+
+    public async notify(message: string) {
+        const roomId = await this.ensureDMRoom(this.adminMxid);
+        await this.client.sendText(roomId, message)
+    }
+
+    private async findDMRoom(targetMxid: string): Promise<string|undefined> {
+        const rooms = await this.client.getJoinedRooms();
+        const roomsWithMembers = await Promise.all(rooms.map(async (id) => {
+            return {
+                id,
+                memberships: await this.client.getRoomMembers(id, undefined, ['join', 'invite']),
+            }
+        }));
+
+        return roomsWithMembers.find(
+            room => room.memberships.length == 2
+                 && !!room.memberships.find(member => member.stateKey === targetMxid)
+        )?.id;
+    }
+
+    private async ensureDMRoom(mxid: string): Promise<string> {
+        const existing = await this.findDMRoom(mxid);
+        if (existing) {
+            log.verbose(`Found existing DM room with ${mxid}: ${existing}`);
+            return existing;
+        }
+
+        const roomId = await this.client.createRoom();
+        try {
+            await this.client.inviteUser(mxid, roomId);
+        } catch (err) {
+            log.verbose(`Failed to invite ${mxid} to ${roomId}, cleaning up`);
+            this.client.leaveRoom(roomId).catch(err => {
+                log.error(`Failed to clean up to-be-DM room ${roomId}: ${err}`);
+            });
+            throw err;
+        }
+
+        log.verbose(`Created ${roomId} to DM with ${mxid}`);
+        return roomId;
     }
 }

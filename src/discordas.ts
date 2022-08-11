@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Appservice, IAppserviceRegistration, LogService } from "matrix-bot-sdk";
+import { Appservice, IAppserviceRegistration, LogService, MatrixClient } from "matrix-bot-sdk";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { DiscordBridgeConfig } from "./config";
@@ -44,7 +44,7 @@ function generateRegistration(opts, registrationPath: string): void {
         throw Error("'url' not given in command line opts, cannot generate registration file");
     }
     const reg = {
-        /* eslint-disable @typescript-eslint/camelcase */
+        /* eslint-disable @typescript-eslint/naming-convention */
         as_token: uuid(),
         hs_token: uuid(),
         id: "discord-bridge",
@@ -67,7 +67,7 @@ function generateRegistration(opts, registrationPath: string): void {
         rate_limited: false,
         sender_localpart: "_discord_bot",
         url: opts.url,
-        /* eslint-enable @typescript-eslint/camelcase */
+        /* eslint-enable @typescript-eslint/naming-convention */
     } as IAppserviceRegistration;
     fs.writeFileSync(registrationPath, yaml.safeDump(reg));
 }
@@ -94,13 +94,15 @@ function setupLogging(): void {
 
     LogService.setLogger({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        debug: (mod: string, args: any[]) => logFunc("silly", mod, args),
+        trace: (mod: string, ...args: any[]) => logFunc("silly", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        error: (mod: string, args: any[]) => logFunc("error", mod, args),
+        debug: (mod: string, ...args: any[]) => logFunc("silly", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        info: (mod: string, args: any[]) => logFunc("info", mod, args),
+        error: (mod: string, ...args: any[]) => logFunc("error", mod, args),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        warn: (mod: string, args: any[]) => logFunc("warn", mod, args),
+        info: (mod: string, ...args: any[]) => logFunc("info", mod, args),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        warn: (mod: string, ...args: any[]) => logFunc("warn", mod, args),
     });
 }
 
@@ -187,17 +189,19 @@ async function run(): Promise<void> {
     appservice.expressAppInstance.get("/health", (_, res: Response) => {
         res.status(200).send("");
     });
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
-        try {
-            const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
-            await createRoom(createRoomOpts);
-            await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
-        } catch (err) {
-            log.error("Exception thrown while handling \"query.room\" event", err);
-        }
-    });
+
+    if (config.bridge.disablePortalBridging !== true) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        appservice.on("query.room", async (roomAlias: string, createRoom: (opts: any) => Promise<void>) => {
+            try {
+                const createRoomOpts = await roomhandler.OnAliasQuery(roomAlias);
+                await createRoom(createRoomOpts);
+                await roomhandler.OnAliasQueried(roomAlias, createRoomOpts.__roomId);
+            } catch (err) {
+                log.error("Exception thrown while handling \"query.room\" event", err);
+            }
+        });
+    }
 
     appservice.on("room.event", async (roomId: string, event: IMatrixEvent) => {
         try {
@@ -210,18 +214,18 @@ async function run(): Promise<void> {
 
     roomhandler.bindThirdparty();
 
-    await appservice.begin();
-    log.info(`Started listening on port ${port}`);
-
     try {
-        await discordbot.init();
-        await discordbot.run();
+        await discordbot.start();
         log.info("Discordbot started successfully");
     } catch (err) {
         log.error(err);
         log.error("Failure during startup. Exiting");
         process.exit(1);
     }
+
+    await appservice.begin();
+    log.info(`Started listening on port ${port}`);
+
 }
 
 run().catch((err) => {

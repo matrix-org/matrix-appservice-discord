@@ -39,5 +39,5 @@ You should be able to puppet with 2FA enabled on your account
 
 * Follow https://discordhelp.net/discord-token to find your discord token.
 * Stop the bridge, if it is running.
-* Run `npm run usertool -- --add` and follow the instructions.
+* Run `yarn usertool --add` and follow the instructions.
 * If all is well, you can start the bridge.

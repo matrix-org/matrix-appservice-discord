@@ -18,6 +18,7 @@
         "no-trailing-spaces": "error",
         "max-classes-per-file": ["warn", 1],
         "object-literal-sort-keys": "off",
+        "@typescript-eslint/naming-convention": "warn",
         "@typescript-eslint/no-explicit-any": "error",
         "@typescript-eslint/prefer-for-of": "error",
         "@typescript-eslint/typedef": "warn",

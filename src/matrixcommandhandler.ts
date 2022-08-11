@@ -64,7 +64,7 @@ export class MatrixCommandHandler {
                     "4. In the matrix room, send the message `!discord bridge <guild id> <channel id>` " +
                     "(without the backticks)\n" +
                     "   Note: The Guild ID and Channel ID can be retrieved from the URL in your web browser.\n" +
-                    "   The URL is formatted as https://discordapp.com/channels/GUILD_ID/CHANNEL_ID\n" +
+                    "   The URL is formatted as https://discord.com/channels/GUILD_ID/CHANNEL_ID\n" +
                     "5. Enjoy your new bridge!",
                 /* eslint-enable prefer-template */
                 params: ["guildId", "channelId"],
@@ -80,6 +80,10 @@ export class MatrixCommandHandler {
                     }
                     if (!guildId || !channelId) {
                         return "Invalid syntax. For more information try `!discord help bridge`";
+                    }
+                    if (await this.provisioner.RoomCountLimitReached(this.config.limits.roomCount)) {
+                        log.info(`Room count limit (value: ${this.config.limits.roomCount}) reached: Rejecting command to bridge new matrix room ${event.room_id} to ${guildId}/${channelId}`);
+                        return `This bridge has reached its room limit of ${this.config.limits.roomCount}. Unbridge another room to allow for new connections.`;
                     }
                     try {
                         const discordResult = await this.discord.LookupRoom(guildId, channelId);
@@ -186,12 +190,12 @@ export class MatrixCommandHandler {
         const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
         const formattedReply = markdown(reply);
         await this.bridge.botClient.sendMessage(event.room_id, {
-            /* eslint-disable @typescript-eslint/camelcase */
+            /* eslint-disable @typescript-eslint/naming-convention */
             body: reply,
             format: "org.matrix.custom.html",
             formatted_body: formattedReply,
             msgtype: "m.notice",
-            /* eslint-enable @typescript-eslint/camelcase */
+            /* eslint-enable @typescript-eslint/naming-convention */
         });
     }
 

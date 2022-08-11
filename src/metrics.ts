@@ -15,7 +15,7 @@ limitations under the License.
 */
 /* eslint-disable max-classes-per-file, @typescript-eslint/no-empty-function */
 
-import { Gauge, Counter, Histogram, default as promClient } from "prom-client";
+import { Gauge, Counter, Histogram, collectDefaultMetrics, register } from "prom-client";
 import { Log } from "./log";
 import { Appservice,
     IMetricContext,
@@ -35,6 +35,8 @@ export interface IBridgeMetrics {
     remoteCall(method: string);
     setPresenceCount(count: number);
     storeCall(method: string, cached: boolean);
+    setRemoteMonthlyActiveUsers(rmau: number);
+    setBridgeBlocked(isBlocked: boolean);
 }
 
 export class DummyBridgeMetrics implements IBridgeMetrics {
@@ -43,6 +45,8 @@ export class DummyBridgeMetrics implements IBridgeMetrics {
     public remoteCall() {}
     public setPresenceCount() {}
     public storeCall() {}
+    public setRemoteMonthlyActiveUsers() {}
+    public setBridgeBlocked() {}
 }
 
 export class MetricPeg {
@@ -67,17 +71,20 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
     private requestsInFlight: Map<string, number>;
     private matrixRequestStatus: Map<string, "success"|"failed">;
     private httpServer: http.Server;
+    private remoteMonthlyActiveUsers: Gauge<string>;
+    private bridgeBlocked: Gauge<string>;
 
     public init(as: Appservice, config: DiscordBridgeConfigMetrics) {
-        promClient.collectDefaultMetrics();
+        collectDefaultMetrics();
         // TODO: Bind this for every user.
         this.httpServer = http.createServer((req, res) => {
             if (req.method !== "GET" || req.url !== "/metrics") {
                 res.writeHead(404, "Not found");
                 res.end();
+                return;
             }
-            res.writeHead(200, "OK", {"Content-Type": promClient.register.contentType});
-            res.write(promClient.register.metrics());
+            res.writeHead(200, "OK", {"Content-Type": register.contentType});
+            res.write(register.metrics());
             res.end();
         });
         this.matrixCallCounter = new Counter({
@@ -85,41 +92,41 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
             labelNames: ["method", "result"],
             name: "matrix_api_calls",
         });
-        promClient.register.registerMetric(this.matrixCallCounter);
+        register.registerMetric(this.matrixCallCounter);
 
         this.remoteCallCounter = new Counter({
             help: "Count of remote API calls made",
             labelNames: ["method"],
             name: "remote_api_calls",
         });
-        promClient.register.registerMetric(this.remoteCallCounter);
+        register.registerMetric(this.remoteCallCounter);
 
         this.storeCallCounter = new Counter({
             help: "Count of store function calls made",
             labelNames: ["method", "cached"],
             name: "store_calls",
         });
-        promClient.register.registerMetric(this.storeCallCounter);
+        register.registerMetric(this.storeCallCounter);
 
         this.presenceGauge = new Gauge({
             help: "Count of users in the presence queue",
             name: "active_presence_users",
         });
-        promClient.register.registerMetric(this.presenceGauge);
+        register.registerMetric(this.presenceGauge);
 
         this.matrixRequest = new Histogram({
             help: "Histogram of processing durations of received Matrix messages",
             labelNames: ["outcome"],
             name: "matrix_request_seconds",
         });
-        promClient.register.registerMetric(this.matrixRequest);
+        register.registerMetric(this.matrixRequest);
 
         this.remoteRequest = new Histogram({
             help: "Histogram of processing durations of received remote messages",
             labelNames: ["outcome"],
             name: "remote_request_seconds",
         });
-        promClient.register.registerMetric(this.remoteRequest);
+        register.registerMetric(this.remoteRequest);
 
         this.requestsInFlight = new Map();
         setInterval(() => {
@@ -130,6 +137,18 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
             });
         }, REQUEST_EXPIRE_TIME_MS);
         this.httpServer.listen(config.port, config.host);
+
+        this.remoteMonthlyActiveUsers = new Gauge({
+            help: "Current count of remote users active this month",
+            name: "bridge_remote_monthly_active_users",
+        });
+        register.registerMetric(this.remoteMonthlyActiveUsers);
+
+        this.bridgeBlocked = new Gauge({
+            name: "bridge_blocked",
+            help: "Is the bridge currently blocking messages",
+        });
+        register.registerMetric(this.bridgeBlocked);
 
         // Bind bot-sdk metrics
         as.botClient.metrics.registerListener({
@@ -167,6 +186,14 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
     public storeCall(method: string, cached: boolean) {
         this.storeCallCounter.inc({method, cached: cached ? "yes" : "no"});
+    }
+
+    public setRemoteMonthlyActiveUsers(rmau: number) {
+        this.remoteMonthlyActiveUsers.set(rmau);
+    }
+
+    public setBridgeBlocked(isBlocked: boolean) {
+        this.bridgeBlocked.set(isBlocked ? 1 : 0);
     }
 
     private sdkStartMetric(metricName: string, context: IMetricContext) {

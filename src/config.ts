@@ -18,6 +18,8 @@ const ENV_PREFIX = "APPSERVICE_DISCORD";
 const ENV_KEY_SEPARATOR = "_";
 const ENV_VAL_SEPARATOR = ",";
 
+import { UserActivityTrackerConfig } from 'matrix-appservice-bridge';
+
 /** Type annotations for config/config.schema.yaml */
 export class DiscordBridgeConfig {
     public bridge: DiscordBridgeConfigBridge = new DiscordBridgeConfigBridge();
@@ -89,12 +91,17 @@ class DiscordBridgeConfigBridge {
     public disableDiscordMentions: boolean;
     public disableDeletionForwarding: boolean;
     public enableSelfServiceBridging: boolean;
+    public disablePortalBridging: boolean;
     public disableReadReceipts: boolean;
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
     public determineCodeLanguage: boolean = false;
+    public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
+    public userLimit: number|null = null;
+    public adminMxid: string|null = null;
+    public invalidTokenMessage: string = 'Your Discord token is invalid';
 }
 
 export class DiscordBridgeConfigDatabase {
@@ -140,6 +147,7 @@ export class DiscordBridgeConfigChannelDeleteOptions {
 class DiscordBridgeConfigLimits {
     public roomGhostJoinDelay: number = 6000;
     public discordSendDelay: number = 1500;
+    public roomCount: number = -1;
 }
 
 export class LoggingFile {
@@ -158,7 +166,7 @@ class DiscordBridgeConfigGhosts {
 }
 
 export class DiscordBridgeConfigMetrics {
-    public enable: boolean;
+    public enable: boolean = false;
     public port: number = 9001;
     public host: string = "127.0.0.1";
 }

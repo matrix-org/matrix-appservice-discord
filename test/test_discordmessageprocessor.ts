@@ -133,7 +133,7 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            expect(result.body).to.equal("@_discord_12345:localhost");
+            expect(result.body).to.equal("@_discord_12345:localhost (@_discord_12345:localhost)");
             expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_discord_12345:l" +
                 "ocalhost\">@_discord_12345:localhost</a>");
         });
@@ -147,7 +147,7 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            expect(result.body).to.equal("TestUsername");
+            expect(result.body).to.equal("TestUsername (@_discord_12345:localhost)");
             expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_discord_123" +
                 "45:localhost\">TestUsername</a>");
         });
@@ -161,7 +161,7 @@ describe("DiscordMessageProcessor", () => {
             msg.embeds = [];
             msg.content = "<@12345>";
             const result = await processor.FormatMessage(msg);
-            expect(result.body).to.equal("TestNickname");
+            expect(result.body).to.equal("TestNickname (@_discord_12345:localhost)");
             expect(result.formattedBody).to.equal("<a href=\"https://matrix.to/#/@_disc" +
                 "ord_12345:localhost\">TestNickname</a>");
         });

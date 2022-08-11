@@ -40,6 +40,15 @@ export class Provisioner {
         return this.roomStore.linkRooms(local, remote);
     }
 
+    /**
+     * Returns if the room count limit has been reached.
+     * This can be set by the bridge admin and prevents new rooms from being bridged.
+     * @returns Has the limit been reached?
+     */
+    public async RoomCountLimitReached(limit: number): Promise<boolean> {
+        return limit >= 0 && await this.roomStore.countEntries() >= limit;
+    }
+
     public async UnbridgeChannel(channel: Discord.TextChannel, rId?: string) {
         const roomsRes = await this.roomStore.getEntriesByRemoteRoomData({
             discord_channel: channel.id,
