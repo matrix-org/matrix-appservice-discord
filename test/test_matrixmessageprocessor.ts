@@ -165,14 +165,14 @@ describe("MatrixMessageProcessor", () => {
             const result = await mp.FormatMessage(msg, guild as any);
             expect(result).is.equal("<@12345>");
         });
-        it("Ignores invalid user pills", async () => {
+        it("Ignores invalid user pills, while removing matrix.to links", async () => {
             const mp = new MatrixMessageProcessor(bot, config);
             const guild = new MockGuild("1234");
             const member = new MockMember("12345", "TestUsername", guild);
             guild.members.cache.set("12345", member);
             const msg = getHtmlMessage("<a href=\"https://matrix.to/#/@_discord_789:localhost\">TestUsername</a>");
             const result = await mp.FormatMessage(msg, guild as any);
-            expect(result).is.equal("[TestUsername](https://matrix.to/#/@_discord_789:localhost)");
+            expect(result).is.equal("TestUsername");
         });
         it("Parses channel pills", async () => {
             const mp = new MatrixMessageProcessor(bot, config);
