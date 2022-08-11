@@ -25,7 +25,7 @@ import {
     IMatrixMessageParserCallbacks,
     IMatrixMessageParserOpts,
     MatrixMessageParser,
-} from "matrix-discord-parser";
+} from "@mx-puppet/matrix-discord-parser";
 
 const DEFAULT_ROOM_NOTIFY_POWER_LEVEL = 50;
 

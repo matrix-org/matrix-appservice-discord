@@ -1,0 +1,2 @@
+Remove matrix.to hyperlinks when relaying non-Discord user mentions to Discord.
+Fix mentioning Matrix users in Discord.
