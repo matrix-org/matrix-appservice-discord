@@ -1,3 +1,29 @@
+3.0.0 (2022-08-12)
+==================
+
+Bugfixes
+--------
+
+- Make sure we don't lose errors thrown when checking usage limits. ([\#823](https://github.com/matrix-org/matrix-appservice-discord/issues/823))
+- Fix Docker instances not starting due to being unable to load a dynamic library in the latest unstable image. ([\#828](https://github.com/matrix-org/matrix-appservice-discord/issues/828))
+- Remove matrix.to hyperlinks when relaying non-Discord user mentions to Discord.
+  Fix mentioning Matrix users in Discord. ([\#829](https://github.com/matrix-org/matrix-appservice-discord/issues/829))
+
+
+Deprecations and Removals
+-------------------------
+
+- Minimum required Node.js version is now 16. ([\#825](https://github.com/matrix-org/matrix-appservice-discord/issues/825))
+
+
+Internal Changes
+----------------
+
+- Remove unused variables. ([\#657](https://github.com/matrix-org/matrix-appservice-discord/issues/657))
+- Add workflow for building docker images, and push new docker images to ghcr.io. ([\#826](https://github.com/matrix-org/matrix-appservice-discord/issues/826))
+- Remove `git config` workaround to pull a dependency from github.com. ([\#830](https://github.com/matrix-org/matrix-appservice-discord/issues/830))
+
+
 2.0.0 (2022-08-05)
 ==================
 
