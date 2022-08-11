@@ -1,0 +1,1 @@
+Fix Docker instances not starting due to being unable to load a dynamic library in the latest unstable image.

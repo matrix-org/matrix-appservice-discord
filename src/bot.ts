@@ -20,7 +20,7 @@ import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { DiscordMessageProcessor } from "./discordmessageprocessor";
-import { IDiscordMessageParserResult } from "matrix-discord-parser";
+import { IDiscordMessageParserResult } from "@mx-puppet/matrix-discord-parser";
 import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
@@ -217,7 +217,9 @@ export class DiscordBot {
         if (this.config.bridge.userLimit !== null) {
             log.info(`Bridge blocker is enabled with a user limit of ${this.config.bridge.userLimit}`);
             this.bridgeBlocker = new DiscordBridgeBlocker(this.config.bridge.userLimit, this);
-            this.bridgeBlocker?.checkLimits(activeUsers);
+            this.bridgeBlocker?.checkLimits(activeUsers).catch(err => {
+                log.error(`Failed to check bridge limits: ${err}`);
+            });
         }
     }
 
@@ -1234,7 +1236,9 @@ export class DiscordBot {
             await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
         }
         log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
-        this.bridgeBlocker?.checkLimits(state.activeUsers);
+        this.bridgeBlocker?.checkLimits(state.activeUsers).catch(err => {
+            log.error(`Failed to check bridge limits: ${err}`);
+        });;
         MetricPeg.get.setRemoteMonthlyActiveUsers(state.activeUsers);
     }
 }
@@ -1277,7 +1281,9 @@ class AdminNotifier {
             await this.client.inviteUser(mxid, roomId);
         } catch (err) {
             log.verbose(`Failed to invite ${mxid} to ${roomId}, cleaning up`);
-            this.client.leaveRoom(roomId); // no point awaiting it, nothing we can do if we fail
+            this.client.leaveRoom(roomId).catch(err => {
+                log.error(`Failed to clean up to-be-DM room ${roomId}: ${err}`);
+            });
             throw err;
         }
 
