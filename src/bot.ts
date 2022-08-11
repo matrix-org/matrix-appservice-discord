@@ -94,7 +94,6 @@ class DiscordBridgeBlocker extends BridgeBlocker {
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
     private _bot: Discord.Client|undefined;
-    private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
