@@ -238,10 +238,11 @@ export class MatrixEventProcessor {
 
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
         const allowInvite = !this.config.bridge.disableInviteNotifications;
+        const allowRoomTopic = !this.config.bridge.disableRoomTopicNotifications;
 
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
-        } else if (event.type === "m.room.topic") {
+        } else if (event.type === "m.room.topic" && allowRoomTopic) {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
@@ -274,6 +275,9 @@ export class MatrixEventProcessor {
                 // Ignore anything else
                 return;
             }
+        } else {
+            // Ignore anything else
+            return;
         }
 
         msg += " on Matrix.";
