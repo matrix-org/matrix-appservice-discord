@@ -80,7 +80,7 @@ export class DiscordBridgeConfig {
     }
 }
 
-class DiscordBridgeConfigBridge {
+export class DiscordBridgeConfigBridge {
     public domain: string;
     public homeserverUrl: string;
     public port: number;
