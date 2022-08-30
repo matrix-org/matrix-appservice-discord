@@ -122,6 +122,7 @@ export class DbEvent implements IDbDataMany {
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async Update(store: DiscordStore): Promise<void> {
         throw new Error("Update is not implemented");
     }

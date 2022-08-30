@@ -82,11 +82,9 @@ export class DbUserStore {
             {remoteId},
         );
         if (nicks) {
-            /* eslint-disable @typescript-eslint/naming-convention */
-            nicks.forEach(({nick, guild_id}) => {
-                remoteUser.guildNicks.set(guild_id as string, nick as string);
+            nicks.forEach(({nick, guild_id: guildId}) => {
+                remoteUser.guildNicks.set(guildId as string, nick as string);
             });
-            /* eslint-enable @typescript-eslint/naming-convention */
         }
         this.remoteUserCache.set(remoteId, remoteUser);
         return remoteUser;
@@ -133,7 +131,7 @@ avatarurl_mxc = $avatarurl_mxc WHERE remote_id = $remote_id`,
         (await this.db.All(
             "SELECT guild_id, nick FROM remote_user_guild_nicks WHERE remote_id = $remoteId",
             {remoteId: user.id},
-        )).forEach(({guild_id, nick}) => existingNicks[guild_id as string] = nick); // eslint-disable-line @typescript-eslint/naming-convention
+        )).forEach(({guild_id: guildId, nick}) => existingNicks[guildId as string] = nick); // eslint-disable-line @typescript-eslint/naming-convention
         for (const guildId of user.guildNicks.keys()) {
             const nick = user.guildNicks.get(guildId) || null;
             if (existingData) {

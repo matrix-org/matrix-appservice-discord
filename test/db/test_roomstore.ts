@@ -18,9 +18,6 @@ import { expect } from "chai";
 import { DiscordStore } from "../../src/store";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
 
-// we are a test file and thus need those
-/* tslint:disable: no-any no-unused-expression */
-
 let store: DiscordStore;
 describe("RoomStore", () => {
     beforeEach(async () => {

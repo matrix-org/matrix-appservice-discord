@@ -151,6 +151,7 @@ export class MatrixRoomHandler {
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async tpGetProtocol(protocol: string): Promise<IApplicationServiceProtocol> {
         const instances = {};
         for (const guild of this.discord.GetGuilds()) {

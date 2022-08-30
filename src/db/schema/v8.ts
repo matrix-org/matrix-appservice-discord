@@ -20,10 +20,6 @@ import {DiscordStore} from "../../store";
 export class Schema implements IDbSchema {
     public description = "create room store tables";
 
-    constructor() {
-
-    }
-
     public async run(store: DiscordStore): Promise<void> {
         await store.createTable(`
             CREATE TABLE remote_room_data (
