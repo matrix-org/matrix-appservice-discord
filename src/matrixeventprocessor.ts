@@ -245,8 +245,8 @@ export class MatrixEventProcessor {
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
             const client = this.bridge.botIntent.underlyingClient;
-            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
-                await client.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+            const isNewJoin = event.unsigned?.replaces_state === undefined ? true : (
+                await client.getEvent(event.room_id, event.unsigned?.replaces_state)).content.membership !== "join";
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
                 this.mxUserProfileCache.delete(event.sender);

@@ -44,6 +44,9 @@ export interface IMatrixEvent {
     users?: any; // tslint:disable-line no-any
     users_default?: any; // tslint:disable-line no-any
     notifications?: any; // tslint:disable-line no-any
+    unsigned?: {
+        replaces_state: any; // tslint:disable-line no-any
+    }
 }
 
 export interface IMatrixMessage {
