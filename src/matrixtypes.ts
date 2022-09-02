@@ -40,7 +40,7 @@ export interface IMatrixEvent {
     redacts?: string;
     replaces_state?: string;
     content?: IMatrixEventContent;
-    origin_server_ts?: number;
+    origin_server_ts: number;
     users?: any; // tslint:disable-line no-any
     users_default?: any; // tslint:disable-line no-any
     notifications?: any; // tslint:disable-line no-any
