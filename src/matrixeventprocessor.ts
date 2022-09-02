@@ -92,11 +92,9 @@ export class MatrixEventProcessor {
      */
     public async OnEvent(event: IMatrixEvent, rooms: IRoomStoreEntry[]): Promise<void> {
         const remoteRoom = rooms[0];
-        if (event.unsigned.age > AGE_LIMIT) {
-            log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            // throw new Unstable.EventTooOldError(
-            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
-            // );
+        const age = Date.now() - event.origin_server_ts;
+        if (age > AGE_LIMIT) {
+            log.info(`Skipping event due to age ${age} > ${AGE_LIMIT}`);
             return;
         }
         if (
