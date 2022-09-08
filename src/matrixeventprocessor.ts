@@ -38,7 +38,6 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
-const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 const PROFILE_CACHE_LIFETIME = 900000;
 
@@ -237,10 +236,11 @@ export class MatrixEventProcessor {
 
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
         const allowInvite = !this.config.bridge.disableInviteNotifications;
+        const allowRoomTopic = !this.config.bridge.disableRoomTopicNotifications;
 
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
-        } else if (event.type === "m.room.topic") {
+        } else if (event.type === "m.room.topic" && allowRoomTopic) {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
@@ -273,6 +273,9 @@ export class MatrixEventProcessor {
                 // Ignore anything else
                 return;
             }
+        } else {
+            // Ignore anything else
+            return;
         }
 
         msg += " on Matrix.";

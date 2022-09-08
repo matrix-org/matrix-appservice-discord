@@ -80,7 +80,7 @@ export class DiscordBridgeConfig {
     }
 }
 
-class DiscordBridgeConfigBridge {
+export class DiscordBridgeConfigBridge {
     public domain: string;
     public homeserverUrl: string;
     public port: number;
@@ -97,6 +97,7 @@ class DiscordBridgeConfigBridge {
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
+    public disableRoomTopicNotifications: boolean = false;
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
     public userLimit: number|null = null;

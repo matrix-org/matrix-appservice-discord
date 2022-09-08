@@ -39,7 +39,7 @@ const commandOptions = [
     { name: "help", alias: "h", type: Boolean },
 ];
 
-function generateRegistration(opts, registrationPath: string): void {
+function generateRegistration(opts, registrationPath: string, config: DiscordBridgeConfig): void {
     if (!opts.url) {
         throw Error("'url' not given in command line opts, cannot generate registration file");
     }
@@ -52,14 +52,14 @@ function generateRegistration(opts, registrationPath: string): void {
             aliases: [
                 {
                     exclusive: true,
-                    regex: "#_discord_.*",
+                    regex: '#_discord_.+:' + config.bridge.domain,
                 },
             ],
             rooms: [ ],
             users: [
                 {
                     exclusive: true,
-                    regex: "@_discord_.*",
+                    regex: '@_discord_.+:' + config.bridge.domain,
                 },
             ],
         },
@@ -125,13 +125,6 @@ async function run(): Promise<void> {
 
     const configPath = opts.config || "config.yaml";
     const registrationPath = opts.file || "discord-registration.yaml";
-    if (opts["generate-registration"]) {
-        if (fs.existsSync(registrationPath)) {
-            throw Error("Not writing new registration file, file already exists");
-        }
-        generateRegistration(opts, registrationPath);
-        return;
-    }
 
     const config = new DiscordBridgeConfig();
     const readConfig = yaml.safeLoad(fs.readFileSync(configPath, "utf8"));
@@ -140,6 +133,15 @@ async function run(): Promise<void> {
     }
     config.applyConfig(readConfig);
     config.applyEnvironmentOverrides(process.env);
+
+    if (opts["generate-registration"]) {
+        if (fs.existsSync(registrationPath)) {
+            throw Error("Not writing new registration file, file already exists");
+        }
+        generateRegistration(opts, registrationPath, config);
+        return;
+    }
+
     Log.Configure(config.logging);
     const port = opts.port || config.bridge.port;
     if (!port) {
