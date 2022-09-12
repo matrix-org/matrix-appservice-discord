@@ -91,11 +91,9 @@ export class MatrixEventProcessor {
      */
     public async OnEvent(event: IMatrixEvent, rooms: IRoomStoreEntry[]): Promise<void> {
         const remoteRoom = rooms[0];
-        if (event.unsigned.age > AGE_LIMIT) {
-            log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            // throw new Unstable.EventTooOldError(
-            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
-            // );
+        const age = Date.now() - event.origin_server_ts;
+        if (age > AGE_LIMIT) {
+            log.info(`Skipping event due to age ${age} > ${AGE_LIMIT}`);
             return;
         }
         if (
@@ -247,8 +245,8 @@ export class MatrixEventProcessor {
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
             const client = this.bridge.botIntent.underlyingClient;
-            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
-                await client.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+            const isNewJoin = event.unsigned?.replaces_state === undefined ? true : (
+                await client.getEvent(event.room_id, event.unsigned?.replaces_state)).content.membership !== "join";
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
                 this.mxUserProfileCache.delete(event.sender);

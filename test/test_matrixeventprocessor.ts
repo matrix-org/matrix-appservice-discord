@@ -25,7 +25,6 @@ import { MockChannel } from "./mocks/channel";
 import { IMatrixEvent } from "../src/matrixtypes";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { Appservice } from "matrix-bot-sdk";
-import { RemoteStoreRoom } from "../src/db/roomstore";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -33,11 +32,11 @@ import { RemoteStoreRoom } from "../src/db/roomstore";
 const TEST_TIMESTAMP = 1337;
 
 function buildRequest(eventData): IMatrixEvent {
-    if (eventData.unsigned === undefined) {
-        eventData.unsigned = {age: 0};
-    }
     if (eventData.sender === undefined) {
         eventData.sender = "@foobar:localhost";
+    }
+    if (!eventData.origin_server_ts) {
+        eventData.origin_server_ts = Date.now();
     }
     return eventData;
 }
@@ -378,7 +377,6 @@ describe("MatrixEventProcessor", () => {
                 },
                 sender: "@user:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` joined the room on Matrix.");
@@ -407,7 +405,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
@@ -437,7 +434,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
@@ -451,7 +447,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` left the room on Matrix.");
@@ -481,7 +476,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
@@ -971,13 +965,12 @@ This is the reply`,
             const {processor} =  createMatrixEventProcessor();
             let err;
             try {
-                await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), []);
+                await processor.OnEvent(buildRequest({ origin_server_ts: Date.now() - AGE }), []);
             } catch (e) { err = e; }
             // TODO: Not supported yet.
             // expect(err).to.be.an.instanceof(Unstable.EventTooOldError);
         });
         it("should reject un-processable events", async () => {
-            const AGE = 900000; // 15 * 60 * 1000
             const {processor} =  createMatrixEventProcessor();
             let err;
             try {
@@ -985,7 +978,6 @@ This is the reply`,
                     buildRequest({
                         content: {},
                         type: "m.potato",
-                        unsigned: {age: AGE},
                     }),
                     [],
                 );
