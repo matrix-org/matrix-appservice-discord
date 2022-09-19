@@ -552,7 +552,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":nick -- :username";
 
-            const {processor} =  createMatrixEventProcessor(0, config);
+            const {processor} =  createMatrixEventProcessor(0, config.bridge);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -569,7 +569,7 @@ describe("MatrixEventProcessor", () => {
             config.discordProxy.namePattern = ":nick -------------- :username";
             config.discordProxy.fallbackNamePattern = "fallback :nick :username.";
 
-            const {processor} =  createMatrixEventProcessor(0, config);
+            const {processor} =  createMatrixEventProcessor(0, config.bridge);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -585,7 +585,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":nick -- :username";
 
-            const {processor} =  createMatrixEventProcessor(0, config);
+            const {processor} =  createMatrixEventProcessor(0, config.bridge);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -601,7 +601,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":displayname";
 
-            const {processor} =  createMatrixEventProcessor(0, config);
+            const {processor} =  createMatrixEventProcessor(0, config.bridge);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -617,7 +617,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":displayname";
 
-            const {processor} =  createMatrixEventProcessor(0, config);
+            const {processor} =  createMatrixEventProcessor(0, config.bridge);
 
             const embeds = await processor.EventToEmbed({
                 content: {
