@@ -1,7 +1,7 @@
 FROM node:16-slim AS BUILD
 COPY . /tmp/src
 # install some dependencies needed for the build process
-RUN apt update && apt install -y build-essential make gcc g++ python3 ca-certificates libc-dev wget git
+RUN apt-get update && apt-get install -y build-essential make gcc g++ python3 ca-certificates libc-dev wget git
 
 RUN cd /tmp/src \
     && yarn
