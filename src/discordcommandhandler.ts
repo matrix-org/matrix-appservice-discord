@@ -18,7 +18,8 @@ import { DiscordBot } from "./bot";
 import * as Discord from "better-discord.js";
 import { Util, ICommandActions, ICommandParameters, CommandPermissonCheck } from "./util";
 import { Log } from "./log";
-import { Appservice } from "matrix-bot-sdk";
+import { Appservice, Presence } from "matrix-bot-sdk";
+import { DiscordBridgeConfig } from './config';
 
 const log = new Log("DiscordCommandHandler");
 
@@ -26,17 +27,20 @@ export class DiscordCommandHandler {
     constructor(
         private bridge: Appservice,
         private discord: DiscordBot,
+        private config: DiscordBridgeConfig,
     ) { }
 
+    /**
+     * @param msg Message to process.
+     * @returns The message the bot replied with.
+     */
     public async Process(msg: Discord.Message) {
         const chan = msg.channel as Discord.TextChannel;
         if (!chan.guild) {
-            await msg.channel.send("**ERROR:** only available for guild channels");
-            return;
+            return await msg.channel.send("**ERROR:** only available for guild channels");
         }
         if (!msg.member) {
-            await msg.channel.send("**ERROR:** could not determine message member");
-            return;
+            return await msg.channel.send("**ERROR:** could not determine message member");
         }
 
         const discordMember = msg.member;
@@ -50,7 +54,7 @@ export class DiscordCommandHandler {
                 permission: "MANAGE_WEBHOOKS",
                 run: async () => {
                     if (await this.discord.Provisioner.MarkApproved(chan, discordMember, true)) {
-                        return "Thanks for your response! The matrix bridge has been approved.";
+                        return "Thanks for your response! The Matrix bridge has been approved.";
                     } else {
                         return "Thanks for your response, however" +
                             " it has arrived after the deadline - sorry!";
@@ -58,7 +62,7 @@ export class DiscordCommandHandler {
                 },
             },
             ban: {
-                description: "Bans a user on the matrix side",
+                description: "Bans a user on the Matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
                 run: this.ModerationActionGenerator(chan, "ban"),
@@ -69,7 +73,7 @@ export class DiscordCommandHandler {
                 permission: "MANAGE_WEBHOOKS",
                 run: async () => {
                     if (await this.discord.Provisioner.MarkApproved(chan, discordMember, false)) {
-                        return "Thanks for your response! The matrix bridge has been declined.";
+                        return "Thanks for your response! The Matrix bridge has been declined.";
                     } else {
                         return "Thanks for your response, however" +
                             " it has arrived after the deadline - sorry!";
@@ -77,28 +81,34 @@ export class DiscordCommandHandler {
                 },
             },
             kick: {
-                description: "Kicks a user on the matrix side",
+                description: "Kicks a user on the Matrix side",
                 params: ["name"],
                 permission: "KICK_MEMBERS",
                 run: this.ModerationActionGenerator(chan, "kick"),
             },
             unban: {
-                description: "Unbans a user on the matrix side",
+                description: "Unbans a user on the Matrix side",
                 params: ["name"],
                 permission: "BAN_MEMBERS",
                 run: this.ModerationActionGenerator(chan, "unban"),
             },
             unbridge: {
-                description: "Unbridge matrix rooms from this channel",
+                description: "Unbridge Matrix rooms from this channel",
                 params: [],
                 permission: ["MANAGE_WEBHOOKS", "MANAGE_CHANNELS"],
                 run: async () => this.UnbridgeChannel(chan),
             },
+            listusers: {
+                description: "List users on the Matrix side of the bridge",
+                params: [],
+                permission: [],
+                run: async () => this.ListMatrixMembers(chan)
+            }
         };
 
         const parameters: ICommandParameters = {
             name: {
-                description: "The display name or mxid of a matrix user",
+                description: "The display name or mxid of a Matrix user",
                 get: async (name) => {
                     const channelMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(msg.channel);
                     const mxUserId = await Util.GetMxidFromName(intent, name, channelMxids);
@@ -115,7 +125,7 @@ export class DiscordCommandHandler {
         };
 
         const reply = await Util.ParseCommand("!matrix", msg.content, actions, parameters, permissionCheck);
-        await msg.channel.send(reply);
+        return await msg.channel.send(reply);
     }
 
     private ModerationActionGenerator(discordChannel: Discord.TextChannel, funcKey: "kick"|"ban"|"unban") {
@@ -156,12 +166,133 @@ export class DiscordCommandHandler {
             return "This channel has been unbridged";
         } catch (err) {
             if (err.message === "Channel is not bridged") {
-                return "This channel is not bridged to a plumbed matrix room";
+                return "This channel is not bridged to a plumbed Matrix room";
             }
             log.error("Error while unbridging room " + channel.id);
             log.error(err);
             return "There was an error unbridging this room. " +
                 "Please try again later or contact the bridge operator.";
         }
+    }
+
+    private async ListMatrixMembers(channel: Discord.TextChannel): Promise<string> {
+        const chanMxids = await this.discord.ChannelSyncroniser.GetRoomIdsFromChannel(channel);
+        const members: {
+            mxid: string;
+            displayName?: string;
+            presence?: Presence;
+        }[] = [];
+        const errorMessages: string[] = [];
+
+        await Promise.all(chanMxids.map(async (chanMxid) => {
+            const { underlyingClient } = this.bridge.botIntent;
+
+            try {
+                const memberProfiles = await underlyingClient.getJoinedRoomMembersWithProfiles(chanMxid);
+                const userProfiles = Object.keys(memberProfiles)
+                    .filter((mxid) => !this.bridge.isNamespacedUser(mxid))
+                    .map((mxid) => ({ mxid, displayName: memberProfiles[mxid].display_name }));
+
+                members.push(...userProfiles);
+            } catch (e) {
+                errorMessages.push(`Couldn't get members from ${chanMxid}`);
+            }
+        }));
+
+        if (errorMessages.length) {
+            throw Error(errorMessages.join('\n'));
+        }
+
+        if (!this.config.bridge.disablePresence) {
+
+            await Promise.all(members.map(async (member) => {
+                try {
+                    const presence = await this.bridge.botClient.getPresenceStatusFor(member.mxid);
+                    member.presence = presence;
+                } catch (e) {
+                    errorMessages.push(`Couldn't get presence for ${member.mxid}`);
+                }
+            }));
+        }
+
+        if (errorMessages.length) {
+            throw Error(errorMessages.join('\n'));
+        }
+
+        const length = members.length;
+        const formatter = new Intl.NumberFormat('en-US');
+        const formattedTotalMembers = formatter.format(length);
+        let userCount: string;
+
+        if (length === 1) {
+            userCount = `is **1** user`;
+        } else {
+            userCount = `are **${formattedTotalMembers}** users`;
+        }
+
+        const userCountMessage = `There ${userCount} on the Matrix side.`;
+
+        if (length === 0) {
+            return userCountMessage;
+        }
+
+        members.sort((a, b) => {
+            const aPresenceState = a.presence?.state ?? "unknown";
+            const bPresenceState = b.presence?.state ?? "unknown";
+
+            if (aPresenceState === bPresenceState) {
+                const aDisplayName = a.displayName;
+                const bDisplayName = b.displayName;
+
+                if (aDisplayName === bDisplayName) {
+                    return a.mxid.localeCompare(b.mxid);
+                }
+
+                if (!aDisplayName) {
+                    return 1;
+                }
+
+                if (!bDisplayName) {
+                    return -1;
+                }
+
+                return aDisplayName.localeCompare(bDisplayName, 'en', { sensitivity: "base" });
+            }
+
+            const presenseOrdinal = {
+                "online": 0,
+                "unavailable": 1,
+                "offline": 2,
+                "unknown": 3
+            };
+
+            return presenseOrdinal[aPresenceState] - presenseOrdinal[bPresenceState];
+        });
+
+        /** Reserve characters for the worst-case "and x others…" line at the end if there are too many members. */
+        const reservedChars = `\n_and ${formattedTotalMembers} others…_`.length;
+        let message = `${userCountMessage} Matrix users in ${channel.toString()} may not necessarily be in the other bridged channels in the server.\n`;
+
+        for (let i = 0; i < length; i++) {
+            const { mxid, displayName, presence } = members[i];
+            let line = "• ";
+            line += (displayName) ? `${displayName} (${mxid})` : mxid;
+
+            if (!this.config.bridge.disablePresence) {
+                const state = presence?.state ?? "unknown";
+                // Use Discord terminology for Away
+                const stateDisplay = (state === "unavailable") ? "idle" : state;
+                line += ` - ${stateDisplay.charAt(0).toUpperCase() + stateDisplay.slice(1)}`;
+            }
+
+            if (2000 - message.length - reservedChars < line.length) {
+                const remaining = length - i;
+                return message + `\n_and ${formatter.format(remaining)} others…_`;
+            }
+
+            message += `\n${line}`;
+        }
+
+        return message;
     }
 }

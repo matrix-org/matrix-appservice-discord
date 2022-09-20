@@ -57,4 +57,8 @@ export class MockGuild {
     public _mockAddMember(member: MockMember) {
         this.members.cache.set(member.id, member);
     }
+
+    public toString(): string {
+        return `<#${this.id}>`;
+    }
 }

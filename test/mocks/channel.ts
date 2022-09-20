@@ -40,6 +40,10 @@ export class MockChannel {
     public permissionsFor(member: MockMember) {
         return new Permissions(Permissions.FLAGS.MANAGE_WEBHOOKS as PermissionResolvable);
     }
+
+    public toString(): string {
+        return `<#${this.id}>`;
+    }
 }
 
 export class MockTextChannel extends TextChannel {
