@@ -72,8 +72,6 @@ mkdir -p /matrix-appservice-discord
 # Be sure to set the database paths to something like this:
 #  database:
 #    filename: "/data/discord.db"
-#    userStorePath: "/data/user-store.db"
-#    roomStorePath: "/data/room-store.db"
 nano /matrix-appservice-discord/config.yaml
 
 # Copy the registration file to the volume
