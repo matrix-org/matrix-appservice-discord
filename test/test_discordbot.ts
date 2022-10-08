@@ -46,6 +46,7 @@ const modDiscordBot = Proxyquire("../src/bot", {
         },
     },
 });
+
 describe("DiscordBot", () => {
     let discordBot;
     const config = {
@@ -60,6 +61,7 @@ describe("DiscordBot", () => {
             discordSendDelay: 50,
         },
     };
+
     describe("run()", () => {
         it("should resolve when ready.", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -102,6 +104,7 @@ describe("DiscordBot", () => {
             await discordBot.LookupRoom("123", "321");
         });
     });
+
     describe("OnMessage()", () => {
         const channel = new MockTextChannel();
         const msg = new MockMessage(channel);
@@ -130,6 +133,7 @@ describe("DiscordBot", () => {
             };
             return discord;
         }
+
         it("ignores own messages", async () => {
             discordBot = getDiscordBot();
             const guild: any = new MockGuild("123", []);
@@ -140,6 +144,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessage(msg);
             expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
         });
+
         it("Passes on !matrix commands", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -147,6 +152,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessage(msg);
             expect(HANDLE_COMMAND).to.be.true;
         });
+
         it("skips empty messages", async () => {
             discordBot = getDiscordBot();
             msg.content = "";
@@ -154,6 +160,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessage(msg as any);
             expect(mockBridge.getIntent(author.id).wasCalled("sendEvent", false)).to.equal(0);
         });
+
         it("sends normal messages", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -161,25 +168,30 @@ describe("DiscordBot", () => {
             await discordBot.OnMessage(msg as any);
             mockBridge.getIntent(author.id).wasCalled("sendEvent");
         });
+
         it("sends edit messages", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
             msg.content = "Foxies are super amazing!";
+            msg.url = "https://discord.com/channels/123/321/1028397843632902214";
             await discordBot.OnMessage(msg, "editevent");
             mockBridge.getIntent(author.id).wasCalled("sendEvent", true,  "!asdf:localhost", {
                 "body": "* Foxies are super amazing!",
                 "format": "org.matrix.custom.html",
                 "formatted_body": "* Foxies are super amazing!",
+                "external_url": "https://discord.com/channels/123/321/1028397843632902214",
                 "m.new_content": {
                     body: "Foxies are super amazing!",
                     format: "org.matrix.custom.html",
                     formatted_body: "Foxies are super amazing!",
+                    external_url: "https://discord.com/channels/123/321/1028397843632902214",
                     msgtype: "m.text",
                 },
                 "m.relates_to": { event_id: "editevent", rel_type: "m.replace" },
                 "msgtype": "m.text",
             });
         });
+
         it("uploads images", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -206,6 +218,7 @@ describe("DiscordBot", () => {
                 url: "mxc://someimage.png",
             });
         });
+
         it("uploads videos", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -232,6 +245,7 @@ describe("DiscordBot", () => {
                 url: "mxc://foxes.mov",
             });
         });
+
         it("uploads audio", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -256,6 +270,7 @@ describe("DiscordBot", () => {
                 url: "mxc://meow.mp3",
             });
         });
+
         it("uploads other files", async () => {
             discordBot = getDiscordBot();
             msg.author = author;
@@ -281,6 +296,7 @@ describe("DiscordBot", () => {
             });
         });
     });
+
     describe("OnMessageUpdate()", () => {
         it("should return on an unchanged message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -308,6 +324,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             expect(checkMsgSent).to.be.false;
         });
+
         it("should send a matrix edit on an edited discord message", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
@@ -347,6 +364,7 @@ describe("DiscordBot", () => {
             await discordBot.OnMessageUpdate(oldMsg, newMsg);
             expect(checkEditEventSent).to.equal("editedid");
         });
+
         it("should send a new message if no store event found", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,
@@ -392,6 +410,7 @@ describe("DiscordBot", () => {
             expect(checkEditEventSent).to.be.undefined;
         });
     });
+
     describe("event:message", () => {
         it("should delay messages so they arrive in order", async () => {
             discordBot = new modDiscordBot.DiscordBot(
@@ -414,6 +433,7 @@ describe("DiscordBot", () => {
             }
             await discordBot.discordMessageQueue[CHANID];
         });
+
         it("should handle messages that reject in the queue", async () => {
             discordBot = new modDiscordBot.DiscordBot(
                 config,

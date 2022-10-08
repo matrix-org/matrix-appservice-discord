@@ -56,6 +56,13 @@ export interface IMatrixMessage {
     format?: string;
     "m.new_content"?: any; // tslint:disable-line no-any
     "m.relates_to"?: any; // tslint:disable-line no-any
+
+    /**
+     * Indicates where the message came from.
+     *
+     * @see {@link https://spec.matrix.org/v1.3/application-service-api/#referencing-messages-from-a-third-party-network Referencing messages from a third party network}
+     */
+    external_url?: string;
 }
 
 export interface IMatrixMediaInfo {

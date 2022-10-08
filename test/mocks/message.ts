@@ -28,6 +28,7 @@ export class MockMessage {
     public channel: Discord.TextChannel | undefined;
     public guild: Discord.Guild | undefined;
     public author: MockUser;
+    public url: string;
     public mentions: any = {};
     constructor(channel?: Discord.TextChannel) {
         this.mentions.everyone = false;
