@@ -25,6 +25,8 @@ import { Util } from "../src/util";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { MockUser } from "./mocks/user";
 import { MockTextChannel } from "./mocks/channel";
+import { MockReaction } from './mocks/reaction';
+import { MockEmoji } from './mocks/emoji';
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -440,6 +442,84 @@ describe("DiscordBot", () => {
             }
             await discordBot.discordMessageQueue[CHANID];
             expect(expected).to.eq(ITERATIONS);
+        });
+    });
+    describe("OnMessageReactionAdd", () => {
+        const channel = new MockTextChannel();
+        const author = new MockUser("11111");
+        const message = new MockMessage(channel, "Hello, World!", author);
+        const emoji = new MockEmoji("", "🤔");
+        const reaction = new MockReaction(message, emoji, channel);
+
+        function getDiscordBot() {
+            mockBridge.cleanup();
+            const discord = new modDiscordBot.DiscordBot(
+                config,
+                mockBridge,
+                {},
+            );
+            discord.channelSync = {
+                GetRoomIdsFromChannel: async () => ["!asdf:localhost"],
+            };
+            discord.store = {
+                Get: async () => {
+                    let storeMockResults = 0;
+
+                    return {
+                        Result: true,
+                        MatrixId: "$mAKet_w5WYFCgh1WaHVOvyn9LJLbolFeuELTKVfm0Po;!asdf:localhost",
+                        Next: () => storeMockResults++ === 0
+                    }
+                },
+                Insert: async () => { },
+            };
+            discord.userActivity = {
+                updateUserActivity: () => { }
+            };
+            discord.GetIntentFromDiscordMember = () => {
+                return mockBridge.getIntent(author.id);
+            }
+            return discord;
+        }
+
+        it("Adds reaction from Discord → Matrix", async () => {
+            discordBot = getDiscordBot();
+            await discordBot.OnMessageReactionAdd(reaction, author);
+            mockBridge.getIntent(author.id).underlyingClient.unstableApis.wasCalled(
+                "addReactionToEvent",
+                true,
+                "!asdf:localhost",
+                "$mAKet_w5WYFCgh1WaHVOvyn9LJLbolFeuELTKVfm0Po",
+                "🤔"
+            );
+        });
+
+        it("Removes reaction from Discord → Matrix", async () => {
+            discordBot = getDiscordBot();
+            const intent = mockBridge.getIntent(author.id);
+
+            intent.underlyingClient.unstableApis.getRelationsForEvent = async () => {
+                return {
+                    chunk: [
+                        {
+                            sender: "11111",
+                            room_id: "!asdf:localhost",
+                            event_id: "$mAKet_w5WYFCgh1WaHVOvyn9LJLbolFeuELTKVfm0Po",
+                            content: {
+                                "m.relates_to": { key: "🤔" }
+                            }
+                        }
+                    ]
+                }
+            }
+
+            await discordBot.OnMessageReactionRemove(reaction, author);
+            intent.underlyingClient.wasCalled(
+                "redactEvent",
+                false,
+                "!asdf:localhost",
+                "$mAKet_w5WYFCgh1WaHVOvyn9LJLbolFeuELTKVfm0Po",
+            );
         });
     });
 });

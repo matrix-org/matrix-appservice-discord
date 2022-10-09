@@ -146,7 +146,7 @@ export class AppserviceMock extends AppserviceMockBase {
 
 class IntentMock extends AppserviceMockBase {
     public readonly underlyingClient: MatrixClientMock;
-    constructor(private opts: IAppserviceMockOpts = {}, private id: string) {
+    constructor(private opts: IAppserviceMockOpts = {}, public userId: string) {
         super();
         this.underlyingClient = new MatrixClientMock(opts);
     }
@@ -177,9 +177,10 @@ class IntentMock extends AppserviceMockBase {
 }
 
 class MatrixClientMock extends AppserviceMockBase {
-
+    public readonly unstableApis: UnstableApis;
     constructor(private opts: IAppserviceMockOpts = {}) {
         super();
+        this.unstableApis = new UnstableApis();
     }
 
     public banUser(roomId: string, userId: string) {
@@ -275,5 +276,20 @@ class MatrixClientMock extends AppserviceMockBase {
 
     public async setPresenceStatus(presence: string, status: string) {
         this.funcCalled("setPresenceStatus", presence, status);
+    }
+
+    public async redactEvent(roomId: string, eventId: string, reason?: string | null) {
+        this.funcCalled("redactEvent", roomId, eventId, reason);
+    }
+}
+
+class UnstableApis extends AppserviceMockBase {
+
+    public async addReactionToEvent(roomId: string, eventId: string, emoji: string) {
+        this.funcCalled("addReactionToEvent", roomId, eventId, emoji);
+    }
+
+    public async getRelationsForEvent(roomId: string, eventId: string, relationType?: string, eventType?: string): Promise<any> {
+        this.funcCalled("getRelationsForEvent", roomId, eventId, relationType, eventType);
     }
 }

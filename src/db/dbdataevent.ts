@@ -19,7 +19,9 @@ import { IDbDataMany } from "./dbdatainterface";
 import { ISqlCommandParameters } from "./connector";
 
 export class DbEvent implements IDbDataMany {
+    /** Matrix ID of event. */
     public MatrixId: string;
+    /** Discord ID of the relevant message associated with this event. */
     public DiscordId: string;
     public GuildId: string;
     public ChannelId: string;
