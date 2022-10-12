@@ -516,12 +516,12 @@ export class DiscordBot {
         opts: Discord.MessageOptions,
         roomLookup: ChannelLookupResult,
         event: IMatrixEvent,
-        editEventId: string,
+        editedEventId: string,
     ): Promise<void> {
         const chan = roomLookup.channel;
         const botUser = roomLookup.botUser;
         const embed = embedSet.messageEmbed;
-        const oldMsg = await chan.messages.fetch(editEventId);
+        const oldMsg = await chan.messages.fetch(editedEventId);
         if (!oldMsg) {
             // old message not found, just sending this normally
             await this.send(embedSet, opts, roomLookup, event);
@@ -541,12 +541,12 @@ export class DiscordBot {
             }
         }
         try {
-            if (editEventId === this.lastEventIds[chan.id]) {
+            if (editedEventId === this.lastEventIds[chan.id]) {
                 log.info("Immediate edit, deleting and re-sending");
                 this.channelLock.set(chan.id);
                 // we need to delete the event off of the store
                 // else the delete bridges over back to matrix
-                const dbEvent = await this.store.Get(DbEvent, { discord_id: editEventId });
+                const dbEvent = await this.store.Get(DbEvent, { discord_id: editedEventId });
                 log.verbose("Event to delete", dbEvent);
                 if (dbEvent && dbEvent.Next()) {
                     await this.store.Delete(dbEvent);
@@ -566,7 +566,7 @@ export class DiscordBot {
                 });
                 return;
             }
-            const link = `https://discord.com/channels/${chan.guild.id}/${chan.id}/${editEventId}`;
+            const link = `https://discord.com/channels/${chan.guild.id}/${chan.id}/${editedEventId}`;
             embedSet.messageEmbed.description = `[Edit](${link}): ${embedSet.messageEmbed.description}`;
             await this.send(embedSet, opts, roomLookup, event);
         } catch (err) {
