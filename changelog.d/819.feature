@@ -1,1 +1,1 @@
-Bridge edits on matrix to native discord edits instead of deleting and resending.
+Bridge edits on Matrix to native Discord edits, instead of deleting and resending messages.
