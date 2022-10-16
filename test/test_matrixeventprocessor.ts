@@ -154,7 +154,7 @@ let KICKBAN_HANDLED = false;
 let MESSAGE_SENT = false;
 let MESSAGE_EDITED = false;
 
-function createMatrixEventProcessor(storeMockResults = 0, configBridge = new DiscordBridgeConfigBridge()) {
+function createMatrixEventProcessor(storeMockResults = 0, bridgeConfig = new DiscordBridgeConfig()) {
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
     KICKBAN_HANDLED = false;
@@ -172,8 +172,7 @@ function createMatrixEventProcessor(storeMockResults = 0, configBridge = new Dis
         OnMemberState: async () => { },
         OnUpdateUser: async () => { },
     };
-    const config = new DiscordBridgeConfig();
-    config.bridge = configBridge;
+    const config = bridgeConfig;
 
     const store = {
         Get: (a, b) => {
@@ -356,9 +355,9 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the topic to `Test Topic` on Matrix.");
         });
         it("Should not echo topic changes", async () => {
-            const bridge = new DiscordBridgeConfigBridge();
-            bridge.disableRoomTopicNotifications = true;
-            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const config = new DiscordBridgeConfig();
+            config.bridge.disableRoomTopicNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, config);
             const event = {
                 content: {
                     topic: "Test Topic",
@@ -382,9 +381,9 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` joined the room on Matrix.");
         });
         it("Should not echo joins", async () => {
-            const bridge = new DiscordBridgeConfigBridge();
-            bridge.disableJoinLeaveNotifications = true;
-            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const config = new DiscordBridgeConfig();
+            config.bridge.disableJoinLeaveNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, config);
             const event = {
                 content: {
                     membership: "join",
@@ -410,9 +409,9 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
         });
         it("Should not echo invites", async () => {
-            const bridge = new DiscordBridgeConfigBridge();
-            bridge.disableInviteNotifications = true;
-            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const config = new DiscordBridgeConfig();
+            config.bridge.disableInviteNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, config);
             const event = {
                 content: {
                     membership: "invite",
@@ -452,9 +451,9 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` left the room on Matrix.");
         });
         it("Should not echo leaves", async () => {
-            const bridge = new DiscordBridgeConfigBridge();
-            bridge.disableJoinLeaveNotifications = true;
-            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const config = new DiscordBridgeConfig();
+            config.bridge.disableJoinLeaveNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, config);
             const event = {
                 content: {
                     membership: "leave",
@@ -552,7 +551,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":nick -- :username";
 
-            const {processor} =  createMatrixEventProcessor(0, config.bridge);
+            const {processor} =  createMatrixEventProcessor(0, config);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -569,7 +568,7 @@ describe("MatrixEventProcessor", () => {
             config.discordProxy.namePattern = ":nick -------------- :username";
             config.discordProxy.fallbackNamePattern = "fallback :nick :username.";
 
-            const {processor} =  createMatrixEventProcessor(0, config.bridge);
+            const {processor} =  createMatrixEventProcessor(0, config);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -585,7 +584,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":nick -- :username";
 
-            const {processor} =  createMatrixEventProcessor(0, config.bridge);
+            const {processor} =  createMatrixEventProcessor(0, config);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -601,7 +600,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":displayname";
 
-            const {processor} =  createMatrixEventProcessor(0, config.bridge);
+            const {processor} =  createMatrixEventProcessor(0, config);
 
             const embeds = await processor.EventToEmbed({
                 content: {
@@ -617,7 +616,7 @@ describe("MatrixEventProcessor", () => {
             const config = new DiscordBridgeConfig();
             config.discordProxy.namePattern = ":displayname";
 
-            const {processor} =  createMatrixEventProcessor(0, config.bridge);
+            const {processor} =  createMatrixEventProcessor(0, config);
 
             const embeds = await processor.EventToEmbed({
                 content: {
