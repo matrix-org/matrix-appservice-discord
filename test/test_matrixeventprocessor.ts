@@ -344,9 +344,9 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the name to `Test Name` on Matrix.");
         });
         it("Should not echo name changes", async () => {
-            const config = new DiscordBridgeConfig();
-            config.bridge.disableRoomNameNotifications = true;
-            const {processor} =  createMatrixEventProcessor();
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableRoomNameNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
             const event = {
                 content: {
                     name: "Test Name",
@@ -453,8 +453,8 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
         });
         it("Should not echo kicks", async () => {
-            const config = new DiscordBridgeConfig();
-            config.bridge.disableKickNotifications = true;
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableKickNotifications = true;
             const {processor} =  createMatrixEventProcessor(0, bridge);
             const event = {
                 content: {
@@ -510,8 +510,8 @@ describe("MatrixEventProcessor", () => {
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
         });
         it("Should not echo bans", async () => {
-            const config = new DiscordBridgeConfig();
-            config.bridge.disableBanNotifications = true;
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableBanNotifications = true;
             const {processor} =  createMatrixEventProcessor(0, bridge);
             const event = {
                 content: {

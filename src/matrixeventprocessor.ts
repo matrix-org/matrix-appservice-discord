@@ -268,7 +268,7 @@ export class MatrixEventProcessor {
                 msg += `invited \`${event.state_key}\` to the room`;
             } else if (membership === "leave" && event.state_key !== event.sender && allowKick) {
                 msg += `kicked \`${event.state_key}\` from the room`;
-            } else if (membership === "leave" && allowJoinLeave) {
+            } else if (membership === "leave" && event.state_key === event.sender && allowJoinLeave) {
                 msg += "left the room";
             } else if (membership === "ban" && allowBan) {
                 msg += `banned \`${event.state_key}\` from the room`;
