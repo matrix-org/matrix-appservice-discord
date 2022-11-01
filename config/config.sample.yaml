@@ -34,8 +34,14 @@ bridge:
   disableReadReceipts: false
   # Disable Join Leave echos from matrix
   disableJoinLeaveNotifications: false
+  # Disable Ban echos from matrix
+  disableBanNotifications: false
+  # Disable Kick echos from matrix
+  disableKickNotifications: false
   # Disable Invite echos from matrix
   disableInviteNotifications: false
+# Disable Room Name change echos from matrix
+  disableRoomNameNotifications: false
   # Disable Room Topic echos from matrix
   disableRoomTopicNotifications: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)

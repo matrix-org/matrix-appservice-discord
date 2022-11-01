@@ -28,7 +28,13 @@ properties:
             type: "boolean"
           disableJoinLeaveNotifications:
             type: "boolean"
+          disableBanNotifications:
+            type: "boolean"
+          disableKickNotifications:
+            type: "boolean"
           disableInviteNotifications:
+            type: "boolean"
+          disableRoomNameNotifications:
             type: "boolean"
           disableRoomTopicNotifications:
             type: "boolean"
