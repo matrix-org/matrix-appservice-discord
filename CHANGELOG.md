@@ -1,3 +1,20 @@
+3.1.0 (2022-11-03)
+==================
+
+Features
+--------
+
+- Adds a config value, in order to disable forwarding room topic changes from Matrix to Discord (`disableRoomTopicNotifications`, false by default). ([\#836](https://github.com/matrix-org/matrix-appservice-discord/issues/836))
+
+
+Bugfixes
+--------
+
+- Include the domain name in the regular expression. ([\#834](https://github.com/matrix-org/matrix-appservice-discord/issues/834))
+- Remove usage of unreliable field `age` on events, allowing the bridge to work with non-Synapse homeserver implementations. ([\#842](https://github.com/matrix-org/matrix-appservice-discord/issues/842))
+- Prevent crashes when handling messages sent to voice channels. ([\#858](https://github.com/matrix-org/matrix-appservice-discord/issues/858))
+
+
 3.0.0 (2022-08-12)
 ==================
 

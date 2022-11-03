@@ -1,1 +1,0 @@
-Remove usage of unreliable field `age` on events, allowing the bridge to work with non-Synapse homeserver implementations.
