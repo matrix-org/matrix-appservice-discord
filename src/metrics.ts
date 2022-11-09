@@ -69,7 +69,7 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
     private remoteRequest: Histogram<string>;
     private matrixRequest: Histogram<string>;
     private requestsInFlight: Map<string, number>;
-    private matrixRequestStatus: Map<string, "success"|"failed">;
+    private matrixRequestStatus: Map<string, "success"|"failed"> = new Map();
     private httpServer: http.Server;
     private remoteMonthlyActiveUsers: Gauge<string>;
     private bridgeBlocked: Gauge<string>;
@@ -116,7 +116,7 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
 
         this.matrixRequest = new Histogram({
             help: "Histogram of processing durations of received Matrix messages",
-            labelNames: ["outcome"],
+            labelNames: ["outcome", "method"],
             name: "matrix_request_seconds",
         });
         register.registerMetric(this.matrixRequest);
@@ -208,7 +208,7 @@ export class PrometheusBridgeMetrics implements IBridgeMetrics {
         this.matrixRequestStatus.delete(context.uniqueId);
         this.matrixRequest.observe({
             method: context.functionName,
-            result: successFail,
+            outcome: successFail,
         }, timeMs);
     }
 
