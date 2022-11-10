@@ -1,3 +1,12 @@
+3.1.1 (2022-11-10)
+==================
+
+Bugfixes
+--------
+
+- Fix a crash caused by processing metrics for Matrix events. ([\#869](https://github.com/matrix-org/matrix-appservice-discord/issues/869))
+
+
 3.1.0 (2022-11-03)
 ==================
 
