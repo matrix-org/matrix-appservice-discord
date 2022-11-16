@@ -53,8 +53,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         } else {
             this.config = configOrFile;
         }
-        this.registeredUsersCache = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS);
-        this.txnsCompletionStatusCache = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS);
+        this.registeredUsersCache = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS, "registeredUsersCache");
+        this.txnsCompletionStatusCache = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS, "txnsCompletionStatusCache");
     }
 
     get roomStore() {

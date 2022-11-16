@@ -7,9 +7,13 @@ interface ITimedValue<V> {
 }
 
 export class TimedCache<K, V> implements Map<K, V> {
+    private static unnamedCacheNameCounter: number = 0;
     private readonly map: Map<K, ITimedValue<V>>;
 
-    public constructor(private readonly liveFor: number) {
+    public constructor(
+        private readonly liveFor: number,
+        private readonly cacheName: string|null = TimedCache.generateUnnamedCacheName()
+    ) {
         this.map = new Map();
     }
 
@@ -24,6 +28,7 @@ export class TimedCache<K, V> implements Map<K, V> {
         for (const [key, value] of this.map) {
             if(this.filterV(value) === undefined) {
                 this.map.delete(key);
+                log.silly(`removed entry with key='${key}' from cache '${this.cacheName}'`);
             }
         }
     }
@@ -113,6 +118,12 @@ export class TimedCache<K, V> implements Map<K, V> {
 
     get [Symbol.toStringTag](): "Map" {
         return "Map";
+    }
+
+    private static generateUnnamedCacheName(): string {
+        const cacheName = `unnamed-cache-${TimedCache.unnamedCacheNameCounter}`;
+        TimedCache.unnamedCacheNameCounter += 1;
+        return cacheName;
     }
 
     private filterV(v: ITimedValue<V>): V|undefined {
