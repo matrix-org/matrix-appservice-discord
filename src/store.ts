@@ -306,7 +306,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
             .catch((err) => {
                 log.warn("Failed to get registered user", err);
             });
-        // user in db = registered
+
         registered = row != null && row.user_id === userId;
         this.registeredUsersCache.set(userId, registered);
         log.verbose(`User registration status added to registeredUsersCache. 
@@ -337,9 +337,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
         }
         const row = await this.db.Get("SELECT txn_id FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
             .catch((err) => {
-                log.warn("Failed to get registered user", err);
+                log.warn("Failed to get txn", err);
             });
-        // tx in db = completed
+
         completed = row != null && row.txn_id === transactionId;
         this.txnsCompletionStatusCache.set(transactionId, completed);
         log.verbose(`Txn completion status added to txnsCompletionStatusCache. 
