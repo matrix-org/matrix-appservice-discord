@@ -43,8 +43,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
 
-    private registeredUsersCache: TimedCache<string, boolean>; // value = is registered
-    private txnsCompletionStatusCache: TimedCache<string, boolean>; // value = is transaction completed
+    private registeredUsersCache: TimedCache<string, boolean>;
+    private txnsCompletionStatusCache: TimedCache<string, boolean>;
 
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
