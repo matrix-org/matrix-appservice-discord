@@ -29,8 +29,8 @@ import { UserActivitySet, UserActivity } from "matrix-appservice-bridge";
 import {TimedCache} from "./structures/timedcache";
 const log = new Log("DiscordStore");
 
-const REGISTERED_USERS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
-const TX_IDS_CACHE_LIFETIME_MILLIS = 15 * 60 * 1000; // 15 minutes
+const REGISTERED_USERS_CACHE_LIFETIME_MILLIS = 60 * 60 * 1000; // 60 minutes
+const TX_IDS_CACHE_LIFETIME_MILLIS = 10 * 60 * 1000; // 10 minutes
 const CACHE_CLEANUP_MILLIS = 30 * 1000; // 30 seconds
 
 export const CURRENT_SCHEMA = 12;
