@@ -295,7 +295,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         if(registered !== undefined) {
             return registered;
         }
-        const row = await this.db.Get("SELECT FROM registered_users WHERE user_id = $userId;", {userId})
+        const row = await this.db.Get("SELECT user_id FROM registered_users WHERE user_id = $userId;", {userId})
             .catch((err) => {
                 log.warn("Failed to get registered user", err);
             });
@@ -319,7 +319,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
         if(completed !== undefined) {
             return completed;
         }
-        const row = await this.db.Get("SELECT FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
+        const row = await this.db.Get("SELECT txn_id FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
             .catch((err) => {
                 log.warn("Failed to get registered user", err);
             });
