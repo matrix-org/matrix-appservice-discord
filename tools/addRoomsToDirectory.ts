@@ -99,6 +99,7 @@ async function run(): Promise<void> {
     } catch (e) {
         log.error(`Failed to run script`, e);
     }
+    await store?.close();
 }
 
 run(); // tslint:disable-line no-floating-promises

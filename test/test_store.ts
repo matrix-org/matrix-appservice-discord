@@ -27,6 +27,7 @@ describe("DiscordStore", () => {
         it("can create a db", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
+            await store.close();
         });
     });
     describe("addUserToken", () => {
@@ -34,6 +35,7 @@ describe("DiscordStore", () => {
             const store = new DiscordStore(":memory:");
             await store.init();
             await store.addUserToken("userid", "token", "discordid");
+            await store.close();
         });
     });
     describe("Get|Insert|Update<DbEmoji>", () => {
@@ -46,6 +48,7 @@ describe("DiscordStore", () => {
             emoji.Name = "TestEmoji";
             emoji.MxcUrl = "TestUrl";
             await store.Insert(emoji);
+            await store.close();
         });
         it("should get successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -59,12 +62,14 @@ describe("DiscordStore", () => {
             const getEmoji = await store.Get(DbEmoji, {emoji_id: "123"});
             expect(getEmoji!.Name).to.equal("TestEmoji");
             expect(getEmoji!.MxcUrl).to.equal("TestUrl");
+            await store.close();
         });
         it("should not return nonexistant emoji", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
             const getEmoji = await store.Get(DbEmoji, {emoji_id: "123"});
             expect(getEmoji!.Result).to.be.false;
+            await store.close();
         });
         it("should update successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -84,6 +89,7 @@ describe("DiscordStore", () => {
             expect(getEmoji!.Name).to.equal("TestEmoji2");
             expect(getEmoji!.MxcUrl).to.equal("NewURL");
             expect(getEmoji!.CreatedAt).to.not.equal(getEmoji!.UpdatedAt);
+            await store.close();
         });
     });
     describe("Get|Insert|Delete<DbEvent>", () => {
@@ -96,6 +102,7 @@ describe("DiscordStore", () => {
             event.GuildId = "123";
             event.ChannelId = "123";
             await store.Insert(event);
+            await store.close();
         });
         it("should get successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -118,6 +125,7 @@ describe("DiscordStore", () => {
             expect(getEventMatrix!.DiscordId).to.equal("456");
             expect(getEventMatrix!.GuildId).to.equal("123");
             expect(getEventMatrix!.ChannelId).to.equal("123");
+            await store.close();
         });
         const MSG_COUNT = 5;
         it("should get multiple discord msgs successfully", async () => {
@@ -133,6 +141,7 @@ describe("DiscordStore", () => {
             }
             const getEventDiscord = await store.Get(DbEvent, {matrix_id: "123"});
             expect(getEventDiscord!.ResultCount).to.equal(MSG_COUNT);
+            await store.close();
         });
         it("should get multiple matrix msgs successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -147,12 +156,14 @@ describe("DiscordStore", () => {
             }
             const getEventMatrix = await store.Get(DbEvent, {discord_id: "456"});
             expect(getEventMatrix!.ResultCount).to.equal(MSG_COUNT);
+            await store.close();
         });
         it("should not return nonexistant event", async () => {
             const store = new DiscordStore(":memory:");
             await store.init();
             const getMessage = await store.Get(DbEvent, {matrix_id: "123"});
             expect(getMessage!.Result).to.be.false;
+            await store.close();
         });
         it("should delete successfully", async () => {
             const store = new DiscordStore(":memory:");
@@ -167,6 +178,7 @@ describe("DiscordStore", () => {
             const getEvent = await store.Get(DbEvent, {matrix_id: "123"});
             getEvent!.Next();
             expect(getEvent!.Result).to.be.false;
+            await store.close();
         });
     });
 });

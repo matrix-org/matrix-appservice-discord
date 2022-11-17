@@ -45,6 +45,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     private registeredUsersCache: TimedCache<string, boolean>;
     private txnsCompletionStatusCache: TimedCache<string, boolean>;
+    private cacheCleanupIntervalHandle: NodeJS.Timeout;
 
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
@@ -133,13 +134,14 @@ export class DiscordStore implements IAppserviceStorageProvider {
         }
         log.info("Updated database to the latest schema");
 
-        setInterval(() => {
+        this.cacheCleanupIntervalHandle = setInterval(() => {
             this.txnsCompletionStatusCache.cleanUp();
             this.registeredUsersCache.cleanUp();
         }, CACHE_CLEANUP_MILLIS);
     }
 
     public async close() {
+        clearInterval(this.cacheCleanupIntervalHandle);
         await this.db.Close();
     }
 
