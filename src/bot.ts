@@ -680,6 +680,42 @@ export class DiscordBot {
         }
     }
 
+    public async ProcessMatrixReaction(event: IMatrixEvent) {
+        if (!this.config.bridge.enableMatrixReactions) {
+            return;
+        }
+        log.info(`Got reaction request`);
+        log.verbose(`Event:`, event);
+
+        if (!event.content) return;
+        if (!event.content['m.relates_to']) return;
+
+        const relatesTo = event.content['m.relates_to'];
+
+        const storeEvent = await this.store.Get(DbEvent, { matrix_id: `${relatesTo.event_id};${event.room_id}` });
+
+        if (!storeEvent || !storeEvent.Result) {
+            log.warn(`Could not react because the event was not in the store.`);
+            return;
+        }
+        log.info(`React event matched ${storeEvent.ResultCount} entries`);
+        while (storeEvent.Next()) {
+            log.info(`Reacting to discord msg ${storeEvent.DiscordId}`);
+            const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
+            const chan = result.channel;
+
+            const msg = await chan.messages.fetch(storeEvent.DiscordId);
+            try {
+                this.channelLock.set(msg.channel.id);
+                await msg.react(relatesTo.key);
+                this.channelLock.release(msg.channel.id);
+                log.info(`Reacted to message`);
+            } catch (ex) {
+                log.warn(`Failed to react to message`, ex);
+            }
+        }
+    }
+
     public OnUserQuery(userId: string): boolean {
         return false;
     }

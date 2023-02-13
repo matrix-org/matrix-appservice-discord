@@ -133,6 +133,9 @@ export class MatrixEventProcessor {
         } else if (event.type === "m.room.redaction" && remoteRoom) {
             await this.discord.ProcessMatrixRedact(event);
             return;
+        } else if (event.type === "m.reaction" && remoteRoom) {
+            await this.discord.ProcessMatrixReaction(event);
+            return;
         } else if (event.type === "m.room.message" || event.type === "m.sticker") {
             log.verbose(`Got ${event.type} event`);
             if (isBotCommand(event)) {
