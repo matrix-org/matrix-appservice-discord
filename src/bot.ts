@@ -19,6 +19,7 @@ import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
+import { DbReaction } from "./db/dbdatareaction";
 import { DiscordMessageProcessor } from "./discordmessageprocessor";
 import { IDiscordMessageParserResult } from "@mx-puppet/matrix-discord-parser";
 import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
@@ -656,12 +657,20 @@ export class DiscordBot {
         log.info(`Got redact request for ${event.redacts}`);
         log.verbose(`Event:`, event);
 
-        const storeEvent = await this.store.Get(DbEvent, {matrix_id: `${event.redacts};${event.room_id}`});
+        const storeEvent = await this.store.Get(DbEvent, { matrix_id: `${event.redacts};${event.room_id}` });
+        const storeReaction = await this.store.Get(DbReaction, { matrix_id: `${event.redacts};${event.room_id}` });
 
-        if (!storeEvent || !storeEvent.Result) {
-            log.warn(`Could not redact because the event was not in the store.`);
-            return;
+        if (storeEvent && storeEvent.Result) {
+            return this.ProcessMatrixRedactEvent(event, storeEvent);
+        } else if (storeReaction && storeReaction.Result) {
+            return this.ProcessMatrixRedactReaction(event, storeReaction);
         }
+
+        log.warn(`Could not redact because the event was not in the store.`);
+        return;
+    }
+
+    public async ProcessMatrixRedactEvent(event: IMatrixEvent, storeEvent: DbEvent) {
         log.info(`Redact event matched ${storeEvent.ResultCount} entries`);
         while (storeEvent.Next()) {
             log.info(`Deleting discord msg ${storeEvent.DiscordId}`);
@@ -680,6 +689,31 @@ export class DiscordBot {
         }
     }
 
+    public async ProcessMatrixRedactReaction(event: IMatrixEvent, storeReaction: DbReaction) {
+        log.info(`Redact reaction matched ${storeReaction.ResultCount} entries`);
+        while (storeReaction.Next()) {
+            log.info(`Deleting discord reaction ${storeReaction.DiscordId}`);
+            const result = await this.LookupRoom(storeReaction.GuildId, storeReaction.ChannelId, event.sender);
+            const chan = result.channel;
+
+            const msg = await chan.messages.fetch(storeReaction.DiscordId);
+            try {
+                this.channelLock.set(msg.channel.id);
+
+                const reaction = msg.reactions.resolve(storeReaction.Emoji)
+                if (!reaction) {
+                    log.warn(`Could not find reaction for emoji ${storeReaction.Emoji}`)
+                    continue
+                }
+                await reaction.users.remove()
+                this.channelLock.release(msg.channel.id);
+                log.info(`Deleted reaction`);
+            } catch (ex) {
+                log.warn(`Failed to delete message`, ex);
+            }
+        }
+    }
+
     public async ProcessMatrixReaction(event: IMatrixEvent) {
         if (!this.config.bridge.enableMatrixReactions) {
             return;
@@ -692,7 +726,13 @@ export class DiscordBot {
 
         const relatesTo = event.content['m.relates_to'];
 
-        const storeEvent = await this.store.Get(DbEvent, { matrix_id: `${relatesTo.event_id};${event.room_id}` });
+        const matrixID = `${relatesTo.event_id};${event.room_id}`
+        const storeEvent = await this.store.Get(DbEvent, { matrix_id: matrixID });
+        const storeReaction = await this.store.Get(DbReaction, { matrix_id: matrixID, emoji: relatesTo.key });
+
+        if (storeReaction && storeReaction.Result) {
+            log.verbose(`ignoring duplicate reaction`)
+        }
 
         if (!storeEvent || !storeEvent.Result) {
             log.warn(`Could not react because the event was not in the store.`);
@@ -712,6 +752,19 @@ export class DiscordBot {
                 log.info(`Reacted to message`);
             } catch (ex) {
                 log.warn(`Failed to react to message`, ex);
+            }
+
+            try {
+                const dbReaction = new DbReaction()
+                dbReaction.MatrixId = `${event.event_id};${event.room_id}`;
+                dbReaction.DiscordId = storeEvent.DiscordId;
+                dbReaction.ChannelId = storeEvent.ChannelId;
+                dbReaction.GuildId = storeEvent.GuildId;
+                dbReaction.Emoji = relatesTo.key;
+                await this.store.Insert(dbReaction);
+            } catch (ex) {
+                log.warn(`Failed to store reaction event`)
+                log.verbose(ex)
             }
         }
     }

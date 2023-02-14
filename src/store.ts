@@ -27,7 +27,7 @@ import { DbUserStore } from "./db/userstore";
 import { IAppserviceStorageProvider } from "matrix-bot-sdk";
 import { UserActivitySet, UserActivity } from "matrix-appservice-bridge";
 const log = new Log("DiscordStore");
-export const CURRENT_SCHEMA = 12;
+export const CURRENT_SCHEMA = 13;
 /**
  * Stores data for specific users and data not specific to rooms.
  */
