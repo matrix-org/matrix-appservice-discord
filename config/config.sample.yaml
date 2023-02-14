@@ -38,7 +38,7 @@ bridge:
   disableInviteNotifications: false
   # Disable Room Topic echos from matrix
   disableRoomTopicNotifications: false
-  # Enable reactions from matrix to discord. This will only respond to
+  # Enable reactions from Matrix to Discord. This will only respond to
   # the first reaction of each emoji and is intended for cases where
   # the bridge is used by a single matrix used
   enableMatrixReactions: false

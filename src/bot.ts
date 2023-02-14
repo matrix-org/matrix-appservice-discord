@@ -700,7 +700,7 @@ export class DiscordBot {
         }
         log.info(`React event matched ${storeEvent.ResultCount} entries`);
         while (storeEvent.Next()) {
-            log.info(`Reacting to discord msg ${storeEvent.DiscordId}`);
+            log.info(`Reacting to Discord msg ${storeEvent.DiscordId}`);
             const result = await this.LookupRoom(storeEvent.GuildId, storeEvent.ChannelId, event.sender);
             const chan = result.channel;
 
