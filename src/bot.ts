@@ -726,13 +726,13 @@ export class DiscordBot {
 
         const relatesTo = event.content['m.relates_to'];
 
+        let emoji = relatesTo.key
+        if (emoji.indexOf("👍") >=0  ) {
+            emoji = "👍"
+        } 
+
         const matrixID = `${relatesTo.event_id};${event.room_id}`
         const storeEvent = await this.store.Get(DbEvent, { matrix_id: matrixID });
-        const storeReaction = await this.store.Get(DbReaction, { matrix_id: matrixID, emoji: relatesTo.key });
-
-        if (storeReaction && storeReaction.Result) {
-            log.verbose(`ignoring duplicate reaction`)
-        }
 
         if (!storeEvent || !storeEvent.Result) {
             log.warn(`Could not react because the event was not in the store.`);
@@ -747,7 +747,7 @@ export class DiscordBot {
             const msg = await chan.messages.fetch(storeEvent.DiscordId);
             try {
                 this.channelLock.set(msg.channel.id);
-                await msg.react(relatesTo.key);
+                await msg.react(emoji);
                 this.channelLock.release(msg.channel.id);
                 log.info(`Reacted to message`);
             } catch (ex) {
@@ -760,7 +760,7 @@ export class DiscordBot {
                 dbReaction.DiscordId = storeEvent.DiscordId;
                 dbReaction.ChannelId = storeEvent.ChannelId;
                 dbReaction.GuildId = storeEvent.GuildId;
-                dbReaction.Emoji = relatesTo.key;
+                dbReaction.Emoji = emoji;
                 await this.store.Insert(dbReaction);
             } catch (ex) {
                 log.warn(`Failed to store reaction event`)
