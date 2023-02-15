@@ -213,6 +213,9 @@ function createMatrixEventProcessor(storeMockResults = 0, configBridge = new Dis
         ProcessMatrixRedact: async (evt) => {
             MESSAGE_PROCCESS = "redacted";
         },
+        ProcessMatrixReaction: async (evt) => {
+            MESSAGE_PROCCESS = "reacted";
+        },
         UserSyncroniser: us,
         edit: async (embedSet, opts, roomLookup, event) => {
             MESSAGE_EDITED = true;
@@ -1044,6 +1047,22 @@ This is the reply`,
             await processor.OnEvent(buildRequest({
                     type: "m.room.redaction"}), context);
             expect(MESSAGE_PROCCESS).equals("");
+        });
+        it("should handle reactions from matrix", async () => {
+            const { processor } = createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: true,
+                },
+            };
+            await processor.OnEvent(buildRequest({
+                type: "m.reaction"
+            }), [{
+                id: "foo",
+                matrix: {} as any,
+                remote: {} as any,
+            }]);
+            expect(MESSAGE_PROCCESS).equals("reacted");
         });
         it("should process regular messages", async () => {
             const {processor} =  createMatrixEventProcessor();
