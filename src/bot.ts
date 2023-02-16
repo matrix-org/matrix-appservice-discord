@@ -1107,13 +1107,14 @@ export class DiscordBot {
                     formatted_body: result.formattedBody,
                     msgtype: result.msgtype,
                 };
+                let relatesTo = null;
                 if (msg.reference) {
                     const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.reference?.messageID})
                     if (storeEvent && storeEvent.Result)
                     {
                         while(storeEvent.Next())
                         {
-                            sendContent["m.relates_to"] = {
+                            relatesTo = {
                                 "m.in_reply_to": {
                                     event_id: storeEvent.MatrixId.split(";")[0]
                                 }
@@ -1130,12 +1131,13 @@ export class DiscordBot {
                         formatted_body: result.formattedBody,
                         msgtype: result.msgtype,
                     };
-                    sendContent["m.relates_to"] = {
-                        event_id: editEventId,
-                        rel_type: "m.replace",
-                    };
+                    if (relatesTo === null) relatesTo = {}
+                    relatesTo.event_id = editEventId;
+                    relatesTo.rel_type = "m.replace";
                 }
-                const trySend = async () =>  intent.sendEvent(room, sendContent);
+                if (relatesTo !== null) sendContent["m.relates_to"] = relatesTo;
+
+                const trySend = async () => intent.sendEvent(room, sendContent);
                 const afterSend = async (eventId) => {
                     this.lastEventIds[room] = eventId;
                     const evt = new DbEvent();
