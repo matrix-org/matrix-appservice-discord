@@ -1107,7 +1107,7 @@ export class DiscordBot {
                     formatted_body: result.formattedBody,
                     msgtype: result.msgtype,
                 };
-                let relatesTo = null;
+                let relatesTo: any = null;
                 if (msg.reference) {
                     const storeEvent = await this.store.Get(DbEvent, {discord_id: msg.reference?.messageID})
                     if (storeEvent && storeEvent.Result)
