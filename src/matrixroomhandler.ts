@@ -182,8 +182,8 @@ export class MatrixRoomHandler {
                     regexp: "[A-Za-z0-9_\-]{2,100}",
                 },
                 discriminator: {
-                    placeholder: "1234",
-                    regexp: "[0-9]{4}",
+                    placeholder: "0",
+                    regexp: "[0-9]{1,4}",
                 },
                 guild_id: {
                     placeholder: "",
