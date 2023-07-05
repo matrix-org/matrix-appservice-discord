@@ -1197,16 +1197,6 @@ export class DiscordBot {
         const reactionName = reaction.emoji.name;
         log.verbose(`Got message reaction add event for ${message.id} with ${reactionName}`);
 
-        let rooms: string[];
-
-        try {
-            rooms = await this.channelSync.GetRoomIdsFromChannel(message.channel);
-        } catch (err) {
-            log.verbose(`No bridged rooms to forward reaction to. Reaction Event: ${reaction}`);
-            MetricPeg.get.requestOutcome(message.id, true, "dropped");
-            return;
-        }
-
         const intent = this.GetIntentFromDiscordMember(user);
         await intent.ensureRegistered();
         this.userActivity.updateUserActivity(intent.userId);
@@ -1221,25 +1211,22 @@ export class DiscordBot {
         }
 
         while (storeEvent.Next()) {
-            const matrixIds = storeEvent.MatrixId.split(";");
+            const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+            const reactionEventId = await intent.underlyingClient.unstableApis.addReactionToEvent(
+                roomId,
+                eventId,
+                reaction.emoji.id ? `:${reactionName}:` : reactionName
+            );
 
-            for (const room of rooms) {
-                const reactionEventId = await intent.underlyingClient.unstableApis.addReactionToEvent(
-                    room,
-                    matrixIds[0],
-                    reaction.emoji.id ? `:${reactionName}:` : reactionName
-                );
-
-                const event = new DbEvent();
-                event.MatrixId = `${reactionEventId};${room}`;
-                event.DiscordId = message.id;
-                event.ChannelId = message.channel.id;
-                if (message.guild) {
-                    event.GuildId = message.guild.id;
-                }
-
-                await this.store.Insert(event);
+            const event = new DbEvent();
+            event.MatrixId = `${reactionEventId};${roomId}`;
+            event.DiscordId = message.id;
+            event.ChannelId = message.channel.id;
+            if (message.guild) {
+                event.GuildId = message.guild.id;
             }
+
+            await this.store.Insert(event);
         }
     }
 
