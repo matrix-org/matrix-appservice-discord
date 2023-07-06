@@ -476,6 +476,9 @@ describe("DiscordBot", () => {
             discord.userActivity = {
                 updateUserActivity: () => { }
             };
+            discord.userSync = {
+                JoinRoom: async () => { },
+            };
             discord.GetIntentFromDiscordMember = () => {
                 return mockBridge.getIntent(author.id);
             }

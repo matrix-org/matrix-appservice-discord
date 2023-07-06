@@ -1197,10 +1197,6 @@ export class DiscordBot {
         const reactionName = reaction.emoji.name;
         log.verbose(`Got message reaction add event for ${message.id} with ${reactionName}`);
 
-        const intent = this.GetIntentFromDiscordMember(user);
-        await intent.ensureRegistered();
-        this.userActivity.updateUserActivity(intent.userId);
-
         const storeEvent = await this.store.Get(DbEvent, {
             discord_id: message.id
         });
@@ -1210,8 +1206,21 @@ export class DiscordBot {
             return;
         }
 
+        const intent = this.GetIntentFromDiscordMember(user);
+        await intent.ensureRegistered();
+        this.userActivity.updateUserActivity(intent.userId);
+
         while (storeEvent.Next()) {
             const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+
+            // If the user is partial, only forward the event for rooms they're already in.
+            if (user.partial) {
+                log.warn(`Skipping reaction add for user with Discord ID ${user.id} in ${roomId}. User was partial.`);
+                continue;
+            }
+
+            await this.userSync.JoinRoom(user, roomId);
+
             const reactionEventId = await intent.underlyingClient.unstableApis.addReactionToEvent(
                 roomId,
                 eventId,
@@ -1234,10 +1243,6 @@ export class DiscordBot {
         const message = reaction.message;
         log.verbose(`Got message reaction remove event for ${message.id} with ${reaction.emoji.name}`);
 
-        const intent = this.GetIntentFromDiscordMember(user);
-        await intent.ensureRegistered();
-        this.userActivity.updateUserActivity(intent.userId);
-
         const storeEvent = await this.store.Get(DbEvent, {
             discord_id: message.id,
         });
@@ -1247,8 +1252,21 @@ export class DiscordBot {
             return;
         }
 
+        const intent = this.GetIntentFromDiscordMember(user);
+        await intent.ensureRegistered();
+        this.userActivity.updateUserActivity(intent.userId);
+
         while (storeEvent.Next()) {
             const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+
+            // If the user is partial, only forward the event for rooms they're already in.
+            if (user.partial) {
+                log.warn(`Skipping reaction remove for user with Discord ID ${user.id} in ${roomId}. User was partial.`);
+                continue;
+            }
+
+            await this.userSync.JoinRoom(user, roomId);
+
             const underlyingClient = intent.underlyingClient;
 
             const { chunk } = await underlyingClient.unstableApis.getRelationsForEvent(
