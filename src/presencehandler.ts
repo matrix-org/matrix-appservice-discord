@@ -72,7 +72,7 @@ export class PresenceHandler {
         if (indexOfPresence !== -1) {
             this.presenceQueue.splice(indexOfPresence, 1);
         }
-        log.verbose(`Adding ${presence.userID} (${presence.user?.username}) to the presence queue`);
+        log.silly(`Adding ${presence.userID} (${presence.user?.username}) to the presence queue`);
         this.presenceQueue.push(presence);
         MetricPeg.get.setPresenceCount(this.presenceQueue.length);
     }
@@ -107,7 +107,7 @@ export class PresenceHandler {
             if (!proccessed) {
                 this.presenceQueue.push(presence);
             } else {
-                log.verbose(`Dropping ${presence.userID} from the presence queue.`);
+                log.silly(`Dropping ${presence.userID} from the presence queue.`);
                 MetricPeg.get.setPresenceCount(this.presenceQueue.length);
             }
         }
