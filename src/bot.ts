@@ -471,7 +471,7 @@ export class DiscordBot {
                 throw new Error(`Guild "${server}" not found`);
             }
             const channel = guild.channels.resolve(room);
-            if (channel && channel.type === "text") {
+            if (channel && ["text", "news"].includes(channel.type)) {
                 if (hasSender) {
                     const permissions = guild.me && channel.permissionsFor(guild.me);
                     if (!permissions || !permissions.has("VIEW_CHANNEL") || !permissions.has("SEND_MESSAGES")) {
