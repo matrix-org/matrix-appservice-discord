@@ -25,11 +25,11 @@ export class MockMessage {
     public attachments = new MockCollection<string, any>();
     public embeds: any[] = [];
     public content = "";
-    public channel: Discord.TextChannel | undefined;
+    public channel: Discord.TextChannel | Discord.NewsChannel | undefined;
     public guild: Discord.Guild | undefined;
     public author: MockUser;
     public mentions: any = {};
-    constructor(channel?: Discord.TextChannel) {
+    constructor(channel?: Discord.TextChannel | Discord.NewsChannel) {
         this.mentions.everyone = false;
         this.channel = channel;
         if (channel && channel.guild) {

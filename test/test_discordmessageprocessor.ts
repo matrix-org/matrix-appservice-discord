@@ -20,7 +20,7 @@ import { DiscordBot } from "../src/bot";
 import { MockGuild } from "./mocks/guild";
 import { MockMember } from "./mocks/member";
 import { MockMessage } from "./mocks/message";
-import { MockTextChannel } from "./mocks/channel";
+import { MockTextChannel, MockNewsChannel } from "./mocks/channel";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -208,7 +208,7 @@ describe("DiscordMessageProcessor", () => {
             expect(result.body).to.equal("Hello <#3333333>");
             expect(result.formattedBody).to.equal("Hello &lt;#3333333&gt;");
         });
-        it("processes channels correctly", async () => {
+        it("processes text channels correctly", async () => {
             const processor = new DiscordMessageProcessor(
                 "localhost", bot as DiscordBot);
             const guild: any = new MockGuild("123", []);
@@ -221,6 +221,20 @@ describe("DiscordMessageProcessor", () => {
             expect(result.body).to.equal("Hello #TestChannel");
             expect(result.formattedBody).to.equal("Hello <a href=\"https://matrix.to/#/#_discord_123" +
                 "_456:localhost\">#TestChannel</a>");
+        });
+        it("processes news channels correctly", async () => {
+            const processor = new DiscordMessageProcessor(
+                "localhost", bot as DiscordBot);
+            const guild: any = new MockGuild("123", []);
+            const channel = new MockNewsChannel(guild, {id: "456", name: "TestNewsChannel"});
+            guild.channels.cache.set("456", channel);
+            const msg = new MockMessage(channel) as any;
+            msg.embeds = [];
+            msg.content = "Hello <#456>";
+            const result = await processor.FormatMessage(msg);
+            expect(result.body).to.equal("Hello #TestNewsChannel");
+            expect(result.formattedBody).to.equal("Hello <a href=\"https://matrix.to/#/#_discord_123" +
+                "_456:localhost\">#TestNewsChannel</a>");
         });
         it("processes channels without alias correctly", async () => {
             const processor = new DiscordMessageProcessor(

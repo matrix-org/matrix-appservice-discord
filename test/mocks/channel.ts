@@ -16,7 +16,7 @@ limitations under the License.
 
 import {MockMember} from "./member";
 import {MockCollection} from "./collection";
-import {Permissions, PermissionResolvable, TextChannel} from "better-discord.js";
+import {Permissions, PermissionResolvable, TextChannel, NewsChannel} from "better-discord.js";
 import { MockGuild } from "./guild";
 
 // we are a test file and thus need those
@@ -43,6 +43,19 @@ export class MockChannel {
 }
 
 export class MockTextChannel extends TextChannel {
+    constructor(guild?: MockGuild, channelData: any = {}) {
+        // Mock the nessacery
+        super(guild || {
+            client: {
+                options: {
+                    messageCacheMaxSize: -1,
+                },
+            },
+        } as any, channelData);
+    }
+}
+
+export class MockNewsChannel extends NewsChannel {
     constructor(guild?: MockGuild, channelData: any = {}) {
         // Mock the nessacery
         super(guild || {
