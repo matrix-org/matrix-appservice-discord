@@ -32,6 +32,8 @@ properties:
             type: "boolean"
           disableRoomTopicNotifications:
             type: "boolean"
+          enableMatrixReactions:
+            type: "boolean"
           userActivity:
             type: "object"
             required: ["minUserActiveDays", "inactiveAfterDays"]

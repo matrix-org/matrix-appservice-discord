@@ -98,6 +98,7 @@ export class DiscordBridgeConfigBridge {
     public disableJoinLeaveNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
     public disableRoomTopicNotifications: boolean = false;
+    public enableMatrixReactions: boolean = false;
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;
     public userLimit: number|null = null;

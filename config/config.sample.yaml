@@ -38,6 +38,10 @@ bridge:
   disableInviteNotifications: false
   # Disable Room Topic echos from matrix
   disableRoomTopicNotifications: false
+  # Enable reactions from Matrix to Discord. This will only respond to
+  # the first reaction of each emoji and is intended for cases where
+  # the bridge is used by a single matrix user
+  enableMatrixReactions: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)
   determineCodeLanguage: false
   # MXID of an admin user that will be PMd if the bridge experiences problems. Optional
