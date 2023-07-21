@@ -544,6 +544,15 @@ describe("UserSyncroniser", () => {
             const state = await userSync.GetUserStateForDiscordUser(member as any);
             expect(state.displayName).to.be.equal("username");
         });
+        it("Will will obay nick pattern", async () => {
+            const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")], { nickPattern: ":nick (Discord)" });
+            const member = new MockUser(
+                "123456",
+                "username",
+                "1234");
+            const state = await userSync.GetUserStateForDiscordUser(member as any);
+            expect(state.displayName).to.be.equal("username (Discord)");
+        });
         it("Will handle webhooks", async () => {
             const {userSync, bridge} = CreateUserSync([new RemoteUser("123456")]);
             const member = new MockUser(
