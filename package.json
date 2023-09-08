@@ -5,7 +5,7 @@
   "main": "discordas.js",
   "engines": {
     "npm": "please-use-yarn",
-    "node": ">=16 <=18"
+    "node": ">=18 <=20"
   },
   "scripts": {
     "test": "mocha -r ts-node/register test/config.ts test/test_*.ts test/**/test_*.ts",
