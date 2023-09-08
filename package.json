@@ -49,7 +49,7 @@
     "escape-string-regexp": "^4.0.0",
     "js-yaml": "^3.14.0",
     "marked": "^1.2.2",
-    "matrix-appservice-bridge": "^5.0.0",
+    "matrix-appservice-bridge": "^9.0.1",
     "mime": "^2.4.6",
     "p-queue": "^6.4.0",
     "pg-promise": "^10.5.6",
