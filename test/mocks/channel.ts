@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import {Permissions, PermissionResolvable, TextChannel} from "@mx-puppet/better-discord.js";
 import {MockMember} from "./member";
 import {MockCollection} from "./collection";
-import {Permissions, PermissionResolvable, TextChannel} from "better-discord.js";
 import { MockGuild } from "./guild";
 
 // we are a test file and thus need those

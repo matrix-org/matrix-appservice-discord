@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "better-discord.js";
+import * as Discord from "@mx-puppet/better-discord.js";
 import { IMatrixMessage } from "./matrixtypes";
 import { Util } from "./util";
 import { DiscordBot } from "./bot";

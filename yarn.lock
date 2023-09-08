@@ -338,6 +338,21 @@
     https-proxy-agent "^5.0.1"
     node-downloader-helper "^2.1.5"
 
+"@mx-puppet/better-discord.js@^12.5.1":
+  version "12.5.1"
+  resolved "https://gitlab.com/api/v4/projects/35796068/packages/npm/@mx-puppet/better-discord.js/-/@mx-puppet/better-discord.js-12.5.1.tgz#532e01241dbcb0f2769f1b9a7cde313d30101173"
+  integrity sha1-Uy4BJB28sPJ2nxuafN4xPTAQEXM=
+  dependencies:
+    "@discordjs/collection" "^0.1.6"
+    "@discordjs/form-data" "^3.0.1"
+    abort-controller "^3.0.0"
+    node-fetch "^2.6.1"
+    prism-media "^1.2.2"
+    setimmediate "^1.0.5"
+    tweetnacl "^1.0.3"
+    useragent-generator "^1.1.1-amkt-22079-finish.0"
+    ws "^7.3.1"
+
 "@mx-puppet/discord-markdown@2.3.1":
   version "2.3.1"
   resolved "https://gitlab.com/api/v4/projects/35809145/packages/npm/@mx-puppet/discord-markdown/-/@mx-puppet/discord-markdown-2.3.1.tgz#52b0e8bb808a1202602899af67939b049dd42402"
@@ -347,7 +362,7 @@
     node-emoji "^1.10.0"
     simple-markdown "^0.7.2"
 
-"@mx-puppet/matrix-discord-parser@0.1.10":
+"@mx-puppet/matrix-discord-parser@^0.1.10":
   version "0.1.10"
   resolved "https://gitlab.com/api/v4/projects/35066311/packages/npm/@mx-puppet/matrix-discord-parser/-/@mx-puppet/matrix-discord-parser-0.1.10.tgz#0a37a3f9430ff7c29512d29882e25ae738a31283"
   integrity sha1-Cjej+UMP98KVEtKYguJa5zijEoM=
@@ -930,20 +945,6 @@ bcrypt-pbkdf@^1.0.0:
   integrity sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w==
   dependencies:
     tweetnacl "^0.14.3"
-
-"better-discord.js@github:matrix-org/better-discord.js#5024781db755259e88abe915630b7d5b3ba5f48f":
-  version "12.5.1"
-  resolved "https://codeload.github.com/matrix-org/better-discord.js/tar.gz/5024781db755259e88abe915630b7d5b3ba5f48f"
-  dependencies:
-    "@discordjs/collection" "^0.1.6"
-    "@discordjs/form-data" "^3.0.1"
-    abort-controller "^3.0.0"
-    node-fetch "^2.6.1"
-    prism-media "^1.2.2"
-    setimmediate "^1.0.5"
-    tweetnacl "^1.0.3"
-    useragent-generator "^1.1.1-amkt-22079-finish.0"
-    ws "^7.3.1"
 
 better-sqlite3@^8.6.0:
   version "8.6.0"

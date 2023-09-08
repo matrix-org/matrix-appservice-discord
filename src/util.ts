@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { Permissions } from "@mx-puppet/better-discord.js";
 import * as http from "http";
 import * as https from "https";
 import { Buffer } from "buffer";
-import { Permissions } from "better-discord.js";
 import { DiscordBridgeConfig } from "./config";
 import { IMatrixEvent } from "./matrixtypes";
 
