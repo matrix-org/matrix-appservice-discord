@@ -1233,7 +1233,10 @@ export class DiscordBot {
 
     private async onUserActivityChanged(state: UserActivityState) {
         for (const userId of state.changed) {
-            await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
+            const activity = state.dataSet.get(userId);
+            if (activity) {
+                await this.store.storeUserActivity(userId, activity);
+            }
         }
         log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
         this.bridgeBlocker?.checkLimits(state.activeUsers).catch(err => {
