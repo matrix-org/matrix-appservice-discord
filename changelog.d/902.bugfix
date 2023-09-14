@@ -1,0 +1,1 @@
+Let file logs correctly ignore modules matching "logging.files[*].disabled" in the configuration file.
