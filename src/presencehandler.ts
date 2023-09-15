@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, Presence } from "better-discord.js";
+import { User, Presence } from "@mx-puppet/better-discord.js";
 import { DiscordBot } from "./bot";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
