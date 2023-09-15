@@ -49,7 +49,7 @@ by running ``yarn set version classic`` in the directory where you cloned this r
       homeserverUrl: "https://example.com"
   ```
 
-* Run ``node build/src/discordas.js -r -u "http://localhost:9005" -c config.yaml``
+* Run ``yarn start -r -u "http://localhost:9005"``
 * Modify your HSs appservices config so that it includes the generated file.
   * e.g. On synapse, adding to ``app_service_config_files`` array in ``homeserver.yaml``
 
