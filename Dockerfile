@@ -1,4 +1,4 @@
-FROM node:16-slim AS BUILD
+FROM node:18-slim AS BUILD
 COPY . /tmp/src
 # install some dependencies needed for the build process
 RUN apt update && apt install -y build-essential make gcc g++ python3 ca-certificates libc-dev wget git
@@ -6,7 +6,7 @@ RUN apt update && apt install -y build-essential make gcc g++ python3 ca-certifi
 RUN cd /tmp/src \
     && yarn
 
-FROM node:16-slim
+FROM node:18-slim
 ENV NODE_ENV=production
 COPY --from=BUILD /tmp/src/build /build
 COPY --from=BUILD /tmp/src/config /config
