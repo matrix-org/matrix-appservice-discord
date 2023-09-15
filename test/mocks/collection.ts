@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Collection } from "better-discord.js";
+import { Collection } from "@mx-puppet/better-discord.js";
 
 export class MockCollection<T1, T2> extends Collection<T1, T2> {
     public array(): T2[] {

@@ -58,13 +58,13 @@ logging:
   lineDateFormat: "MMM-D HH:mm:ss.SSS" # This is in moment.js format
   files:
     - file: "debug.log"
-      disable:
+      disabled:
         - "PresenceHandler" # Will not capture presence logging
     - file: "warn.log" # Will capture warnings
       level: "warn"
     - file: "botlogs.log" # Will capture logs from DiscordBot
       level: "info"
-      enable:
+      enabled:
         - "DiscordBot"
 database:
   # You may either use SQLite or Postgresql for the bridge database, which contains

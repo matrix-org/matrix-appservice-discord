@@ -1,0 +1,1 @@
+Update matrix-appservice-bridge to use a non-deprecated method of authenticating to a homeserver. Fixes #896.

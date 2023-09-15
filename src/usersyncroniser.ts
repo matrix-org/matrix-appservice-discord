@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { User, GuildMember } from "better-discord.js";
+import { User, GuildMember, Message } from "@mx-puppet/better-discord.js";
 import { DiscordBot } from "./bot";
 import { Util } from "./util";
 import { DiscordBridgeConfig } from "./config";
@@ -96,8 +96,8 @@ export class UserSyncroniser {
      * @returns {Promise<void>}
      * @constructor
      */
-    public async OnUpdateUser(discordUser: User, isWebhook: boolean = false) {
-        const userState = await this.GetUserUpdateState(discordUser, isWebhook);
+    public async OnUpdateUser(discordUser: User, isWebhook: boolean = false, msg?: Message) {
+        const userState = await this.GetUserUpdateState(discordUser, isWebhook, msg);
         try {
             await this.ApplyStateToProfile(userState);
         } catch (e) {
@@ -230,7 +230,7 @@ export class UserSyncroniser {
         }
     }
 
-    public async GetUserUpdateState(discordUser: User, isWebhook: boolean = false): Promise<IUserState> {
+    public async GetUserUpdateState(discordUser: User, isWebhook: boolean = false, msg?: Message): Promise<IUserState> {
         log.verbose(`State update requested for ${discordUser.id}`);
         let mxidExtra = "";
         if (isWebhook) {
@@ -244,7 +244,7 @@ export class UserSyncroniser {
             id: discordUser.id + mxidExtra,
             mxUserId: `@_discord_${discordUser.id}${mxidExtra}:${this.config.bridge.domain}`,
         });
-        const displayName = Util.ApplyPatternString(this.config.ghosts.usernamePattern, {
+        const displayName = msg?.member?.nickname || Util.ApplyPatternString(this.config.ghosts.usernamePattern, {
             id: discordUser.id,
             tag: discordUser.discriminator,
             username: discordUser.username,
