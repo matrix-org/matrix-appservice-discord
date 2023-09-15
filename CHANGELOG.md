@@ -1,3 +1,28 @@
+4.0.0 (2023-09-15)
+==================
+
+Bugfixes
+--------
+
+- Prefer server-level display names when available. ([\#888](https://github.com/matrix-org/matrix-appservice-discord/issues/888))
+- Update matrix-appservice-bridge to use a non-deprecated method of authenticating to a homeserver. Fixes #896. ([\#897](https://github.com/matrix-org/matrix-appservice-discord/issues/897))
+- Let file logs correctly ignore modules matching `"logging.files[*].disabled"` in the configuration file. ([\#902](https://github.com/matrix-org/matrix-appservice-discord/issues/902))
+
+
+Deprecations and Removals
+-------------------------
+
+- Node.JS 16 is now unsupported, please upgrade to Node.JS 18 or later. Node.JS 18 is now used for Docker. ([\#897](https://github.com/matrix-org/matrix-appservice-discord/issues/897))
+
+
+Internal Changes
+----------------
+
+- Update the package registry for better-discord.js, and use its latest release. ([\#898](https://github.com/matrix-org/matrix-appservice-discord/issues/898))
+- Modify the "start" and "debug" package scripts to not trigger a TypeScript build, and to accept a user-supplied command line option for the path to the bridge configuration file. ([\#900](https://github.com/matrix-org/matrix-appservice-discord/issues/900))
+- Update the GitHub action used for checking pull requests for sign-off status. ([\#901](https://github.com/matrix-org/matrix-appservice-discord/issues/901))
+
+
 3.1.1 (2022-11-10)
 ==================
 
