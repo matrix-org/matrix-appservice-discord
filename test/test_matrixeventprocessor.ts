@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { expect } from "chai";
-import * as Discord from "better-discord.js";
 import * as Proxyquire from "proxyquire";
+import * as Discord from "@mx-puppet/better-discord.js";
 import { MockMember } from "./mocks/member";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
