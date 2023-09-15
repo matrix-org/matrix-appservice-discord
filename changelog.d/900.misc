@@ -1,0 +1,1 @@
+Modify the "start" and "debug" package scripts to not trigger a TypeScript build, and to accept a user-supplied command line option for the path to the bridge configuration file.

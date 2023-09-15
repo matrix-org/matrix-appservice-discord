@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import {Channel} from "@mx-puppet/better-discord.js";
 import {MockCollectionManager} from "./collection";
 import {MockMember} from "./member";
 import {MockEmoji} from "./emoji";
-import {Channel} from "better-discord.js";
 import {MockRole} from "./role";
 
 // we are a test file and thus need those
