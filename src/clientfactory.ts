@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { Client as DiscordClient, Intents, TextChannel } from "@mx-puppet/better-discord.js";
 import { DiscordBridgeConfigAuth } from "./config";
 import { DiscordStore } from "./store";
-import { Client as DiscordClient, Intents, TextChannel } from "better-discord.js";
 import { Log } from "./log";
 import { MetricPeg } from "./metrics";
 
