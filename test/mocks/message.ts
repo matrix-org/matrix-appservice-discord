@@ -24,17 +24,23 @@ import { MockCollection } from "./collection";
 export class MockMessage {
     public attachments = new MockCollection<string, any>();
     public embeds: any[] = [];
-    public content = "";
+    public content: string;
     public channel: Discord.TextChannel | undefined;
     public guild: Discord.Guild | undefined;
     public author: MockUser;
     public mentions: any = {};
-    constructor(channel?: Discord.TextChannel) {
+
+    constructor(
+        channel?: Discord.TextChannel,
+        content: string = "",
+        author: MockUser = new MockUser("123456"),
+    ) {
         this.mentions.everyone = false;
         this.channel = channel;
         if (channel && channel.guild) {
             this.guild = channel.guild;
         }
-        this.author = new MockUser("123456");
+        this.content = content;
+        this.author = author;
     }
 }

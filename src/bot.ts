@@ -263,6 +263,21 @@ export class DiscordBot {
                 await this.channelSync.OnGuildDelete(guild);
             } catch (err) { log.error("Exception thrown while handling \"guildDelete\" event", err); }
         });
+        client.on("messageReactionAdd", async (reaction, user) => {
+            try {
+                await this.OnMessageReactionAdd(reaction, user);
+            } catch (err) { log.error("Exception thrown while handling \"messageReactionAdd\" event", err); }
+        });
+        client.on("messageReactionRemove", async (reaction, user) => {
+            try {
+                await this.OnMessageReactionRemove(reaction, user);
+            } catch (err) { log.error("Exception thrown while handling \"messageReactionRemove\" event", err); }
+        });
+        client.on("messageReactionRemoveAll", async (message) => {
+            try {
+                await this.OnMessageReactionRemoveAll(message);
+            } catch (err) { log.error("Exception thrown while handling \"messageReactionRemoveAll\" event", err); }
+        });
 
         // Due to messages often arriving before we get a response from the send call,
         // messages get delayed from discord. We use Util.DelayedPromise to handle this.
@@ -1175,6 +1190,151 @@ export class DiscordBot {
         }
         newMsg.content = `Edit: ${newMsg.content}`;
         await this.OnMessage(newMsg);
+    }
+
+    public async OnMessageReactionAdd(reaction: Discord.MessageReaction, user: Discord.User | Discord.PartialUser) {
+        const message = reaction.message;
+        const reactionName = reaction.emoji.name;
+        log.verbose(`Got message reaction add event for ${message.id} with ${reactionName}`);
+
+        const storeEvent = await this.store.Get(DbEvent, {
+            discord_id: message.id
+        });
+
+        if (!storeEvent?.Result) {
+            log.verbose(`Received add reaction event for untracked message. Dropping! Reaction Event: ${reaction}`);
+            return;
+        }
+
+        const intent = this.GetIntentFromDiscordMember(user);
+        await intent.ensureRegistered();
+        this.userActivity.updateUserActivity(intent.userId);
+
+        while (storeEvent.Next()) {
+            const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+
+            // If the user is partial, only forward the event for rooms they're already in.
+            if (user.partial) {
+                log.warn(`Skipping reaction add for user with Discord ID ${user.id} in ${roomId}. User was partial.`);
+                continue;
+            }
+
+            await this.userSync.JoinRoom(user, roomId);
+
+            const reactionEventId = await intent.underlyingClient.unstableApis.addReactionToEvent(
+                roomId,
+                eventId,
+                reaction.emoji.id ? `:${reactionName}:` : reactionName
+            );
+
+            const event = new DbEvent();
+            event.MatrixId = `${reactionEventId};${roomId}`;
+            event.DiscordId = message.id;
+            event.ChannelId = message.channel.id;
+            if (message.guild) {
+                event.GuildId = message.guild.id;
+            }
+
+            await this.store.Insert(event);
+        }
+    }
+
+    public async OnMessageReactionRemove(reaction: Discord.MessageReaction, user: Discord.User | Discord.PartialUser) {
+        const message = reaction.message;
+        log.verbose(`Got message reaction remove event for ${message.id} with ${reaction.emoji.name}`);
+
+        const storeEvent = await this.store.Get(DbEvent, {
+            discord_id: message.id,
+        });
+
+        if (!storeEvent?.Result) {
+            log.verbose(`Received remove reaction event for untracked message. Dropping! Reaction Event: ${reaction}`);
+            return;
+        }
+
+        const intent = this.GetIntentFromDiscordMember(user);
+        await intent.ensureRegistered();
+        this.userActivity.updateUserActivity(intent.userId);
+
+        while (storeEvent.Next()) {
+            const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+
+            // If the user is partial, only forward the event for rooms they're already in.
+            if (user.partial) {
+                log.warn(`Skipping reaction remove for user with Discord ID ${user.id} in ${roomId}. User was partial.`);
+                continue;
+            }
+
+            await this.userSync.JoinRoom(user, roomId);
+
+            const underlyingClient = intent.underlyingClient;
+
+            const { chunk } = await underlyingClient.unstableApis.getRelationsForEvent(
+                roomId,
+                eventId,
+                "m.annotation"
+            );
+
+            const event = chunk.find((event) => {
+                if (event.sender !== intent.userId) {
+                    return false;
+                }
+
+                return event.content["m.relates_to"].key === reaction.emoji.name;
+            });
+
+            if (!event) {
+                log.verbose(`Received remove reaction event for tracked message where the add reaction event was not bridged. Dropping! Reaction Event: ${reaction}`);
+                return;
+            }
+
+            const { room_id, event_id } = event;
+
+            try {
+                await underlyingClient.redactEvent(room_id, event_id);
+            } catch (ex) {
+                log.warn(`Failed to delete ${storeEvent.DiscordId}, retrying as bot`);
+                try {
+                    await this.bridge.botIntent.underlyingClient.redactEvent(room_id, event_id);
+                } catch (ex) {
+                    log.warn(`Failed to delete ${event_id}, giving up`);
+                }
+            }
+        }
+    }
+
+    public async OnMessageReactionRemoveAll(message: Discord.Message | Discord.PartialMessage) {
+        log.verbose(`Got message reaction remove all event for ${message.id}`);
+
+        const storeEvent = await this.store.Get(DbEvent, {
+            discord_id: message.id,
+        });
+
+        if (!storeEvent?.Result) {
+            log.verbose(`Received remove all reaction event for untracked message. Dropping! Event: ${message}`);
+            return;
+        }
+
+        while (storeEvent.Next()) {
+            const [ eventId, roomId ] = storeEvent.MatrixId.split(";");
+            const underlyingClient = this.bridge.botIntent.underlyingClient;
+
+            const { chunk } = await underlyingClient.unstableApis.getRelationsForEvent(
+                roomId,
+                eventId,
+                "m.annotation"
+            );
+
+            const filteredChunk = chunk.filter((event) => this.bridge.isNamespacedUser(event.sender));
+
+            await Promise.all(filteredChunk.map(async (event) => {
+                try {
+                    return await underlyingClient.redactEvent(event.room_id, event.event_id);
+                } catch (ex) {
+                    log.warn(`Failed to delete ${event.event_id}, giving up`);
+                }
+            }));
+        }
     }
 
     private async DeleteDiscordMessage(msg: Discord.Message) {
