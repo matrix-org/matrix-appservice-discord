@@ -182,6 +182,13 @@ class MatrixClientMock extends AppserviceMockBase {
         super();
     }
 
+    public getPresenceStatusFor(userId: string) {
+        this.funcCalled("getPresenceStatusFor", userId);
+        return {
+            state: "online"
+        }
+    }
+
     public banUser(roomId: string, userId: string) {
         this.funcCalled("banUser", roomId, userId);
     }

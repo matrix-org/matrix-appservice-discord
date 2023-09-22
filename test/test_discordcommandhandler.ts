@@ -30,7 +30,7 @@ let MARKED = -1;
 function createCH(opts: any = {}) {
     ROOMSUNBRIDGED = 0;
     MARKED = -1;
-    const bridge = new AppserviceMock();
+    const bridge = new AppserviceMock(opts);
     const cs = {
         GetRoomIdsFromChannel: async (chan) => {
             return [`#${chan.id}:localhost`];
@@ -59,7 +59,13 @@ function createCH(opts: any = {}) {
             },
         },
     })).DiscordCommandHandler;
-    return {handler: new discordCommandHndlr(bridge as any, discord as any), bridge};
+
+    const config = {
+        bridge: {
+            disablePresence: false
+        }
+    }
+    return {handler: new discordCommandHndlr(bridge as any, discord as any, config), bridge};
 }
 
 describe("DiscordCommandHandler", () => {
@@ -80,6 +86,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         bridge.botIntent.underlyingClient.wasCalled("kickUser", true, "#123:localhost", "@123456:localhost");
     });
+
     it("will kick a member in all guild rooms", async () => {
         const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
@@ -97,6 +104,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(bridge.botIntent.underlyingClient.wasCalled("kickUser")).to.equal(2);
     });
+
     it("will deny permission", async () => {
         const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
@@ -114,6 +122,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(bridge.botIntent.underlyingClient.wasCalled("kickUser", false)).to.equal(0);
     });
+
     it("will ban a member", async () => {
         const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
@@ -131,6 +140,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(bridge.botIntent.underlyingClient.wasCalled("banUser")).to.equal(1);
     });
+
     it("will unban a member", async () => {
         const {handler, bridge} = createCH();
         const channel = new MockChannel("123");
@@ -148,6 +158,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(bridge.botIntent.underlyingClient.wasCalled("unbanUser")).to.equal(1);
     });
+
     it("handles !matrix approve", async () => {
         const {handler} = createCH();
         const channel = new MockChannel("123");
@@ -165,6 +176,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(MARKED).equals(1);
     });
+
     it("handles !matrix deny", async () => {
         const {handler} = createCH();
         const channel = new MockChannel("123");
@@ -182,6 +194,7 @@ describe("DiscordCommandHandler", () => {
         await handler.Process(message);
         expect(MARKED).equals(0);
     });
+
     it("handles !matrix unbridge", async () => {
         const {handler} = createCH();
         const channel = new MockChannel("123");
@@ -198,5 +211,133 @@ describe("DiscordCommandHandler", () => {
         };
         await handler.Process(message);
         expect(ROOMSUNBRIDGED).equals(1);
+    });
+
+    it("!matrix listusers with 0 Matrix users", async () => {
+        const {handler} = createCH();
+        handler.bridge.botIntent.underlyingClient.getJoinedRoomMembersWithProfiles = () => {
+            return {};
+        };
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = (): boolean => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix listusers",
+            member,
+        };
+        const sentMessage = await handler.Process(message);
+
+        expect(sentMessage).equals(
+            "There are **0** users on the Matrix side."
+        );
+    });
+
+    it("!matrix listusers with 3 Matrix users with presence enabled", async () => {
+        const {handler} = createCH({
+            userIdPrefix: "@_discord_"
+        });
+        handler.bridge.botIntent.underlyingClient.getJoinedRoomMembersWithProfiles = () => {
+            return {
+                "@abc:one.ems.host": { display_name: "ABC" },
+                "@def:matrix.org": { display_name: "DEF" },
+                "@ghi:mozilla.org": {},
+            };
+        };
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = (): boolean => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix listusers",
+            member,
+        };
+        const sentMessage = await handler.Process(message);
+
+        expect(sentMessage).equals(
+            "There are **3** users on the Matrix side. Matrix users in <#123> may not necessarily be in the other bridged channels in the server.\n\n• ABC (@abc:one.ems.host) - Online\n• DEF (@def:matrix.org) - Online\n• @ghi:mozilla.org - Online"
+        );
+    });
+
+    it("assert that !matrix listusers ignores users with namespaced userIdPrefix", async () => {
+        const {handler} = createCH({
+            userIdPrefix: "@_discord_"
+        });
+        handler.bridge.botIntent.underlyingClient.getJoinedRoomMembersWithProfiles = () => {
+            return {
+                "@abc:one.ems.host": { display_name: "ABC" },
+                "@_discord_123456:bridge.org": { display_name: "DEF" }
+            };
+        };
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = (): boolean => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix listusers",
+            member,
+        };
+        const sentMessage = await handler.Process(message);
+
+        expect(sentMessage).equals(
+            "There is **1** user on the Matrix side. Matrix users in <#123> may not necessarily be in the other bridged channels in the server.\n\n• ABC (@abc:one.ems.host) - Online"
+        );
+    });
+
+    it("assert that !matrix listusers users are displayed in order of presence, display name, then mxid, case insensitive", async () => {
+        const {handler} = createCH({
+            userIdPrefix: "@_discord_"
+        });
+
+        handler.bridge.botClient.getPresenceStatusFor = (userId) => {
+            switch (userId) {
+                case "@jelly:matrix.org":
+                case "@toast:mozilla.org":
+                    return { state: "online" };
+                case "@jen:matrix.org":
+                    return { state: "offline" };
+                default:
+                    return { state: "unavailable" };
+            }
+        };
+
+        handler.bridge.botIntent.underlyingClient.getJoinedRoomMembersWithProfiles = () => {
+            return {
+                "@seth:one.ems.host": { display_name: "Seth" },
+                "@sam:one.ems.host": { display_name: "sam" },
+                "@jen:matrix.org": { display_name: "Jen" },
+                "@toast:mozilla.org": {},
+                "@jelly:matrix.org": { display_name: "jelly" }
+            };
+        };
+        const channel = new MockChannel("123");
+        const guild = new MockGuild("456", [channel]);
+        channel.guild = guild;
+        const member: any = new MockMember("123456", "blah");
+        member.hasPermission = (): boolean => {
+            return true;
+        };
+        const message = {
+            channel,
+            content: "!matrix listusers",
+            member,
+        };
+        const sentMessage = await handler.Process(message);
+
+        expect(sentMessage).equals(
+            "There are **5** users on the Matrix side. Matrix users in <#123> may not necessarily be in the other bridged channels in the server.\n\n• jelly (@jelly:matrix.org) - Online\n• @toast:mozilla.org - Online\n• sam (@sam:one.ems.host) - Idle\n• Seth (@seth:one.ems.host) - Idle\n• Jen (@jen:matrix.org) - Offline"
+        );
     });
 });

@@ -16,7 +16,6 @@ limitations under the License.
 
 import { expect } from "chai";
 import { Lock } from "../../src/structures/lock";
-import { Util } from "../../src/util";
 
 const LOCKTIMEOUT = 300;
 
