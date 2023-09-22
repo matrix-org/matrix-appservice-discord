@@ -26,7 +26,13 @@ import { DbRoomStore } from "./db/roomstore";
 import { DbUserStore } from "./db/userstore";
 import { IAppserviceStorageProvider } from "matrix-bot-sdk";
 import { UserActivitySet, UserActivity } from "matrix-appservice-bridge";
+import {TimedCache} from "./structures/timedcache";
 const log = new Log("DiscordStore");
+
+const REGISTERED_USERS_CACHE_LIFETIME_MILLIS = 60 * 60 * 1000; // 60 minutes
+const TX_IDS_CACHE_LIFETIME_MILLIS = 10 * 60 * 1000; // 10 minutes
+const CACHE_CLEANUP_MILLIS = 30 * 1000; // 30 seconds
+
 export const CURRENT_SCHEMA = 12;
 /**
  * Stores data for specific users and data not specific to rooms.
@@ -37,8 +43,9 @@ export class DiscordStore implements IAppserviceStorageProvider {
     private pRoomStore: DbRoomStore;
     private pUserStore: DbUserStore;
 
-    private registeredUsers: Set<string>;
-    private asTxns: Set<string>;
+    private registeredUsersCache: TimedCache<string, boolean>;
+    private txnsCompletionStatusCache: TimedCache<string, boolean>;
+    private cacheCleanupIntervalHandle: NodeJS.Timeout;
 
     constructor(configOrFile: DiscordBridgeConfigDatabase|string) {
         if (typeof(configOrFile) === "string") {
@@ -47,8 +54,8 @@ export class DiscordStore implements IAppserviceStorageProvider {
         } else {
             this.config = configOrFile;
         }
-        this.registeredUsers = new Set();
-        this.asTxns = new Set();
+        this.registeredUsersCache = new TimedCache<string, boolean>(REGISTERED_USERS_CACHE_LIFETIME_MILLIS, "registeredUsersCache");
+        this.txnsCompletionStatusCache = new TimedCache<string, boolean>(TX_IDS_CACHE_LIFETIME_MILLIS, "txnsCompletionStatusCache");
     }
 
     get roomStore() {
@@ -126,17 +133,15 @@ export class DiscordStore implements IAppserviceStorageProvider {
             await this.setSchemaVersion(version);
         }
         log.info("Updated database to the latest schema");
-        // We need to prepopulate some sets
-        for (const row of await this.db.All("SELECT * FROM registered_users")) {
-            this.registeredUsers.add(row.user_id as string);
-        }
 
-        for (const row of await this.db.All("SELECT * FROM as_txns")) {
-            this.asTxns.add(row.txn_id as string);
-        }
+        this.cacheCleanupIntervalHandle = setInterval(() => {
+            this.txnsCompletionStatusCache.cleanUp();
+            this.registeredUsersCache.cleanUp();
+        }, CACHE_CLEANUP_MILLIS);
     }
 
     public async close() {
+        clearInterval(this.cacheCleanupIntervalHandle);
         await this.db.Close();
     }
 
@@ -279,24 +284,69 @@ export class DiscordStore implements IAppserviceStorageProvider {
         await data.Delete(this);
     }
 
-    public addRegisteredUser(userId: string) {
-        this.registeredUsers.add(userId);
-        this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId}).catch((err) => {
-            log.warn("Failed to insert registered user", err);
-        });
-    }
-    public isUserRegistered(userId: string): boolean {
-        return this.registeredUsers.has(userId);
+    public async addRegisteredUser(userId: string): Promise<unknown> {
+        return this.db.Run("INSERT INTO registered_users VALUES ($userId)", {userId})
+            .then(() => {
+                const isUserRegistered = true;
+                this.registeredUsersCache.set(userId, isUserRegistered);
+                log.verbose(`User registration status added to registeredUsersCache. 
+                            userId: '${userId}' ; registered: ${isUserRegistered}`);
+            })
+            .catch((err) => {
+                log.warn("Failed to insert registered user", err);
+            });
     }
 
-    public setTransactionCompleted(transactionId: string) {
-        this.asTxns.add(transactionId);
-        this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId}).catch((err) => {
-            log.warn("Failed to insert txn", err);
-        });
+    public async isUserRegistered(userId: string): Promise<boolean> {
+        let registered = this.registeredUsersCache.get(userId);
+        if(registered !== undefined) {
+            log.verbose(`User registration status retrieved from registeredUsersCache. 
+                        userId: '${userId}' ; registered: ${registered}`);
+            return registered;
+        }
+        const row = await this.db.Get("SELECT user_id FROM registered_users WHERE user_id = $userId;", {userId})
+            .catch((err) => {
+                log.warn("Failed to get registered user", err);
+            });
+
+        registered = row != null && row.user_id === userId;
+        this.registeredUsersCache.set(userId, registered);
+        log.verbose(`User registration status added to registeredUsersCache. 
+                    userId: '${userId}' ; registered: ${registered}`);
+        return registered;
     }
-    public isTransactionCompleted(transactionId: string): boolean {
-        return this.asTxns.has(transactionId);
+
+    public async setTransactionCompleted(transactionId: string): Promise<unknown> {
+        return this.db.Run("INSERT INTO as_txns (txn_id) VALUES ($transactionId)", {transactionId})
+            .then(() => {
+                const isTxnCompleted = true;
+                this.txnsCompletionStatusCache.set(transactionId, isTxnCompleted)
+                log.verbose(`Txn completion status added to txnsCompletionStatusCache. 
+                            txnId: '${transactionId}' ; completed: ${isTxnCompleted}`);
+            })
+            .catch((err) => {
+                log.warn("Failed to insert txn", err);
+            });
+    }
+
+    public async isTransactionCompleted(transactionId: string): Promise<boolean> {
+        // If txId exists in cache return with status
+        let completed = this.txnsCompletionStatusCache.get(transactionId);
+        if(completed !== undefined) {
+            log.verbose(`Txn completion status retrieved from txnsCompletionStatusCache.
+                        txnId: '${transactionId}' ; completed: ${completed}`);
+            return completed;
+        }
+        const row = await this.db.Get("SELECT txn_id FROM as_txns WHERE txn_id = $transactionId;", {transactionId})
+            .catch((err) => {
+                log.warn("Failed to get txn", err);
+            });
+
+        completed = row != null && row.txn_id === transactionId;
+        this.txnsCompletionStatusCache.set(transactionId, completed);
+        log.verbose(`Txn completion status added to txnsCompletionStatusCache. 
+                    txnId: '${transactionId}' ; completed: ${completed}`);
+        return completed;
     }
 
     public async getUserActivity(): Promise<UserActivitySet> {

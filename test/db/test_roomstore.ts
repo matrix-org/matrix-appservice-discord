@@ -17,6 +17,7 @@ limitations under the License.
 import { expect } from "chai";
 import { DiscordStore } from "../../src/store";
 import { RemoteStoreRoom, MatrixStoreRoom } from "../../src/db/roomstore";
+import {afterEach} from "mocha";
 
 // we are a test file and thus need those
 /* tslint:disable: no-any no-unused-expression */
@@ -27,6 +28,9 @@ describe("RoomStore", () => {
         store = new DiscordStore(":memory:");
         await store.init();
     });
+    afterEach(async () => {
+        await store.close();
+    })
     describe("upsertEntry|getEntriesByMatrixId", () => {
         it("will create a new entry", async () => {
             await store.roomStore.upsertEntry({
