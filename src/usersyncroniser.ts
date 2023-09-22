@@ -319,9 +319,17 @@ export class UserSyncroniser {
             // userstate changes
             mxidExtra = "_" + Util.ParseMxid(`@${user.username}`, false).localpart;
         }
+        const name = Util.ApplyPatternString(this.config.ghosts.nickPattern, {
+            id: user.id,
+						// Currently, the discord.js doesn't support global nicknames, so use the
+						// user's username instead
+            nick: user.username, // newMember.displayName,
+            tag: user.discriminator,
+            username: user.username,
+        });
         const guildState: IGuildMemberState = Object.assign({}, DEFAULT_GUILD_STATE, {
             bot: user.bot,
-            displayName: user.username,
+            displayName: name,
             id: user.id + mxidExtra,
             mxUserId: `@_discord_${user.id}${mxidExtra}:${this.config.bridge.domain}`,
             roles: [],

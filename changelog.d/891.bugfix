@@ -1,0 +1,2 @@
+Fixed an odd case where ghost users' names in Matrix would update, ignoring the
+nickPattern config value. Contributed by @frostyfrog.
