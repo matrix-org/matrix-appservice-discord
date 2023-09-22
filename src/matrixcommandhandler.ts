@@ -47,6 +47,10 @@ export class MatrixCommandHandler {
         this.botJoinedRooms.add(event.room_id);
     }
 
+    public HandleCreate(roomId: string) {
+        this.botJoinedRooms.add(roomId);
+    }
+
     public async Process(event: IMatrixEvent, roomEntry: IRoomStoreEntry|null) {
         if (!(await this.isBotInRoom(event.room_id))) {
             log.warn(`Bot is not in ${event.room_id}. Ignoring command`);
