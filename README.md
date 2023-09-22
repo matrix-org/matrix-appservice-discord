@@ -10,8 +10,7 @@ bridging, with one or two bugs cropping up.
 ## Helping out
 
 
-[![Build Status](https://travis-ci.org/Half-Shot/matrix-appservice-discord.svg?branch=develop)](https://travis-ci.org/Half-Shot/matrix-appservice-discord)
-[![Docker Automated build](https://img.shields.io/docker/builds/halfshot/matrix-appservice-discord.svg)](https://hub.docker.com/r/halfshot/matrix-appservice-discord)
+[![Docker Automated build](https://github.com/matrix-org/matrix-appservice-discord/actions/workflows/docker.yml/badge.svg?branch=develop)](https://github.com/matrix-org/matrix-appservice-discord/pkgs/container/matrix-appservice-discord)
 [![#discord:half-shot.uk](https://img.shields.io/matrix/discord:half-shot.uk.svg?server_fqdn=matrix.half-shot.uk&label=%23discord:half-shot.uk&logo=matrix)](https://matrix.to/#/#discord:half-shot.uk)
 
 ### PRs
@@ -72,8 +71,6 @@ mkdir -p /matrix-appservice-discord
 # Be sure to set the database paths to something like this:
 #  database:
 #    filename: "/data/discord.db"
-#    userStorePath: "/data/user-store.db"
-#    roomStorePath: "/data/room-store.db"
 nano /matrix-appservice-discord/config.yaml
 
 # Copy the registration file to the volume
