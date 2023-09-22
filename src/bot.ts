@@ -1105,6 +1105,7 @@ export class DiscordBot {
                     body: result.body,
                     format: "org.matrix.custom.html",
                     formatted_body: result.formattedBody,
+                    external_url: msg.url,
                     msgtype: result.msgtype,
                 };
                 if (editEventId) {
@@ -1114,6 +1115,7 @@ export class DiscordBot {
                         body: result.body,
                         format: "org.matrix.custom.html",
                         formatted_body: result.formattedBody,
+                        external_url: msg.url,
                         msgtype: result.msgtype,
                     };
                     sendContent["m.relates_to"] = {
