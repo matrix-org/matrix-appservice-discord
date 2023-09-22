@@ -42,6 +42,14 @@ properties:
                 type: "number"
           userLimit:
             type: "number"
+          userPowerLevels:
+            type: "array"
+            items:
+              type: "object"
+              required: ["userPattern", "pl"]
+              properties:
+                userPattern: "string"
+                pl: "number"
     auth:
         type: "object"
         required: ["botToken", "clientID"]

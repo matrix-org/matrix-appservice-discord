@@ -44,6 +44,13 @@ bridge:
   adminMxid: '@admin:localhost'
   # The message to send to the bridge admin if the Discord token is not valid
   invalidTokenMessage: 'Your Discord bot token seems to be invalid, and the bridge cannot function. Please update it in your bridge settings and restart the bridge'
+  # Custom power levels to assign to Matrix users in bridged rooms (supports regexes).
+  # Patterns are tested in order; first match is used.
+  #userPowerLevels:
+  #  - userPattern: "@admin:example.com"
+  #    pl: 100
+  #  - userPattern: "@.*:example.com"
+  #    pl: 50
 # Authentication configuration for the discord bot.
 auth:
   # This MUST be a string (wrapped in quotes)

@@ -258,6 +258,12 @@ export class MatrixEventProcessor {
                 }
                 // We don't know if the user also updated their profile, but to be safe..
                 this.mxUserProfileCache.delete(event.sender);
+
+                const customPL = this.config.bridge.GetCustomPowerLevelForUser(event.sender);
+                if (customPL !== undefined) {
+                    client.setUserPowerLevel(event.sender, event.room_id, customPL)
+                        .catch((err) => log.warn(`Cannot set custom power level of ${customPL} for user ${event.sender} in room ${event.room_id}: ${err}`));
+                }
             }
             if (membership === "join" && isNewJoin && allowJoinLeave) {
                 msg += "joined the room";

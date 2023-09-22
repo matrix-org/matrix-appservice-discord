@@ -80,6 +80,11 @@ export class DiscordBridgeConfig {
     }
 }
 
+interface UserPowerLevel {
+    userPattern: string;
+    pl: number;
+}
+
 export class DiscordBridgeConfigBridge {
     public domain: string;
     public homeserverUrl: string;
@@ -103,6 +108,11 @@ export class DiscordBridgeConfigBridge {
     public userLimit: number|null = null;
     public adminMxid: string|null = null;
     public invalidTokenMessage: string = 'Your Discord token is invalid';
+    public userPowerLevels: UserPowerLevel[] = [];
+
+    public GetCustomPowerLevelForUser(userId: string): number|undefined {
+        return this.userPowerLevels.find(obj => RegExp(obj.userPattern).test(userId))?.pl;
+    }
 }
 
 export class DiscordBridgeConfigDatabase {
