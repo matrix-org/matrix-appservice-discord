@@ -249,9 +249,9 @@ describe("MatrixCommandHandler", () => {
                     msgtype: "m.notice",
                 });
             });
-            it("will not unbridge non-plumbed rooms", async () => {
-                const expected = "This room cannot be unbridged.";
-                const expectedHtml = "<p>This room cannot be unbridged.</p>\n";
+            it("will unbridge non-plumbed rooms", async () => {
+                const expected = "This room has been unbridged";
+                const expectedHtml = "<p>This room has been unbridged</p>\n";
                 const {handler, bridge} = createCH();
                 await handler.Process(createEvent("!discord unbridge"), createContext(
                     {

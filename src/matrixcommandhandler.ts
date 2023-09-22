@@ -117,15 +117,13 @@ export class MatrixCommandHandler {
                 permission: {
                     cat: "events",
                     level: PROVISIONING_DEFAULT_POWER_LEVEL,
-                    selfService: true,
+                    // NOTE Always allow admins to unbridge a room
+                    selfService: false,
                     subcat: "m.room.power_levels",
                 },
                 run: async () => {
                     if (!roomEntry || !roomEntry.remote) {
                         return "This room is not bridged.";
-                    }
-                    if (!roomEntry.remote.data.plumbed) {
-                        return "This room cannot be unbridged.";
                     }
                     const res = await this.discord.LookupRoom(
                         roomEntry.remote.data.discord_guild!,
@@ -140,6 +138,23 @@ export class MatrixCommandHandler {
                         return "There was an error unbridging this room. " +
                             "Please try again later or contact the bridge operator.";
                     }
+                },
+            },
+            leave: {
+                description: "Makes this bridge bot leave this room",
+                params: [],
+                permission: {
+                    cat: "events",
+                    level: PROVISIONING_DEFAULT_POWER_LEVEL,
+                    // NOTE Always allow admins to make the bot leave
+                    selfService: false,
+                    subcat: "m.room.power_levels",
+                },
+                run: async () => {
+                    if (roomEntry && roomEntry.remote) {
+                        return "I can't leave a room that is actively bridged to a Discord guild.";
+                    }
+                    await this.bridge.botIntent.leaveRoom(event.room_id);
                 },
             },
         };
@@ -188,6 +203,7 @@ export class MatrixCommandHandler {
         };
 
         const reply = await Util.ParseCommand("!discord", event.content!.body!, actions, parameters, permissionCheck);
+        if (!reply) return;
         const formattedReply = markdown(reply);
         await this.bridge.botClient.sendMessage(event.room_id, {
             /* eslint-disable @typescript-eslint/naming-convention */
