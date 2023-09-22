@@ -236,9 +236,12 @@ export class MatrixEventProcessor {
 
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
         const allowInvite = !this.config.bridge.disableInviteNotifications;
+        const allowRoomName = !this.config.bridge.disableRoomNameNotifications;
         const allowRoomTopic = !this.config.bridge.disableRoomTopicNotifications;
+        const allowBan = !this.config.bridge.disableBanNotifications;
+        const allowKick = !this.config.bridge.disableKickNotifications;
 
-        if (event.type === "m.room.name") {
+        if (event.type === "m.room.name" && allowRoomName) {
             msg += `set the name to \`${event.content!.name}\``;
         } else if (event.type === "m.room.topic" && allowRoomTopic) {
             msg += `set the topic to \`${event.content!.topic}\``;
@@ -263,11 +266,11 @@ export class MatrixEventProcessor {
                 msg += "joined the room";
             } else if (membership === "invite" && allowInvite) {
                 msg += `invited \`${event.state_key}\` to the room`;
-            } else if (membership === "leave" && event.state_key !== event.sender) {
+            } else if (membership === "leave" && event.state_key !== event.sender && allowKick) {
                 msg += `kicked \`${event.state_key}\` from the room`;
-            } else if (membership === "leave" && allowJoinLeave) {
+            } else if (membership === "leave" && event.state_key === event.sender && allowJoinLeave) {
                 msg += "left the room";
-            } else if (membership === "ban") {
+            } else if (membership === "ban" && allowBan) {
                 msg += `banned \`${event.state_key}\` from the room`;
             } else {
                 // Ignore anything else

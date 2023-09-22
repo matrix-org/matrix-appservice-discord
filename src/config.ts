@@ -96,7 +96,10 @@ export class DiscordBridgeConfigBridge {
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
+    public disableBanNotifications: boolean = false;
+    public disableKickNotifications: boolean = false;
     public disableInviteNotifications: boolean = false;
+    public disableRoomNameNotifications: boolean = false;
     public disableRoomTopicNotifications: boolean = false;
     public determineCodeLanguage: boolean = false;
     public activityTracker: UserActivityTrackerConfig = UserActivityTrackerConfig.DEFAULT;

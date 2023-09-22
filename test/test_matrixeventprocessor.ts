@@ -343,6 +343,20 @@ describe("MatrixEventProcessor", () => {
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the name to `Test Name` on Matrix.");
         });
+        it("Should not echo name changes", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableRoomNameNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    name: "Test Name",
+                },
+                sender: "@user:localhost",
+                type: "m.room.name",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
+        });
         it("Should echo topic changes", async () => {
             const {processor} =  createMatrixEventProcessor();
             const event = {
@@ -438,6 +452,21 @@ describe("MatrixEventProcessor", () => {
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
         });
+        it("Should not echo kicks", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableKickNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    membership: "leave",
+                },
+                sender: "@user:localhost",
+                state_key: "@user2:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
+        });
         it("Should echo leaves", async () => {
             const {processor} =  createMatrixEventProcessor();
             const event = {
@@ -479,6 +508,21 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
+        });
+        it("Should not echo bans", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableBanNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    membership: "ban",
+                },
+                sender: "@user:localhost",
+                state_key: "@user2:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
         });
     });
     describe("EventToEmbed", () => {
