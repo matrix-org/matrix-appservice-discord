@@ -501,13 +501,13 @@ export class MatrixEventProcessor {
             if (userOrMember instanceof Discord.User) {
                 embed.setAuthor(
                     userOrMember.username,
-                    userOrMember.avatarURL() || undefined,
+                    userOrMember.avatarURL({ format: 'png' }) || undefined,
                 );
                 return;
             } else if (userOrMember instanceof Discord.GuildMember) {
                 embed.setAuthor(
                     userOrMember.displayName,
-                    userOrMember.user.avatarURL() || undefined,
+                    userOrMember.user.avatarURL({ format: 'png' }) || undefined,
                 );
                 return;
             }
