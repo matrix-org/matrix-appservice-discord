@@ -22,6 +22,8 @@ properties:
             type: "boolean"
           disablePortalBridging:
             type: "boolean"
+          defaultRoomVersion:
+            type: "string"
           enableSelfServiceBridging:
             type: "boolean"
           disableReadReceipts:
