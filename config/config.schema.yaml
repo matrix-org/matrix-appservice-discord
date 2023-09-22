@@ -42,6 +42,10 @@ properties:
                 type: "number"
           userLimit:
             type: "number"
+          userDenylist:
+            type: "array"
+            items:
+              type: "string"
     auth:
         type: "object"
         required: ["botToken", "clientID"]

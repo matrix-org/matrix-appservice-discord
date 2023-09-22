@@ -71,6 +71,16 @@ const stateEventFetcher = async (_, stateType, stateKey) => {
                     avatar_url: "mxc://localhost/avatarurl",
                     displayname: "this is a very very long displayname that should be capped",
                 };
+            case "@test_denied_user:localhost":
+                return {
+                    avatar_url: "mxc://localhost/avatarurl",
+                    displayname: "Denied User",
+                };
+            case "@test:denied_server":
+                return {
+                    avatar_url: "mxc://localhost/avatarurl",
+                    displayname: "User on Denied Server",
+                };
         }
     }
     return null;
@@ -174,6 +184,11 @@ function createMatrixEventProcessor(storeMockResults = 0, configBridge = new Dis
     };
     const config = new DiscordBridgeConfig();
     config.bridge = configBridge;
+    config.applyConfig({
+        bridge: {
+            userDenylist: ["^@test_denied_user:localhost$", ".*:denied_server"],
+        },
+    });
 
     const store = {
         Get: (a, b) => {
@@ -326,6 +341,24 @@ describe("MatrixEventProcessor", () => {
             const {processor} =  createMatrixEventProcessor();
             const event = {
                 sender: "@botuser:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
+        });
+        it("Should ignore denied user states", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const event = {
+                sender: "@test_denied_user:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
+        });
+        it("Should ignore regex-denied user states", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const event = {
+                sender: "@test:denied_server",
                 type: "m.room.member",
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
@@ -1038,6 +1071,22 @@ This is the reply`,
                 }]);
             expect(MESSAGE_PROCCESS).equals("redacted");
         });
+        it("should ignore redactions made by a denied user", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const context = {
+                rooms: {
+                    remote: true,
+                },
+            };
+            await processor.OnEvent(buildRequest({
+                sender: "@test_denied_user:localhost",
+                type: "m.room.redaction"}), [ {
+                    id: "foo",
+                    matrix: { } as any,
+                    remote: { } as any,
+                }]);
+            expect(MESSAGE_PROCCESS).equals("");
+        });
         it("should ignore redactions with no linked room", async () => {
             const {processor} =  createMatrixEventProcessor();
             const context = [ ];
@@ -1067,6 +1116,29 @@ This is the reply`,
             expect(MESSAGE_PROCCESS).to.equal("");
             expect(processed).to.be.true;
         });
+        it("should ignore regular messages sent by denied user", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const context = [
+                {
+                    id: "foo",
+                    matrix: { } as any,
+                    remote: {
+                        id: "_discord_123_456",
+                    } as any,
+                },
+            ];
+            let processed = false;
+            processor.ProcessMsgEvent = async (evt, _) => {
+                processed = true;
+            };
+            await processor.OnEvent(buildRequest({
+                content: {body: "abc"},
+                sender: "@test_denied_user:localhost",
+                type: "m.room.message",
+            }), context);
+            expect(MESSAGE_PROCCESS).to.equal("");
+            expect(processed).to.be.false;
+        });
         it("should alert if encryption is turned on", async () => {
             const {processor} =  createMatrixEventProcessor();
             const context = [
@@ -1095,6 +1167,15 @@ This is the reply`,
                 type: "m.room.message",
             }), []);
             expect(MESSAGE_PROCCESS).to.equal("command_processed");
+        });
+        it("should ignore !discord commands sent by denied user", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            await processor.OnEvent(buildRequest({
+                content: {body: "!discord cmd"},
+                sender: "@test_denied_user:localhost",
+                type: "m.room.message",
+            }), []);
+            expect(MESSAGE_PROCCESS).to.equal("");
         });
         it("should ignore regular messages with no linked room", async () => {
             const {processor} =  createMatrixEventProcessor();
