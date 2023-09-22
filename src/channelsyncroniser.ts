@@ -353,7 +353,7 @@ export class ChannelSyncroniser {
             for (const member of channel.members.array()) {
                 try {
                     const mIntent = this.bot.GetIntentFromDiscordMember(member);
-                    await client.leaveRoom(roomId);
+                    await mIntent.leaveRoom(roomId);
                     log.verbose(`${member.id} left ${roomId}.`);
                 } catch (e) {
                     log.warn(`Failed to make ${member.id} leave `);
@@ -389,7 +389,7 @@ export class ChannelSyncroniser {
             }
         }
 
-        if (plumbed !== true) {
+        if (!plumbed) {
             if (options.unsetRoomAlias) {
                 try {
                     const alias = `#_${entry.remote!.roomId}:${this.config.bridge.domain}`;
@@ -422,7 +422,7 @@ export class ChannelSyncroniser {
                         roomId,
                         "m.room.join_rules",
                         "",
-                        {join_role: "invite"},
+                        {join_rule: "invite"},
                     );
                 } catch (e) {
                     log.error(`Couldn't set ${roomId} to private ${e}`);

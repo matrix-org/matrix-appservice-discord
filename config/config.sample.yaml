@@ -76,26 +76,26 @@ database:
   filename: "discord.db"
   # connString: "postgresql://user:password@localhost/database_name"
 room:
-  # Set the default visibility of alias rooms, defaults to "public".
+  # Set the default visibility of portal rooms in the room directory, defaults to "public".
   # One of: "public", "private"
   defaultVisibility: "public"
 channel:
     # Pattern of the name given to bridged rooms.
     # Can use :guild for the guild name and :name for the channel name.
     namePattern: "[Discord] :guild :name"
-    # Changes made to rooms when a channel is deleted.
+    # Changes made to rooms when a channel is deleted or a room is unbridged.
     deleteOptions:
        # Prefix the room name with a string.
        #namePrefix: "[Deleted]"
        # Prefix the room topic with a string.
        #topicPrefix: "This room has been deleted"
-       # Disable people from talking in the room by raising the event PL to 50
+       # Disable people from talking in the room by raising the event PL to 50. For portal rooms only.
        disableMessaging: false
-       # Remove the discord alias from the room.
+       # Remove the discord alias from the room. For portal rooms only.
        unsetRoomAlias: true
-       # Remove the room from the directory.
+       # Remove the room from the directory. For portal rooms only.
        unlistFromDirectory: true
-       # Set the room to be unavailable for joining without an invite.
+       # Set the room to be unavaliable for joining without an invite. For portal rooms only.
        setInviteOnly: true
        # Make all the discord users leave the room.
        ghostsLeave: true
