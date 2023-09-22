@@ -61,7 +61,6 @@ export class DiscordClientFactory {
             log.error("Could not login as the bot user. This is bad!", err);
             throw err;
         }
-
     }
 
     public async getDiscordId(token: string): Promise<string> {
