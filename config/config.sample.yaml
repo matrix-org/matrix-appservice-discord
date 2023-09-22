@@ -38,6 +38,8 @@ bridge:
   disableInviteNotifications: false
   # Disable Room Topic echos from matrix
   disableRoomTopicNotifications: false
+  # Disable pinging Discord users on replies in Matrix
+  disableDiscordReplyPings: false
   # Auto-determine the language of code blocks (this can be CPU-intensive)
   determineCodeLanguage: false
   # MXID of an admin user that will be PMd if the bridge experiences problems. Optional

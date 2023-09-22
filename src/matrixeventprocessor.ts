@@ -393,8 +393,8 @@ export class MatrixEventProcessor {
             }
             const replyEmbed = (await this.EventToEmbed(sourceEvent, channel, true)).messageEmbed;
 
-            // if we reply to a discord member, ping them!
-            if (this.bridge.isNamespacedUser(sourceEvent.sender)) {
+            // if we reply to a discord member and pinging is enabled, ping them!
+            if (this.bridge.isNamespacedUser(sourceEvent.sender) && !this.config.bridge.disableDiscordReplyPings) {
                 const uid = this.bridge.getSuffixForUserId(sourceEvent.sender);
                 replyEmbed.addField("ping", `<@${uid}>`);
             }
