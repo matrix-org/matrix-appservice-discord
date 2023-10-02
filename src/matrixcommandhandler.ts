@@ -142,6 +142,42 @@ export class MatrixCommandHandler {
                     }
                 },
             },
+            approve: {
+                description: "Deny a pending bridge request",
+                params: [],
+                permission: {
+                    cat: "events",
+                    level: PROVISIONING_DEFAULT_POWER_LEVEL,
+                    selfService: true,
+                    subcat: "m.room.power_levels",
+                },
+                run: async () => {
+                    if (await this.discord.Provisioner.MarkApprovedFromMatrix(event.room_id, true)) {
+                        return "Thanks for your response! The matrix bridge has been approved.";
+                    } else {
+                        return "Thanks for your response, however" +
+                            " it has arrived after the deadline - sorry!";
+                    }
+                },
+            },
+            deny: {
+                description: "Deny a pending bridge request",
+                params: [],
+                permission: {
+                    cat: "events",
+                    level: PROVISIONING_DEFAULT_POWER_LEVEL,
+                    selfService: true,
+                    subcat: "m.room.power_levels",
+                },
+                run: async () => {
+                    if (await this.discord.Provisioner.MarkApprovedFromMatrix(event.room_id, false)) {
+                        return "Thanks for your response! The matrix bridge has been declined.";
+                    } else {
+                        return "Thanks for your response, however" +
+                            " it has arrived after the deadline - sorry!";
+                    }
+                },
+            },
         };
 
         /*

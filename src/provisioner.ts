@@ -18,6 +18,7 @@ import * as Discord from "@mx-puppet/better-discord.js";
 import { DbRoomStore, RemoteStoreRoom, MatrixStoreRoom } from "./db/roomstore";
 import { ChannelSyncroniser } from "./channelsyncroniser";
 import { Log } from "./log";
+import { Appservice } from "matrix-bot-sdk";
 
 const PERMISSION_REQUEST_TIMEOUT = 300000; // 5 minutes
 
@@ -26,7 +27,7 @@ const log = new Log("Provisioner");
 export class Provisioner {
 
     private pendingRequests: Map<string, (approved: boolean) => void> = new Map(); // [channelId]: resolver fn
-
+    private matrixPendingRequests:Map<string, string> = new Map();
     constructor(private roomStore: DbRoomStore, private channelSync: ChannelSyncroniser) { }
 
     public async BridgeMatrixRoom(channel: Discord.TextChannel, roomId: string) {
@@ -114,6 +115,50 @@ export class Provisioner {
 
     }
 
+    public async AskMatrixPermission(
+        bridge: Appservice,
+        channel: Discord.TextChannel,
+        roomid:string,
+        timeout: number = PERMISSION_REQUEST_TIMEOUT): Promise<string> {
+        const channelId = `${channel.guild.id}/${channel.id}`;
+
+        let responded = false;
+        let resolve: (msg: string) => void;
+        let reject: (err: Error) => void;
+        const deferP: Promise<string> = new Promise((res, rej) => {resolve = res; reject = rej; });
+
+        const approveFn = (approved: boolean, expired = false) => {
+            if (responded) {
+                return;
+            }
+
+            responded = true;
+            this.pendingRequests.delete(channelId);
+            this.matrixPendingRequests.delete(roomid);
+            if (approved) {
+                resolve("Approved");
+            } else {
+                if (expired) {
+                    reject(Error("Timed out waiting for a response from the Matrix owners."));
+                } else {
+                    reject(Error("The bridge has been declined by the Matrix room."));
+                }
+            }
+        };
+
+        this.pendingRequests.set(channelId, approveFn);
+        this.matrixPendingRequests.set(roomid,channelId);
+        setTimeout(() => approveFn(false, true), timeout);
+        await bridge.botIntent.sendText(
+            roomid,
+            `${channel.client.user?.username} on discord server ${channel.guild.name} would like to bridge this channel. Someone with permission` +
+            " to manage webhooks please reply with `!discord approve` or `!discord deny` in the next 5 minutes.",
+            "m.notice",
+        );
+        return await deferP;
+
+    }
+
     public HasPendingRequest(channel: Discord.TextChannel): boolean {
         const channelId = `${channel.guild.id}/${channel.id}`;
         return this.pendingRequests.has(channelId);
@@ -135,6 +180,21 @@ export class Provisioner {
             throw new Error("You do not have permission to manage webhooks in this channel");
         }
 
+        this.pendingRequests.get(channelId)!(allow);
+        return true; // replied, so true
+    }
+
+    public async MarkApprovedFromMatrix(
+        roomid: string,
+        allow: boolean,
+    ): Promise<boolean> {
+        if (!this.matrixPendingRequests.has(roomid)) {
+            return false; // no change, so false
+        }
+        const channelId = this.matrixPendingRequests.get(roomid);
+        if(!channelId){
+            return false;
+        }
         this.pendingRequests.get(channelId)!(allow);
         return true; // replied, so true
     }
