@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as Discord from "better-discord.js";
+import * as Discord from "@mx-puppet/better-discord.js";
 import { DiscordBot } from "./bot";
 import { DiscordBridgeConfig } from "./config";
 import { Util, wrapError } from "./util";
@@ -38,7 +38,6 @@ const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 32;
 const DISCORD_AVATAR_WIDTH = 128;
 const DISCORD_AVATAR_HEIGHT = 128;
-const ROOM_NAME_PARTS = 2;
 const AGE_LIMIT = 900000; // 15 * 60 * 1000
 const PROFILE_CACHE_LIFETIME = 900000;
 
@@ -92,11 +91,9 @@ export class MatrixEventProcessor {
      */
     public async OnEvent(event: IMatrixEvent, rooms: IRoomStoreEntry[]): Promise<void> {
         const remoteRoom = rooms[0];
-        if (event.unsigned.age > AGE_LIMIT) {
-            log.info(`Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`);
-            // throw new Unstable.EventTooOldError(
-            //     `Skipping event due to age ${event.unsigned.age} > ${AGE_LIMIT}`,
-            // );
+        const age = Date.now() - event.origin_server_ts;
+        if (age > AGE_LIMIT) {
+            log.info(`Skipping event due to age ${age} > ${AGE_LIMIT}`);
             return;
         }
         if (
@@ -239,16 +236,17 @@ export class MatrixEventProcessor {
 
         const allowJoinLeave = !this.config.bridge.disableJoinLeaveNotifications;
         const allowInvite = !this.config.bridge.disableInviteNotifications;
+        const allowRoomTopic = !this.config.bridge.disableRoomTopicNotifications;
 
         if (event.type === "m.room.name") {
             msg += `set the name to \`${event.content!.name}\``;
-        } else if (event.type === "m.room.topic") {
+        } else if (event.type === "m.room.topic" && allowRoomTopic) {
             msg += `set the topic to \`${event.content!.topic}\``;
         } else if (event.type === "m.room.member") {
             const membership = event.content!.membership;
             const client = this.bridge.botIntent.underlyingClient;
-            const isNewJoin = event.unsigned.replaces_state === undefined ? true : (
-                await client.getEvent(event.room_id, event.unsigned.replaces_state)).content.membership !== "join";
+            const isNewJoin = event.unsigned?.replaces_state === undefined ? true : (
+                await client.getEvent(event.room_id, event.unsigned?.replaces_state)).content.membership !== "join";
             if (membership === "join") {
                 this.mxUserProfileCache.delete(`${event.room_id}:${event.sender}`);
                 this.mxUserProfileCache.delete(event.sender);
@@ -275,6 +273,9 @@ export class MatrixEventProcessor {
                 // Ignore anything else
                 return;
             }
+        } else {
+            // Ignore anything else
+            return;
         }
 
         msg += " on Matrix.";

@@ -27,7 +27,7 @@ Please also be aware that this is an unoffical project worked on in our spare ti
 The bridge has been tested against the [Synapse](https://github.com/matrix-org/synapse) homeserver, although any homeserver
 that implements the [AS API](https://matrix.org/docs/spec/application_service/r0.1.0.html) should work with this bridge.
 
-The bridge supports any version of Node.js between v14.X - v18.X. View the [releases](https://nodejs.org/en/about/releases/) for more details.
+The bridge supports any version of Node.js between v18.X - v20.X. View the [releases](https://nodejs.org/en/about/releases/) for more details.
 
 The bridge uses Yarn for dependency management and package scripts.
 For the time being, **only Yarn Classic / v1 is supported.** To install it, follow [these instructions](https://classic.yarnpkg.com/en/docs/install).
@@ -49,7 +49,7 @@ by running ``yarn set version classic`` in the directory where you cloned this r
       homeserverUrl: "https://example.com"
   ```
 
-* Run ``node build/src/discordas.js -r -u "http://localhost:9005" -c config.yaml``
+* Run ``yarn start -r -u "http://localhost:9005"``
 * Modify your HSs appservices config so that it includes the generated file.
   * e.g. On synapse, adding to ``app_service_config_files`` array in ``homeserver.yaml``
 

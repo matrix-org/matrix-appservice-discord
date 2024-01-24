@@ -15,16 +15,16 @@ limitations under the License.
 */
 
 import { expect } from "chai";
-import * as Discord from "better-discord.js";
 import * as Proxyquire from "proxyquire";
+import * as Discord from "@mx-puppet/better-discord.js";
 import { MockMember } from "./mocks/member";
 import { MatrixEventProcessor, MatrixEventProcessorOpts } from "../src/matrixeventprocessor";
 import { DiscordBridgeConfig } from "../src/config";
+import { DiscordBridgeConfigBridge } from "../src/config";
 import { MockChannel } from "./mocks/channel";
 import { IMatrixEvent } from "../src/matrixtypes";
 import { AppserviceMock } from "./mocks/appservicemock";
 import { Appservice } from "matrix-bot-sdk";
-import { RemoteStoreRoom } from "../src/db/roomstore";
 
 // we are a test file and thus need those
 /* tslint:disable:no-unused-expression max-file-line-count no-any */
@@ -32,11 +32,11 @@ import { RemoteStoreRoom } from "../src/db/roomstore";
 const TEST_TIMESTAMP = 1337;
 
 function buildRequest(eventData): IMatrixEvent {
-    if (eventData.unsigned === undefined) {
-        eventData.unsigned = {age: 0};
-    }
     if (eventData.sender === undefined) {
         eventData.sender = "@foobar:localhost";
+    }
+    if (!eventData.origin_server_ts) {
+        eventData.origin_server_ts = Date.now();
     }
     return eventData;
 }
@@ -154,7 +154,7 @@ let KICKBAN_HANDLED = false;
 let MESSAGE_SENT = false;
 let MESSAGE_EDITED = false;
 
-function createMatrixEventProcessor(storeMockResults = 0) {
+function createMatrixEventProcessor(storeMockResults = 0, configBridge = new DiscordBridgeConfigBridge()) {
     STATE_EVENT_MSG = "";
     MESSAGE_PROCCESS = "";
     KICKBAN_HANDLED = false;
@@ -173,6 +173,7 @@ function createMatrixEventProcessor(storeMockResults = 0) {
         OnUpdateUser: async () => { },
     };
     const config = new DiscordBridgeConfig();
+    config.bridge = configBridge;
 
     const store = {
         Get: (a, b) => {
@@ -354,8 +355,36 @@ describe("MatrixEventProcessor", () => {
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` set the topic to `Test Topic` on Matrix.");
         });
+        it("Should not echo topic changes", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableRoomTopicNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    topic: "Test Topic",
+                },
+                sender: "@user:localhost",
+                type: "m.room.topic",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
+        });
         it("Should echo joins", async () => {
             const {processor} =  createMatrixEventProcessor();
+            const event = {
+                content: {
+                    membership: "join",
+                },
+                sender: "@user:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` joined the room on Matrix.");
+        });
+        it("Should not echo joins", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableJoinLeaveNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
             const event = {
                 content: {
                     membership: "join",
@@ -365,7 +394,7 @@ describe("MatrixEventProcessor", () => {
                 unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
-            expect(STATE_EVENT_MSG).to.equal("`@user:localhost` joined the room on Matrix.");
+            expect(STATE_EVENT_MSG).to.equal("");
         });
         it("Should echo invites", async () => {
             const {processor} =  createMatrixEventProcessor();
@@ -376,10 +405,25 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` invited `@user2:localhost` to the room on Matrix.");
+        });
+        it("Should not echo invites", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableInviteNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    membership: "invite",
+                },
+                sender: "@user:localhost",
+                state_key: "@user2:localhost",
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
         });
         it("Should echo kicks", async () => {
             const {processor} =  createMatrixEventProcessor();
@@ -390,7 +434,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` kicked `@user2:localhost` from the room on Matrix.");
@@ -404,10 +447,25 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` left the room on Matrix.");
+        });
+        it("Should not echo leaves", async () => {
+            const bridge = new DiscordBridgeConfigBridge();
+            bridge.disableJoinLeaveNotifications = true;
+            const {processor} =  createMatrixEventProcessor(0, bridge);
+            const event = {
+                content: {
+                    membership: "leave",
+                },
+                sender: "@user:localhost",
+                state_key: "@user:localhost",
+                type: "m.room.member",
+                unsigned: {},
+            } as IMatrixEvent;
+            await processor.ProcessStateEvent(event);
+            expect(STATE_EVENT_MSG).to.equal("");
         });
         it("Should echo bans", async () => {
             const {processor} =  createMatrixEventProcessor();
@@ -418,7 +476,6 @@ describe("MatrixEventProcessor", () => {
                 sender: "@user:localhost",
                 state_key: "@user2:localhost",
                 type: "m.room.member",
-                unsigned: {},
             } as IMatrixEvent;
             await processor.ProcessStateEvent(event);
             expect(STATE_EVENT_MSG).to.equal("`@user:localhost` banned `@user2:localhost` from the room on Matrix.");
@@ -908,13 +965,12 @@ This is the reply`,
             const {processor} =  createMatrixEventProcessor();
             let err;
             try {
-                await processor.OnEvent(buildRequest({unsigned: {age: AGE}}), []);
+                await processor.OnEvent(buildRequest({ origin_server_ts: Date.now() - AGE }), []);
             } catch (e) { err = e; }
             // TODO: Not supported yet.
             // expect(err).to.be.an.instanceof(Unstable.EventTooOldError);
         });
         it("should reject un-processable events", async () => {
-            const AGE = 900000; // 15 * 60 * 1000
             const {processor} =  createMatrixEventProcessor();
             let err;
             try {
@@ -922,7 +978,6 @@ This is the reply`,
                     buildRequest({
                         content: {},
                         type: "m.potato",
-                        unsigned: {age: AGE},
                     }),
                     [],
                 );

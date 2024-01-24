@@ -1,15 +1,12 @@
-FROM node:16-slim AS BUILD
+FROM node:18-slim AS BUILD
 COPY . /tmp/src
 # install some dependencies needed for the build process
 RUN apt update && apt install -y build-essential make gcc g++ python3 ca-certificates libc-dev wget git
 
-# Workaround for https://github.com/matrix-org/matrix-appservice-discord/issues/803
-RUN git config --global url.https://github.com/.insteadOf git://github.com/
-
 RUN cd /tmp/src \
     && yarn
 
-FROM node:16-slim
+FROM node:18-slim
 ENV NODE_ENV=production
 COPY --from=BUILD /tmp/src/build /build
 COPY --from=BUILD /tmp/src/config /config

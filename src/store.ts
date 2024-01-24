@@ -301,7 +301,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
 
     public async getUserActivity(): Promise<UserActivitySet> {
         const rows = await this.db.All('SELECT * FROM user_activity');
-        const users: {[mxid: string]: any} = {};
+        const users = new Map<string, UserActivity>();
         for (const row of rows) {
             let data = row.data as any;
             if (typeof data === 'string') { // sqlite has no first-class JSON
@@ -309,7 +309,7 @@ export class DiscordStore implements IAppserviceStorageProvider {
             }
             users[row.user_id as string] = data;
         }
-        return { users };
+        return users;
     }
 
     public async storeUserActivity(userId: string, activity: UserActivity): Promise<void> {

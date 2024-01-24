@@ -30,6 +30,8 @@ properties:
             type: "boolean"
           disableInviteNotifications:
             type: "boolean"
+          disableRoomTopicNotifications:
+            type: "boolean"
           userActivity:
             type: "object"
             required: ["minUserActiveDays", "inactiveAfterDays"]

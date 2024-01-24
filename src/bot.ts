@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import * as Discord from "@mx-puppet/better-discord.js";
+import { IDiscordMessageParserResult } from "@mx-puppet/matrix-discord-parser";
 import { DiscordBridgeConfig } from "./config";
 import { DiscordClientFactory } from "./clientfactory";
 import { DiscordStore } from "./store";
 import { DbEmoji } from "./db/dbdataemoji";
 import { DbEvent } from "./db/dbdataevent";
 import { DiscordMessageProcessor } from "./discordmessageprocessor";
-import { IDiscordMessageParserResult } from "@mx-puppet/matrix-discord-parser";
 import { MatrixEventProcessor, MatrixEventProcessorOpts, IMatrixEventProcessorResult } from "./matrixeventprocessor";
 import { PresenceHandler } from "./presencehandler";
 import { Provisioner } from "./provisioner";
@@ -28,7 +29,6 @@ import { UserSyncroniser } from "./usersyncroniser";
 import { ChannelSyncroniser } from "./channelsyncroniser";
 import { MatrixRoomHandler } from "./matrixroomhandler";
 import { Log } from "./log";
-import * as Discord from "better-discord.js";
 import * as mime from "mime";
 import { IMatrixEvent, IMatrixMediaInfo, IMatrixMessage } from "./matrixtypes";
 import { Appservice, Intent, MatrixClient } from "matrix-bot-sdk";
@@ -94,7 +94,6 @@ class DiscordBridgeBlocker extends BridgeBlocker {
 export class DiscordBot {
     private clientFactory: DiscordClientFactory;
     private _bot: Discord.Client|undefined;
-    private presenceInterval: number;
     private sentMessages: string[];
     private lastEventIds: { [channelId: string]: string };
     private discordMsgProcessor: DiscordMessageProcessor;
@@ -344,7 +343,7 @@ export class DiscordBot {
         client.on("userUpdate", async (_, user) => {
             try {
                 if (!(user instanceof Discord.User)) {
-                    log.warn(`Ignoring update for ${user.username}. User was partial.`);
+                    log.warn(`Ignoring update for ${(<any>user).username}. User was partial.`);
                     return;
                 }
                 await this.userSync.OnUpdateUser(user);
@@ -353,7 +352,7 @@ export class DiscordBot {
         client.on("guildMemberAdd", async (member) => {
             try {
                 if (!(member instanceof Discord.GuildMember)) {
-                    log.warn(`Ignoring update for ${member.guild.id} ${member.id}. User was partial.`);
+                    log.warn(`Ignoring update for ${(<any>member).guild?.id} ${(<any>member).id}. User was partial.`);
                     return;
                 }
                 await this.userSync.OnAddGuildMember(member);
@@ -371,7 +370,7 @@ export class DiscordBot {
         client.on("guildMemberUpdate", async (_, member) => {
             try {
                 if (!(member instanceof Discord.GuildMember)) {
-                    log.warn(`Ignoring update for ${member.guild.id} ${member.id}. User was partial.`);
+                    log.warn(`Ignoring update for ${(<any>member).guild.id} ${(<any>member).id}. User was partial.`);
                     return;
                 }
                 await this.userSync.OnUpdateGuildMember(member);
@@ -1028,7 +1027,7 @@ export class DiscordBot {
         }
 
         // Update presence because sometimes discord misses people.
-        await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID));
+        await this.userSync.OnUpdateUser(msg.author, Boolean(msg.webhookID), msg);
         let rooms: string[];
         try {
             rooms = await this.channelSync.GetRoomIdsFromChannel(msg.channel);
@@ -1234,7 +1233,10 @@ export class DiscordBot {
 
     private async onUserActivityChanged(state: UserActivityState) {
         for (const userId of state.changed) {
-            await this.store.storeUserActivity(userId, state.dataSet.users[userId]);
+            const activity = state.dataSet.get(userId);
+            if (activity) {
+                await this.store.storeUserActivity(userId, activity);
+            }
         }
         log.verbose(`Checking bridge limits (${state.activeUsers} active users)`);
         this.bridgeBlocker?.checkLimits(state.activeUsers).catch(err => {
