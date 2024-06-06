@@ -1,0 +1,1 @@
+Don't send filenames in message body when bridging Matrix -> Discord.

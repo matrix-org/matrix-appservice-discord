@@ -638,6 +638,35 @@ describe("MatrixEventProcessor", () => {
             } as IMatrixEvent, mockChannel as any);
             expect(embeds.messageEmbed.description).to.equal("Bunnies\n(<@1234>)");
         });
+        it("Should not send filename in body", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "filename.zip",
+                    msgtype: "m.file",
+                    url: "mxc://file",
+                },
+                sender: "@test:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent, mockChannel as any);
+            expect(embeds.messageEmbed.description).to.equal("");
+        });
+        it("Should not send image filename in body", async () => {
+            const {processor} =  createMatrixEventProcessor();
+            const embeds = await processor.EventToEmbed({
+                content: {
+                    body: "filename.jpg",
+                    info: {
+                        mimetype: "image/jpeg",
+                    },
+                    msgtype: "m.image",
+                    url: "mxc://image",
+                },
+                sender: "@test:localhost",
+                type: "m.room.member",
+            } as IMatrixEvent, mockChannel as any);
+            expect(embeds.messageEmbed.description).to.equal("");
+        });
     });
     describe("HandleAttachment", () => {
         const SMALL_FILE = 200;
@@ -939,7 +968,7 @@ This is the reply`,
                 type: "m.room.message",
             } as IMatrixEvent, mockChannel as any);
             expect(result!.image!.url!).to.be.equal("https://fox/localhost");
-            expect(result!.description).to.be.equal("fox.jpg");
+            expect(result!.description).to.be.equal("");
         });
         it("should handle replies to files", async () => {
             const {processor} =  createMatrixEventProcessor();
