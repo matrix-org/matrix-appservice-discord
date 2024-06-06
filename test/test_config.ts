@@ -63,6 +63,7 @@ describe("DiscordBridgeConfig.applyConfig", () => {
             APPSERVICE_DISCORD_BRIDGE_DISABLE_INVITE_NOTIFICATIONS: true,
             APPSERVICE_DISCORD_BRIDGE_DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
             APPSERVICE_DISCORD_LOGGING_CONSOLE: "debug",
+            APPSERVICE_DISCORD_DATABASE_CONN_STRING: "abcd",
         });
         expect(config.bridge.disableJoinLeaveNotifications).to.be.true;
         expect(config.bridge.disableInviteNotifications).to.be.true;
@@ -70,6 +71,7 @@ describe("DiscordBridgeConfig.applyConfig", () => {
         expect(config.bridge.disableDiscordMentions).to.be.false;
         expect(config.bridge.homeserverUrl).to.equal("blah");
         expect(config.logging.console).to.equal("debug");
+        expect(config.database.connString).to.equal("abcd");
     });
     it("should merge logging.files correctly", () => {
         const config = new DiscordBridgeConfig();

@@ -81,18 +81,18 @@ export class DiscordBridgeConfig {
 }
 
 export class DiscordBridgeConfigBridge {
-    public domain: string;
-    public homeserverUrl: string;
-    public port: number;
-    public bindAddress: string;
+    public domain: string = "";
+    public homeserverUrl: string = "";
+    public port: number = 0;
+    public bindAddress: string = "";
     public presenceInterval: number = 500;
-    public disablePresence: boolean;
-    public disableTypingNotifications: boolean;
-    public disableDiscordMentions: boolean;
-    public disableDeletionForwarding: boolean;
-    public enableSelfServiceBridging: boolean;
-    public disablePortalBridging: boolean;
-    public disableReadReceipts: boolean;
+    public disablePresence: boolean = false;
+    public disableTypingNotifications: boolean = false;
+    public disableDiscordMentions: boolean = false;
+    public disableDeletionForwarding: boolean = false;
+    public enableSelfServiceBridging: boolean = false;
+    public disablePortalBridging: boolean = false;
+    public disableReadReceipts: boolean = false;
     public disableEveryoneMention: boolean = false;
     public disableHereMention: boolean = false;
     public disableJoinLeaveNotifications: boolean = false;
@@ -106,17 +106,17 @@ export class DiscordBridgeConfigBridge {
 }
 
 export class DiscordBridgeConfigDatabase {
-    public connString: string;
-    public filename: string;
+    public connString: string = "";
+    public filename: string = "";
     // These parameters are legacy, and will stop the bridge if defined.
-    public userStorePath: string;
-    public roomStorePath: string;
+    public userStorePath: string = "";
+    public roomStorePath: string = "";
 }
 
 export class DiscordBridgeConfigAuth {
-    public clientID: string;
-    public botToken: string;
-    public usePrivilegedIntents: boolean;
+    public clientID: string = "";
+    public botToken: string = "";
+    public usePrivilegedIntents: boolean = false;
 }
 
 export class DiscordBridgeConfigLogging {
@@ -126,7 +126,7 @@ export class DiscordBridgeConfigLogging {
 }
 
 class DiscordBridgeConfigRoom {
-    public defaultVisibility: string;
+    public defaultVisibility: string = "";
     public kickFor: number = 30000;
 }
 
@@ -152,7 +152,7 @@ class DiscordBridgeConfigLimits {
 }
 
 export class LoggingFile {
-    public file: string;
+    public file: string = "";
     public level: string = "info";
     public maxFiles: string = "14d";
     public maxSize: string|number = "50m";
