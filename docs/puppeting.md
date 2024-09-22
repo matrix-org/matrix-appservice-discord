@@ -26,7 +26,7 @@ The tokens will be stored by the bridge and are valid until the user
 changes their password, so please be careful not to give the token to anything
 that you wouldn't trust with your password.
 
-I accept no responsibility if Discord ban your IP, Account or even your details on
+I accept no responsibility if Discord bans your IP, Account or even your details on
 their system. They have never given official support on custom clients (and
   by extension, puppeting bridges). If you are in any doubt, stick to the
   bot which is within the rules.

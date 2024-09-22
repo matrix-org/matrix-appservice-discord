@@ -100,7 +100,7 @@ should show up in the network list on Element and other clients.
 
 * Create a new application via https://discord.com/developers/applications
 * Make sure to create a bot user. Fill in ``config.yaml``
-* Run ``yarn addbot`` to get a authorisation link.
+* Run ``yarn addbot`` to get an authorisation link.
 * Give this link to owners of the guilds you plan to bridge.
 * Finally, you can join a room with ``#_discord_guildid_channelid``
   * These can be taken from the url ("/$GUILDID/$CHANNELID") when you are in a channel.
