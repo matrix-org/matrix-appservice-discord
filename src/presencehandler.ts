@@ -133,7 +133,7 @@ export class PresenceHandler {
             status.StatusMsg = status.StatusMsg ? `Do not disturb | ${status.StatusMsg}` : "Do not disturb";
         } else if (presence.status === "offline") {
             status.Presence = "offline";
-            status.ShouldDrop = true; // Drop until we recieve an update.
+            status.ShouldDrop = true; // Drop until we receive an update.
         } else { // idle
             status.Presence = "unavailable";
         }
